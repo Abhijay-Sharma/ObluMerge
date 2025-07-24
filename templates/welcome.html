@@ -185,6 +185,7 @@
                             <button type="submit" class="nav-link">
                                 Logout
                             </button>
+        </form>
       {% else %}
         <a href="{% url 'login' %}">Login</a>
         <a href="{% url 'signup' %}">Sign Up</a>
@@ -197,7 +198,7 @@
     <p>Your internal suite of productivity tools.</p>
     <div class="btn-group">
       <button class="btn" onclick="redirectTo('inventory')">Inventory Management</button>
-      <button class="btn" onclick="redirectTo('quotation')">Quotation Maker</button>
+      <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
     </div>
   </div>
 
@@ -209,8 +210,8 @@
     function redirectTo(tool) {
       if (tool === 'inventory') {
         window.location.href = "/inventory/";
-      } else if (tool === 'quotation') {
-        window.location.href = "/quotation/";
+      } else if (tool === 'quotations') {
+        window.location.href = "/quotations/";
       }
     }
   </script>

@@ -1,0 +1,243 @@
+{% load static %}
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Quotation</title>
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            padding: 40px;
+            color: #333;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 30px solid rgb(32, 31, 31);
+            padding: 10px 0;
+        }
+
+        .header img {
+            height: 70px;
+        }
+
+        .contact-info {
+            text-align: right;
+            font-size: 15px;
+        }
+
+        .contact-info div {
+            margin-bottom: 5px;
+        }
+
+        .quotation-info, .customer-info {
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .customer-info p, .quotation-info p {
+            margin: 4px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+        td{
+            text-align: center;
+        }
+
+        .total {
+            text-align: right;
+            margin-top: 20px;
+            font-size: 15px;
+        }
+
+       .terms {
+            margin-top: 20px;
+        }
+
+        .terms h3 {
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+        .terms ol {
+            margin-left: 20px;
+            font-size: 14px;
+        }
+
+        .bank-details {
+            margin-left: 30px;
+        }
+
+        .signature {
+            margin-top: 40px;
+            margin-left: 60px;
+            font-size: 14px;
+        }
+
+        .signature img {
+            height: 100px;
+            margin-top: 2px;
+        }
+
+        .contact-info2 {
+            margin-top: 30px;
+            height: 30px;
+            background-color: rgb(32, 31, 31);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            color: white;
+            font-size: 14px;
+        }
+        .page-break {
+            page-break-before: always;
+            break-before: page;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.png?v=1747391104" alt="OBLU Logo">
+        <div class="contact-info">
+            <div><b>A:</b> 705-706, 7th Floor, PP City Centre,<br> Pitampura, New Delhi - 110034</div>
+            <div><b>GST No.:</b> 07AAIFO0279M1ZU</div>
+            <div><b>LLPIN:</b> ABB-5224</div>
+        </div>
+    </div>
+
+    <div class="contact-info2">
+        <span> M:+91 96504 47099</span>
+        <span> E:sales@obluhc.com</span>
+        <span>W:www.obluhc.com</span>
+    </div>
+
+    <div class="customer-info">
+        <p><strong>To:</strong> {{ quotation.customer_name }}</p>
+        <p><strong>Address:</strong> {{ quotation.customer_address }}</p>
+    </div>
+
+    <div class="quotation-info">
+        <p><strong>Quotation Ref. No.:</strong> OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}</p>
+        <p><strong>Date:</strong> {{ quotation.date_created|date:"d.m.Y" }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Unit Price (₹)</th>
+                <th>Discount</th>
+                <th>GST (%)</th>
+                <th>Total (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in quotation.items.all %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.product.price_per_unit }}</td>
+                <td>{{ item.discount }}</td>
+                <td>{{ item.tax }}</td>
+                <td>{{ item.total_price }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total">
+        <strong>Grand Total: ₹{{ quotation.total }}</strong>
+    </div>
+
+    <div class="signature">
+    <p>For <strong>Oblu Healthcare</strong></p>
+    <p>Authorized Signatory</p>
+    <img src="{% static 'images/Authorized Signatory.png' %}" alt="Authorized Signatory">
+</div>
+
+    <hr>
+
+    <div class="page-break"></div>
+
+
+    <!-- Updated Terms and Conditions -->
+    <div class="header">
+    <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.png?v=1747391104" alt="OBLU Logo">
+    <div class="contact-info">
+        <div><b>A:</b> 705-706, 7th Floor, PP City Centre,<br> Pitampura, New Delhi - 110034</div>
+        <div><b>GST No.:</b> 07AAIFO0279M1ZU</div>
+        <div><b>LLPIN:</b> ABB-5224</div>
+    </div>
+</div>
+    <div class="contact-info2">
+        <span> M:+91 96504 47099</span>
+        <span> E:sales@obluhc.com</span>
+        <span>W:www.obluhc.com</span>
+    </div>
+
+    <div class="terms">
+        <h3>Terms And Conditions</h3>
+        <ol>
+            <li>Prices: Quoted are on F.O.R Destination and inclusive of GST.</li> <br>
+            <li>
+                Payment: 100% payment in advance by NEFT / RTGS / Demand Draft / Cheque in our favor, payable at New
+                Delhi
+                <br><br>
+                <div class="bank-details">
+                    <span style="text-decoration: underline;"> Our bank details are as follows:</span><br><br>
+                    OBLU HEALTHCARE LLP<br>
+                    AC NO- 629305041976<br>
+                    IFSC CODE- ICIC0006293<br>
+                    ICICI BANK LTD<br>
+                    ADDRESS - J-12/18 RAJOURI GARDEN NEW DELHI 110027
+                </div>
+            </li> <br>
+            <li>Delivery: 2-3 weeks from the date of receipt of confirmed order along with advance.</li> <br>
+            <li>Installation: Online support will be provided by our team of engineers for installation of the unit.
+            </li> <br>
+            <li>
+                Force Majeure Clause: Our offer is subject to force de majeure and we shall not be responsible for any
+                breach of contract arising out of unforeseen situation viz. acts of God, Govt, fires, floods, strike,
+                war, freight embargo, severe weather.
+                <br><br>
+                Order Cancellation fee of 25% of the Order Value will be charged, if Customer / End User cancels the
+                order after confirmation.
+            </li> <br>
+            <li>All disputes are subject to Delhi Jurisdiction.</li>
+        </ol>
+    </div>
+
+    <div class="signature">
+        <p>For <strong>Oblu Healthcare</strong></p>
+        <p>Authorized Signatory</p>
+        <img src="{% static 'images/Authorized Signatory.png' %}" alt="Authorized Signatory">
+    </div>
+
+    <hr>
+
+    <a href="{% url 'quotation_pdf' id %}">Download PDF</a>
+
+
+</body>
+</html>
