@@ -1,0 +1,53 @@
+<!-- templates/inventory/predict_stock.html -->
+
+{% extends "inventory/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Stock Prediction for {{ product.name }}</h2>
+
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% else %}
+        <h4>Trend-based Prediction (Closing Stock)</h4>
+        <ul>
+            {% for month, qty in trend_pred %}
+                <li>{{ month }} → {{ qty }}</li>
+            {% endfor %}
+        </ul>
+
+        <h4>Demand-based Prediction (Outwards Quantity)</h4>
+        <ul>
+            {% for month, qty in demand_pred %}
+                <li>{{ month }} → {{ qty }}</li>
+            {% endfor %}
+        </ul>
+
+        <h4>Recommended Minimum Stock</h4>
+        <ul>
+            <li>Based on Trend: <strong>{{ min_stock_trend }}</strong></li>
+            <li>Based on Demand + Buffer: <strong>{{ min_stock_demand }}</strong></li>
+        </ul>
+
+        <h4>Monthly Stock Data (Summary)</h4>
+        <table border="1" cellpadding="5">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Closing Qty</th>
+                    <th>Outwards Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in excel_data %}
+                    <tr>
+                        <td>{{ row.Month }}</td>
+                        <td>{{ row.closing_quantity|default:"-" }}</td>
+                        <td>{{ row.outwards_quantity|default:"-" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+{% endblock %}

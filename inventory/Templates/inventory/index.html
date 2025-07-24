@@ -1,0 +1,20 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-sm-11 col-md-6 mx-auto mt-5 px-3 text-center">
+            <h1 class="fw-bold display-5" style="color: #78C2AD;">Oblu Inventory Dashboard</h1>
+            <p class="fw-light mt-3">
+                Internal system for tracking stock, monitoring inventory levels, and managing supply.
+            </p>
+            <p class="text-muted small">
+                Access real-time inventory data across departments. Only authorized Oblu team members may use this system.
+            </p>
+            <div class="mt-4">
+                <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Open Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
