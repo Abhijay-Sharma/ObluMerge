@@ -107,6 +107,6 @@ def clean_and_convert_data(file_path):
 
 
 # Example usage
-file_path = r"C:\Users\abhij\OneDrive\Desktop\oblu work\tally data\tally_new_23-26_with-1multiplied.xlsx"
+file_path = "tally_new_23-26_with-1multiplied.xlsx"
 clean_and_convert_data(file_path)
 
