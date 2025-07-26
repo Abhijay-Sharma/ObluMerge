@@ -6,48 +6,50 @@
             <div class="d-flex justify-content-end">
                 <a href="{% url 'add-item' %}" class="btn btn-primary">+</a>
             </div>
-            <table class="table table-hover table-striped">
-                <thead>
-                    <tr>
-                        <th scope="col">ID</th>
-                        <th scope="col">Name</th>
-                        <th scope="col">QTY</th>
-                        <th scope="col">CATEGORY</th>
-                        <th scope="col">FORECAST</th>
-                        <th scope="col">GRAPHS</th>
-                        <th scope="col">DATA</th>
-                        <th scope="col">EDIT</th>
-                        <th scope="col">DELETE</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if items|length == 0 %}
-					<tr>
-						<th scope="row">-</th>
-						<td>-</td>
-						<td>-</td>
-						<td>-</td>
-						<td>-</td>
-						<td></td>
-					</tr>
-					{% endif %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">QTY</th>
+                            <th scope="col">CATEGORY</th>
+                            <th scope="col">FORECAST</th>
+                            <th scope="col">GRAPHS</th>
+                            <th scope="col">DATA</th>
+                            <th scope="col">EDIT</th>
+                            <th scope="col">DELETE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if items|length == 0 %}
+                        <tr>
+                            <th scope="row">-</th>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td></td>
+                        </tr>
+                        {% endif %}
 
-                    {% for item in items %}
-                    <tr>
-                        <th scope="row">{{ item.id }}</th>
-                        <td>{{ item.name }}</td>
-                        <td>{{ item.quantity }}</td>
-                        <td>{{ item.category.name }}</td>
-                        <td><a href="{% url 'predict_min_stock' item.id %}" class="btn btn-secondary">View</a></td>
-                        <td><a href="{% url 'stock_chart_2' item.id %}" class="btn btn-outline-secondary">Graphs</a></td>
-                        <td><a href="{% url 'history' item.id %}" class="btn btn-secondary">Data</a></td>
-                        <td><a href="{% url 'edit-item' item.id %}" class="btn btn-outline-secondary">Edit</a></td>
-                        <td><a href="{% url 'delete-item' item.id%}" class="btn btn-secondary">Delete </a></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                        {% for item in items %}
+                        <tr>
+                            <th scope="row">{{ item.id }}</th>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.category.name }}</td>
+                            <td><a href="{% url 'predict_min_stock' item.id %}" class="btn btn-secondary">View</a></td>
+                            <td><a href="{% url 'stock_chart_2' item.id %}" class="btn btn-outline-secondary">Graphs</a></td>
+                            <td><a href="{% url 'history' item.id %}" class="btn btn-secondary">Data</a></td>
+                            <td><a href="{% url 'edit-item' item.id %}" class="btn btn-outline-secondary">Edit</a></td>
+                            <td><a href="{% url 'delete-item' item.id%}" class="btn btn-secondary">Delete </a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
 
-            </table>
+                </table>
+            </div>
         </div>
     </div>
 

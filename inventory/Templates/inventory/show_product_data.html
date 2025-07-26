@@ -8,7 +8,7 @@
         {% else %}
             <p>No historical data available.</p>
         {% endif %}
-
+        <div class="table-responsive">
         <table class="table table-hover table-striped mt-4">
             <thead>
                 <tr>
@@ -75,6 +75,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 {% endblock content %}
