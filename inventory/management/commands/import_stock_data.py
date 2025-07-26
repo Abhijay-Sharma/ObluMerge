@@ -3,8 +3,10 @@ import pandas as pd
 from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from inventory.models import InventoryItem, DailyStockData
 
+User = get_user_model()
 # Define unit and voucher types for mapping
 PRODUCT_UNITS = {
     'no': 'Number',
