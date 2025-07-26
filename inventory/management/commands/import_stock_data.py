@@ -55,8 +55,7 @@ def clean_and_convert_data(file_path):
         try:
             # Create or get the InventoryItem (Product) and set the 'infected' user
             product, created = InventoryItem.objects.get_or_create(
-                name=product_name,
-                defaults={'user': user}  # Set the 'infected' user here
+                name=product_name
             )
 
             # Clean and convert other fields
