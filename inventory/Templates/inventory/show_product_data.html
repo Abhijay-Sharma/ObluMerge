@@ -9,72 +9,72 @@
             <p>No historical data available.</p>
         {% endif %}
         <div class="table-responsive">
-        <table class="table table-hover table-striped mt-4">
-            <thead>
-                <tr>
-                    <th>
-                        <a href="?sort={% if sort == 'date_asc' %}date_desc{% else %}date_asc{% endif %}">
-                            Date
-                            {% if sort == 'date_asc' %}⬇️{% elif sort == 'date_desc' %}⬆️{% else %}↕️{% endif %}
-                        </a>
-                    </th>
-                    <th>
-                        <a href="?sort={% if sort == 'inwards_quantity' %}-inwards_quantity{% else %}inwards_quantity{% endif %}">
-                            Inwards Qty
-                            {% if sort == 'inwards_quantity' %}⬇️{% elif sort == '-inwards_quantity' %}⬆️{% else %}↕️{% endif %}
-                        </a>
-                    </th>
-                    <th>
-                        <a href="?sort={% if sort == 'inwards_value' %}-inwards_value{% else %}inwards_value{% endif %}">
-                            Inwards Value
-                            {% if sort == 'inwards_value' %}⬇️{% elif sort == '-inwards_value' %}⬆️{% else %}↕️{% endif %}
-                        </a>
-                    </th>
-                    <th>
-                        <a href="?sort={% if sort == 'outwards_quantity' %}-outwards_quantity{% else %}outwards_quantity{% endif %}">
-                            Outwards Qty
-                            {% if sort == 'outwards_quantity' %}⬇️{% elif sort == '-outwards_quantity' %}⬆️{% else %}↕️{% endif %}
-                        </a>
-                    </th>
-                    <th>
-                        <a href="?sort={% if sort == 'outwards_value' %}-outwards_value{% else %}outwards_value{% endif %}">
-                            Outwards Value
-                            {% if sort == 'outwards_value' %}⬇️{% elif sort == '-outwards_value' %}⬆️{% else %}↕️{% endif %}
-                        </a>
-                    </th>
-                    <th>
-                        <a href="?sort={% if sort == 'closing_quantity' %}-closing_quantity{% else %}closing_quantity{% endif %}">
-                            Closing Qty
-                            {% if sort == 'closing_quantity' %}⬇️{% elif sort == '-closing_quantity' %}⬆️{% else %}↕️{% endif %}
-                        </a>
-                    </th>
-                    <th>
-                        <a href="?sort={% if sort == 'closing_value' %}-closing_value{% else %}closing_value{% endif %}">
-                            Closing Value
-                            {% if sort == 'closing_value' %}⬇️{% elif sort == '-closing_value' %}⬆️{% else %}↕️{% endif %}
-                        </a>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if historical_data|length == 0 %}
+            <table class="table table-hover table-striped mt-4">
+                <thead>
                     <tr>
-                        <td colspan="7" class="text-center">No data found.</td>
+                        <th>
+                            <a href="?sort={% if sort == 'date_asc' %}date_desc{% else %}date_asc{% endif %}">
+                                Date
+                                {% if sort == 'date_asc' %}⬇️{% elif sort == 'date_desc' %}⬆️{% else %}↕️{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort={% if sort == 'inwards_quantity' %}-inwards_quantity{% else %}inwards_quantity{% endif %}">
+                                Inwards Qty
+                                {% if sort == 'inwards_quantity' %}⬇️{% elif sort == '-inwards_quantity' %}⬆️{% else %}↕️{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort={% if sort == 'inwards_value' %}-inwards_value{% else %}inwards_value{% endif %}">
+                                Inwards Value
+                                {% if sort == 'inwards_value' %}⬇️{% elif sort == '-inwards_value' %}⬆️{% else %}↕️{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort={% if sort == 'outwards_quantity' %}-outwards_quantity{% else %}outwards_quantity{% endif %}">
+                                Outwards Qty
+                                {% if sort == 'outwards_quantity' %}⬇️{% elif sort == '-outwards_quantity' %}⬆️{% else %}↕️{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort={% if sort == 'outwards_value' %}-outwards_value{% else %}outwards_value{% endif %}">
+                                Outwards Value
+                                {% if sort == 'outwards_value' %}⬇️{% elif sort == '-outwards_value' %}⬆️{% else %}↕️{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort={% if sort == 'closing_quantity' %}-closing_quantity{% else %}closing_quantity{% endif %}">
+                                Closing Qty
+                                {% if sort == 'closing_quantity' %}⬇️{% elif sort == '-closing_quantity' %}⬆️{% else %}↕️{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort={% if sort == 'closing_value' %}-closing_value{% else %}closing_value{% endif %}">
+                                Closing Value
+                                {% if sort == 'closing_value' %}⬇️{% elif sort == '-closing_value' %}⬆️{% else %}↕️{% endif %}
+                            </a>
+                        </th>
                     </tr>
-                {% endif %}
-                {% for data in historical_data %}
-                <tr>
-                    <td>{{ data.get_month_display }} {{ data.year }}</td>
-                    <td>{{ data.inwards_quantity|default:"-" }}</td>
-                    <td>{{ data.inwards_value|default:"-" }}</td>
-                    <td>{{ data.outwards_quantity|default:"-" }}</td>
-                    <td>{{ data.outwards_value|default:"-" }}</td>
-                    <td>{{ data.closing_quantity|default:"-" }}</td>
-                    <td>{{ data.closing_value|default:"-" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% if historical_data|length == 0 %}
+                        <tr>
+                            <td colspan="7" class="text-center">No data found.</td>
+                        </tr>
+                    {% endif %}
+                    {% for data in historical_data %}
+                    <tr>
+                        <td>{{ data.get_month_display }} {{ data.year }}</td>
+                        <td>{{ data.inwards_quantity|default:"-" }}</td>
+                        <td>{{ data.inwards_value|default:"-" }}</td>
+                        <td>{{ data.outwards_quantity|default:"-" }}</td>
+                        <td>{{ data.outwards_value|default:"-" }}</td>
+                        <td>{{ data.closing_quantity|default:"-" }}</td>
+                        <td>{{ data.closing_value|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
