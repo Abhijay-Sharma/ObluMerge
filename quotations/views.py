@@ -8,6 +8,7 @@ from weasyprint import HTML
 
 from .forms import QuotationForm, QuotationItemForm
 from .models import Quotation, QuotationItem
+from django.contrib.auth.decorators import login_required
 
 from django.urls import reverse
 
@@ -20,7 +21,7 @@ QuotationItemFormSet = modelformset_factory(
     can_delete=True
 )
 
-
+@login_required
 def create_quotation(request):
     if request.method == 'POST':
         quotation_form = QuotationForm(request.POST)
@@ -45,7 +46,7 @@ def create_quotation(request):
         'formset': formset,
     })
 
-
+@login_required
 def quotation_detail(request, pk):
     quotation = get_object_or_404(Quotation, pk=pk)
     return render(request, 'quotations/quotation_detail.html', {
@@ -53,7 +54,7 @@ def quotation_detail(request, pk):
         'id': pk
     })
 
-
+@login_required
 def quotation_pdf(request, pk):
     quotation = get_object_or_404(Quotation, pk=pk)
     template = get_template('quotations/pdf_template.html')
