@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from django.forms import modelformset_factory
-
+from weasyprint import HTML
 from .forms import QuotationForm, QuotationItemForm
 from .models import Quotation, QuotationItem
 from django.contrib.auth.decorators import login_required
@@ -55,7 +55,7 @@ def quotation_detail(request, pk):
 
 @login_required
 def quotation_pdf(request, pk):
-    from weasyprint import HTML
+
     quotation = get_object_or_404(Quotation, pk=pk)
     template = get_template('quotations/pdf_template.html')
     html = template.render({'quotation': quotation})
