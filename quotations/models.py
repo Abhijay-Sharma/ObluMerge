@@ -22,9 +22,15 @@ class Product(models.Model):
 
 
 class Quotation(models.Model):
+
+    STAFF_CHOICES=[('Bhavya Bhardwaj', 'Bhavya'),
+        ('Ankush', 'Ankush'),
+        ('Nimit Sharma', 'Nimit'),
+        ('Aman Poddar','Aman')]
     customer_name = models.CharField(max_length=255)
     customer_address = models.TextField()
     date_created = models.DateTimeField(auto_now_add=True)
+    created_by=models.CharField(max_length=255,choices=STAFF_CHOICES,default="Bhavya")
 
     def total(self):
         return sum(item.total_price() for item in self.items.all())
@@ -44,8 +50,9 @@ class QuotationItem(models.Model):
         # Apply flat discount
         discounted_price = base_price - self.discount
 
-        # Apply tax on discounted price
-        tax_amount = (self.tax / 100) * discounted_price
+        # # Apply tax on discounted price
+        # tax_amount = (self.tax / 100) * discounted_price
 
-        total = discounted_price + tax_amount
+        # total = discounted_price + tax_amount
+        total=discounted_price
         return max(total, 0)  # prevent negative totals

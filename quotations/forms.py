@@ -5,12 +5,12 @@ from .models import Quotation, QuotationItem, Product
 class QuotationForm(forms.ModelForm):
     class Meta:
         model = Quotation
-        fields = ['customer_name', 'customer_address']
+        fields = ['customer_name', 'customer_address','created_by']
 
 class QuotationItemForm(forms.ModelForm):
     class Meta:
         model = QuotationItem
-        fields = ['product', 'quantity','discount','tax']
+        fields = ['product', 'quantity','discount']
 
 from django.forms import modelformset_factory
 
