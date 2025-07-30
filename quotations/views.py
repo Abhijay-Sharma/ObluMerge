@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from django.forms import modelformset_factory
-import io
+
 from .forms import QuotationForm, QuotationItemForm
 from .models import Quotation, QuotationItem
 from django.contrib.auth.decorators import login_required
@@ -62,14 +62,13 @@ def quotation_pdf(request, pk):
         template = get_template('quotations/pdf_template.html')
         html = template.render({'quotation': quotation})
 
-        buffer = io.BytesIO()
-        HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf(buffer)
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename=quotation_{pk}.pdf'
 
-        buffer.seek(0)
-        return HttpResponse(buffer.read(), content_type='application/pdf')
+        HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf(response)
+        return response
 
     except Exception as e:
-        import traceback
         print(f"🛑 PDF Generation Error (Quotation {pk}): {e}")
         traceback.print_exc()
         return HttpResponse("PDF generation failed", status=500)
