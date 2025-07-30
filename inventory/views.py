@@ -15,6 +15,7 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 from django.shortcuts import get_object_or_404
 import calendar
+from inventory.mixins import AccountantRequiredMixin
 
 
 # Create your views here.

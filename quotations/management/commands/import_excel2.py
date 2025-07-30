@@ -6,13 +6,14 @@ class Command(BaseCommand):
     help = 'Import products and categories from Excel into Product model'
 
     def handle(self, *args, **kwargs):
-        file_path = r"C:\Users\abhij\OneDrive\Desktop\quotation maker\rest_of_products.xlsx"
+        file_path = "/home/ubuntu/ObluMerge/quotations/management/commands/pricelist.xlsx"
         df = pd.read_excel(file_path)
 
         for _, row in df.iterrows():
             category_name = row['Product Category']
             product_name = row['Product Name']
             price = row['Price']
+            tax_rate = row['Tax Rate']
 
             if pd.isna(category_name) or pd.isna(product_name) or pd.isna(price):
                 self.stdout.write(self.style.WARNING(f"⚠️ Skipping incomplete row: {row.to_dict()}"))
@@ -24,6 +25,7 @@ class Command(BaseCommand):
             # Create or update the product
             product_obj, created = Product.objects.update_or_create(
                 name=product_name.strip(),
+                tax_rate=tax_rate,
                 defaults={
                     'category': category_obj,
                     'price_per_unit': price,

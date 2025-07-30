@@ -15,6 +15,7 @@ class Product(models.Model):
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
+    tax_rate= models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     is_quantity_dependent = models.BooleanField(default=True)
 
     def __str__(self):
@@ -50,9 +51,9 @@ class QuotationItem(models.Model):
         # Apply flat discount
         discounted_price = base_price - self.discount
 
-        # # Apply tax on discounted price
-        # tax_amount = (self.tax / 100) * discounted_price
+        # Apply tax on discounted price
+        tax_amount = (self.product.tax_rate / 100) * discounted_price
 
-        # total = discounted_price + tax_amount
-        total=discounted_price
+        total = discounted_price + tax_amount
+        # total=discounted_price
         return max(total, 0)  # prevent negative totals
