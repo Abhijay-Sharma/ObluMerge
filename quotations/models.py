@@ -57,3 +57,16 @@ class QuotationItem(models.Model):
         total = discounted_price + tax_amount
         # total=discounted_price
         return max(total, 0)  # prevent negative totals
+
+
+class Customer(models.Model):
+    name = models.CharField(max_length=255)
+    state= models.CharField(max_length=255)
+    address = models.CharField(max_length=2550)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        unique_together = ('name', 'address')
+        ordering = ['name']

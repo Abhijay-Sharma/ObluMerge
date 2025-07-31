@@ -112,6 +112,14 @@
   <form method="post">
     {% csrf_token %}
 
+    <label for="customer-select">Select Existing Customer</label>
+    <select id="customer-select">
+        <option value="">--- Select Customer ---</option>
+        {% for customer in customers %}
+            <option value="{{ customer.id }}">{{ customer.name }}</option>
+        {% endfor %}
+    </select>
+
     <!-- Customer Info -->
     <div>
       {{ quotation_form.customer_name.label_tag }}
@@ -202,6 +210,26 @@
         e.target.parentElement.remove();
         totalForms.value = container.children.length;
       }
+    });
+        $('#customer-select').change(function () {
+        const customerId = $(this).val();
+        if (customerId) {
+            $.ajax({
+                url: '{% url 'get_customer' %}',
+                type: 'GET',
+                data: { id: customerId },
+                success: function (data) {
+                    $('#id_customer_name').val(data.name);
+                    $('#id_customer_address').val(data.state + ', ' + data.address);
+                },
+                error: function () {
+                    alert('Failed to fetch customer info.');
+                }
+            });
+        } else {
+            $('#id_customer_name').val('');
+            $('#id_customer_address').val('');
+        }
     });
   </script>
 

@@ -4,9 +4,10 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from django.forms import modelformset_factory
+from django.http import JsonResponse
 
 from .forms import QuotationForm, QuotationItemForm
-from .models import Quotation, QuotationItem
+from .models import Quotation, QuotationItem, Customer
 from django.contrib.auth.decorators import login_required
 import traceback
 
@@ -29,21 +30,22 @@ def create_quotation(request):
 
         if quotation_form.is_valid() and formset.is_valid():
             quotation = quotation_form.save()
-
             for form in formset:
                 if form.cleaned_data and form.cleaned_data.get('product'):
                     item = form.save(commit=False)
                     item.quotation = quotation
                     item.save()
-
             return redirect('quotation_detail', pk=quotation.pk)
     else:
         quotation_form = QuotationForm()
         formset = QuotationItemFormSet(queryset=QuotationItem.objects.none())
 
+    customers = Customer.objects.all()
+
     return render(request, 'quotations/create_quotation.html', {
         'quotation_form': quotation_form,
         'formset': formset,
+        'customers': customers
     })
 
 @login_required
@@ -75,6 +77,18 @@ def quotation_pdf(request, pk):
 
 def home(request):
     return render(request, 'quotations/home.html')
+
+def get_customer(request):
+    customer_id = request.GET.get('id')
+    try:
+        customer = Customer.objects.get(id=customer_id)
+        return JsonResponse({
+            'name': customer.name,
+            'address': customer.address,
+            'state': customer.state
+        })
+    except Customer.DoesNotExist:
+        return JsonResponse({'error': 'Customer not found'}, status=404)
 
 
 # add discount percentage per sheet
