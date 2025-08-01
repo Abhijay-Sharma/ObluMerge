@@ -6,6 +6,5 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('new/', views.create_quotation, name='create_quotation'),
     path('<int:pk>/', views.quotation_detail, name='quotation_detail'),
-    path('<int:pk>/pdf/', views.quotation_pdf, name='quotation_pdf'),
     path('get-customer/', views.get_customer, name='get_customer'),
 ]

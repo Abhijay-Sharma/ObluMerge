@@ -56,24 +56,7 @@ def quotation_detail(request, pk):
         'id': pk
     })
 
-@login_required
-def quotation_pdf(request, pk):
-    from weasyprint import HTML
-    try:
-        quotation = get_object_or_404(Quotation, pk=pk)
-        template = get_template('quotations/pdf_template.html')
-        html = template.render({'quotation': quotation})
 
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename=quotation_{pk}.pdf'
-
-        HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf(response)
-        return response
-
-    except Exception as e:
-        print(f"🛑 PDF Generation Error (Quotation {pk}): {e}")
-        traceback.print_exc()
-        return HttpResponse("PDF generation failed", status=500)
 
 def home(request):
     return render(request, 'quotations/home.html')
