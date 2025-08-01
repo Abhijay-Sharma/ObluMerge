@@ -58,6 +58,13 @@ class QuotationItem(models.Model):
         # total=discounted_price
         return max(total, 0)  # prevent negative totals
 
+    def gst_amount(self):
+        total = self.total_price()
+        return total - (self.product.price_per_unit * self.quantity)
+
+    def gst_unit_price(self):
+        return self.product.price_per_unit + ((self.product.tax_rate / 100) * self.product.price_per_unit)
+
 
 class Customer(models.Model):
     name = models.CharField(max_length=255)

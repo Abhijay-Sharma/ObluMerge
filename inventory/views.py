@@ -25,7 +25,7 @@ class WelcomeView(TemplateView):
 class Index(TemplateView):
     template_name = "inventory/index.html"  #Defines a class-based view called Index which will render the inventory/index.html file when called.
 
-class Dashboard(LoginRequiredMixin, View):
+class Dashboard(AccountantRequiredMixin, View):
     def get(self,request):
         items = InventoryItem.objects.filter
         return render(request, 'inventory/dashboard.html',{'items':items})
@@ -44,7 +44,7 @@ class LogoutView(View):
         logout(request)  # Logs the user out
         return render(request, self.template_name)  # Shows the logout page
 
-class AddItem(LoginRequiredMixin, CreateView):
+class AddItem(AccountantRequiredMixin, CreateView):
     model = InventoryItem
     form_class = InventoryItemForm
     template_name = 'inventory/item_form.html'
@@ -57,13 +57,13 @@ class AddItem(LoginRequiredMixin, CreateView):
         form.instance.user=self.request.user
         return super().form_valid(form)
 
-class EditItem(LoginRequiredMixin, UpdateView):
+class EditItem(AccountantRequiredMixin, UpdateView):
     model = InventoryItem
     form_class=InventoryItemForm
     template_name = 'inventory/item_form.html'
     success_url = reverse_lazy('dashboard')
 
-class DeleteItem(LoginRequiredMixin, DeleteView):
+class DeleteItem(AccountantRequiredMixin, DeleteView):
     model= InventoryItem
     template_name = 'inventory/delete_item.html'
     success_url = reverse_lazy('dashboard')
@@ -146,7 +146,7 @@ def predict_min_stock_view(request):
     return render(request, 'inventory/predict_stock.html', context)
 
 
-class ShowProductData(LoginRequiredMixin, ListView):
+class ShowProductData(AccountantRequiredMixin, ListView):
     template_name = 'inventory/show_product_data.html'
     context_object_name = 'historical_data'
 
@@ -181,7 +181,7 @@ class ShowProductData(LoginRequiredMixin, ListView):
         context['sort'] = self.request.GET.get('sort', 'date_desc')
         return context
 
-class ShowProductStockHistory(LoginRequiredMixin, ListView):      # for date model
+class ShowProductStockHistory(AccountantRequiredMixin, ListView):      # for date model
     template_name='inventory/product_stock_history.html'
     context_object_name = 'stock_data'
 

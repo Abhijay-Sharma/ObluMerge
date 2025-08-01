@@ -166,6 +166,8 @@
                 <th>Unit Price (₹)</th>
                 <th>Discount</th>
                 <th>GST (%)</th>
+                <th>Unit Price (Inc. GST)</th>
+                <th>GST Amount</th>
                 <th>Total (₹)</th>
             </tr>
         </thead>
@@ -178,6 +180,8 @@
                 <td>{{ item.product.price_per_unit }}</td>
                 <td>{{ item.discount }}</td>
                 <td>{{ item.product.tax_rate }}</td>
+                <td>{{item.gst_unit_price}}</td>
+                <td>{{ item.gst_amount }}</td>
                 <td>{{ item.total_price }}</td>
             </tr>
             {% endfor %}
