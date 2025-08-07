@@ -16,6 +16,7 @@ import numpy as np
 from django.shortcuts import get_object_or_404
 import calendar
 from inventory.mixins import AccountantRequiredMixin
+from .utils import fetch_tally_stock
 
 
 # Create your views here.
@@ -29,6 +30,22 @@ class Dashboard(AccountantRequiredMixin, View):
     def get(self,request):
         items = InventoryItem.objects.filter
         return render(request, 'inventory/dashboard.html',{'items':items})
+
+class Dashboard2(AccountantRequiredMixin, View):
+    tally_stock = fetch_tally_stock()
+
+    # Update local DB with live stock (optional, or just show without saving)
+    for item in InventoryItem.objects.all():
+        name = item.name
+        if name in tally_stock:
+            item.quantity = tally_stock[name]['balance']
+            item.save(update_fields=['quantity'])
+
+    def get(self,request):
+        items = InventoryItem.objects.filter
+        return render(request, 'inventory/dashboard.html',{'items':items})
+
+
 # This view handles both displaying the signup form and processing form submissions
 class SignUpView(CreateView):
     form_class = CustomUserCreationForm
