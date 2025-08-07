@@ -35,13 +35,21 @@ class Dashboard2(AccountantRequiredMixin, View):
     def get(self, request):
         tally_stock = fetch_tally_stock()
 
-        # Update local DB with live stock
-        for item in InventoryItem.objects.all():
-            name = item.name.strip()
-            if name in tally_stock:
-                item.quantity = tally_stock[name]['balance']
-                item.save(update_fields=['quantity'])
+        for item in tally_stock:
+            name = item["name"]
+            quantity = item["closing_balance"]
+            unit = item["unit"]
 
+            # Try to get the item; if it exists, update; otherwise, create
+            obj, created = InventoryItem.objects.update_or_create(
+                name=name,
+                defaults={
+                    "quantity": quantity,
+                    "unit": unit
+                }
+            )
+
+            # Now fetch all items to show on dashboard
         items = InventoryItem.objects.all()
         return render(request, 'inventory/dashboard.html', {'items': items})
 
