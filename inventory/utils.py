@@ -11,13 +11,15 @@ def fetch_tally_stock():
         query = "SELECT $Name, $ClosingBalance, $BaseUnits FROM StockItem"
         cursor.execute(query)
 
-        result = []
+        result = {}
         for row in cursor.fetchall():
-            result.append({
-                "name": row[0],
-                "closing_balance": row[1],
-                "unit": row[2]
-            })
+            name = row[0].strip() if row[0] else ''
+            balance = row[1]
+            unit = row[2]
+            result[name] = {
+                "balance": balance,
+                "unit": unit
+            }
         return result
     except Exception as e:
         print("Error:", e)
