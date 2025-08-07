@@ -28,6 +28,3 @@ urlpatterns = [
     path('',WelcomeView.as_view(),name='welcome'),
     path('quotations/',include('quotations.urls')),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
