@@ -34,8 +34,8 @@ class Dashboard(AccountantRequiredMixin, View):
 class Dashboard2(AccountantRequiredMixin, View):
     def get(self, request):
         tally_stock = fetch_tally_stock()
-
-        for name in tally_stock:
+        names=tally_stock.keys()
+        for name in names:
             quantity = name["balance"]
             # Try to get the item; if it exists, update; otherwise, create
             obj, created = InventoryItem.objects.update_or_create(
