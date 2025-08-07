@@ -108,6 +108,6 @@ def clean_and_convert_data(file_path):
 
 
 # Example usage
-file_path = "C:\Users\Administrator\ObluMerge\inventory\management\commands\import_stock_data.py"
+file_path = r"C:\Users\Administrator\ObluMerge\inventory\management\commands\tally_new_23-26_with-1multiplied.xlsx"
 clean_and_convert_data(file_path)
 
