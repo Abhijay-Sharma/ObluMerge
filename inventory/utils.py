@@ -13,7 +13,7 @@ def fetch_tally_stock():
 
         result = {}
         for row in cursor.fetchall():
-            name = row[0].strip() if row[0] else ''
+            name = row[0] if row[0] else ''
             balance = row[1]
             unit = row[2]
             result[name] = {
