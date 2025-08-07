@@ -38,14 +38,11 @@ class Dashboard2(AccountantRequiredMixin, View):
         for item in tally_stock:
             name = item["name"]
             quantity = item["closing_balance"]
-            unit = item["unit"]
-
             # Try to get the item; if it exists, update; otherwise, create
             obj, created = InventoryItem.objects.update_or_create(
                 name=name,
                 defaults={
                     "quantity": quantity,
-                    "unit": unit
                 }
             )
 
