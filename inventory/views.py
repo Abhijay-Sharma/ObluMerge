@@ -32,18 +32,19 @@ class Dashboard(AccountantRequiredMixin, View):
         return render(request, 'inventory/dashboard.html',{'items':items})
 
 class Dashboard2(AccountantRequiredMixin, View):
-    tally_stock = fetch_tally_stock()
+    def get(self, request):
+        tally_stock = fetch_tally_stock()
 
-    # Update local DB with live stock (optional, or just show without saving)
-    for item in InventoryItem.objects.all():
-        name = item.name
-        if name in tally_stock:
-            item.quantity = tally_stock[name]['balance']
-            item.save(update_fields=['quantity'])
+        # Update local DB with live stock
+        for item in InventoryItem.objects.all():
+            name = item.name.strip()
+            if name in tally_stock:
+                item.quantity = tally_stock[name]['balance']
+                item.save(update_fields=['quantity'])
 
-    def get(self,request):
-        items = InventoryItem.objects.filter
-        return render(request, 'inventory/dashboard.html',{'items':items})
+        items = InventoryItem.objects.all()
+        return render(request, 'inventory/dashboard.html', {'items': items})
+
 
 
 # This view handles both displaying the signup form and processing form submissions
