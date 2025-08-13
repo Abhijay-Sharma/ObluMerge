@@ -50,7 +50,15 @@ class Dashboard2(AccountantRequiredMixin, View):
         items = InventoryItem.objects.all()
         return render(request, 'inventory/dashboard.html', {'items': items})
 
+class CategoryDashboard(AccountantRequiredMixin, View):
+    def get(self,request,category):
+        items = InventoryItem.objects.filter(category=category)
+        return render(request, 'inventory/dashboard.html',{'items':items})
 
+class CategoryListView(AccountantRequiredMixin,ListView):
+    queryset = Category.objects.all()
+    template_name = 'inventory/category_list.html'
+    context_object_name = 'category_list'
 
 # This view handles both displaying the signup form and processing form submissions
 class SignUpView(CreateView):
