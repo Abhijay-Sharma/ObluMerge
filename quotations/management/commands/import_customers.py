@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help='Import Customers and there addresses from excel to Category Model'
 
     def handle(self, *args, **kwargs):
-        file_path=r"/home/ubuntu/ObluMerge/quotations/management/commands/tally_customers.xlsx"
+        file_path=r"C:\Users\Administrator\ObluMerge\quotations\management\commands\import_customers.py"
         df = pd.read_excel(file_path)
 
         for _, row in df.iterrows():
