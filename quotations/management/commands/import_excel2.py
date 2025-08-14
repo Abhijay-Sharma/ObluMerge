@@ -6,7 +6,7 @@ class Command(BaseCommand):
     help = 'Import products and categories from Excel into Product model'
 
     def handle(self, *args, **kwargs):
-        file_path = "/home/ubuntu/ObluMerge/quotations/management/commands/pricelist.xlsx"
+        file_path = "/home/ubuntu/ObluMerge/quotations/management/commands/oblupricelist.xlsx"
         df = pd.read_excel(file_path)
 
         for _, row in df.iterrows():
