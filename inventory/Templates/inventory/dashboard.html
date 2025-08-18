@@ -39,7 +39,11 @@
                         <th scope="row">{{ item.id }}</th>
                         <td>{{ item.name }}</td>
                         <td>{{ item.quantity }}</td>
-                        <td>{{ item.min_quantity }}</td>
+                        {% if item.min_quantity != -1 %}
+                            <td>{{ item.min_quantity }}</td>
+                        {% else %}
+                            <td>-</td>
+                        {% endif %}
                         <td>{{ item.category.name }}</td>
                         <td><a href="{% url 'predict_min_stock' item.id %}" class="btn btn-secondary">View</a></td>
                         <td><a href="{% url 'stock_chart_2' item.id %}" class="btn btn-outline-secondary">Graphs</a></td>
