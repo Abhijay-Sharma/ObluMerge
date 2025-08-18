@@ -13,6 +13,7 @@
                         <th scope="col">ID</th>
                         <th scope="col">Name</th>
                         <th scope="col">QTY</th>
+                        <th scope="col">MIN QTY</th>
                         <th scope="col">CATEGORY</th>
                         <th scope="col">FORECAST</th>
                         <th scope="col">GRAPHS</th>
@@ -38,6 +39,7 @@
                         <th scope="row">{{ item.id }}</th>
                         <td>{{ item.name }}</td>
                         <td>{{ item.quantity }}</td>
+                        <td>{{ item.min_quantity }}</td>
                         <td>{{ item.category.name }}</td>
                         <td><a href="{% url 'predict_min_stock' item.id %}" class="btn btn-secondary">View</a></td>
                         <td><a href="{% url 'stock_chart_2' item.id %}" class="btn btn-outline-secondary">Graphs</a></td>

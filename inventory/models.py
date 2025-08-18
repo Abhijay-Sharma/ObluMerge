@@ -14,6 +14,7 @@ class InventoryItem(models.Model):
     quantity=models.IntegerField(null=True)
     category=models.ForeignKey('Category', on_delete=models.SET_NULL, blank=True, null=True)
     date_created=models.DateTimeField(auto_now_add=True)
+    min_quantity = models.IntegerField(null=True, blank=True, default=-1)
 
     def __str__(self):
         return self.name
