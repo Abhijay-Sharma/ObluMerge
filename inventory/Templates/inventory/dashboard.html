@@ -59,4 +59,11 @@
         </div>
     </div>
 
+{% if log_message %}
+<script>
+    console.error("{{ log_message }}");
+</script>
+{% endif %}
+
+
 {% endblock content %}

@@ -48,7 +48,10 @@ class Dashboard2(AccountantRequiredMixin, View):
 
             # Now fetch all items to show on dashboard
         items = InventoryItem.objects.all()
-        return render(request, 'inventory/dashboard.html', {'items': items})
+        return render(request, 'inventory/dashboard.html', {
+            'items': items,
+            'log_message': "Failed to import tally stock" if not tally_stock else None
+        })
 
 class CategoryDashboard(AccountantRequiredMixin, View):
     def get(self,request,category):
