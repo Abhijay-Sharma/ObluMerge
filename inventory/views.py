@@ -50,7 +50,7 @@ class Dashboard2(AccountantRequiredMixin, View):
         items = InventoryItem.objects.all()
         return render(request, 'inventory/dashboard.html', {
             'items': items,
-            'log_message': "Failed to import tally stock" if not tally_stock else None
+            'log_message': tally_stock
         })
 
 class CategoryDashboard(AccountantRequiredMixin, View):
