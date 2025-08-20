@@ -23,4 +23,4 @@ def fetch_tally_stock():
         return result
     except Exception as e:
         print("Error:", e)
-        return [1,2,3]
+        return []
