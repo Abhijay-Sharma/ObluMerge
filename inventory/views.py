@@ -43,13 +43,11 @@ class Dashboard2(AccountantRequiredMixin, View):
         for name in names:
 
             quantity = tally_stock[name]["balance"]
-            # Try to get the item; if it exists, update; otherwise, create
-            obj, created = InventoryItem.objects.update_or_create(
-                name=name,
-                defaults={
-                    "quantity": quantity,
-                }
-            )
+            # update all rows with this name
+            updated = InventoryItem.objects.filter(name=name).update(quantity=quantity)
+            # if none exist, create one
+            if updated == 0:
+                InventoryItem.objects.create(name=name, quantity=quantity)
 
             # Now fetch all items to show on dashboard
         items = InventoryItem.objects.all()
