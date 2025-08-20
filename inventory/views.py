@@ -17,6 +17,8 @@ from django.shortcuts import get_object_or_404
 import calendar
 from inventory.mixins import AccountantRequiredMixin
 from .utils import fetch_tally_stock
+import logging
+logger = logging.getLogger(__name__)
 
 
 # Create your views here.
@@ -34,7 +36,7 @@ class Dashboard(AccountantRequiredMixin, View):
 class Dashboard2(AccountantRequiredMixin, View):
     def get(self, request):
         tally_stock = fetch_tally_stock()
-        print("DEBUG tally_stock:", tally_stock)
+        logger.warning("DEBUG tally_stock: %s", tally_stock)  # <-- shows in logs
         names=tally_stock.keys()
         for name in names:
 
