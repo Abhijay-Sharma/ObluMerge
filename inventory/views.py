@@ -35,9 +35,12 @@ class Dashboard(AccountantRequiredMixin, View):
 
 class Dashboard2(AccountantRequiredMixin, View):
     def get(self, request):
-        tally_stock = fetch_tally_stock()
-        logger.warning("DEBUG tally_stock: %s", tally_stock)  # <-- shows in logs
-        names=tally_stock.keys()
+        try:
+            tally_stock = fetch_tally_stock()
+            names = tally_stock.keys()
+        except Exception as e:
+            tally_stock = {"error": str(e)}
+            names=[]
         for name in names:
 
             quantity = tally_stock[name]["balance"]
