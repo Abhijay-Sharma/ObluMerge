@@ -35,12 +35,11 @@ class Dashboard(AccountantRequiredMixin, View):
 
 class Dashboard2(AccountantRequiredMixin, View):
     def get(self, request):
-        try:
-            tally_stock = fetch_tally_stock()
-            names = tally_stock.keys()
-        except Exception as e:
-            tally_stock = {"error": str(e)}
-            names=[]
+        tally_stock = fetch_tally_stock()
+        names = tally_stock.keys()
+        if not tally_stock:
+            tally_stock = {"error": "fetch_tally_stock returned nothing"}
+
         for name in names:
 
             quantity = tally_stock[name]["balance"]
