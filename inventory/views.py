@@ -55,7 +55,7 @@ class Dashboard2(AccountantRequiredMixin, View):
         items = InventoryItem.objects.all()
         return render(request, 'inventory/dashboard.html', {
             'items': items,
-            'tally_stock': tally_stock,
+            'tally_stock': {'test': 'HELLO FROM VIEW'},
         })
 
 class CategoryDashboard(AccountantRequiredMixin, View):
