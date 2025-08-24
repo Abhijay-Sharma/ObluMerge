@@ -22,13 +22,12 @@ class QuotationItemForm(forms.ModelForm):
         model = QuotationItem
         fields = ['product', 'quantity','discount']
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop("user", None)  # catch user
+        self.user = kwargs.pop("user", None)  # catch user
         super().__init__(*args, **kwargs)
 
-        if not user.is_accountant:
+        if self.user and not self.user.is_accountant:
             # hide the field if not accountant
             self.fields['discount'].widget = forms.HiddenInput()
-            self.fields['discount'].required = False
 
 from django.forms import modelformset_factory, BaseModelFormSet
 
