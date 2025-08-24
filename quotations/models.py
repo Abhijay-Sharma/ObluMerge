@@ -24,11 +24,10 @@ class Product(models.Model):
 
 class Quotation(models.Model):
 
-    STAFF_CHOICES= models.CharField(max_length=255, null=True, blank=True)
     customer_name = models.CharField(max_length=255)
     customer_address = models.TextField()
     date_created = models.DateTimeField(auto_now_add=True)
-    created_by=models.CharField(max_length=255,choices=STAFF_CHOICES,default="Bhavya")
+    created_by=models.CharField(max_length=255,default="Bhavya")
 
     def total(self):
         return sum(item.total_price() for item in self.items.all())
