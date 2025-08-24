@@ -42,7 +42,7 @@ def create_quotation(request):
                     item.save()
             return redirect('quotation_detail', pk=quotation.pk)
     else:
-        quotation_form = QuotationForm()
+        quotation_form = QuotationForm(user=request.user)
         formset = QuotationItemFormSet(queryset=QuotationItem.objects.none())
 
     customers = Customer.objects.all()
