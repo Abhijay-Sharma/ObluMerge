@@ -29,11 +29,16 @@ def create_quotation(request):
         formset = QuotationItemFormSet(request.POST, queryset=QuotationItem.objects.none())
 
         if quotation_form.is_valid() and formset.is_valid():
-            quotation = quotation_form.save()
+            quotation = quotation_form.save(commit=False)  # ✅ don't save yet
 
-            # if not accountant, override created_by with logged-in username
-            if not request.user.is_accountant:
+            if request.user.is_accountant:
+                # accountants choose it in form, nothing to override
+                pass
+            else:
+                # non-accountant → force username
                 quotation.created_by = request.user.username
+
+            quotation.save()  # ✅ now safe to save
 
             for form in formset:
                 if form.cleaned_data and form.cleaned_data.get('product'):
