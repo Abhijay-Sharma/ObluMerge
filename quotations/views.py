@@ -30,6 +30,11 @@ def create_quotation(request):
 
         if quotation_form.is_valid() and formset.is_valid():
             quotation = quotation_form.save()
+
+            # if not accountant, override created_by with logged-in username
+            if not request.user.is_accountant:
+                quotation.created_by = request.user.username
+
             for form in formset:
                 if form.cleaned_data and form.cleaned_data.get('product'):
                     item = form.save(commit=False)
