@@ -29,11 +29,24 @@ class QuotationItemForm(forms.ModelForm):
             # hide the field if not accountant
             self.fields['discount'].widget = forms.HiddenInput()
             self.fields['discount'].required = False
-from django.forms import modelformset_factory
+from django.forms import modelformset_factory, BaseModelFormSet
+
+class BaseQuotationItemFormSet(BaseModelFormSet):
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)   # catch user here
+        super().__init__(*args, **kwargs)
+
+    def _construct_forms(self):
+        # inject user into each form
+        self.forms = []
+        for i in range(self.total_form_count()):
+            self.forms.append(self._construct_form(i, user=self.user))
+
 
 QuotationItemFormSet = modelformset_factory(
     QuotationItem,
     form=QuotationItemForm,
-    extra=1,  # Show at least 1 row initially
+    formset=BaseQuotationItemFormSet,
+    extra=1,
     can_delete=True
 )
