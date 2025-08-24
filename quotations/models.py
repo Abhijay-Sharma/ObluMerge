@@ -24,7 +24,10 @@ class Product(models.Model):
 
 class Quotation(models.Model):
 
-    STAFF_CHOICES=models.CharField(max_length=255)
+    STAFF_CHOICES=[('Bhavya Bhardwaj', 'Bhavya'),
+        ('Ankush', 'Ankush'),
+        ('Nimit Sharma', 'Nimit'),
+        ('Aman Poddar','Aman')]
     customer_name = models.CharField(max_length=255)
     customer_address = models.TextField()
     date_created = models.DateTimeField(auto_now_add=True)
