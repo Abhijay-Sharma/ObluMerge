@@ -24,7 +24,7 @@ class Product(models.Model):
 
 class Quotation(models.Model):
 
-    STAFF_CHOICES= models.CharField(max_length=255, on_delete=models.SET_NULL, null=True, blank=True)
+    STAFF_CHOICES= models.CharField(max_length=255, null=True, blank=True)
     customer_name = models.CharField(max_length=255)
     customer_address = models.TextField()
     date_created = models.DateTimeField(auto_now_add=True)
