@@ -31,8 +31,8 @@ def create_quotation(request):
         if quotation_form.is_valid() and formset.is_valid():
             quotation = quotation_form.save(commit=False)  # ✅ don't save yet
 
-            # if not request.user.is_accountant:
-            #     quotation.created_by = request.user.username
+            if not request.user.is_accountant:
+                quotation.created_by = request.user.username
 
             quotation.save()  # ✅ now safe to save
 
