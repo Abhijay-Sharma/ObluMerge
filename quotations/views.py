@@ -25,7 +25,7 @@ QuotationItemFormSet = modelformset_factory(
 @login_required
 def create_quotation(request):
     if request.method == 'POST':
-        quotation_form = QuotationForm(request.POST)
+        quotation_form = QuotationForm(request.POST,user=request.user)
         formset = QuotationItemFormSet(request.POST, queryset=QuotationItem.objects.none())
 
         if quotation_form.is_valid() and formset.is_valid():
