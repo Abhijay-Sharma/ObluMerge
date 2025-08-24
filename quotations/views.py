@@ -26,7 +26,11 @@ QuotationItemFormSet = modelformset_factory(
 def create_quotation(request):
     if request.method == 'POST':
         quotation_form = QuotationForm(request.POST,user=request.user)
-        formset = QuotationItemFormSet(request.POST, queryset=QuotationItem.objects.none(),user=request.user)
+        formset = QuotationItemFormSet(
+            request.POST or None,
+            queryset=QuotationItem.objects.none(),
+            form_kwargs={"user": request.user}
+        )
 
         if quotation_form.is_valid() and formset.is_valid():
             quotation = quotation_form.save(commit=False)  # ✅ don't save yet
@@ -44,7 +48,11 @@ def create_quotation(request):
             return redirect('quotation_detail', pk=quotation.pk)
     else:
         quotation_form = QuotationForm(user=request.user)
-        formset = QuotationItemFormSet(queryset=QuotationItem.objects.none(),user=request.user)
+        formset = QuotationItemFormSet(
+            request.POST or None,
+            queryset=QuotationItem.objects.none(),
+            form_kwargs={"user": request.user}
+        )
 
     customers = Customer.objects.all()
 
