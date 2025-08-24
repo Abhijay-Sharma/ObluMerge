@@ -128,8 +128,10 @@
       {{ quotation_form.customer_address.label_tag }}
       {{ quotation_form.customer_address }}
 
-      {{ quotation_form.created_by.label_tag }}
-      {{ quotation_form.created_by }}
+      {% if request.user.is_accountant %}
+        {{ quotation_form.created_by.label_tag }}
+        {{ quotation_form.created_by }}
+      {% endif %}
     </div>
 
     <div class="section-divider"></div>
@@ -147,10 +149,12 @@
           {{ form.quantity.label_tag }}
           {{ form.quantity }}
         </div>
-        <div>
-          {{ form.discount.label_tag }}
-          {{ form.discount }}
-        </div>
+        {% if request.user.is_accountant %}
+          <div>
+            {{ form.discount.label_tag }}
+            {{ form.discount }}
+          </div>
+        {% endif %}
         <div class="remove-row">❌</div>
       </div>
       {% endfor %}
