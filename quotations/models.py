@@ -1,5 +1,4 @@
 from django.db import models
-from decimal import Decimal
 # Create your models here.
 # quotations/models.py
 from django.db import models
@@ -14,7 +13,7 @@ class ProductCategory(models.Model):
 class Product(models.Model):
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-    price_per_unit = models.DecimalField(max_digits=40, decimal_places=30)
+    price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     tax_rate= models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     is_quantity_dependent = models.BooleanField(default=True)
 
@@ -41,8 +40,7 @@ class QuotationItem(models.Model):
     tax= models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     def total_price(self):
-        unit_price = self.product.price_per_unit.normalize()
-        # Output:("190.6779661000").normalize() -> Decimal('190.6779661')
+        unit_price = self.product.price_per_unit
 
         base_price = unit_price * self.quantity if self.product.is_quantity_dependent else unit_price
 
