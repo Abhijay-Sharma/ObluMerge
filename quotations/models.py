@@ -1,5 +1,5 @@
 from django.db import models
-
+from decimal import Decimal
 # Create your models here.
 # quotations/models.py
 from django.db import models
@@ -41,7 +41,9 @@ class QuotationItem(models.Model):
     tax= models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     def total_price(self):
-        unit_price = self.product.price_per_unit
+        unit_price = self.product.price_per_unit.normalize()
+        # Output:("190.6779661000").normalize() -> Decimal('190.6779661')
+
         base_price = unit_price * self.quantity if self.product.is_quantity_dependent else unit_price
 
         # Apply flat discount
