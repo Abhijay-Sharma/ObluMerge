@@ -14,7 +14,7 @@ class ProductCategory(models.Model):
 class Product(models.Model):
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-    price_per_unit = models.DecimalField(max_digits=30, decimal_places=30)
+    price_per_unit = models.DecimalField(max_digits=40, decimal_places=30)
     tax_rate= models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     is_quantity_dependent = models.BooleanField(default=True)
 
