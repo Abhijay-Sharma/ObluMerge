@@ -48,10 +48,10 @@ class QuotationItem(models.Model):
         discounted_price = base_price - self.discount
 
         # Apply tax on discounted price
-        tax_amount = (self.product.tax_rate / 100) * discounted_price
+        # tax_amount = (self.product.tax_rate / 100) * discounted_price
+        # not applying tax now price input already has tax inclusion
 
-        total = discounted_price + tax_amount
-        # total=discounted_price
+        total = discounted_price
         return max(total, 0)  # prevent negative totals
 
     def gst_amount(self):
@@ -59,7 +59,12 @@ class QuotationItem(models.Model):
         return total - (self.product.price_per_unit * self.quantity)
 
     def gst_unit_price(self):
-        return self.product.price_per_unit + ((self.product.tax_rate / 100) * self.product.price_per_unit)
+        # return self.product.price_per_unit + ((self.product.tax_rate / 100) * self.product.price_per_unit)
+        return self.product.price_per_unit
+
+    def unit_price_without_tax(self):
+        price_without_tax=(self.product.price_per_unit*100)/(self.product.tax_rate+100)
+        return int(price_without_tax)
 
 
 class Customer(models.Model):
