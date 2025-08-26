@@ -33,16 +33,12 @@ def create_quotation(request):
         )
 
         if quotation_form.is_valid() and formset.is_valid():
-            quotation = quotation_form.save(commit=False)
+            quotation = quotation_form.save(commit=False)  # ✅ don't save yet
 
-            if request.user.is_accountant:
-                # accountants → take from form if given, else fallback
-                quotation.created_by = quotation.created_by or request.user.username
-            else:
-                # non-accountants → always override
+            if not request.user.is_accountant:
                 quotation.created_by = request.user.username
 
-            quotation.save()
+            quotation.save()  # ✅ now safe to save
 
             for form in formset:
                 if form.cleaned_data and form.cleaned_data.get('product'):

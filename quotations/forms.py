@@ -11,9 +11,10 @@ class QuotationForm(forms.ModelForm):
         user = kwargs.pop("user", None)  # catch user
         super().__init__(*args, **kwargs)
 
-        # if you want accountants to still choose created_by:
-        if user and user.is_accountant:
-            self.fields['created_by'] = forms.CharField()
+        if not user.is_accountant:
+            # hide the field if not accountant
+            self.fields['created_by'].widget = forms.HiddenInput()
+            self.fields['created_by'].required = False
 
 
 class QuotationItemForm(forms.ModelForm):
@@ -27,6 +28,8 @@ class QuotationItemForm(forms.ModelForm):
         if self.user and not self.user.is_accountant:
             # hide the field if not accountant
             self.fields['discount'].widget = forms.HiddenInput()
+            self.fields['discount'].required = False
+            self.fields['discount'].initial = 0
 
 from django.forms import modelformset_factory, BaseModelFormSet
 
