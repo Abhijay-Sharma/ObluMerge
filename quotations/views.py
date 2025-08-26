@@ -96,7 +96,7 @@ class CustomerCreateView(AccountantRequiredMixin,CreateView):
     form_class = CustomerCreateForm
 
     def get_success_url(self):
-        return reverse('quotations:home')
+        return reverse('home')
 
 # add discount percentage per sheet
 #Quotation number field,
