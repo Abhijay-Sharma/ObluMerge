@@ -14,6 +14,8 @@ import traceback
 
 from django.urls import reverse
 
+from inventory.mixins import AccountantRequiredMixin
+
 
 # Create the modelformset for multiple product rows
 QuotationItemFormSet = modelformset_factory(
@@ -89,7 +91,7 @@ def get_customer(request):
         return JsonResponse({'error': 'Customer not found'}, status=404)
 
 
-class CustomerCreateView(CreateView):
+class CustomerCreateView(AccountantRequiredMixin,CreateView):
     template_name = 'quotations/customer_create.html'
     form_class = CustomerCreateForm
 
