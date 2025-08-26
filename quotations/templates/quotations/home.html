@@ -87,6 +87,8 @@
   </style>
 </head>
 <body>
+  {% include 'quotations/navigation.html' %}
+
   <div class="card">
     <h1>Welcome to Quotation Maker</h1>
     <a href="{% url 'create_quotation' %}" class="btn">Create New Quotation</a>
