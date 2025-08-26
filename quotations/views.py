@@ -2,11 +2,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
+from django.views.generic import CreateView
 from xhtml2pdf import pisa
 from django.forms import modelformset_factory
 from django.http import JsonResponse
 
-from .forms import QuotationForm, QuotationItemForm
+from .forms import QuotationForm, QuotationItemForm, CustomerCreateForm
 from .models import Quotation, QuotationItem, Customer
 from django.contrib.auth.decorators import login_required
 import traceback
@@ -87,6 +88,13 @@ def get_customer(request):
     except Customer.DoesNotExist:
         return JsonResponse({'error': 'Customer not found'}, status=404)
 
+
+class CustomerCreateView(CreateView):
+    template_name = 'quotations/customer_create.html'
+    form_class = CustomerCreateForm
+
+    def get_success_url(self):
+        return reverse('quotations:home')
 
 # add discount percentage per sheet
 #Quotation number field,

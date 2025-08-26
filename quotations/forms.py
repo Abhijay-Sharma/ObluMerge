@@ -1,6 +1,7 @@
 # quotations/forms.py
 from django import forms
-from .models import Quotation, QuotationItem, Product
+from .models import Quotation, QuotationItem, Product, Customer
+
 
 class QuotationForm(forms.ModelForm):
     class Meta:
@@ -52,3 +53,10 @@ QuotationItemFormSet = modelformset_factory(
     extra=1,
     can_delete=True
 )
+
+
+
+class CustomerCreateForm(forms.ModelForm):
+    class Meta:
+        model = Customer
+        fields = ['name', 'address', 'state']
