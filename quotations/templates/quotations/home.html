@@ -16,11 +16,18 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       height: 100vh;
       background: linear-gradient(135deg, #e0f7fa, #80deea);
+      color: #333;
+      margin: 0;
+    }
+
+    /* Container that centers only the card */
+    .main-container {
+      height: calc(100vh - 56px); /* subtract navbar height (default 56px) */
       display: flex;
       justify-content: center;
       align-items: center;
-      color: #333;
     }
+
 
     .card {
       background: #ffffff;
@@ -90,9 +97,11 @@
 <body>
   {% include 'quotations/navigation.html' %}
 
-  <div class="card">
-    <h1>Welcome to Quotation Maker</h1>
-    <a href="{% url 'create_quotation' %}" class="btn">Create New Quotation</a>
+  <div class="main-container">
+    <div class="card">
+      <h1>Welcome to Quotation Maker</h1>
+      <a href="{% url 'create_quotation' %}" class="btn">Create New Quotation</a>
+    </div>
   </div>
 </body>
 </html>
