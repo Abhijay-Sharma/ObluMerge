@@ -1,36 +1,122 @@
-<!-- templates/inventory/predict_stock.html -->
-
 {% extends "inventory/base.html" %}
 
 {% block content %}
-<div class="container">
-    <h2>Stock Prediction for {{ product.name }}</h2>
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+        color: #e0e0e0;
+    }
 
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% else %}
-        <h4>Trend-based Prediction (Closing Stock)</h4>
+    h1, h2 {
+        color: #ffffff;
+    }
+
+    h1 {
+        font-size: 2.2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    h2 {
+        border-left: 5px solid #00ffcc;
+        padding-left: 0.75rem;
+        margin-top: 2rem;
+        font-size: 1.5rem;
+    }
+
+    p, ul, li {
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .highlight-blue {
+        color: #66fcf1;
+        font-weight: bold;
+    }
+
+    .highlight-green {
+        color: #7CFC00;
+        font-weight: bold;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        border: 1px solid #444;
+        padding: 12px;
+        text-align: center;
+    }
+
+    th {
+        background-color: rgba(0, 255, 204, 0.1);
+        font-weight: 600;
+        color: #00ffcc;
+    }
+
+    tr:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .section {
+        background-color: rgba(255, 255, 255, 0.04);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 0 10px rgba(0,255,204,0.2);
+    }
+
+    ul {
+        margin: 0;
+        padding-left: 1.2rem;
+    }
+
+    li {
+        margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        body {
+            padding: 1rem;
+        }
+    }
+</style>
+
+<h1>📦 Stock Prediction for {{ product.name }}</h1>
+
+{% if error %}
+    <p style="color: red; text-align:center; font-weight:bold;">{{ error }}</p>
+{% else %}
+    <div class="section">
+        <h2>📉 Trend-Based Prediction (Closing Stock)</h2>
         <ul>
             {% for month, qty in trend_pred %}
-                <li>{{ month }} → {{ qty }}</li>
+                <li><strong>{{ month }}</strong> → <span class="highlight-blue">{{ qty }} PCS</span></li>
             {% endfor %}
         </ul>
+        <p>🧮 <strong>Recommended Minimum Stock (Trend):</strong> <span class="highlight-blue">{{ min_stock_trend }} PCS</span></p>
+    </div>
 
-        <h4>Demand-based Prediction (Outwards Quantity)</h4>
+    <div class="section">
+        <h2>📊 Demand-Based Prediction (Outwards Quantity)</h2>
         <ul>
             {% for month, qty in demand_pred %}
-                <li>{{ month }} → {{ qty }}</li>
+                <li><strong>{{ month }}</strong> → <span class="highlight-green">{{ qty }} PCS</span></li>
             {% endfor %}
         </ul>
+        <p>🧮 <strong>Recommended Minimum Stock (Demand + Buffer):</strong> <span class="highlight-green">{{ min_stock_demand }} PCS</span></p>
+    </div>
 
-        <h4>Recommended Minimum Stock</h4>
-        <ul>
-            <li>Based on Trend: <strong>{{ min_stock_trend }}</strong></li>
-            <li>Based on Demand + Buffer: <strong>{{ min_stock_demand }}</strong></li>
-        </ul>
-
-        <h4>Monthly Stock Data (Summary)</h4>
-        <table border="1" cellpadding="5">
+    <div class="section">
+        <h2>📅 Monthly Stock Data (Summary)</h2>
+        <table>
             <thead>
                 <tr>
                     <th>Month</th>
@@ -48,6 +134,6 @@
                 {% endfor %}
             </tbody>
         </table>
-    {% endif %}
-</div>
+    </div>
+{% endif %}
 {% endblock %}
