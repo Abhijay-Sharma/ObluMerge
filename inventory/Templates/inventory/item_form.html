@@ -1,6 +1,7 @@
 {% extends 'inventory/base.html' %}
 {% load crispy_forms_tags %}
 
+{% block content %}
 	<a href="{% url 'dashboard' %}" class="btn btn-outline-primary my-3 mx-4">Go Back</a>
 
 	<div class="row">
@@ -17,3 +18,4 @@
 			</form>
 		</div>
 	</div>
+{% endblock content %}
