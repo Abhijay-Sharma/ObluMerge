@@ -11,9 +11,9 @@ class QuotationForm(forms.ModelForm):
         user = kwargs.pop("user", None)  # catch user
         super().__init__(*args, **kwargs)
 
-        if not user.is_accountant:
-            # instead of hiding, drop it completely
-            self.fields.pop('created_by')
+        # if you want accountants to still choose created_by:
+        if user and user.is_accountant:
+            self.fields['created_by'] = forms.CharField()
 
 
 class QuotationItemForm(forms.ModelForm):
