@@ -12,9 +12,8 @@ class QuotationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if not user.is_accountant:
-            # hide the field if not accountant
-            self.fields['created_by'].widget = forms.HiddenInput()
-            self.fields['created_by'].required = False
+            # instead of hiding, drop it completely
+            self.fields.pop('created_by')
 
 
 class QuotationItemForm(forms.ModelForm):
