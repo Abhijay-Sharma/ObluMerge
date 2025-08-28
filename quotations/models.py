@@ -56,7 +56,8 @@ class QuotationItem(models.Model):
 
     def gst_amount(self):
         total = self.total_price()
-        return total - (self.product.price_per_unit * self.quantity)
+        unit_price_without_tax=self.unit_price_without_tax()
+        return total - (unit_price_without_tax * self.quantity)
 
     def gst_unit_price(self):
         # return self.product.price_per_unit + ((self.product.tax_rate / 100) * self.product.price_per_unit)
