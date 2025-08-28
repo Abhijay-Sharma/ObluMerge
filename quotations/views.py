@@ -11,6 +11,7 @@ from .forms import QuotationForm, QuotationItemForm, CustomerCreateForm
 from .models import Quotation, QuotationItem, Customer
 from django.contrib.auth.decorators import login_required
 import traceback
+from django.views import View
 
 from django.urls import reverse
 
@@ -25,10 +26,25 @@ QuotationItemFormSet = modelformset_factory(
     can_delete=True
 )
 
-@login_required
-def create_quotation(request):
-    if request.method == 'POST':
-        quotation_form = QuotationForm(request.POST,user=request.user)
+class CreateQuotationView(AccountantRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        quotation_form = QuotationForm(user=request.user)
+        formset = QuotationItemFormSet(
+            request.POST or None,
+            queryset=QuotationItem.objects.none(),
+            form_kwargs={"user": request.user}
+        )
+
+        customers = Customer.objects.all()
+
+        return render(request, 'quotations/create_quotation.html', {
+            'quotation_form': quotation_form,
+            'formset': formset,
+            'customers': customers
+        })
+
+    def post(self, request, *args, **kwargs):
+        quotation_form = QuotationForm(request.POST, user=request.user)
         formset = QuotationItemFormSet(
             request.POST or None,
             queryset=QuotationItem.objects.none(),
@@ -49,21 +65,12 @@ def create_quotation(request):
                     item.quotation = quotation
                     item.save()
             return redirect('quotation_detail', pk=quotation.pk)
-    else:
-        quotation_form = QuotationForm(user=request.user)
-        formset = QuotationItemFormSet(
-            request.POST or None,
-            queryset=QuotationItem.objects.none(),
-            form_kwargs={"user": request.user}
-        )
 
-    customers = Customer.objects.all()
-
-    return render(request, 'quotations/create_quotation.html', {
-        'quotation_form': quotation_form,
-        'formset': formset,
-        'customers': customers
-    })
+        # In case forms are not valid, re-render the form with errors
+        return render(request, 'quotations/create_quotation.html', {
+            'quotation_form': quotation_form,
+            'formset': formset
+        })
 
 @login_required
 def quotation_detail(request, pk):
