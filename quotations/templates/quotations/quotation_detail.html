@@ -163,11 +163,11 @@
                 <th>#</th>
                 <th>Product</th>
                 <th>Qty</th>
-                <th>Unit Price (₹)</th>
-                <th>Discount</th>
+                <th>Net Price (₹)</th>
                 <th>GST (%)</th>
-                <th>Unit Price (Inc. GST)</th>
                 <th>GST Amount</th>
+                <th>Unit Price (Inc. GST)</th>
+                <th>Discount</th>
                 <th>Total (₹)</th>
             </tr>
         </thead>
@@ -178,10 +178,10 @@
                 <td>{{ item.product.name }}</td>
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.unit_price_without_tax }}</td>
-                <td>{{ item.discount }}</td>
                 <td>{{ item.product.tax_rate }}</td>
-                <td>{{item.gst_unit_price}}</td>
                 <td>{{ item.gst_amount }}</td>
+                <td>{{item.gst_unit_price}}</td>
+                <td>{{ item.discount }}</td>
                 <td>{{ item.total_price }}</td>
             </tr>
             {% endfor %}
