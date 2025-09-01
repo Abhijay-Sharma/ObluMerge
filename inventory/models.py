@@ -100,6 +100,8 @@ class DailyStockData(models.Model):
 
     class Meta:
         ordering = ['-date']
+        unique_together = ('product', 'date', 'voucher_type','inwards_quantity','outwards_quantity','closing_quantity')
+
 
     def __str__(self):
         return f"{self.product.name} - {self.date.strftime('%B %d, %Y')} - {dict(self.PRODUCT_UNITS).get(self.unit)}"
