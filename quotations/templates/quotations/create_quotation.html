@@ -112,13 +112,6 @@
   <form method="post">
     {% csrf_token %}
 
-    <label for="customer-select">Select Existing Customer</label>
-    <select id="customer-select">
-        <option value="">--- Select Customer ---</option>
-        {% for customer in customers %}
-            <option value="{{ customer.id }}">{{ customer.name }}</option>
-        {% endfor %}
-    </select>
 
     <!-- Customer Info -->
     <div>
