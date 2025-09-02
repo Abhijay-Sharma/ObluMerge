@@ -8,17 +8,18 @@
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1f1c2c, #928dab);
+    {# changed color from linear-gradient(135deg, #1f1c2c, #928dab) to linear-gradient(135deg, #0e0e0e, #838383 #}
+      background: linear-gradient(135deg, #0e0e0e, #838383);
       display: flex;
       align-items: center;
       justify-content: center;
       height: 100vh;
-      color: #fff;
+      color: black;
       padding: 20px;
     }
 
     .auth-container {
-      background-color: rgba(255, 255, 255, 0.06);
+      background-color: #fff; {# changed color from rgba(255, 255, 255, 0.06) to #fff #}
       padding: 40px 30px;
       border-radius: 16px;
       box-shadow: 0 0 30px rgba(0,0,0,0.3);
@@ -31,7 +32,7 @@
       text-align: center;
       font-size: 2rem;
       margin-bottom: 25px;
-      background: linear-gradient(to right, #00c6ff, #0072ff);
+      background: #222; {# changed color from linear-gradient(to right, #00c6ff, #0072ff) to #222 #}
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -49,27 +50,30 @@
     }
 
     input {
-      width: 100%;
+      width: 95%; {# changed the width from 100 to 95 #}
       padding: 12px;
       border: none;
       border-radius: 8px;
-      background-color: rgba(255,255,255,0.15);
-      color: white;
+      {# changed color from rgba(255,255,255,0.15) to rgba(106, 106, 106, 0.15) #}
+      background-color: rgba(106, 106, 106, 0.15);
+      color: black; {# changed color from white to black #}
     }
 
     input::placeholder {
-      color: #ccc;
+      color: #222;
     }
 
     button {
+      width: 102%;{# added width here #}
       margin-top: 10px;
       padding: 12px;
-      background: linear-gradient(to right, #00c9ff, #92fe9d);
+      {# changed color from linear-gradient(to right, #00c9ff, #92fe9d) to linear-gradient(to right, #0e0e0e, #838383) #}
+      background: linear-gradient(to right, #0e0e0e, #838383);
       border: none;
       border-radius: 8px;
       font-size: 1rem;
       font-weight: bold;
-      color: #000;
+      color: #fff; {# changed color from #000 to #fff #}
       cursor: pointer;
       transition: all 0.3s ease;
     }
@@ -109,6 +113,7 @@
       }
     }
   </style>
+
 </head>
 <body>
   <div class="auth-container">
