@@ -152,6 +152,21 @@
         {% if quotation.customer_state %}
             <p><strong>State:</strong> {{ quotation.customer_state }}</p>
         {% endif %}
+        {% if quotation.customer_city %}
+            <p><strong>City:</strong> {{ quotation.customer_city }}</p>
+        {% endif %}
+        {% if quotation.customer_pincode %}
+            <p><strong>Pincode:</strong> {{ quotation.customer_pincode }}</p>
+        {% endif %}
+        {% if quotation.customer_phone %}
+            <p><strong>Phone Number:</strong> {{ quotation.customer_phone }}</p>
+        {% endif %}
+        {% if quotation.customer_email %}
+            <p><strong>Email:</strong> {{ quotation.customer_email }}</p>
+        {% endif %}
+        {% if quotation.customer_company %}
+            <p><strong>Company:</strong> {{ quotation.customer_company }}</p>
+        {% endif %}
     </div>
 
     <div class="quotation-info">
