@@ -83,7 +83,8 @@ class Customer(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,  # <-- use this instead of 'User'
         on_delete=models.CASCADE,
-        related_name="customers"
+        related_name="customers",
+        default = 1
     )
 
     def __str__(self):
