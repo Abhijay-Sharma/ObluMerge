@@ -247,6 +247,16 @@
                 order after confirmation.
             </li> <br>
             <li>All disputes are subject to Delhi Jurisdiction.</li>
+            <!-- ✅ Product-specific terms -->
+        {% if quotation.product_terms %}
+            <li><strong>Product-specific terms:</strong>
+                <ul>
+                    {% for line in quotation.product_terms.splitlines %}
+                        <li>{{ line }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endif %}
         </ol>
     </div>
 

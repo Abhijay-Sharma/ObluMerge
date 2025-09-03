@@ -34,6 +34,14 @@ class Quotation(models.Model):
     def total(self):
         return sum(item.total_price() for item in self.items.all())
 
+    #  helper to get product-specific terms
+    def product_terms(self):
+        terms = []
+        for item in self.items.all():
+            if item.product.terms_and_conditions:
+                terms.append(f"{item.product.name}: {item.product.terms_and_conditions}")
+        return "\n".join(terms)
+
 
 class QuotationItem(models.Model):
     quotation = models.ForeignKey(Quotation, related_name='items', on_delete=models.CASCADE)
