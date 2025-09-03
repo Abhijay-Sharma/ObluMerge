@@ -104,6 +104,13 @@ class CustomerCreateView(LoginRequiredMixin,CreateView):
     template_name = 'quotations/customer_create.html'
     form_class = CustomerCreateForm
 
+    def form_valid(self, form):
+        customer = form.save(commit=False)
+        customer.created_by = self.request.user  # 👈 set logged-in user
+        customer.save()
+        return super().form_valid(form)
+
+
     def get_success_url(self):
         return reverse('customer_list')
 
