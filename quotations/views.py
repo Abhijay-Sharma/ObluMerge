@@ -7,7 +7,7 @@ from xhtml2pdf import pisa
 from django.forms import modelformset_factory
 from django.http import JsonResponse
 
-from .forms import QuotationForm, QuotationItemForm, CustomerCreateForm
+from .forms import QuotationForm, QuotationItemForm, CustomerCreateForm , ProductForm, ProductPriceTierFormSet
 from .models import Quotation, QuotationItem, Customer, ProductCategory, Product
 from django.contrib.auth.decorators import login_required
 import traceback
@@ -171,3 +171,33 @@ class QuotationListView(LoginRequiredMixin, ListView):
         else:
             # Normal users (viewers) see only their own
             return Quotation.objects.filter(created_by=user)
+
+
+
+
+class EditProductView(View):
+    def get(self, request, pk):
+        product = get_object_or_404(Product, pk=pk)
+        form = ProductForm(instance=product)
+        tier_formset = ProductPriceTierFormSet(instance=product)
+        return render(request, "quotations/edit_product.html", {
+            "form": form,
+            "tier_formset": tier_formset,
+            "product": product,
+        })
+
+    def post(self, request, pk):
+        product = get_object_or_404(Product, pk=pk)
+        form = ProductForm(request.POST, instance=product)
+        tier_formset = ProductPriceTierFormSet(request.POST, instance=product)
+
+        if form.is_valid() and tier_formset.is_valid():
+            form.save()
+            tier_formset.save()
+            return redirect("product_list")  # you can change this
+
+        return render(request, "quotations/edit_product.html", {
+            "form": form,
+            "tier_formset": tier_formset,
+            "product": product,
+        })

@@ -1,6 +1,7 @@
 # quotations/forms.py
 from django import forms
-from .models import Quotation, QuotationItem, Product, Customer
+from .models import Quotation, QuotationItem, Product, Customer, ProductPriceTier
+from django.forms import inlineformset_factory
 
 
 class QuotationForm(forms.ModelForm):
@@ -80,3 +81,31 @@ class CustomerCreateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields:
             self.fields[field].initial = None  # 👈 wipe any model default
+
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = [
+            "category",
+            "name",
+            "price_per_unit",
+            "tax_rate",
+            "is_quantity_dependent",
+            "min_requirement",
+            "terms_and_conditions",
+            "has_dynamic_pricing",
+        ]
+        widgets = {
+            "terms_and_conditions": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+# Inline formset for dynamic pricing tiers
+ProductPriceTierFormSet = inlineformset_factory(
+    parent_model=Product,
+    model=ProductPriceTier,
+    fields=["min_quantity", "unit_price"],
+    extra=1,         # always show 1 empty row for adding new tier
+    can_delete=True  # allow deleting old tiers
+)
