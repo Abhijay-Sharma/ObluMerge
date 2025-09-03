@@ -60,3 +60,8 @@ class CustomerCreateForm(forms.ModelForm):
     class Meta:
         model = Customer
         fields = ['name', 'address', 'state','city','pin_code','phone','email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].initial = None  # 👈 wipe any model default
