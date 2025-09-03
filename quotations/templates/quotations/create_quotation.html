@@ -268,17 +268,30 @@
   });
 
   // ✅ Confirm customer
-  $('#confirm-customer').click(function () {
-    const selectedCustomerId = $('#modal-customer-select').val();
-    const selectedCustomerName = $('#modal-customer-select option:selected').text();
+ $('#confirm-customer').click(function () {
+  const selectedCustomerId = $('#modal-customer-select').val();
 
-    if (selectedCustomerId) {
-      // hidden input (form field)
-      $("#id_customer").val(selectedCustomerId);
+  if (selectedCustomerId) {
+    // set FK hidden input
+    $("#id_customer").val(selectedCustomerId);
 
-      // show chosen customer
-      $("#selected-customer-name").text(selectedCustomerName);
-    }
+    // fetch customer details
+    $.ajax({
+      url: "{% url 'get_customer' %}",
+      data: { id: selectedCustomerId },
+      success: function (data) {
+        // fill hidden fields
+        $("#id_customer_name").val(data.name);
+        $("#id_customer_address").val(data.state + ", " + data.address);
+
+        // show selected name to user
+        $("#selected-customer-name").text(data.name);
+      },
+      error: function () {
+        alert("Failed to fetch customer info.");
+      }
+    });
+  }
 
     $("#customerModal").hide();
   });
