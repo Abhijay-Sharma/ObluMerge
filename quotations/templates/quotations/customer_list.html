@@ -1,0 +1,126 @@
+
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0e0e0e, #838383);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .main-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+  }
+
+  .form-container {
+    background: #ffffff;
+    padding: 40px 30px;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    animation: fadeIn 0.8s ease-out;
+    max-width: 1000px;
+    width: 100%;
+  }
+
+  .form-container h1 {
+    font-size: 2rem;
+    margin-bottom: 25px;
+    background: #222;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+  }
+
+  .customer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .customer-card {
+    background: #f9f9f9;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .customer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  }
+
+  .customer-name {
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #222;
+  }
+
+  .customer-detail {
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+    color: #555;
+  }
+
+  .btn-outline-primary {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, #0e0e0e, #656565);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .btn-outline-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<div class="main-container">
+  <div class="form-container">
+    <h1>My Customers</h1>
+
+    {% if customers %}
+      <div class="customer-grid">
+        {% for customer in customers %}
+          <div class="customer-card">
+            <div class="customer-name">{{ customer.name }}</div>
+            <div class="customer-detail"><strong>City:</strong> {{ customer.city }}</div>
+            <div class="customer-detail"><strong>Phone:</strong> {{ customer.phone }}</div>
+            <div class="customer-detail"><strong>Email:</strong> {{ customer.email|default:"-" }}</div>
+            <div class="customer-detail"><strong>Pin Code:</strong> {{ customer.pin_code }}</div>
+            <a href="{% url 'customer_detail' customer.id %}" class="btn-outline-primary">View Details</a>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="text-align:center; margin-top:20px;">No customers found.</p>
+    {% endif %}
+
+    <div style="text-align:center; margin-top:30px;">
+      <a href="{% url 'customer_create' %}" class="btn-outline-primary">+ Add New Customer</a>
+    </div>
+  </div>
+</div>

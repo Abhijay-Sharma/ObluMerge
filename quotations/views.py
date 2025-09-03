@@ -16,7 +16,9 @@ from django.views import View
 from django.urls import reverse
 
 from inventory.mixins import AccountantRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 
+from django.views.generic import ListView
 
 # Create the modelformset for multiple product rows
 QuotationItemFormSet = modelformset_factory(
@@ -98,12 +100,28 @@ def get_customer(request):
         return JsonResponse({'error': 'Customer not found'}, status=404)
 
 
-class CustomerCreateView(AccountantRequiredMixin,CreateView):
+class CustomerCreateView(LoginRequiredMixin,CreateView):
     template_name = 'quotations/customer_create.html'
     form_class = CustomerCreateForm
 
     def get_success_url(self):
-        return reverse('home')
+        return reverse('customer_list')
+
+
+
+class CustomerListView(LoginRequiredMixin, ListView):
+    model = Customer
+    template_name = "quotations/customer_list.html"
+    context_object_name = "customers"
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.groups.filter(name="Accountants").exists() or user.is_superuser:
+            # Accountants and admins see all customers
+            return Customer.objects.all()
+        else:
+            # Normal users only see their own customers
+            return Customer.objects.filter(created_by=user)
 
 # add discount percentage per sheet
 #Quotation number field,
