@@ -1,10 +1,9 @@
-<h2>Edit Product: {{ product.name }}</h2>
-
 <form method="post">
   {% csrf_token %}
 
   <fieldset>
     <legend>Product Details</legend>
+    {{ form.non_field_errors }}
     {{ form.as_p }}
   </fieldset>
 
@@ -12,9 +11,11 @@
   <fieldset>
     <legend>Dynamic Price Tiers</legend>
     {{ tier_formset.management_form }}
-    {% for form in tier_formset %}
+    {{ tier_formset.non_form_errors }}
+    {% for subform in tier_formset %}
       <div class="tier-row" style="border:1px solid #ddd; padding:10px; margin:5px 0;">
-        {{ form.as_p }}
+        {{ subform.non_field_errors }}
+        {{ subform.as_p }}
       </div>
     {% endfor %}
   </fieldset>
