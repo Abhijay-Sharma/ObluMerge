@@ -131,7 +131,9 @@
               <tr>
                 <th>Product</th>
                 <th>Qty</th>
-                <th>Discount</th>
+                {% if request.user.is_accountant %}
+                  <th>Discount</th>
+                {% endif %}
                 <th>Action</th>
               </tr>
             </thead>
@@ -144,7 +146,9 @@
                   {{ form.product }}
                 </td>
                 <td>{{ form.quantity }}</td>
-                <td>{{ form.discount }}</td>
+                {% if request.user.is_accountant %}
+                  <td>{{ form.discount }}</td>
+                {% endif %}
                 <td>
                   {% if forloop.first %}
                     <button type="button" id="add-item">Add</button>
