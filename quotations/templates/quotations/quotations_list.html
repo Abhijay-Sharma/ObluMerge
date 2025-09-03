@@ -138,7 +138,7 @@
               <td>{{ quotation.customer_name }}</td>
               <td>{{ quotation.date_created|date:"M d, Y" }}</td>
               <td>₹{{ quotation.total }}</td>
-              <td>{{ quotation.created_by.username }}</td>
+              <td>{{ quotation.created_by}}</td>
               <td>
                 <a href="{% url 'quotation_detail' quotation.id %}" class="btn-primary">View</a>
               </td>
