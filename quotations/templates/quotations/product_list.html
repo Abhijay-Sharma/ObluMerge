@@ -1,0 +1,152 @@
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0e0e0e, #838383);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .table-container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+      animation: fadeIn 0.8s ease-out;
+      max-width: 1000px;
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+      background: #222;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    table th, table td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    table th {
+      background: #0e0e0e;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    table tr:hover {
+      background: #f5f5f5;
+      transition: background 0.3s ease;
+    }
+
+    .btn-primary {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, #0e0e0e, #656565);
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: bold;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .top-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 15px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      table th, table td {
+        padding: 8px;
+        font-size: 0.85rem;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+
+
+<div class="container">
+    <div class="table-container">
+      <h1>Products</h1>
+
+      <div class="top-actions">
+        <a href="#" class="btn-primary">+ Create Product</a>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Tax rate</th>
+            <th>Min Req</th>
+            <th>Dynamic Pricing</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+            <tr>
+              <td>{{ product.id }}</td>
+              <td>{{ product.name }}</td>
+              <td>{{ product.price_per_unit }}</td>
+              <td>{{ product.tax_rate }}</td>
+              <td>₹{{ product.min_requirement }}</td>
+              <td>{{ product.has_dynamic_pricing }}</td>
+              <td>
+                <a href="{% url 'quotation_detail' quotation.id %}" class="btn-primary">Edit</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" style="text-align:center; padding:20px;">No quotations found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>

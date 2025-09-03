@@ -151,7 +151,7 @@ class CustomerListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.groups.filter(name="Accountants").exists() or user.is_superuser:
+        if user.is_accountant or user.is_superuser:
             # Accountants and admins see all customers
             return Customer.objects.all()
         else:
@@ -176,7 +176,7 @@ class QuotationListView(LoginRequiredMixin, ListView):
 
 
 
-class EditProductView(View):
+class EditProductView(AccountantRequiredMixin,View):
     def get(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
         form = ProductForm(instance=product)
@@ -209,3 +209,12 @@ class EditProductView(View):
             "tier_formset": tier_formset,
             "product": product,
         })
+
+
+class ProductListView(LoginRequiredMixin, ListView):
+    model = Product
+    template_name = "quotations/product_list.html"
+    context_object_name = "products"
+
+    def get_queryset(self):
+        return Product.objects.all()
