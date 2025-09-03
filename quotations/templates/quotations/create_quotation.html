@@ -5,128 +5,82 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       font-family: "Segoe UI", sans-serif;
       background: linear-gradient(to bottom right, #f0f9ff, #e0f7fa);
-      margin: 0;
-      padding: 40px 20px;
+      margin: 0; padding: 40px 20px;
       color: #2c3e50;
     }
 
-    h2 {
-      text-align: center;
-      margin-bottom: 30px;
-    }
+    h2 { text-align: center; margin-bottom: 30px; }
 
     form {
       background: #fff;
-      max-width: 900px;
-      margin: auto;
-      padding: 30px;
-      border-radius: 12px;
+      max-width: 900px; margin: auto;
+      padding: 30px; border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
 
-    label {
-      font-weight: 600;
-      margin-bottom: 6px;
-      display: block;
-    }
+    label { font-weight: 600; margin-bottom: 6px; display: block; }
 
-    input[type="text"],
-    input[type="number"],
-    select,
-    textarea {
-      width: 100%;
-      padding: 10px 12px;
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%; padding: 10px 12px;
       margin-bottom: 15px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      border-radius: 6px; border: 1px solid #ccc;
       font-size: 15px;
     }
 
     .form-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      align-items: flex-end;
+      display: flex; flex-wrap: wrap;
+      gap: 15px; align-items: flex-end;
       margin-bottom: 15px;
     }
 
-    .form-row > div {
-      flex: 1;
-      min-width: 120px;
-    }
+    .form-row > div { flex: 1; min-width: 120px; }
 
     .remove-row {
-      font-size: 20px;
-      color: #e74c3c;
-      cursor: pointer;
-      transition: 0.3s ease;
+      font-size: 20px; color: #e74c3c;
+      cursor: pointer; transition: 0.3s ease;
     }
 
-    .remove-row:hover {
-      color: #c0392b;
-    }
+    .remove-row:hover { color: #c0392b; }
 
     .section-divider {
-      margin: 30px 0 20px;
-      border-bottom: 1px solid #ddd;
+      margin: 30px 0 20px; border-bottom: 1px solid #ddd;
     }
 
-    .add-row-btn,
-    button[type="submit"],
-    .open-product-modal {
+    .add-row-btn, button[type="submit"], .open-product-modal {
       display: inline-block;
       background: linear-gradient(135deg, #00c9ff, #92fe9d);
-      border: none;
-      padding: 10px 22px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: bold;
-      color: #000;
-      cursor: pointer;
-      transition: 0.3s;
+      border: none; padding: 10px 22px;
+      border-radius: 6px; font-size: 14px;
+      font-weight: bold; color: #000;
+      cursor: pointer; transition: 0.3s;
       margin-top: 5px;
     }
 
-    .add-row-btn:hover,
-    button[type="submit"]:hover,
-    .open-product-modal:hover {
+    .add-row-btn:hover, button[type="submit"]:hover, .open-product-modal:hover {
       transform: scale(1.05);
     }
 
-    /* Modal Styles */
+    /* Modal */
     .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
+      display: none; position: fixed; z-index: 1000;
+      left: 0; top: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.6);
     }
 
     .modal-content {
       background: #fff;
-      margin: 10% auto;
-      padding: 20px;
-      border-radius: 10px;
-      max-width: 500px;
+      margin: 10% auto; padding: 20px;
+      border-radius: 10px; max-width: 500px;
     }
 
-    .modal-content h3 {
-      margin-top: 0;
-    }
+    .modal-content h3 { margin-top: 0; }
 
-    .close {
-      float: right;
-      font-size: 20px;
-      cursor: pointer;
-    }
+    .close { float: right; font-size: 20px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -158,8 +112,7 @@
       {% for form in formset %}
       <div class="form-row">
         <div>
-          <label>Product</label><br>
-          {{ form.product }} <!-- hidden input -->
+          {{ form.product }} <!-- hidden product ID field -->
           <button type="button" class="open-product-modal">Select Product</button>
           <span class="selected-product-name" style="margin-left:10px; font-weight:600;"></span>
         </div>
@@ -211,13 +164,11 @@
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 <script>
   const container = document.getElementById('formset-container');
   const addRowBtn = document.getElementById('add-row');
   const totalForms = document.getElementById('id_form-TOTAL_FORMS');
-  let activeRowInput = null;  // 🔑 to remember which row opened the modal
+  let activeRow = null;  // 🔑 to remember which row opened the modal
 
   // ✅ Add new row
   addRowBtn.addEventListener('click', () => {
@@ -225,10 +176,15 @@
     const newForm = container.children[0].cloneNode(true);
 
     // Clear and update fields
-    newForm.querySelectorAll('input, select').forEach(input => {
-      input.name = input.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
-      input.id = input.id.replace(/form-\d+-/, `form-${currentFormCount}-`);
-      input.value = '';
+    newForm.querySelectorAll('input, select, span').forEach(el => {
+      if (el.tagName === "INPUT" || el.tagName === "SELECT") {
+        el.name = el.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
+        el.id = el.id.replace(/form-\d+-/, `form-${currentFormCount}-`);
+        el.value = '';
+      }
+      if (el.classList.contains("selected-product-name")) {
+        el.textContent = "";
+      }
     });
 
     container.appendChild(newForm);
@@ -243,19 +199,19 @@
     }
   });
 
-  // ✅ Open modal when clicking product field
-  $(document).on("focus", ".product-select", function () {
-    activeRowInput = $(this); // store the input that triggered modal
+  // ✅ Open modal
+  $(document).on("click", ".open-product-modal", function () {
+    activeRow = $(this).closest(".form-row");
     $("#productModal").show();
   });
 
   // ✅ Close modal
   $(".close").click(function () {
     $("#productModal").hide();
-    activeRowInput = null;
+    activeRow = null;
   });
 
-  // ✅ Category → fetch products dynamically
+  // ✅ Category → fetch products
   $('#category-select').change(function () {
     const categoryId = $(this).val();
     if (categoryId) {
@@ -263,8 +219,8 @@
         url: "{% url 'get_products_by_category' %}",
         data: { category_id: categoryId },
         success: function (data) {
-          const productSelect = $('#product-select');
-          productSelect.empty();
+          const productSelect = $('#modal-product-select');
+          productSelect.empty().prop("disabled", false);
           productSelect.append('<option value="">Select a product</option>');
           data.products.forEach(function (p) {
             productSelect.append('<option value="' + p.id + '">' + p.name + '</option>');
@@ -272,53 +228,27 @@
         }
       });
     } else {
-      $('#product-select').empty().append('<option value="">Select a product</option>');
+      $('#modal-product-select').empty().append('<option value="">Select a product</option>').prop("disabled", true);
     }
   });
 
-  // ✅ Select product and put it into the row
-  $('#select-product-btn').click(function () {
-    const selectedProductId = $('#product-select').val();
-    const selectedProductName = $('#product-select option:selected').text();
+  // ✅ Confirm product
+  $('#confirm-product').click(function () {
+    const selectedProductId = $('#modal-product-select').val();
+    const selectedProductName = $('#modal-product-select option:selected').text();
 
-    if (selectedProductId && activeRowInput) {
-      // Put product name into visible field
-      activeRowInput.val(selectedProductName);
+    if (selectedProductId && activeRow) {
+      // hidden input (actual field)
+      activeRow.find("input[type=hidden]").val(selectedProductId);
 
-      // Also set hidden real product input if you keep ID
-      const hiddenInput = activeRowInput.siblings(".hidden-product-id");
-      if (hiddenInput.length) {
-        hiddenInput.val(selectedProductId);
-      }
+      // show product name
+      activeRow.find(".selected-product-name").text(selectedProductName);
     }
 
     $("#productModal").hide();
-    activeRowInput = null;
-  });
-
-  // ✅ Customer auto-fill
-  $('#customer-select').change(function () {
-    const customerId = $(this).val();
-    if (customerId) {
-      $.ajax({
-        url: '{% url "get_customer" %}',
-        type: 'GET',
-        data: { id: customerId },
-        success: function (data) {
-          $('#id_customer_name').val(data.name);
-          $('#id_customer_address').val(data.state + ', ' + data.address);
-        },
-        error: function () {
-          alert('Failed to fetch customer info.');
-        }
-      });
-    } else {
-      $('#id_customer_name').val('');
-      $('#id_customer_address').val('');
-    }
+    activeRow = null;
   });
 </script>
-
 
 </body>
 </html>
