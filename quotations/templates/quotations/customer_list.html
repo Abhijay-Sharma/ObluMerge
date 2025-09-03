@@ -111,7 +111,6 @@
             <div class="customer-detail"><strong>Phone:</strong> {{ customer.phone }}</div>
             <div class="customer-detail"><strong>Email:</strong> {{ customer.email|default:"-" }}</div>
             <div class="customer-detail"><strong>Pin Code:</strong> {{ customer.pin_code }}</div>
-            <a href="{% url 'customer_detail' customer.id %}" class="btn-outline-primary">View Details</a>
           </div>
         {% endfor %}
       </div>
