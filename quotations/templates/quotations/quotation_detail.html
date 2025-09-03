@@ -149,6 +149,9 @@
     <div class="customer-info">
         <p><strong>To:</strong> {{ quotation.customer_name }}</p>
         <p><strong>Address:</strong> {{ quotation.customer_address }}</p>
+        {% if quotation.customer_state %}
+            <p><strong>State:</strong> {{ quotation.customer_state }}</p>
+        {% endif %}
     </div>
 
     <div class="quotation-info">
