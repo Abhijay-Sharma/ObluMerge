@@ -1,142 +1,120 @@
+{% load static %}
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Create Quotation</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(to bottom right, #f0f9ff, #e0f7fa);
-      margin: 0; padding: 40px 20px;
-      color: #2c3e50;
-    }
-
-    h2 { text-align: center; margin-bottom: 30px; }
-
-    form {
-      background: #fff;
-      max-width: 900px; margin: auto;
-      padding: 30px; border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-
-    label { font-weight: 600; margin-bottom: 6px; display: block; }
-
-    input[type="text"], input[type="number"], select, textarea {
-      width: 100%; padding: 10px 12px;
-      margin-bottom: 15px;
-      border-radius: 6px; border: 1px solid #ccc;
-      font-size: 15px;
-    }
-
-    .form-row {
-      display: flex; flex-wrap: wrap;
-      gap: 15px; align-items: flex-end;
-      margin-bottom: 15px;
-    }
-
-    .form-row > div { flex: 1; min-width: 120px; }
-
-    .remove-row {
-      font-size: 20px; color: #e74c3c;
-      cursor: pointer; transition: 0.3s ease;
-    }
-
-    .remove-row:hover { color: #c0392b; }
-
-    .section-divider {
-      margin: 30px 0 20px; border-bottom: 1px solid #ddd;
-    }
-
-    .add-row-btn, button[type="submit"], .open-product-modal, .open-customer-modal {
-      display: inline-block;
-      background: linear-gradient(135deg, #00c9ff, #92fe9d);
-      border: none; padding: 10px 22px;
-      border-radius: 6px; font-size: 14px;
-      font-weight: bold; color: #000;
-      cursor: pointer; transition: 0.3s;
-      margin-top: 5px;
-    }
-
-    .add-row-btn:hover, button[type="submit"]:hover, .open-product-modal:hover, .open-customer-modal:hover {
-      transform: scale(1.05);
-    }
-
-    /* Modal */
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .form-section { margin-bottom: 30px; }
     .modal {
-      display: none; position: fixed; z-index: 1000;
-      left: 0; top: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6);
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+      justify-content: center; align-items: center;
     }
-
     .modal-content {
-      background: #fff;
-      margin: 10% auto; padding: 20px;
-      border-radius: 10px; max-width: 500px;
+      background: #fff; padding: 20px; border-radius: 8px;
+      width: 400px; max-height: 80%; overflow-y: auto;
     }
-
-    .modal-content h3 { margin-top: 0; }
-
-    .close { float: right; font-size: 20px; cursor: pointer; }
+    .close { float: right; cursor: pointer; font-size: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    table, th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f8f8f8; }
+    button { padding: 6px 12px; margin: 5px; cursor: pointer; }
   </style>
 </head>
 <body>
-
   <h2>Create Quotation</h2>
 
   <form method="post">
     {% csrf_token %}
 
-    <!-- Customer Select -->
-    <div>
-      {{ quotation_form.customer }} <!-- hidden input storing customer ID -->
-      <button type="button" class="open-customer-modal">Select Customer</button>
-      <p><strong>Selected Customer:</strong> <span id="selected-customer-name"></span></p>
+    <!-- ✅ Quotation Fields -->
+    <div class="form-section">
+      <h3>Customer</h3>
+      <p><strong>Selected:</strong> <span id="selected-customer-name">None</span></p>
+      <button type="button" id="openCustomerModal">Select Customer</button>
 
-      {% if request.user.is_accountant %}
-        {{ quotation_form.created_by.label_tag }}
-        {{ quotation_form.created_by }}
-      {% endif %}
+      <!-- Hidden fields to store customer info -->
+      <input type="hidden" name="customer_name" id="id_customer_name">
+      <input type="hidden" name="customer_address" id="id_customer_address">
+      <input type="hidden" name="customer_city" id="id_customer_city">
+      <input type="hidden" name="customer_state" id="id_customer_state">
+      <input type="hidden" name="customer_pincode" id="id_customer_pincode">
+      <input type="hidden" name="customer_mobile" id="id_customer_mobile">
+      <input type="hidden" name="customer_email" id="id_customer_email">
+
+      {{ quotation_form.created_by }}
     </div>
 
-    <div class="section-divider"></div>
-
-    <!-- Products -->
-    <h3>Products</h3>
-    <div id="formset-container">
-      {% for form in formset %}
-      <div class="form-row">
-        <div>
-          {{ form.product }} <!-- hidden product ID field -->
-          <button type="button" class="open-product-modal">Select Product</button>
-          <span class="selected-product-name" style="margin-left:10px; font-weight:600;"></span>
-        </div>
-        <div>
-          {{ form.quantity.label_tag }}
-          {{ form.quantity }}
-        </div>
-        {% if request.user.is_accountant %}
-          <div>
-            {{ form.discount.label_tag }}
-            {{ form.discount }}
-          </div>
-        {% endif %}
-        <div class="remove-row">❌</div>
-      </div>
-      {% endfor %}
+    <!-- ✅ Quotation Items -->
+    <div class="form-section">
+      <h3>Quotation Items</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Discount</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="items-table">
+          {% for form in formset %}
+            <tr>
+              <td>
+                <span class="product-name">None</span>
+                <button type="button" class="select-product">Select Product</button>
+                {{ form.product }}
+              </td>
+              <td>{{ form.quantity }}</td>
+              <td>{{ form.discount }}</td>
+              <td>
+                {% if form.instance.pk %}
+                  <input type="checkbox" name="{{ form.prefix }}-DELETE"> Delete
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {{ formset.management_form }}
     </div>
 
-    {{ formset.management_form }}
-
-    <button type="button" id="add-row" class="add-row-btn">+ Add Product</button>
-    <br><br>
-    <button type="submit">Submit Quotation</button>
+    <button type="submit">Save Quotation</button>
   </form>
 
-  <!-- Product Modal -->
+  <!-- ✅ Customer Modal -->
+  <div id="customerModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Select Customer</h3>
+
+      <label>Customer</label>
+      <select id="modal-customer-select">
+        <option value="">-- Select Customer --</option>
+        {% for customer in customers %}
+          <option value="{{ customer.id }}"
+                  data-name="{{ customer.name }}"
+                  data-address="{{ customer.address }}"
+                  data-city="{{ customer.city }}"
+                  data-state="{{ customer.state }}"
+                  data-pincode="{{ customer.pin_code }}"
+                  data-mobile="{{ customer.phone }}"
+                  data-email="{{ customer.email }}">
+            {{ customer.name }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <br><br>
+      <button id="confirm-customer">Confirm</button>
+    </div>
+  </div>
+
+  <!-- ✅ Product Modal -->
   <div id="productModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -151,7 +129,7 @@
       </select>
 
       <label>Product</label>
-      <select id="modal-product-select" disabled>
+      <select id="product-select">
         <option value="">-- Select Product --</option>
       </select>
 
@@ -160,155 +138,68 @@
     </div>
   </div>
 
-  <!-- Customer Modal -->
-  <div id="customerModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <h3>Select Customer</h3>
+  <script>
+    let currentProductField = null;
 
-    <label>Customer</label>
-    <select id="modal-customer-select">
-      <option value="">-- Select Customer --</option>
-      {% for customer in customers %}
-        <option value="{{ customer.id }}"
-                data-name="{{ customer.name }}"
-                data-address="{{ customer.address }}"
-                data-city="{{ customer.city }}"
-                data-state="{{ customer.state }}"
-                data-pincode="{{ customer.pincode }}"
-                data-mobile="{{ customer.mobile }}"
-                data-email="{{ customer.email }}">
-          {{ customer.name }}
-        </option>
-      {% endfor %}
-    </select>
+    // Open customer modal
+    $("#openCustomerModal").click(function() {
+      $("#customerModal").show();
+    });
 
-    <br><br>
-    <button id="confirm-customer">Confirm</button>
-  </div>
-</div>
-<input type="hidden" name="customer_name" id="id_customer_name">
-<input type="hidden" name="customer_address" id="id_customer_address">
-<input type="hidden" name="customer_city" id="id_customer_city">
-<input type="hidden" name="customer_state" id="id_customer_state">
-<input type="hidden" name="customer_pincode" id="id_customer_pincode">
-<input type="hidden" name="customer_mobile" id="id_customer_mobile">
-<input type="hidden" name="customer_email" id="id_customer_email">
+    // Confirm customer
+    $("#confirm-customer").click(function() {
+      const selected = $("#modal-customer-select option:selected");
+      if (selected.val()) {
+        $("#selected-customer-name").text(selected.data("name"));
 
-
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<script>
-  const container = document.getElementById('formset-container');
-  const addRowBtn = document.getElementById('add-row');
-  const totalForms = document.getElementById('id_form-TOTAL_FORMS');
-  let activeRow = null;
-
-  // ✅ Add new row
-  addRowBtn.addEventListener('click', () => {
-    const currentFormCount = parseInt(totalForms.value);
-    const newForm = container.children[0].cloneNode(true);
-
-    newForm.querySelectorAll('input, select, span').forEach(el => {
-      if (el.tagName === "INPUT" || el.tagName === "SELECT") {
-        el.name = el.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
-        el.id = el.id.replace(/form-\d+-/, `form-${currentFormCount}-`);
-        el.value = '';
+        // Fill hidden fields
+        $("#id_customer_name").val(selected.data("name"));
+        $("#id_customer_address").val(selected.data("address"));
+        $("#id_customer_city").val(selected.data("city"));
+        $("#id_customer_state").val(selected.data("state"));
+        $("#id_customer_pincode").val(selected.data("pincode"));
+        $("#id_customer_mobile").val(selected.data("mobile"));
+        $("#id_customer_email").val(selected.data("email"));
       }
-      if (el.classList.contains("selected-product-name")) {
-        el.textContent = "";
+      $("#customerModal").hide();
+    });
+
+    // Open product modal
+    $(document).on("click", ".select-product", function() {
+      currentProductField = $(this).siblings("input[type=hidden]");
+      $("#productModal").show();
+    });
+
+    // Fetch products by category
+    $("#category-select").change(function() {
+      const categoryId = $(this).val();
+      if (categoryId) {
+        $.getJSON("{% url 'get_products' %}?category_id=" + categoryId, function(data) {
+          let options = '<option value="">-- Select Product --</option>';
+          data.forEach(p => {
+            options += `<option value="${p.id}">${p.name}</option>`;
+          });
+          $("#product-select").html(options);
+        });
+      } else {
+        $("#product-select").html('<option value="">-- Select Product --</option>');
       }
     });
 
-    container.appendChild(newForm);
-    totalForms.value = container.children.length;
-  });
+    // Confirm product
+    $("#confirm-product").click(function() {
+      const selected = $("#product-select option:selected");
+      if (selected.val() && currentProductField) {
+        currentProductField.val(selected.val());
+        currentProductField.closest("td").find(".product-name").text(selected.text());
+      }
+      $("#productModal").hide();
+    });
 
-  // ✅ Remove row
-  container.addEventListener('click', function (e) {
-    if (e.target.classList.contains('remove-row') && container.children.length > 1) {
-      e.target.parentElement.remove();
-      totalForms.value = container.children.length;
-    }
-  });
-
-  // ✅ Open product modal
-  $(document).on("click", ".open-product-modal", function () {
-    activeRow = $(this).closest(".form-row");
-    $("#productModal").show();
-  });
-
-  // ✅ Open customer modal
-  $(document).on("click", ".open-customer-modal", function () {
-    $("#customerModal").show();
-  });
-
-  // ✅ Close modals
-  $(".close").click(function () {
-    $(this).closest(".modal").hide();
-    activeRow = null;
-  });
-
-  // ✅ Category → fetch products
-  $('#category-select').change(function () {
-    const categoryId = $(this).val();
-    if (categoryId) {
-      $.ajax({
-        url: "{% url 'get_products_by_category' %}",
-        data: { category_id: categoryId },
-        success: function (data) {
-          const productSelect = $('#modal-product-select');
-          productSelect.empty().prop("disabled", false);
-          productSelect.append('<option value="">Select a product</option>');
-          data.products.forEach(function (p) {
-            productSelect.append('<option value="' + p.id + '">' + p.name + '</option>');
-          });
-        }
-      });
-    } else {
-      $('#modal-product-select').empty().append('<option value="">Select a product</option>').prop("disabled", true);
-    }
-  });
-
-  // ✅ Confirm product
-  $('#confirm-product').click(function () {
-    const selectedProductId = $('#modal-product-select').val();
-    const selectedProductName = $('#modal-product-select option:selected').text();
-
-    if (selectedProductId && activeRow) {
-      activeRow.find("input[type=hidden]").val(selectedProductId);
-      activeRow.find(".selected-product-name").text(selectedProductName);
-    }
-
-    $("#productModal").hide();
-    activeRow = null;
-  });
-
- // ✅ Confirm customer
-$('#confirm-customer').click(function () {
-  const selected = $('#modal-customer-select option:selected');
-
-  if (selected.val()) {
-    // Set quotation hidden fields
-    $("#id_customer").val(selected.val());
-    $("#id_customer_name").val(selected.data("name"));
-    $("#id_customer_address").val(selected.data("address"));
-    $("#id_customer_city").val(selected.data("city"));
-    $("#id_customer_state").val(selected.data("state"));
-    $("#id_customer_pincode").val(selected.data("pincode"));
-    $("#id_customer_mobile").val(selected.data("mobile"));
-    $("#id_customer_email").val(selected.data("email"));
-
-    // Show to user
-    $("#selected-customer-name").text(selected.data("name"));
-  }
-
-  $("#customerModal").hide();
-});
-
-    $("#customerModal").hide();
-  });
-</script>
-
+    // Close modals
+    $(".close").click(function() {
+      $(this).closest(".modal").hide();
+    });
+  </script>
 </body>
 </html>
