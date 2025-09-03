@@ -72,12 +72,13 @@ class QuotationItem(models.Model):
 
 class Customer(models.Model):
     name = models.CharField(max_length=255)
-    state= models.CharField(max_length=255)
-    address = models.CharField(max_length=2550)
-    city = models.CharField(max_length=255)
-    pin_code = models.CharField(max_length=10)
-    phone = models.CharField(max_length=15)
+    address = models.TextField()
+    state = models.CharField(max_length=255, default="Unknown")
+    city = models.CharField(max_length=255, default="Unknown")
+    pin_code = models.CharField(max_length=10, default="000000")
+    phone = models.BigIntegerField(default=9999999999)  # numeric phone
     email = models.EmailField(blank=True, null=True)
+
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,  # <-- use this instead of 'User'
