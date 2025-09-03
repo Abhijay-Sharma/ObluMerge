@@ -111,6 +111,7 @@
             <div class="customer-detail"><strong>Phone:</strong> {{ customer.phone }}</div>
             <div class="customer-detail"><strong>Email:</strong> {{ customer.email|default:"-" }}</div>
             <div class="customer-detail"><strong>Pin Code:</strong> {{ customer.pin_code }}</div>
+            <div class="customer-detail"><strong>Created By</strong> {{ customer.created_by }}</div>
           </div>
         {% endfor %}
       </div>
