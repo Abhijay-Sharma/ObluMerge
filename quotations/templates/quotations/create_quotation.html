@@ -164,71 +164,81 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
   <script>
-    const container = document.getElementById('formset-container');
-    const addRowBtn = document.getElementById('add-row');
-    const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+  const container = document.getElementById('formset-container');
+  const addRowBtn = document.getElementById('add-row');
+  const totalForms = document.getElementById('id_form-TOTAL_FORMS');
 
-    function applySelect2() {
-      $('select[name$="-product"]').each(function () {
-        if (!$(this).hasClass("select2-hidden-accessible")) {
-          $(this).select2({
-            width: '100%',
-            placeholder: "Select a product",
-            allowClear: true
-          });
-        }
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      applySelect2();
-    });
-
-    addRowBtn.addEventListener('click', () => {
-      const currentFormCount = parseInt(totalForms.value);
-      const newForm = container.children[0].cloneNode(true);
-
-      // Clear and update fields
-      newForm.querySelectorAll('input, select').forEach(input => {
-        input.name = input.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
-        input.id = input.id.replace(/form-\d+-/, `form-${currentFormCount}-`);
-        input.value = '';
-      });
-
-      $(newForm).find('select').removeClass("select2-hidden-accessible").next(".select2").remove();
-
-      container.appendChild(newForm);
-      totalForms.value = container.children.length;
-      applySelect2();
-    });
-
-    container.addEventListener('click', function (e) {
-      if (e.target.classList.contains('remove-row') && container.children.length > 1) {
-        e.target.parentElement.remove();
-        totalForms.value = container.children.length;
+  // ✅ Apply Select2 to all product selects (grouped by category in form)
+  function applySelect2() {
+    $('.product-select').each(function () {
+      if (!$(this).hasClass("select2-hidden-accessible")) {
+        $(this).select2({
+          width: '100%',
+          placeholder: "Select a product",
+          allowClear: true
+        });
       }
     });
-        $('#customer-select').change(function () {
-        const customerId = $(this).val();
-        if (customerId) {
-            $.ajax({
-                url: '{% url 'get_customer' %}',
-                type: 'GET',
-                data: { id: customerId },
-                success: function (data) {
-                    $('#id_customer_name').val(data.name);
-                    $('#id_customer_address').val(data.state + ', ' + data.address);
-                },
-                error: function () {
-                    alert('Failed to fetch customer info.');
-                }
-            });
-        } else {
-            $('#id_customer_name').val('');
-            $('#id_customer_address').val('');
-        }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    applySelect2();
+  });
+
+  addRowBtn.addEventListener('click', () => {
+    const currentFormCount = parseInt(totalForms.value);
+    const newForm = container.children[0].cloneNode(true);
+
+    // Clear and update fields
+    newForm.querySelectorAll('input, select').forEach(input => {
+      input.name = input.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
+      input.id = input.id.replace(/form-\d+-/, `form-${currentFormCount}-`);
+      input.value = '';
     });
-  </script>
+
+    // ✅ Properly reset Select2 before re-initializing
+    $(newForm).find('.product-select')
+      .removeClass("select2-hidden-accessible")
+      .next(".select2").remove();
+
+    container.appendChild(newForm);
+    totalForms.value = container.children.length;
+
+    // ✅ Reapply Select2 to new row
+    applySelect2();
+  });
+
+  container.addEventListener('click', function (e) {
+    if (e.target.classList.contains('remove-row') && container.children.length > 1) {
+      e.target.parentElement.remove();
+      totalForms.value = container.children.length;
+    }
+  });
+
+  // Customer auto-fill AJAX
+  $('#customer-select').change(function () {
+    const customerId = $(this).val();
+    if (customerId) {
+      $.ajax({
+        url: '{% url 'get_customer' %}',
+        type: 'GET',
+        data: { id: customerId },
+        success: function (data) {
+          $('#id_customer_name').val(data.name);
+          $('#id_customer_address').val(data.state + ', ' + data.address);
+        },
+        error: function () {
+          alert('Failed to fetch customer info.');
+        }
+      });
+    } else {
+      $('#id_customer_name').val('');
+      $('#id_customer_address').val('');
+    }
+  });
+</script>
+
+
 
 </body>
 </html>
