@@ -225,6 +225,9 @@ button:hover {
                     {{ form.product }}
                   </td>
                   <td data-label="Quantity">{{ form.quantity }}</td>
+                  {% if form.quantity.errors %}
+                    <div class="error text-danger">{{ form.quantity.errors|first }}</div>
+                  {% endif %}
                   {% if request.user.is_accountant %}
                     <td data-label="Discount">{{ form.discount }}</td>
                   {% endif %}

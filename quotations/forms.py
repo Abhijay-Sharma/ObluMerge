@@ -36,6 +36,17 @@ class QuotationItemForm(forms.ModelForm):
             self.fields['discount'].required = False
             self.fields['discount'].initial = 0
 
+    #  Add server-side validation for checking prod min req
+    def clean_quantity(self):
+        quantity = self.cleaned_data.get('quantity')
+        product = self.cleaned_data.get('product')
+
+        if product and quantity < product.min_requirement:
+            raise forms.ValidationError(
+                f"Quantity for {product.name} cannot be less than the minimum requirement ({product.min_requirement})."
+            )
+        return quantity
+
 from django.forms import modelformset_factory, BaseModelFormSet
 
 class BaseQuotationItemFormSet(BaseModelFormSet):
