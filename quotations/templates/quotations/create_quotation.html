@@ -162,22 +162,39 @@
 
   <!-- Customer Modal -->
   <div id="customerModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h3>Select Customer</h3>
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h3>Select Customer</h3>
 
-      <label>Customer</label>
-      <select id="modal-customer-select">
-        <option value="">-- Select Customer --</option>
-        {% for customer in customers %}
-          <option value="{{ customer.id }}">{{ customer.name }}</option>
-        {% endfor %}
-      </select>
+    <label>Customer</label>
+    <select id="modal-customer-select">
+      <option value="">-- Select Customer --</option>
+      {% for customer in customers %}
+        <option value="{{ customer.id }}"
+                data-name="{{ customer.name }}"
+                data-address="{{ customer.address }}"
+                data-city="{{ customer.city }}"
+                data-state="{{ customer.state }}"
+                data-pincode="{{ customer.pincode }}"
+                data-mobile="{{ customer.mobile }}"
+                data-email="{{ customer.email }}">
+          {{ customer.name }}
+        </option>
+      {% endfor %}
+    </select>
 
-      <br><br>
-      <button id="confirm-customer">Confirm</button>
-    </div>
+    <br><br>
+    <button id="confirm-customer">Confirm</button>
   </div>
+</div>
+<input type="hidden" name="customer_name" id="id_customer_name">
+<input type="hidden" name="customer_address" id="id_customer_address">
+<input type="hidden" name="customer_city" id="id_customer_city">
+<input type="hidden" name="customer_state" id="id_customer_state">
+<input type="hidden" name="customer_pincode" id="id_customer_pincode">
+<input type="hidden" name="customer_mobile" id="id_customer_mobile">
+<input type="hidden" name="customer_email" id="id_customer_email">
+
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
@@ -267,31 +284,27 @@
     activeRow = null;
   });
 
-  // ✅ Confirm customer
- $('#confirm-customer').click(function () {
-  const selectedCustomerId = $('#modal-customer-select').val();
+ // ✅ Confirm customer
+$('#confirm-customer').click(function () {
+  const selected = $('#modal-customer-select option:selected');
 
-  if (selectedCustomerId) {
-    // set FK hidden input
-    $("#id_customer").val(selectedCustomerId);
+  if (selected.val()) {
+    // Set quotation hidden fields
+    $("#id_customer").val(selected.val());
+    $("#id_customer_name").val(selected.data("name"));
+    $("#id_customer_address").val(selected.data("address"));
+    $("#id_customer_city").val(selected.data("city"));
+    $("#id_customer_state").val(selected.data("state"));
+    $("#id_customer_pincode").val(selected.data("pincode"));
+    $("#id_customer_mobile").val(selected.data("mobile"));
+    $("#id_customer_email").val(selected.data("email"));
 
-    // fetch customer details
-    $.ajax({
-      url: "{% url 'get_customer' %}",
-      data: { id: selectedCustomerId },
-      success: function (data) {
-        // fill hidden fields
-        $("#id_customer_name").val(data.name);
-        $("#id_customer_address").val(data.state + ", " + data.address);
-
-        // show selected name to user
-        $("#selected-customer-name").text(data.name);
-      },
-      error: function () {
-        alert("Failed to fetch customer info.");
-      }
-    });
+    // Show to user
+    $("#selected-customer-name").text(selected.data("name"));
   }
+
+  $("#customerModal").hide();
+});
 
     $("#customerModal").hide();
   });
