@@ -40,8 +40,15 @@ class Quotation(models.Model):
 
     customer_name = models.CharField(max_length=255)
     customer_address = models.TextField()
+    customer_state = models.TextField(blank=True, null=True)
+    customer_city = models.TextField(blank=True, null=True)
+    customer_pincode = models.TextField(blank=True, null=True)
+    customer_company = models.TextField(blank=True, null=True)
+    customer_phone = models.TextField(blank=True, null=True)
+    customer_email = models.TextField(blank=True, null=True)
+    customer_zip = models.TextField(blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
-    created_by=models.CharField(max_length=255,default="Bhavya")
+    created_by=models.CharField(max_length=255,default="Oblu")
 
     def total(self):
         return sum(item.total_price() for item in self.items.all())
