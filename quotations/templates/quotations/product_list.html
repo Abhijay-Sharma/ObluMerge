@@ -113,6 +113,7 @@
       <h1>Products</h1>
       {% if request.user.is_accountant %}
         <div class="top-actions">
+          <a href="{% url 'home'  %}" class="btn-primary">Back to Home</a>
           <a href="{% url 'create_product'  %}" class="btn-primary">+ Create Product</a>
         </div>
       {% endif %}
