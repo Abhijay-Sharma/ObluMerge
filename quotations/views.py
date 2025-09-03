@@ -138,7 +138,7 @@ class QuotationListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.groups.filter(name="Accountant").exists():
+        if user.is_accountant:
             # Accountants can see everything
             return Quotation.objects.all()
         else:
