@@ -2,6 +2,7 @@ from django.db import models
 # Create your models here.
 # quotations/models.py
 from django.db import models
+from django.conf import settings
 
 class ProductCategory(models.Model):
     name = models.CharField(max_length=100)
@@ -79,7 +80,7 @@ class Customer(models.Model):
     email = models.EmailField(blank=True, null=True)
 
     created_by = models.ForeignKey(
-        'User',
+        settings.AUTH_USER_MODEL,  # <-- use this instead of 'User'
         on_delete=models.CASCADE,
         related_name="customers"
     )
