@@ -38,7 +38,10 @@ class CreateQuotationView(AccountantRequiredMixin, View):
             form_kwargs={"user": request.user}
         )
 
-        customers = Customer.objects.all()
+        if request.user.is_accountant:
+            customers = Customer.objects.all()
+        else:
+            customers = Customer.objects.filter(created_by=request.user)
         categories = ProductCategory.objects.all().order_by("name")
 
         return render(request, 'quotations/create_quotation.html', {
@@ -71,7 +74,10 @@ class CreateQuotationView(AccountantRequiredMixin, View):
                     item.save()
             return redirect('quotation_detail', pk=quotation.pk)
 
-        customers = Customer.objects.all()
+        if request.user.is_accountant:
+            customers = Customer.objects.all()
+        else:
+            customers = Customer.objects.filter(created_by=request.user)
         categories = ProductCategory.objects.all().order_by("name")
 
         # In case forms are not valid, re-render the form with errors
@@ -106,16 +112,19 @@ def home(request):
     return render(request, 'quotations/home.html')
 
 def get_customer(request):
-    customer_id = request.GET.get('id')
-    try:
-        customer = Customer.objects.get(id=customer_id)
-        return JsonResponse({
-            'name': customer.name,
-            'address': customer.address,
-            'state': customer.state
-        })
-    except Customer.DoesNotExist:
-        return JsonResponse({'error': 'Customer not found'}, status=404)
+    customer_id = request.GET.get("id")
+    customer = get_object_or_404(Customer, id=customer_id)
+
+    return JsonResponse({
+        "id": customer.id,
+        "name": customer.name,
+        "address": customer.address,
+        "city": customer.city,
+        "state": customer.state,
+        "pincode": customer.pincode,
+        "mobile": customer.mobile,
+        "email": customer.email,
+    })
 
 
 class CustomerCreateView(LoginRequiredMixin,CreateView):

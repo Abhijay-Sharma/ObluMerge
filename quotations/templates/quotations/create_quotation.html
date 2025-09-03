@@ -51,7 +51,7 @@
       margin: 30px 0 20px; border-bottom: 1px solid #ddd;
     }
 
-    .add-row-btn, button[type="submit"], .open-product-modal {
+    .add-row-btn, button[type="submit"], .open-product-modal, .open-customer-modal {
       display: inline-block;
       background: linear-gradient(135deg, #00c9ff, #92fe9d);
       border: none; padding: 10px 22px;
@@ -61,7 +61,7 @@
       margin-top: 5px;
     }
 
-    .add-row-btn:hover, button[type="submit"]:hover, .open-product-modal:hover {
+    .add-row-btn:hover, button[type="submit"]:hover, .open-product-modal:hover, .open-customer-modal:hover {
       transform: scale(1.05);
     }
 
@@ -92,11 +92,12 @@
 
     <!-- Customer Info -->
     <div>
-      {{ quotation_form.customer_name.label_tag }}
+      <!-- hidden fields that will be filled via JS -->
       {{ quotation_form.customer_name }}
-
-      {{ quotation_form.customer_address.label_tag }}
       {{ quotation_form.customer_address }}
+
+      <button type="button" class="open-customer-modal">Select Customer</button>
+      <p><strong>Selected Customer:</strong> <span id="selected-customer-name"></span></p>
 
       {% if request.user.is_accountant %}
         {{ quotation_form.created_by.label_tag }}
@@ -138,7 +139,7 @@
     <button type="submit">Submit Quotation</button>
   </form>
 
-  <!-- Modal -->
+  <!-- Product Modal -->
   <div id="productModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -159,6 +160,25 @@
 
       <br><br>
       <button id="confirm-product">Confirm</button>
+    </div>
+  </div>
+
+  <!-- Customer Modal -->
+  <div id="customerModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Select Customer</h3>
+
+      <label>Customer</label>
+      <select id="modal-customer-select">
+        <option value="">-- Select Customer --</option>
+        {% for customer in customers %}
+          <option value="{{ customer.id }}">{{ customer.name }}</option>
+        {% endfor %}
+      </select>
+
+      <br><br>
+      <button id="confirm-customer">Confirm</button>
     </div>
   </div>
 
@@ -199,15 +219,15 @@
     }
   });
 
-  // ✅ Open modal
+  // ✅ Open product modal
   $(document).on("click", ".open-product-modal", function () {
     activeRow = $(this).closest(".form-row");
     $("#productModal").show();
   });
 
-  // ✅ Close modal
+  // ✅ Close modals
   $(".close").click(function () {
-    $("#productModal").hide();
+    $(this).closest(".modal").hide();
     activeRow = null;
   });
 
@@ -247,6 +267,31 @@
 
     $("#productModal").hide();
     activeRow = null;
+  });
+
+  // ✅ Confirm customer
+  $('#confirm-customer').click(function () {
+    const selectedCustomerId = $('#modal-customer-select').val();
+    const selectedCustomerName = $('#modal-customer-select option:selected').text();
+
+    if (selectedCustomerId) {
+      $.ajax({
+        url: "{% url 'get_customer' %}",
+        data: { id: selectedCustomerId },
+        success: function (data) {
+          // hidden fields
+          $("#id_customer_name").val(data.name);
+          $("#id_customer_address").val(data.state + ", " + data.city + ", " + data.address + " - " + data.pincode);
+
+          // update visible label
+          $("#selected-customer-name").text(
+            data.name + " (" + data.mobile + ", " + data.email + ")"
+          );
+        }
+      });
+    }
+
+    $("#customerModal").hide();
   });
 </script>
 
