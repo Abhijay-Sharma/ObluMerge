@@ -7,75 +7,50 @@
   <title>Add Customer | Quotation Maker</title>
   <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
 
+  <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      height: 100vh;
+      min-height: 100vh;
       background: linear-gradient(135deg, #e0f7fa, #80deea);
-      color: #333;
-      margin: 0;
+      display: flex;
+      flex-direction: column;
     }
 
-    /* Container that centers the form */
     .main-container {
-      height: calc(100vh - 56px); /* Adjust for navbar height */
+      flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
+      padding: 20px;
     }
 
-    .form-container {
-      background: #ffffff;
-      padding: 40px 30px;
+    .form-card {
+      background: #fff;
+      padding: 30px 25px;
       border-radius: 16px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-      text-align: center;
+      max-width: 700px;
+      width: 100%;
       animation: fadeIn 0.8s ease-out;
-      max-width: 500px;
-      width: 90%;
     }
 
-    .form-container h1 {
-      font-size: 2rem;
+    .form-card h1 {
+      font-size: 1.8rem;
       margin-bottom: 20px;
       background: linear-gradient(90deg, #007bff, #00c6ff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-    }
-
-    .btn-outline-primary {
-      display: inline-block;
-      margin-top: 25px;
-      padding: 12px 28px;
-      background: linear-gradient(135deg, #007bff, #00c6ff);
-      color: #fff;
-      font-size: 1rem;
-      font-weight: bold;
-      text-decoration: none;
-      border-radius: 30px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    .btn-outline-primary:hover {
-      transform: scale(1.05);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+      text-align: center;
     }
 
     .btn-primary {
-      padding: 12px 28px;
+      padding: 10px 24px;
       background: linear-gradient(135deg, #007bff, #00c6ff);
-      color: #fff;
-      font-size: 1rem;
-      font-weight: bold;
-      border-radius: 30px;
       border: none;
+      border-radius: 30px;
+      font-weight: 600;
+      color: #fff;
       transition: all 0.3s ease;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
@@ -85,34 +60,16 @@
       box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
     }
 
-    .mt-3 {
-      margin-top: 20px;
+    .btn-outline-primary {
+      padding: 10px 24px;
+      border-radius: 30px;
+      font-weight: 600;
+      margin-bottom: 15px;
     }
 
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @media (max-width: 500px) {
-      .form-container {
-        padding: 30px 20px;
-      }
-
-      .form-container h1 {
-        font-size: 1.6rem;
-      }
-
-      .btn-primary, .btn-outline-primary {
-        padding: 10px 20px;
-        font-size: 0.95rem;
-      }
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
@@ -120,16 +77,24 @@
   {% include 'quotations/navigation.html' %}
 
   <div class="main-container">
-    <div class="form-container">
+    <div class="form-card">
       <h1>Add Customer</h1>
-      <a href="{% url 'home' %}" class="btn-outline-primary">Go Back</a>
+      <div class="text-center">
+        <a href="{% url 'home' %}" class="btn btn-outline-primary">← Go Back</a>
+      </div>
 
-      <form method="POST" class="mt-4">
+      <form method="POST" class="mt-3">
         {% csrf_token %}
-        {{ form|crispy }}
+        <div class="row g-3">
+          {% for field in form %}
+            <div class="col-md-6">
+              {{ field|as_crispy_field }}
+            </div>
+          {% endfor %}
+        </div>
 
-        <div class="mt-3">
-          <button class="btn-primary">Add Customer</button>
+        <div class="mt-4 text-center">
+          <button type="submit" class="btn btn-primary">Add Customer</button>
         </div>
       </form>
     </div>
