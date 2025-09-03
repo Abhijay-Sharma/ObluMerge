@@ -19,9 +19,21 @@ class Product(models.Model):
     is_quantity_dependent = models.BooleanField(default=True)
     min_requirement = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     terms_and_conditions = models.TextField(blank=True, null=True)
+    has_dynamic_pricing = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
+
+class ProductPriceTier(models.Model):
+    product = models.ForeignKey("Product", related_name="price_tiers", on_delete=models.CASCADE)
+    min_quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ["min_quantity"]
+
+    def __str__(self):
+        return f"{self.product.name} - {self.min_quantity}+ @ {self.unit_price}"
 
 
 class Quotation(models.Model):
@@ -52,6 +64,15 @@ class QuotationItem(models.Model):
 
     def total_price(self):
         unit_price = self.product.price_per_unit
+        if self.product.has_dynamic_pricing:
+            tier = (
+                self.product.price_tiers.filter(min_quantity__lte=self.quantity)
+                .order_by("-min_quantity")
+                .first()
+            )
+            if tier:
+                unit_price= tier.unit_price
+
 
         base_price = unit_price * self.quantity if self.product.is_quantity_dependent else unit_price
 
@@ -72,10 +93,29 @@ class QuotationItem(models.Model):
 
     def gst_unit_price(self):
         # return self.product.price_per_unit + ((self.product.tax_rate / 100) * self.product.price_per_unit)
-        return self.product.price_per_unit
+        unit_price = self.product.price_per_unit
+        if self.product.has_dynamic_pricing:
+            tier = (
+                self.product.price_tiers.filter(min_quantity__lte=self.quantity)
+                .order_by("-min_quantity")
+                .first()
+            )
+            if tier:
+                unit_price= tier.unit_price
+
+        return unit_price
 
     def unit_price_without_tax(self):
-        price_without_tax=(self.product.price_per_unit*100)/(self.product.tax_rate+100)
+        unit_price = self.product.price_per_unit
+        if self.product.has_dynamic_pricing:
+            tier = (
+                self.product.price_tiers.filter(min_quantity__lte=self.quantity)
+                .order_by("-min_quantity")
+                .first()
+            )
+            if tier:
+                unit_price = tier.unit_price
+        price_without_tax=(unit_price*100)/(self.product.tax_rate+100)
         return int(price_without_tax)
 
 
