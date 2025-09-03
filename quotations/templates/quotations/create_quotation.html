@@ -196,7 +196,7 @@ button:hover {
           <input type="hidden" name="customer_city" id="id_customer_city">
           <input type="hidden" name="customer_state" id="id_customer_state">
           <input type="hidden" name="customer_pincode" id="id_customer_pincode">
-          <input type="hidden" name="customer_mobile" id="id_customer_mobile">
+          <input type="hidden" name="customer_phone" id="id_customer_phone">
           <input type="hidden" name="customer_email" id="id_customer_email">
         </div>
 
@@ -268,7 +268,7 @@ button:hover {
                   data-city="{{ customer.city }}"
                   data-state="{{ customer.state }}"
                   data-pincode="{{ customer.pin_code }}"
-                  data-mobile="{{ customer.phone }}"
+                  data-phone="{{ customer.phone }}"
                   data-email="{{ customer.email }}">
             {{ customer.name }}
           </option>
@@ -316,7 +316,7 @@ $(function () {
       $("#id_customer_city").val(selected.data("city"));
       $("#id_customer_state").val(selected.data("state"));
       $("#id_customer_pincode").val(selected.data("pincode"));
-      $("#id_customer_mobile").val(selected.data("mobile"));
+      $("#id_customer_phone").val(selected.data("phone"));
       $("#id_customer_email").val(selected.data("email"));
 
       $("#selected-customer-name").text(selected.data("name"));
