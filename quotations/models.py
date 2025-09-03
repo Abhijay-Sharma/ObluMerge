@@ -78,6 +78,7 @@ class Customer(models.Model):
     pin_code = models.CharField(max_length=10, default="000000")
     phone = models.BigIntegerField(default=9999999999)  # numeric phone
     email = models.EmailField(blank=True, null=True)
+    company=models.CharField(max_length=255,blank=True, null=True)
 
 
     created_by = models.ForeignKey(
