@@ -1,29 +1,8 @@
-<form method="post">
-  {% csrf_token %}
+{% extends "base.html" %}
+{% load static %}
 
-  <fieldset>
-    <legend>Product Details</legend>
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-  </fieldset>
-
-  {% if form.instance.has_dynamic_pricing %}
-  <fieldset>
-    <legend>Dynamic Price Tiers</legend>
-    {{ tier_formset.management_form }}
-    {{ tier_formset.non_form_errors }}
-    {% for subform in tier_formset %}
-      <div class="tier-row" style="border:1px solid #ddd; padding:10px; margin:5px 0;">
-        {{ subform.non_field_errors }}
-        {{ subform.as_p }}
-      </div>
-    {% endfor %}
-  </fieldset>
-  {% endif %}
-
-  <button type="submit">Save Changes</button>
-</form>
-
+{% block content %}
+<h2>Edit Product: {{ product.name }}</h2>
 
 {% if messages %}
   <ul class="messages">
@@ -32,3 +11,32 @@
     {% endfor %}
   </ul>
 {% endif %}
+
+<form method="post" action="{% url 'edit_product' product.pk %}">
+  {% csrf_token %}
+
+  <fieldset style="margin-bottom:20px;">
+    <legend>Product Details</legend>
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+  </fieldset>
+
+  {% if form.instance.is_quantity_dependent %}
+  <fieldset style="margin-bottom:20px;">
+    <legend>Dynamic Price Tiers</legend>
+    {{ tier_formset.management_form }}
+    {{ tier_formset.non_form_errors }}
+
+    {% for subform in tier_formset %}
+      <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px;">
+        {{ subform.non_field_errors }}
+        {{ subform.as_p }}
+      </div>
+    {% endfor %}
+  </fieldset>
+  {% endif %}
+
+  <button type="submit">Save Changes</button>
+  <a href="{% url 'product_list' %}">Back to Product List</a>
+</form>
+{% endblock %}

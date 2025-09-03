@@ -20,6 +20,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 from django.views.generic import ListView
 
+from django.contrib import messages
 
 # Create the modelformset for multiple product rows
 QuotationItemFormSet = modelformset_factory(
@@ -192,10 +193,17 @@ class EditProductView(View):
         tier_formset = ProductPriceTierFormSet(request.POST, instance=product)
 
         if form.is_valid() and tier_formset.is_valid():
+            if not form.has_changed() and not tier_formset.has_changed():
+                messages.info(request, "No changes were made.")
+                return redirect("edit_product", pk=product.pk)
+
             form.save()
             tier_formset.save()
-            return redirect("product_list")  # you can change this
+            messages.success(request, f"Product '{product.name}' updated successfully.")
+            return redirect("edit_product", pk=product.pk)
 
+        # Show validation errors
+        messages.error(request, "There were errors in the form. Please check below.")
         return render(request, "quotations/edit_product.html", {
             "form": form,
             "tier_formset": tier_formset,
