@@ -69,13 +69,13 @@ input[type="text"], input[type="number"], select, textarea {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px; /* prevents breaking on desktop */
+  min-width: unset; /* remove forced min-width */
 }
 th, td {
   border: 1px solid #ccc;
   padding: 8px;
   text-align: center;
-  white-space: nowrap; /* keeps cell content from wrapping */
+  white-space: normal; /* allow wrapping */
 }
 th { background: #eee; }
 
@@ -131,16 +131,16 @@ button:hover {
   button { padding: 6px 10px; font-size: 14px; }
 }
 
-    /* Mobile-friendly table */
+  /* Mobile layout */
 @media (max-width: 600px) {
   table, thead, tbody, th, td, tr {
     display: block;
   }
 
-  thead { display: none; } /* hide header on mobile */
+  thead { display: none; }
 
   .item-form {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     border: 1px solid #ccc;
     border-radius: 12px;
     padding: 10px;
@@ -151,15 +151,20 @@ button:hover {
   .item-form td {
     display: flex;
     justify-content: space-between;
-    padding: 8px 5px;
+    flex-wrap: wrap; /* allows values to wrap */
+    padding: 6px 5px;
   }
 
   .item-form td span.product-label {
     font-weight: bold;
+    flex-basis: 100%; /* full width for label */
   }
 
+  .item-form td input,
+  .item-form td select,
   .item-form td button {
-    margin: 0;
+    width: 100%; /* inputs & buttons full width on mobile */
+    margin-top: 5px;
   }
 }
 </style>
