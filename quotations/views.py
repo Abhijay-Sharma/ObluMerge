@@ -133,7 +133,7 @@ class CustomerListView(LoginRequiredMixin, ListView):
 
 class QuotationListView(LoginRequiredMixin, ListView):
     model = Quotation
-    template_name = "quotations/quotation_list.html"
+    template_name = "quotations/quotations_list.html"
     context_object_name = "quotations"
 
     def get_queryset(self):
