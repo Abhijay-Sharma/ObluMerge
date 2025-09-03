@@ -130,43 +130,46 @@ button:hover {
   input, select { font-size: 14px; }
   button { padding: 6px 10px; font-size: 14px; }
 }
-
-  /* Mobile layout */
+ /* Mobile layout */
 @media (max-width: 600px) {
-  table, thead, tbody, th, td, tr {
-    display: block;
-  }
-
+  table, thead, tbody, th, td, tr { display: block; }
   thead { display: none; }
 
   .item-form {
-    margin-bottom: 12px;
     border: 1px solid #ccc;
     border-radius: 12px;
     padding: 10px;
+    margin-bottom: 12px;
     background: #f9f9f9;
     color: #000;
   }
 
   .item-form td {
     display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap; /* allows values to wrap */
-    padding: 6px 5px;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 6px 0;
+    border: none;
   }
 
-  .item-form td span.product-label {
+  .item-form td::before {
+    content: attr(data-label);
     font-weight: bold;
-    flex-basis: 100%; /* full width for label */
+    margin-bottom: 4px;
   }
 
   .item-form td input,
   .item-form td select,
   .item-form td button {
-    width: 100%; /* inputs & buttons full width on mobile */
-    margin-top: 5px;
+    width: 100%;
+    margin: 0 0 8px 0;
+  }
+
+  .item-form td:last-child button {
+    margin-bottom: 0;
   }
 }
+
 </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -220,11 +223,11 @@ button:hover {
                     <button type="button" class="select-product-btn">Select Product</button>
                     {{ form.product }}
                   </td>
-                  <td>{{ form.quantity }}</td>
+                  <td data-label="Quantity">{{ form.quantity }}</td>
                   {% if request.user.is_accountant %}
-                    <td>{{ form.discount }}</td>
+                    <td data-label="Discount">{{ form.discount }}</td>
                   {% endif %}
-                  <td>
+                  <td data-label="Action">
                     {% if forloop.first %}
                       <button type="button" id="add-item">Add</button>
                     {% else %}
