@@ -29,7 +29,7 @@ QuotationItemFormSet = modelformset_factory(
     can_delete=True
 )
 
-class CreateQuotationView(AccountantRequiredMixin, View):
+class CreateQuotationView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         quotation_form = QuotationForm(user=request.user)
         formset = QuotationItemFormSet(
