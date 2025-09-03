@@ -16,6 +16,7 @@ class Product(models.Model):
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     tax_rate= models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     is_quantity_dependent = models.BooleanField(default=True)
+    min_requirement = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     def __str__(self):
         return self.name
