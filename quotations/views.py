@@ -8,7 +8,7 @@ from django.forms import modelformset_factory
 from django.http import JsonResponse
 
 from .forms import QuotationForm, QuotationItemForm, CustomerCreateForm
-from .models import Quotation, QuotationItem, Customer
+from .models import Quotation, QuotationItem, Customer, ProductCategory, Product
 from django.contrib.auth.decorators import login_required
 import traceback
 from django.views import View
@@ -19,6 +19,7 @@ from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from django.views.generic import ListView
+
 
 # Create the modelformset for multiple product rows
 QuotationItemFormSet = modelformset_factory(
@@ -38,11 +39,13 @@ class CreateQuotationView(AccountantRequiredMixin, View):
         )
 
         customers = Customer.objects.all()
+        categories = ProductCategory.objects.all().order_by("name")
 
         return render(request, 'quotations/create_quotation.html', {
             'quotation_form': quotation_form,
             'formset': formset,
-            'customers': customers
+            'customers': customers,
+            'categories': categories,
         })
 
     def post(self, request, *args, **kwargs):
@@ -68,11 +71,26 @@ class CreateQuotationView(AccountantRequiredMixin, View):
                     item.save()
             return redirect('quotation_detail', pk=quotation.pk)
 
+        customers = Customer.objects.all()
+        categories = ProductCategory.objects.all().order_by("name")
+
         # In case forms are not valid, re-render the form with errors
         return render(request, 'quotations/create_quotation.html', {
             'quotation_form': quotation_form,
-            'formset': formset
+            'formset': formset,
+            'customers': customers,
+            'categories': categories,
         })
+
+def get_products_by_category(request):
+    category_id = request.GET.get("category_id")
+    products = []
+    if category_id:
+        products = Product.objects.filter(category_id=category_id).values("id", "name")
+
+    return JsonResponse({"products": list(products)})
+
+
 
 @login_required
 def quotation_detail(request, pk):

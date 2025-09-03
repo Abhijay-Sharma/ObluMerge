@@ -211,91 +211,114 @@
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-  <script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
   const container = document.getElementById('formset-container');
   const addRowBtn = document.getElementById('add-row');
   const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+  let activeRowInput = null;  // 🔑 to remember which row opened the modal
 
-  // Modal
-  const modal = document.getElementById("productModal");
-  const closeBtn = document.querySelector(".modal .close");
-  const confirmBtn = document.getElementById("confirm-product");
-  let activeInput = null;
-  let activeDisplay = null;
-
-  // Open modal
-  document.addEventListener("click", function(e) {
-    if (e.target.classList.contains("open-product-modal")) {
-      const row = e.target.closest(".form-row");
-      activeInput = row.querySelector("input[name$='-product']");
-      activeDisplay = row.querySelector(".selected-product-name");
-      modal.style.display = "block";
-    }
-  });
-
-  // Close modal
-  closeBtn.onclick = () => modal.style.display = "none";
-  window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
-
-  // Load products on category select
-  document.getElementById("category-select").addEventListener("change", function() {
-    const catId = this.value;
-    const productSelect = document.getElementById("modal-product-select");
-    productSelect.innerHTML = "<option>Loading...</option>";
-
-    if (catId) {
-      fetch(`/get_products_by_category/${catId}/`)
-        .then(res => res.json())
-        .then(data => {
-          productSelect.innerHTML = '<option value="">-- Select Product --</option>';
-          data.products.forEach(p => {
-            productSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
-          });
-          productSelect.disabled = false;
-        });
-    }
-  });
-
-  // Confirm selection
-  confirmBtn.addEventListener("click", function() {
-    const productSelect = document.getElementById("modal-product-select");
-    const selected = productSelect.value;
-    const selectedText = productSelect.selectedOptions[0].text;
-
-    if (selected && activeInput) {
-      activeInput.value = selected;
-      activeDisplay.textContent = selectedText;
-    }
-    modal.style.display = "none";
-  });
-
-  // Add row dynamically
+  // ✅ Add new row
   addRowBtn.addEventListener('click', () => {
     const currentFormCount = parseInt(totalForms.value);
     const newForm = container.children[0].cloneNode(true);
 
-    // Reset fields
+    // Clear and update fields
     newForm.querySelectorAll('input, select').forEach(input => {
       input.name = input.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
       input.id = input.id.replace(/form-\d+-/, `form-${currentFormCount}-`);
-      if (input.type !== "hidden") input.value = '';
-      if (input.type === "hidden") input.value = '';
+      input.value = '';
     });
-
-    newForm.querySelector(".selected-product-name").textContent = '';
 
     container.appendChild(newForm);
     totalForms.value = container.children.length;
   });
 
-  // Remove row
+  // ✅ Remove row
   container.addEventListener('click', function (e) {
     if (e.target.classList.contains('remove-row') && container.children.length > 1) {
       e.target.parentElement.remove();
       totalForms.value = container.children.length;
     }
   });
-  </script>
+
+  // ✅ Open modal when clicking product field
+  $(document).on("focus", ".product-select", function () {
+    activeRowInput = $(this); // store the input that triggered modal
+    $("#productModal").show();
+  });
+
+  // ✅ Close modal
+  $(".close").click(function () {
+    $("#productModal").hide();
+    activeRowInput = null;
+  });
+
+  // ✅ Category → fetch products dynamically
+  $('#category-select').change(function () {
+    const categoryId = $(this).val();
+    if (categoryId) {
+      $.ajax({
+        url: "{% url 'get_products_by_category' %}",
+        data: { category_id: categoryId },
+        success: function (data) {
+          const productSelect = $('#product-select');
+          productSelect.empty();
+          productSelect.append('<option value="">Select a product</option>');
+          data.products.forEach(function (p) {
+            productSelect.append('<option value="' + p.id + '">' + p.name + '</option>');
+          });
+        }
+      });
+    } else {
+      $('#product-select').empty().append('<option value="">Select a product</option>');
+    }
+  });
+
+  // ✅ Select product and put it into the row
+  $('#select-product-btn').click(function () {
+    const selectedProductId = $('#product-select').val();
+    const selectedProductName = $('#product-select option:selected').text();
+
+    if (selectedProductId && activeRowInput) {
+      // Put product name into visible field
+      activeRowInput.val(selectedProductName);
+
+      // Also set hidden real product input if you keep ID
+      const hiddenInput = activeRowInput.siblings(".hidden-product-id");
+      if (hiddenInput.length) {
+        hiddenInput.val(selectedProductId);
+      }
+    }
+
+    $("#productModal").hide();
+    activeRowInput = null;
+  });
+
+  // ✅ Customer auto-fill
+  $('#customer-select').change(function () {
+    const customerId = $(this).val();
+    if (customerId) {
+      $.ajax({
+        url: '{% url "get_customer" %}',
+        type: 'GET',
+        data: { id: customerId },
+        success: function (data) {
+          $('#id_customer_name').val(data.name);
+          $('#id_customer_address').val(data.state + ', ' + data.address);
+        },
+        error: function () {
+          alert('Failed to fetch customer info.');
+        }
+      });
+    } else {
+      $('#id_customer_name').val('');
+      $('#id_customer_address').val('');
+    }
+  });
+</script>
+
 
 </body>
 </html>
