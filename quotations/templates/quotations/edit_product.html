@@ -1,38 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit Product</title>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
 
-<h2>Edit Product: {{ product.name }}</h2>
+<div class="container mt-4">
+  <div class="card shadow-lg rounded-3">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0">Edit Product: {{ product.name }}</h3>
+    </div>
+    <div class="card-body">
 
-{% if messages %}
-  <ul class="messages">
-    {% for message in messages %}
-      <li class="{{ message.tags }}">{{ message }}</li>
-    {% endfor %}
-  </ul>
-{% endif %}
+      <!-- Flash messages -->
+      {% if messages %}
+        <div class="mb-3">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
-<form method="post" action="{% url 'edit_product' product.pk %}">
-  {% csrf_token %}
+      <form method="post" action="{% url 'edit_product' product.pk %}">
+        {% csrf_token %}
 
-  <fieldset style="margin-bottom:20px;">
-    <legend>Product Details</legend>
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-  </fieldset>
+        <!-- Product details -->
+        <div class="mb-4">
+          <h5 class="fw-bold">Product Details</h5>
+          <div class="border rounded p-3 bg-light">
+            {{ form.non_field_errors }}
+            <div class="row g-3">
+              {% for field in form %}
+                <div class="col-md-6">
+                  <label class="form-label">{{ field.label }}</label>
+                  {{ field|add_class:"form-control" }}
+                  {% if field.errors %}
+                    <div class="text-danger small">{{ field.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
 
-  {% if form.instance.is_quantity_dependent %}
-  <fieldset style="margin-bottom:20px;">
-    <legend>Dynamic Price Tiers</legend>
-    {{ tier_formset.management_form }}
-    {{ tier_formset.non_form_errors }}
+        <!-- Dynamic Price Tiers -->
+        {% if form.instance.is_quantity_dependent %}
+        <div class="mb-4">
+          <h5 class="fw-bold">Dynamic Price Tiers</h5>
+          <div class="border rounded p-3 bg-light">
+            {{ tier_formset.management_form }}
+            {{ tier_formset.non_form_errors }}
 
-    {% for subform in tier_formset %}
-      <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px;">
-        {{ subform.non_field_errors }}
-        {{ subform.as_p }}
-      </div>
-    {% endfor %}
-  </fieldset>
-  {% endif %}
+            <div class="row">
+              {% for subform in tier_formset %}
+                <div class="col-12 col-md-6">
+                  <div class="card mb-3 shadow-sm">
+                    <div class="card-body">
+                      {{ subform.non_field_errors }}
+                      {% for field in subform %}
+                        {% if field.name != "DELETE" %}
+                          <div class="mb-2">
+                            <label class="form-label">{{ field.label }}</label>
+                            {{ field|add_class:"form-control" }}
+                            {% if field.errors %}
+                              <div class="text-danger small">{{ field.errors|join:", " }}</div>
+                            {% endif %}
+                          </div>
+                        {% endif %}
+                      {% endfor %}
+                      <!-- Delete checkbox -->
+                      <div class="form-check mt-2">
+                        {{ subform.DELETE }}
+                        <label class="form-check-label">Delete this tier</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
 
-  <button type="submit">Save Changes</button>
-  <a href="#">Back to Product List</a>
-</form>
+        <!-- Buttons -->
+        <div class="d-flex justify-content-between">
+          <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">⬅ Back to Product List</a>
+          <button type="submit" class="btn btn-success">💾 Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
