@@ -90,12 +90,9 @@
   <form method="post">
     {% csrf_token %}
 
-    <!-- Customer Info -->
+    <!-- Customer Select -->
     <div>
-      <!-- hidden fields that will be filled via JS -->
-      {{ quotation_form.customer_name }}
-      {{ quotation_form.customer_address }}
-
+      {{ quotation_form.customer }} <!-- hidden input storing customer ID -->
       <button type="button" class="open-customer-modal">Select Customer</button>
       <p><strong>Selected Customer:</strong> <span id="selected-customer-name"></span></p>
 
@@ -188,14 +185,13 @@
   const container = document.getElementById('formset-container');
   const addRowBtn = document.getElementById('add-row');
   const totalForms = document.getElementById('id_form-TOTAL_FORMS');
-  let activeRow = null;  // 🔑 to remember which row opened the modal
+  let activeRow = null;
 
   // ✅ Add new row
   addRowBtn.addEventListener('click', () => {
     const currentFormCount = parseInt(totalForms.value);
     const newForm = container.children[0].cloneNode(true);
 
-    // Clear and update fields
     newForm.querySelectorAll('input, select, span').forEach(el => {
       if (el.tagName === "INPUT" || el.tagName === "SELECT") {
         el.name = el.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
@@ -223,6 +219,11 @@
   $(document).on("click", ".open-product-modal", function () {
     activeRow = $(this).closest(".form-row");
     $("#productModal").show();
+  });
+
+  // ✅ Open customer modal
+  $(document).on("click", ".open-customer-modal", function () {
+    $("#customerModal").show();
   });
 
   // ✅ Close modals
@@ -258,10 +259,7 @@
     const selectedProductName = $('#modal-product-select option:selected').text();
 
     if (selectedProductId && activeRow) {
-      // hidden input (actual field)
       activeRow.find("input[type=hidden]").val(selectedProductId);
-
-      // show product name
       activeRow.find(".selected-product-name").text(selectedProductName);
     }
 
@@ -275,20 +273,11 @@
     const selectedCustomerName = $('#modal-customer-select option:selected').text();
 
     if (selectedCustomerId) {
-      $.ajax({
-        url: "{% url 'get_customer' %}",
-        data: { id: selectedCustomerId },
-        success: function (data) {
-          // hidden fields
-          $("#id_customer_name").val(data.name);
-          $("#id_customer_address").val(data.state + ", " + data.city + ", " + data.address + " - " + data.pincode);
+      // hidden input (form field)
+      $("#id_customer").val(selectedCustomerId);
 
-          // update visible label
-          $("#selected-customer-name").text(
-            data.name + " (" + data.mobile + ", " + data.email + ")"
-          );
-        }
-      });
+      // show chosen customer
+      $("#selected-customer-name").text(selectedCustomerName);
     }
 
     $("#customerModal").hide();
