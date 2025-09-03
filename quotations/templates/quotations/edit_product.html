@@ -111,7 +111,7 @@
     <div class="form-container">
       <h1>Edit Product: {{ product.name }}</h1>
       <div class="text-center">
-        <a href="#" class="btn-outline-primary">← Back to Product List</a>
+        <a href="{% url 'product_list' %}" class="btn-outline-primary">← Back to Product List</a>
       </div>
 
       <form method="POST" class="mt-4">

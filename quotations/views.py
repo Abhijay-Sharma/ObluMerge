@@ -200,7 +200,7 @@ class EditProductView(AccountantRequiredMixin,View):
             form.save()
             tier_formset.save()
             messages.success(request, f"Product '{product.name}' updated successfully.")
-            return redirect("edit_product", pk=product.pk)
+            return redirect("product_list", pk=product.pk)
 
         # Show validation errors
         messages.error(request, "There were errors in the form. Please check below.")
