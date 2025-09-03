@@ -130,6 +130,38 @@ button:hover {
   input, select { font-size: 14px; }
   button { padding: 6px 10px; font-size: 14px; }
 }
+
+    /* Mobile-friendly table */
+@media (max-width: 600px) {
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+
+  thead { display: none; } /* hide header on mobile */
+
+  .item-form {
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 10px;
+    background: #f9f9f9;
+    color: #000;
+  }
+
+  .item-form td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 5px;
+  }
+
+  .item-form td span.product-label {
+    font-weight: bold;
+  }
+
+  .item-form td button {
+    margin: 0;
+  }
+}
 </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
