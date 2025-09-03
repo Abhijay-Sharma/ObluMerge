@@ -59,4 +59,4 @@ QuotationItemFormSet = modelformset_factory(
 class CustomerCreateForm(forms.ModelForm):
     class Meta:
         model = Customer
-        fields = ['name', 'address', 'state']
+        fields = ['name', 'address', 'state','city','pin_code','phone','email']
