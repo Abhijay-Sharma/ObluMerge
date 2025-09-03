@@ -7,7 +7,7 @@ from django.forms import inlineformset_factory
 class QuotationForm(forms.ModelForm):
     class Meta:
         model = Quotation
-        fields = ['customer_name', 'customer_address', 'created_by']
+        fields = ['customer_name', 'customer_address', 'created_by','customer_state','customer_city','customer_pincode','customer_phone']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)  # catch user

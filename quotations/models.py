@@ -46,7 +46,7 @@ class Quotation(models.Model):
     customer_company = models.TextField(blank=True, null=True)
     customer_phone = models.TextField(blank=True, null=True)
     customer_email = models.TextField(blank=True, null=True)
-    customer_zip = models.TextField(blank=True, null=True)
+    customer_zip = models.TextField(blank=True, null=True)          #not needed added by mistake
     date_created = models.DateTimeField(auto_now_add=True)
     created_by=models.CharField(max_length=255,default="Oblu")
 
