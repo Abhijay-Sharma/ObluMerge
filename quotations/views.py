@@ -130,5 +130,17 @@ class CustomerListView(LoginRequiredMixin, ListView):
             # Normal users only see their own customers
             return Customer.objects.filter(created_by=user)
 
-# add discount percentage per sheet
-#Quotation number field,
+
+class QuotationListView(LoginRequiredMixin, ListView):
+    model = Quotation
+    template_name = "quotations/quotation_list.html"
+    context_object_name = "quotations"
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.groups.filter(name="Accountant").exists():
+            # Accountants can see everything
+            return Quotation.objects.all()
+        else:
+            # Normal users (viewers) see only their own
+            return Quotation.objects.filter(created_by=user)
