@@ -79,29 +79,53 @@
     }
 
     .add-row-btn,
-    button[type="submit"] {
+    button[type="submit"],
+    .open-product-modal {
       display: inline-block;
       background: linear-gradient(135deg, #00c9ff, #92fe9d);
       border: none;
       padding: 10px 22px;
       border-radius: 6px;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: bold;
       color: #000;
       cursor: pointer;
       transition: 0.3s;
-      margin-top: 10px;
+      margin-top: 5px;
     }
 
     .add-row-btn:hover,
-    button[type="submit"]:hover {
+    button[type="submit"]:hover,
+    .open-product-modal:hover {
       transform: scale(1.05);
     }
 
-    @media (max-width: 768px) {
-      .form-row {
-        flex-direction: column;
-      }
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+    }
+
+    .modal-content {
+      background: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+    }
+
+    .close {
+      float: right;
+      font-size: 20px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -111,7 +135,6 @@
 
   <form method="post">
     {% csrf_token %}
-
 
     <!-- Customer Info -->
     <div>
@@ -135,8 +158,10 @@
       {% for form in formset %}
       <div class="form-row">
         <div>
-          {{ form.product.label_tag }}
-          {{ form.product }}
+          <label>Product</label><br>
+          {{ form.product }} <!-- hidden input -->
+          <button type="button" class="open-product-modal">Select Product</button>
+          <span class="selected-product-name" style="margin-left:10px; font-weight:600;"></span>
         </div>
         <div>
           {{ form.quantity.label_tag }}
@@ -160,85 +185,117 @@
     <button type="submit">Submit Quotation</button>
   </form>
 
+  <!-- Modal -->
+  <div id="productModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Select Product</h3>
+
+      <label>Category</label>
+      <select id="category-select">
+        <option value="">-- Select Category --</option>
+        {% for category in categories %}
+          <option value="{{ category.id }}">{{ category.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Product</label>
+      <select id="modal-product-select" disabled>
+        <option value="">-- Select Product --</option>
+      </select>
+
+      <br><br>
+      <button id="confirm-product">Confirm</button>
+    </div>
+  </div>
+
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
   <script>
   const container = document.getElementById('formset-container');
   const addRowBtn = document.getElementById('add-row');
   const totalForms = document.getElementById('id_form-TOTAL_FORMS');
 
-  // ✅ Apply Select2 to all product selects (grouped by category in form)
-  function applySelect2() {
-    $('.product-select').each(function () {
-      if (!$(this).hasClass("select2-hidden-accessible")) {
-        $(this).select2({
-          width: '100%',
-          placeholder: "Select a product",
-          allowClear: true
-        });
-      }
-    });
-  }
+  // Modal
+  const modal = document.getElementById("productModal");
+  const closeBtn = document.querySelector(".modal .close");
+  const confirmBtn = document.getElementById("confirm-product");
+  let activeInput = null;
+  let activeDisplay = null;
 
-  document.addEventListener('DOMContentLoaded', function () {
-    applySelect2();
+  // Open modal
+  document.addEventListener("click", function(e) {
+    if (e.target.classList.contains("open-product-modal")) {
+      const row = e.target.closest(".form-row");
+      activeInput = row.querySelector("input[name$='-product']");
+      activeDisplay = row.querySelector(".selected-product-name");
+      modal.style.display = "block";
+    }
   });
 
+  // Close modal
+  closeBtn.onclick = () => modal.style.display = "none";
+  window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
+
+  // Load products on category select
+  document.getElementById("category-select").addEventListener("change", function() {
+    const catId = this.value;
+    const productSelect = document.getElementById("modal-product-select");
+    productSelect.innerHTML = "<option>Loading...</option>";
+
+    if (catId) {
+      fetch(`/get_products_by_category/${catId}/`)
+        .then(res => res.json())
+        .then(data => {
+          productSelect.innerHTML = '<option value="">-- Select Product --</option>';
+          data.products.forEach(p => {
+            productSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+          });
+          productSelect.disabled = false;
+        });
+    }
+  });
+
+  // Confirm selection
+  confirmBtn.addEventListener("click", function() {
+    const productSelect = document.getElementById("modal-product-select");
+    const selected = productSelect.value;
+    const selectedText = productSelect.selectedOptions[0].text;
+
+    if (selected && activeInput) {
+      activeInput.value = selected;
+      activeDisplay.textContent = selectedText;
+    }
+    modal.style.display = "none";
+  });
+
+  // Add row dynamically
   addRowBtn.addEventListener('click', () => {
     const currentFormCount = parseInt(totalForms.value);
     const newForm = container.children[0].cloneNode(true);
 
-    // Clear and update fields
+    // Reset fields
     newForm.querySelectorAll('input, select').forEach(input => {
       input.name = input.name.replace(/form-\d+-/, `form-${currentFormCount}-`);
       input.id = input.id.replace(/form-\d+-/, `form-${currentFormCount}-`);
-      input.value = '';
+      if (input.type !== "hidden") input.value = '';
+      if (input.type === "hidden") input.value = '';
     });
 
-    // ✅ Properly reset Select2 before re-initializing
-    $(newForm).find('.product-select')
-      .removeClass("select2-hidden-accessible")
-      .next(".select2").remove();
+    newForm.querySelector(".selected-product-name").textContent = '';
 
     container.appendChild(newForm);
     totalForms.value = container.children.length;
-
-    // ✅ Reapply Select2 to new row
-    applySelect2();
   });
 
+  // Remove row
   container.addEventListener('click', function (e) {
     if (e.target.classList.contains('remove-row') && container.children.length > 1) {
       e.target.parentElement.remove();
       totalForms.value = container.children.length;
     }
   });
-
-  // Customer auto-fill AJAX
-  $('#customer-select').change(function () {
-    const customerId = $(this).val();
-    if (customerId) {
-      $.ajax({
-        url: '{% url 'get_customer' %}',
-        type: 'GET',
-        data: { id: customerId },
-        success: function (data) {
-          $('#id_customer_name').val(data.name);
-          $('#id_customer_address').val(data.state + ', ' + data.address);
-        },
-        error: function () {
-          alert('Failed to fetch customer info.');
-        }
-      });
-    } else {
-      $('#id_customer_name').val('');
-      $('#id_customer_address').val('');
-    }
-  });
-</script>
-
-
+  </script>
 
 </body>
 </html>

@@ -22,25 +22,13 @@ class QuotationItemForm(forms.ModelForm):
     class Meta:
         model = QuotationItem
         fields = ['product', 'quantity','discount']
+        widgets = {
+            "product": forms.HiddenInput(),  #  hide real field, we’ll set via modal
+        }
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)  # catch user
         super().__init__(*args, **kwargs)
-
-        # Group products by category
-        categories = {}
-        from .models import Product  # import here to avoid circular imports
-        for product in Product.objects.select_related("category").all():
-            cat = product.category.name if product.category else "Uncategorized"
-            categories.setdefault(cat, []).append((product.id, product.name))
-
-        choices = []
-        for cat, items in categories.items():
-            choices.append((cat, items))  # creates <optgroup>
-
-        self.fields['product'].choices = choices
-        self.fields['product'].widget.attrs.update({
-            "class": "product-select"
-        })
 
         if self.user and not self.user.is_accountant:
             # hide the field if not accountant
