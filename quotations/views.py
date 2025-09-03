@@ -218,3 +218,33 @@ class ProductListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return Product.objects.all()
+
+
+class CreateProductView(AccountantRequiredMixin, View):
+    def get(self, request):
+        form = ProductForm()
+        tier_formset = ProductPriceTierFormSet()
+        return render(request, "quotations/create_product.html", {
+            "form": form,
+            "tier_formset": tier_formset,
+        })
+
+    def post(self, request):
+        form = ProductForm(request.POST)
+        tier_formset = ProductPriceTierFormSet(request.POST)
+
+        if form.is_valid() and tier_formset.is_valid():
+            product = form.save(commit=False)
+            product.save()
+            tier_formset.instance = product
+            tier_formset.save()
+
+            messages.success(request, f"✅ Product '{product.name}' created successfully.")
+            return redirect("product_list")  # or "edit_product" if you want to go there directly
+
+        # Show errors
+        messages.error(request, "❌ There were errors in the form. Please fix them below.")
+        return render(request, "quotations/create_product.html", {
+            "form": form,
+            "tier_formset": tier_formset,
+        })

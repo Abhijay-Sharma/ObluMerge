@@ -1,0 +1,173 @@
+{% load crispy_forms_tags %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Product | Quotation Maker</title>
+  <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0e0e0e, #838383);
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .form-container {
+      background: #ffffff;
+      padding: 40px 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+      animation: fadeIn 0.8s ease-out;
+      max-width: 800px;
+      width: 100%;
+    }
+
+    .form-container h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+      background: #222;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+    }
+
+    .btn-outline-primary {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #0e0e0e, #656565);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      text-decoration: none;
+      border-radius: 30px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-outline-primary:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .btn-primary {
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #0e0e0e, #656565);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 30px;
+      border: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .mt-3 {
+      margin-top: 20px;
+    }
+
+    .tier-card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      background: #f9f9f9;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 500px) {
+      .form-container {
+        padding: 30px 20px;
+      }
+
+      .form-container h1 {
+        font-size: 1.6rem;
+      }
+
+      .btn-primary, .btn-outline-primary {
+        padding: 10px 20px;
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% include 'quotations/navigation.html' %}
+
+  <div class="main-container">
+    <div class="form-container">
+      <h1>Create Product</h1>
+      <div class="text-center">
+        <a href="{% url 'product_list' %}" class="btn-outline-primary">← Back to Products</a>
+      </div>
+
+      <form method="POST" class="mt-4">
+        {% csrf_token %}
+
+        <!-- Product Fields -->
+        <div class="row g-3">
+          {% for field in form %}
+            <div class="col-md-6">
+              {{ field|as_crispy_field }}
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Dynamic Price Tiers -->
+        <div class="mt-4">
+          <h4 class="text-center mb-3">Dynamic Price Tiers</h4>
+          {{ tier_formset.management_form }}
+          {% for subform in tier_formset %}
+            <div class="tier-card">
+              {% for field in subform %}
+                {% if field.name != "DELETE" %}
+                  <div class="mb-3">
+                    {{ field|as_crispy_field }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+              <div class="form-check">
+                {{ subform.DELETE }} <label class="form-check-label">Delete this tier</label>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Buttons -->
+        <div class="mt-4 text-center">
+          <button type="submit" class="btn-primary">Create Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
