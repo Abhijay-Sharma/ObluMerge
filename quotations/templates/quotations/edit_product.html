@@ -1,7 +1,4 @@
-{% extends "base.html" %}
-{% load static %}
 
-{% block content %}
 <h2>Edit Product: {{ product.name }}</h2>
 
 {% if messages %}
@@ -39,4 +36,3 @@
   <button type="submit">Save Changes</button>
   <a href="{% url 'product_list' %}">Back to Product List</a>
 </form>
-{% endblock %}
