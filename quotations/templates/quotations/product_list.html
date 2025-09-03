@@ -111,10 +111,11 @@
 <div class="container">
     <div class="table-container">
       <h1>Products</h1>
-
-      <div class="top-actions">
-        <a href="#" class="btn-primary">+ Create Product</a>
-      </div>
+      {% if request.user.is_accountant %}
+        <div class="top-actions">
+          <a href="#" class="btn-primary">+ Create Product</a>
+        </div>
+      {% endif %}
 
       <table>
         <thead>
@@ -125,7 +126,9 @@
             <th>Tax rate</th>
             <th>Min Req</th>
             <th>Dynamic Pricing</th>
-            <th>Action</th>
+            {% if request.user.is_accountant %}
+              <th>Action</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -133,13 +136,15 @@
             <tr>
               <td>{{ product.id }}</td>
               <td>{{ product.name }}</td>
-              <td>{{ product.price_per_unit }}</td>
+              <td>₹{{ product.price_per_unit }}</td>
               <td>{{ product.tax_rate }}</td>
-              <td>₹{{ product.min_requirement }}</td>
+              <td>{{ product.min_requirement }}</td>
               <td>{{ product.has_dynamic_pricing }}</td>
-              <td>
-                <a href="{% url 'edit_product' product.id %}" class="btn-primary">Edit</a>
-              </td>
+              {% if request.user.is_accountant %}
+                <td>
+                  <a href="{% url 'edit_product' product.id %}" class="btn-primary">Edit</a>
+                </td>
+              {% endif %}
             </tr>
           {% empty %}
             <tr>
