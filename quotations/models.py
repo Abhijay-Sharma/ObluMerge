@@ -18,6 +18,7 @@ class Product(models.Model):
     tax_rate= models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     is_quantity_dependent = models.BooleanField(default=True)
     min_requirement = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    terms_and_conditions = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
