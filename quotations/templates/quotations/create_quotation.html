@@ -48,18 +48,28 @@
 
     input[type="text"], input[type="number"], select, textarea {
       width: 100%; padding: 10px 12px;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
       border-radius: 8px; border: 1px solid #ccc;
       font-size: 15px;
     }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background: #eee; }
+    /* Product flex row */
+    .product-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-end;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .product-row > div { flex: 1; min-width: 120px; }
+    .product-label { font-weight: 600; display: block; margin-bottom: 5px; }
 
     button {
       padding: 8px 14px;
-      margin: 5px;
+      margin-top: 5px;
       background: #222;
       color: #fff;
       font-weight: bold;
@@ -70,7 +80,6 @@
     }
     button:hover { transform: scale(1.05); color: #222; box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
 
-    /* Modal */
     .modal { display: none; position: fixed; z-index: 999; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.5); }
     .modal-content {
       background: #fff;
@@ -78,11 +87,10 @@
       margin: 10% auto;
       padding: 20px;
       border-radius: 16px;
-      width: 400px;
+      width: 90%;
+      max-width: 400px;
     }
     .close { float:right; cursor:pointer; font-size:20px; }
-
-    .product-label { font-weight: 600; margin-right: 10px; }
 
     @keyframes fadeIn {
       from { opacity:0; transform: translateY(30px); }
@@ -92,6 +100,7 @@
     @media (max-width: 600px) {
       .card { padding: 20px; }
       h1 { font-size: 1.6rem; }
+      .product-row { flex-direction: column; }
     }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -112,7 +121,6 @@
           <button type="button" id="select-customer-btn">Select Customer</button>
           <p><strong>Selected:</strong> <span id="selected-customer-name">None</span></p>
 
-          <!-- Hidden fields -->
           <input type="hidden" name="customer_name" id="id_customer_name">
           <input type="hidden" name="customer_address" id="id_customer_address">
           <input type="hidden" name="customer_city" id="id_customer_city">
@@ -126,36 +134,26 @@
         <div class="form-section">
           <h3>Quotation Items</h3>
           {{ formset.management_form }}
-          <table id="items-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Qty</th>
-                <th>Discount</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div id="product-container">
             {% for form in formset %}
-              <tr class="item-form">
-                <td>
-                  <span class="product-label">None</span>
-                  <button type="button" class="select-product-btn">Select Product</button>
-                  {{ form.product }}
-                </td>
-                <td>{{ form.quantity }}</td>
-                <td>{{ form.discount }}</td>
-                <td>
-                  {% if forloop.first %}
-                    <button type="button" id="add-item">Add</button>
-                  {% else %}
-                    <button type="button" class="remove-item">Remove</button>
-                  {% endif %}
-                </td>
-              </tr>
+            <div class="product-row item-form">
+              <div>
+                <span class="product-label">None</span>
+                <button type="button" class="select-product-btn">Select Product</button>
+                {{ form.product }}
+              </div>
+              <div>{{ form.quantity }}</div>
+              <div>{{ form.discount }}</div>
+              <div>
+                {% if forloop.first %}
+                  <button type="button" id="add-item">Add</button>
+                {% else %}
+                  <button type="button" class="remove-item">Remove</button>
+                {% endif %}
+              </div>
+            </div>
             {% endfor %}
-            </tbody>
-          </table>
+          </div>
         </div>
 
         {% if quotation_form.created_by %}
@@ -283,18 +281,23 @@ $(function () {
       $(this).attr({ name: name, id: id }).val("");
     });
     newForm.find(".product-label").text("None");
-    newForm.find("input[type=hidden]").val("");
-    newForm.find("td:last").html('<button type="button" class="remove-item">Remove</button>');
+    newForm.find("td:last, div:last").html('<button type="button" class="remove-item">Remove</button>');
 
-    $("#items-table tbody").append(newForm);
-    totalForms.val(formCount + 1);
+    $("#product-container").append(newForm);
+    totalForms.val(formCount +1);
   });
 
   $(document).on("click", ".remove-item", function () {
-    $(this).closest("tr").remove();
+    let totalForms = $("#id_form-TOTAL_FORMS");
+    let formCount = parseInt(totalForms.val());
+    if (formCount > 1) {
+      $(this).closest(".item-form").remove();
+      totalForms.val(formCount - 1);
+    }
   });
 });
 </script>
 
 </body>
 </html>
+
