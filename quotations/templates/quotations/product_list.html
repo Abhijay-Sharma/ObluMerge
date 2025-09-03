@@ -137,7 +137,7 @@
               <td>{{ product.id }}</td>
               <td>{{ product.name }}</td>
               <td>₹{{ product.price_per_unit }}</td>
-              <td>{{ product.tax_rate }}</td>
+              <td>{{ product.tax_rate }}%</td>
               <td>{{ product.min_requirement }}</td>
               <td>{{ product.has_dynamic_pricing }}</td>
               {% if request.user.is_accountant %}
