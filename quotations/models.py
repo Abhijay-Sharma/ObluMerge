@@ -73,10 +73,20 @@ class Customer(models.Model):
     name = models.CharField(max_length=255)
     state= models.CharField(max_length=255)
     address = models.CharField(max_length=2550)
+    city = models.CharField(max_length=255)
+    pin_code = models.CharField(max_length=10)
+    phone = models.CharField(max_length=15)
+    email = models.EmailField(blank=True, null=True)
+
+    created_by = models.ForeignKey(
+        'User',
+        on_delete=models.CASCADE,
+        related_name="customers"
+    )
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.city}, {self.state})"
 
     class Meta:
-        unique_together = ('name', 'address')
+        unique_together = ('name', 'address', 'phone')
         ordering = ['name']
