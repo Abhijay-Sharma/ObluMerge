@@ -140,7 +140,11 @@
               <td>₹{{ product.price_per_unit }}</td>
               <td>{{ product.tax_rate }}%</td>
               <td>{{ product.min_requirement }}</td>
-              <td>{{ product.has_dynamic_pricing }}</td>
+              {% if product.has_dynamic_pricing %}
+                <td>Yes</td>
+              {% else %}
+                <td>-</td>
+              {% endif %}
               {% if request.user.is_accountant %}
                 <td>
                   <a href="{% url 'edit_product' product.id %}" class="btn-primary">Edit</a>
