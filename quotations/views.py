@@ -168,10 +168,50 @@ class QuotationListView(LoginRequiredMixin, ListView):
         user = self.request.user
         if user.is_accountant:
             # Accountants can see everything
-            return Quotation.objects.all()
+            qs = Quotation.objects.all()
         else:
             # Normal users (viewers) see only their own
             return Quotation.objects.filter(created_by=user)
+
+        # Get filters from query params
+        created_by = self.request.GET.get("created_by")
+        customer = self.request.GET.get("customer")
+        start_date = self.request.GET.get("start_date")
+        end_date = self.request.GET.get("end_date")
+        sort_by = self.request.GET.get("sort_by")
+
+        if created_by:
+            qs = qs.filter(created_by__username=created_by)
+
+        if customer:
+            qs = qs.filter(customer_name=customer)
+
+        if start_date and end_date:
+            qs = qs.filter(date_created__range=[start_date, end_date])
+
+        # Sorting
+        if sort_by == "date_desc":
+            qs = qs.order_by("-date_created")
+        elif sort_by == "date_asc":
+            qs = qs.order_by("date_created")
+        elif sort_by == "amount_high":
+            qs = qs.order_by("-total")
+        elif sort_by == "amount_low":
+            qs = qs.order_by("total")
+        elif sort_by == "customer":
+            qs = qs.order_by("customer_name")
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.contrib.auth.models import User
+
+        context["users"] = User.objects.all()  # For "Created By" dropdown
+        context["customers"] = (
+            Quotation.objects.values_list("customer_name", flat=True).distinct()
+        )
+        return context
 
 
 
