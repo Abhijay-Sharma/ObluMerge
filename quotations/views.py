@@ -181,7 +181,7 @@ class QuotationListView(LoginRequiredMixin, ListView):
         sort_by = self.request.GET.get("sort_by")
 
         if created_by:
-            qs = qs.filter(created_by__username=created_by)
+            qs = qs.filter(created_by=created_by)
 
         if customer:
             qs = qs.filter(customer_name=customer)
