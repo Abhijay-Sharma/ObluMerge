@@ -226,19 +226,19 @@
             <label for="sort_by">Sort By:</label>
             <select name="sort_by" id="sort_by">
               {% with sort_by=request.GET.sort_by|default_if_none:'' %}
-                <option value="date_desc" {% if sort_by =="date_desc" %}selected{% endif %}>
+                <option value="date_desc" {% if sort_by == "date_desc" %}selected{% endif %}>
                   Date (Newest First)
                 </option>
-                <option value="date_asc" {% if sort_by =="date_asc" %}selected{% endif %}>
+                <option value="date_asc" {% if sort_by == "date_asc" %}selected{% endif %}>
                   Date (Oldest First)
                 </option>
-                <option value="amount_high" {% if sort_by =="amount_high" %}selected{% endif %}>
+                <option value="amount_high" {% if sort_by == "amount_high" %}selected{% endif %}>
                   Amount (High → Low)
                 </option>
-                <option value="amount_low" {% if sort_by =="amount_low" %}selected{% endif %}>
+                <option value="amount_low" {% if sort_by == "amount_low" %}selected{% endif %}>
                   Amount (Low → High)
                 </option>
-                <option value="customer" {% if sort_by =="customer" %}selected{% endif %}>
+                <option value="customer" {% if sort_by == "customer" %}selected{% endif %}>
                   Customer Name (A → Z)
                 </option>
               {% endwith %}
