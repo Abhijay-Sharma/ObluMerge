@@ -180,12 +180,13 @@
   <div class="container">
     <div class="table-container">
       <h1>Quotations</h1>
-
-      <div class="top-actions">
-        <a href="{% url 'home'  %}" class="btn-primary">Back to Home</a>
-        <a href="{% url 'create_quotation' %}" class="btn-primary">+ New Quotation</a>
-        <button type="button" class="btn-primary" onclick="openModal()">Filter / Sort</button>
-      </div>
+      {% if request.user.is_accountant %}
+        <div class="top-actions">
+          <a href="{% url 'home'  %}" class="btn-primary">Back to Home</a>
+          <a href="{% url 'create_quotation' %}" class="btn-primary">+ New Quotation</a>
+          <button type="button" class="btn-primary" onclick="openModal()">Filter / Sort</button>
+        </div>
+      {% endif %}
       <!-- Filter/Sort Modal -->
       <div id="filterModal" class="modal">
         <div class="modal-content">
