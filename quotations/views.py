@@ -194,10 +194,6 @@ class QuotationListView(LoginRequiredMixin, ListView):
             qs = qs.order_by("-date_created")
         elif sort_by == "date_asc":
             qs = qs.order_by("date_created")
-        elif sort_by == "amount_high":
-            qs = qs.order_by("-total")
-        elif sort_by == "amount_low":
-            qs = qs.order_by("total")
         elif sort_by == "customer":
             qs = qs.order_by("customer_name")
 
