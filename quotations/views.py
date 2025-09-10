@@ -108,7 +108,7 @@ def quotation_detail(request, pk):
     })
 
 
-
+@login_required
 def home(request):
     return render(request, 'quotations/home.html')
 
