@@ -81,12 +81,23 @@ class CreateQuotationView(LoginRequiredMixin, View):
             customers = Customer.objects.filter(created_by=request.user)
         categories = ProductCategory.objects.all().order_by("name")
 
+        selected_customer = {
+            "name": request.POST.get("customer_name"),
+            "address": request.POST.get("customer_address"),
+            "city": request.POST.get("customer_city"),
+            "state": request.POST.get("customer_state"),
+            "pincode": request.POST.get("customer_pincode"),
+            "phone": request.POST.get("customer_phone"),
+            "email": request.POST.get("customer_email"),
+        }
+
         # In case forms are not valid, re-render the form with errors
         return render(request, 'quotations/create_quotation.html', {
             'quotation_form': quotation_form,
             'formset': formset,
             'customers': customers,
             'categories': categories,
+            'selected_customer': selected_customer,
         })
 
 def get_products_by_category(request):

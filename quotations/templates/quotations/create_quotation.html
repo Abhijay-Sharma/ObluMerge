@@ -207,16 +207,27 @@ button:hover {
           <h3>Customer</h3>
           <button type="button" id="select-customer-btn">Select Customer</button>
           <a href="{% url 'create_customer' %}" class="btn-outline-primary">Create</a>
-          <p><strong>Selected:</strong> <span id="selected-customer-name">None</span></p>
+          <p><strong>Selected:</strong>
+             <span id="selected-customer-name">
+               {% if selected_customer.name %}{{ selected_customer.name }}{% else %}None{% endif %}
+             </span>
+          </p>>
 
-          <!-- Hidden fields -->
-          <input type="hidden" name="customer_name" id="id_customer_name">
-          <input type="hidden" name="customer_address" id="id_customer_address">
-          <input type="hidden" name="customer_city" id="id_customer_city">
-          <input type="hidden" name="customer_state" id="id_customer_state">
-          <input type="hidden" name="customer_pincode" id="id_customer_pincode">
-          <input type="hidden" name="customer_phone" id="id_customer_phone">
-          <input type="hidden" name="customer_email" id="id_customer_email">
+            <!-- Hidden fields -->
+          <input type="hidden" name="customer_name" id="id_customer_name"
+                 value="{{ selected_customer.name|default:'' }}">
+          <input type="hidden" name="customer_address" id="id_customer_address"
+                 value="{{ selected_customer.address|default:'' }}">
+          <input type="hidden" name="customer_city" id="id_customer_city"
+                 value="{{ selected_customer.city|default:'' }}">
+          <input type="hidden" name="customer_state" id="id_customer_state"
+                 value="{{ selected_customer.state|default:'' }}">
+          <input type="hidden" name="customer_pincode" id="id_customer_pincode"
+                 value="{{ selected_customer.pincode|default:'' }}">
+          <input type="hidden" name="customer_phone" id="id_customer_phone"
+                 value="{{ selected_customer.phone|default:'' }}">
+          <input type="hidden" name="customer_email" id="id_customer_email"
+                 value="{{ selected_customer.email|default:'' }}">
         </div>
 
         <!-- Quotation Items -->
