@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 # Create your views here.
-class WelcomeView(AccountantRequiredMixin,TemplateView):
+class WelcomeView(LoginRequiredMixin,TemplateView):
     template_name = "welcome.html"
 
 class Index(TemplateView):
