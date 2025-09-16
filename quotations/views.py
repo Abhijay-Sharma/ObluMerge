@@ -32,7 +32,7 @@ QuotationItemFormSet = modelformset_factory(
 
 
 #this is login required but we are disabling it right now 16-9-25
-class CreateQuotationView(AccountantRequiredMixin, View):
+class CreateQuotationView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         quotation_form = QuotationForm(user=request.user)
         formset = QuotationItemFormSet(
@@ -142,7 +142,7 @@ def get_customer(request):
 
 #this is login required but we are disabling it right now 16-9-25
 
-class CustomerCreateView(AccountantRequiredMixin,CreateView):
+class CustomerCreateView(LoginRequiredMixin,CreateView):
     template_name = 'quotations/customer_create.html'
     form_class = CustomerCreateForm
 
@@ -159,7 +159,7 @@ class CustomerCreateView(AccountantRequiredMixin,CreateView):
 
 #this is login required but we are disabling it right now 16-9-25
 
-class CustomerListView(AccountantRequiredMixin, ListView):
+class CustomerListView(LoginRequiredMixin, ListView):
     model = Customer
     template_name = "quotations/customer_list.html"
     context_object_name = "customers"
@@ -175,7 +175,7 @@ class CustomerListView(AccountantRequiredMixin, ListView):
 
 #this is login required but we are disabling it right now 16-9-25
 
-class QuotationListView(AccountantRequiredMixin, ListView):
+class QuotationListView(LoginRequiredMixin, ListView):
     model = Quotation
     template_name = "quotations/quotations_list.html"
     context_object_name = "quotations"
@@ -266,7 +266,7 @@ class EditProductView(AccountantRequiredMixin,View):
 
 
 #this is login required but we are disabling it right now 16-9-25
-class ProductListView(AccountantRequiredMixin, ListView):
+class ProductListView(LoginRequiredMixin, ListView):
     model = Product
     template_name = "quotations/product_list.html"
     context_object_name = "products"
