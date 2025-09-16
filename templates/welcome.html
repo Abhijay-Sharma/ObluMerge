@@ -196,7 +196,7 @@
     <h1>Welcome to Oblu Tools</h1>
     <p>Your internal suite of productivity tools.</p>
     <div class="btn-group">
-      {% if user.is_accountant %}
+      {% if request.user.is_accountant %}
         <button class="btn" onclick="redirectTo('inventory')">Inventory Management</button>
       {% endif %}
       <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
