@@ -30,7 +30,9 @@ QuotationItemFormSet = modelformset_factory(
     can_delete=True
 )
 
-class CreateQuotationView(LoginRequiredMixin, View):
+
+#this is login required but we are disabling it right now 16-9-25
+class CreateQuotationView(AccountantRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         quotation_form = QuotationForm(user=request.user)
         formset = QuotationItemFormSet(
@@ -138,8 +140,9 @@ def get_customer(request):
         "email": customer.email,
     })
 
+#this is login required but we are disabling it right now 16-9-25
 
-class CustomerCreateView(LoginRequiredMixin,CreateView):
+class CustomerCreateView(AccountantRequiredMixin,CreateView):
     template_name = 'quotations/customer_create.html'
     form_class = CustomerCreateForm
 
@@ -154,8 +157,9 @@ class CustomerCreateView(LoginRequiredMixin,CreateView):
         return reverse('customer_list')
 
 
+#this is login required but we are disabling it right now 16-9-25
 
-class CustomerListView(LoginRequiredMixin, ListView):
+class CustomerListView(AccountantRequiredMixin, ListView):
     model = Customer
     template_name = "quotations/customer_list.html"
     context_object_name = "customers"
@@ -169,8 +173,9 @@ class CustomerListView(LoginRequiredMixin, ListView):
             # Normal users only see their own customers
             return Customer.objects.filter(created_by=user)
 
+#this is login required but we are disabling it right now 16-9-25
 
-class QuotationListView(LoginRequiredMixin, ListView):
+class QuotationListView(AccountantRequiredMixin, ListView):
     model = Quotation
     template_name = "quotations/quotations_list.html"
     context_object_name = "quotations"
@@ -260,7 +265,8 @@ class EditProductView(AccountantRequiredMixin,View):
         })
 
 
-class ProductListView(LoginRequiredMixin, ListView):
+#this is login required but we are disabling it right now 16-9-25
+class ProductListView(AccountantRequiredMixin, ListView):
     model = Product
     template_name = "quotations/product_list.html"
     context_object_name = "products"
