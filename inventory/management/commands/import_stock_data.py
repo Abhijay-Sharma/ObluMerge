@@ -106,7 +106,9 @@ def clean_and_convert_data(file_path):
     print(f"Unique error: {unique_error}")
 
 
+
+
 # Example usage
-file_path = r"C:\Users\Administrator\ObluMerge\inventory\management\commands\tally_output_23_26_multipliedby-1_sep3.xlsx"
+file_path = r"C:\Users\Administrator\ObluMerge\inventory\management\commands\tally_output_23_26_multipliedby-1_sep16.xlsx"
 clean_and_convert_data(file_path)
 
