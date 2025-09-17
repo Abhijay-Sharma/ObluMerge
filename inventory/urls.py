@@ -19,4 +19,5 @@ urlpatterns = [
     path('history/<int:pk>/',ShowProductStockHistory.as_view(), name='history'),
     path('dashboard/<int:category>/',CategoryDashboard.as_view(), name='category_dashboard'),
     path('categories/',CategoryListView.as_view(), name='categories'),
+    path('search/', search_items, name='search_items')
 ]

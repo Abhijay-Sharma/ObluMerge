@@ -19,6 +19,8 @@ from inventory.mixins import AccountantRequiredMixin
 from .utils import fetch_tally_stock
 import logging
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -483,3 +485,15 @@ def predict_min_stock_from_daily(request, pk):
     return render(request, 'inventory/predict_stock_daily.html', context)
 
 
+def search_items(request):
+    query = request.GET.get('item')
+    payload = []
+
+    if query:
+        items = InventoryItem.objects.filter(
+            Q(name__icontains=query) | Q(category__name__icontains=query)
+        )
+        for item in items:
+            payload.append([item.name, item.id])
+
+    return JsonResponse({'status': 200, 'data': payload})

@@ -1,6 +1,63 @@
 {% extends 'inventory/base.html' %}
 
 {% block content %}
+<style>
+    .wrapper {
+  display: flex;
+  justify-content: center; /* horizontal */
+  align-items: center;      /* vertical */
+  min-height: 1vh;         /* take full viewport height */
+}
+    .autocomplete {
+  position: relative;
+  width: 60%;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.autocomplete-input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.autocomplete-result-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: black;
+  border: 1px solid #ccc;
+  max-height: 180px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  z-index: 1000;
+}
+
+.autocomplete-result-list li {
+  padding: 6px 8px;
+  font-size: 14px;
+  border-top: 1px solid #eee;
+  cursor: pointer;
+}
+
+.autocomplete-result-list li:hover {
+  background: grey;
+}
+
+</style>
+    <div class="wrapper">
+        <div id="autocomplete" class="autocomplete">
+          <input class="autocomplete-input" placeholder="Search items..."/>
+          <ul class="autocomplete-result-list"></ul>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-10 col-12 mx-auto mt-5">
             <div class="d-flex justify-content-end">
@@ -66,4 +123,30 @@
 </script>
 <pre>{{ tally_stock|safe }}</pre>
 
+
+<script src="https://unpkg.com/@trevoreyre/autocomplete-js"></script>
+<script>
+let itemMap = {};
+
+new Autocomplete('#autocomplete', {
+    search: input => {
+        const url = `/inventory/search/?item=${input}`;
+        return fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                itemMap = {};
+                data.data.forEach(item => {
+                    itemMap[item[0]] = item[1];
+                });
+                return data.data.map(item => item[0]);
+            });
+    },
+    onSubmit: result => {
+        const id = itemMap[result];
+        if (id) {
+            window.location.href = `/inventory/predict/${id}/`;
+        }
+    }
+});
+</script>
 {% endblock content %}
