@@ -1,7 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 import calendar
-
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth
 # Create your models here.
 
 class User(AbstractUser):
@@ -25,6 +26,30 @@ class InventoryItem(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_monthly_outwards_history(self):
+        from inventory.models import DailyStockData
+
+        # Group by month and sum outward quantities
+        qs = (
+            DailyStockData.objects
+            .filter(product=self)
+            .annotate(month=TruncMonth('date'))
+            .values('month')
+            .annotate(total_outwards=Sum('outwards_quantity'))
+            .order_by('month')
+        )
+
+        # Convert to desired structure
+        history = []
+        for entry in qs:
+            if entry['total_outwards'] is not None:
+                history.append({
+                    "month": entry['month'].strftime("%Y-%m"),
+                    "outward_qty": float(entry['total_outwards'])
+                })
+
+        return history
 
 class Category(models.Model):
     name=models.CharField(max_length=200)
