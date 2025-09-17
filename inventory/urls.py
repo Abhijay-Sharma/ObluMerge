@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from .views import Index  , SignUpView , LogoutView , Dashboard, Dashboard2 , AddItem , EditItem, DeleteItem , stock_chart_view, predict_min_stock_view, ShowProductData, stock_chart_view_2, predict_min_stock_2, ShowProductStockHistory, stock_chart_view_3 , predict_min_stock_from_daily , CategoryDashboard , CategoryListView #this Index is name of the class we created in views
+from .views import Index  , SignUpView , LogoutView , Dashboard, Dashboard2 , AddItem , EditItem, DeleteItem , stock_chart_view, predict_min_stock_view, ShowProductData, stock_chart_view_2, predict_min_stock_2, ShowProductStockHistory, stock_chart_view_3 , predict_min_stock_from_daily , CategoryDashboard , CategoryListView, search_items #this Index is name of the class we created in views
 from django.contrib.auth import views as auth_views
 
 
