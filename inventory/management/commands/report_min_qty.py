@@ -23,6 +23,7 @@ class Command(BaseCommand):
                 "min_outwards": item.min_quantity_outwards,
                 "min_average": item.min_quantity_average,
                 "min_average_three": item.min_quantity_average_three,
+                "min_gpt": item.min_quantity_gpt,
                 "entries": item.total_historical_entries
             })
 
