@@ -18,6 +18,8 @@ import calendar
 from inventory.mixins import AccountantRequiredMixin
 from .utils import fetch_tally_stock
 import logging
+from django.contrib.auth.decorators import login_required
+
 logger = logging.getLogger(__name__)
 
 
