@@ -404,7 +404,7 @@ def predict_min_stock_2(request, pk):
 
     return render(request, 'inventory/predict_stock.html', context)
 
-
+@login_required
 def predict_min_stock_from_daily(request, pk):
     product = get_object_or_404(InventoryItem, pk=pk)
 
