@@ -408,16 +408,10 @@ $(function () {
     totalForms.val(formCount + 1);
   });
 
-$(document).on("click", ".remove-item", function () {
-    let totalForms = $("#id_form-TOTAL_FORMS");
-    let formCount = parseInt(totalForms.val());
-
+  $(document).on("click", ".remove-item", function () {
     $(this).closest("tr").remove();
-
-    // Decrement total forms
-    totalForms.val(formCount - 1);
+  });
 });
-
 
 
 </script>
