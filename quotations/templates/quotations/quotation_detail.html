@@ -254,8 +254,15 @@
                 </div>
             </li> <br>
             <li>Delivery: 2-3 weeks from the date of receipt of confirmed order along with advance.</li> <br>
-            <li>Installation: Online support will be provided by our team of engineers for installation of the unit.
-            </li> <br>
+        {% if quotation.product_terms %}
+            <li><strong>Product-specific terms:</strong>
+                <ul>
+                    {% for line in quotation.product_terms.splitlines %}
+                        <li>{{ line }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endif %} <br>
             <li>
                 Force Majeure Clause: Our offer is subject to force de majeure and we shall not be responsible for any
                 breach of contract arising out of unforeseen situation viz. acts of God, Govt, fires, floods, strike,
@@ -266,15 +273,7 @@
             </li> <br>
             <li>All disputes are subject to Delhi Jurisdiction.</li>
             <!-- ✅ Product-specific terms -->
-        {% if quotation.product_terms %}
-            <li><strong>Product-specific terms:</strong>
-                <ul>
-                    {% for line in quotation.product_terms.splitlines %}
-                        <li>{{ line }}</li>
-                    {% endfor %}
-                </ul>
-            </li>
-        {% endif %}
+
         </ol>
     </div>
 
