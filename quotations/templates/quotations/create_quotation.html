@@ -334,22 +334,25 @@ button:hover {
 <script>
 
   document.addEventListener('DOMContentLoaded', () => {
-    // Check if product/category fields have values after a failed validation
-    const categoryField = document.querySelector('#id_category');
-    const productField = document.querySelector('#id_product');
-    const productDetailsDiv = document.querySelector('#product-details'); // The div you hide/show
+    document.querySelectorAll('.formset-row').forEach(row => {
+        const categorySelect = row.querySelector('.category-select');
+        const productSelect = row.querySelector('.product-select');
 
-    // If user already selected something (from previous submit), show the fields
-    if (categoryField && categoryField.value) {
-        // trigger any logic you normally run on category selection
-        showProductField();
-    }
+        // If category is already chosen, repopulate product options
+        if (categorySelect?.value) {
+            const savedProductId = productSelect.value;
 
-    if (productField && productField.value) {
-        // trigger logic you normally run on product selection
-        showProductDetails();
-    }
+            populateProducts(categorySelect.value, productSelect, () => {
+                // after options are added, restore the saved product
+                if (savedProductId) {
+                    productSelect.value = savedProductId;
+                    productSelect.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+    });
 });
+
 
 
 $(function () {
