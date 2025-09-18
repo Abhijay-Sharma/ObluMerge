@@ -409,7 +409,13 @@ $(function () {
   });
 
   $(document).on("click", ".remove-item", function () {
+    let totalForms = $("#id_form-TOTAL_FORMS");
+    let formCount = parseInt(totalForms.val());
+
     $(this).closest("tr").remove();
+
+    // Decrement total forms
+    totalForms.val(formCount - 1);
   });
 });
 
