@@ -414,8 +414,30 @@ $(function () {
 });
 
 
-  console.log(formset)
 </script>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // Collect all forms in the table
+  const formRows = document.querySelectorAll("#items-table tbody tr");
+  const formData = [];
+
+  formRows.forEach((row, idx) => {
+    const productSelect = row.querySelector('select[name$="-product"]');
+    const quantityInput = row.querySelector('input[name$="-quantity"]');
+    const discountInput = row.querySelector('input[name$="-discount"]');
+
+    formData.push({
+      row: idx,
+      productValue: productSelect ? productSelect.value : null,
+      productText: productSelect ? productSelect.options[productSelect.selectedIndex]?.text : null,
+      quantity: quantityInput ? quantityInput.value : null,
+      discount: discountInput ? discountInput.value : null,
+    });
+  });
+
+  console.log("Formset data after reload:", formData);
+});
+</script>
 </body>
 </html>
