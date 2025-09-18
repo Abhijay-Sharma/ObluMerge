@@ -250,7 +250,7 @@ button:hover {
               {% for form in formset %}
                 <tr class="item-form">
                   <td>
-                    <span class="product-label">{% if form.product.id %}{{ form.product.id }}{% else %}None{% endif %}</span>
+                    <span class="product-label">{% if form.product %}{{ form.product }}{% else %}None{% endif %}</span>
                     <button type="button" class="select-product-btn">Select Product</button>
                     {{ form.product }}
                   </td>
@@ -429,8 +429,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     formData.push({
       row: idx,
-      productValue: productSelect ? productSelect.value : null,
-      productText: productSelect ? productSelect.options[productSelect.selectedIndex]?.text : null,
+      productValue: productInput ? productInput.value : null,
       quantity: quantityInput ? quantityInput.value : null,
       discount: discountInput ? discountInput.value : null,
     });
