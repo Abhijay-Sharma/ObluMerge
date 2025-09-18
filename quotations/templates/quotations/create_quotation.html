@@ -250,7 +250,7 @@ button:hover {
               {% for form in formset %}
                 <tr class="item-form">
                   <td>
-                    <span class="product-label">{% if form.p.name %}{{ form.p.name }}{% else %}None{% endif %}</span>
+                    <span class="product-label">{% if form.product.id %}{{ form.product.id }}{% else %}None{% endif %}</span>
                     <button type="button" class="select-product-btn">Select Product</button>
                     {{ form.product }}
                   </td>
