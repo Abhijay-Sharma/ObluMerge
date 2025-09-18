@@ -332,6 +332,26 @@ button:hover {
   </div>
 
 <script>
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Check if product/category fields have values after a failed validation
+    const categoryField = document.querySelector('#id_category');
+    const productField = document.querySelector('#id_product');
+    const productDetailsDiv = document.querySelector('#product-details'); // The div you hide/show
+
+    // If user already selected something (from previous submit), show the fields
+    if (categoryField && categoryField.value) {
+        // trigger any logic you normally run on category selection
+        showProductField();
+    }
+
+    if (productField && productField.value) {
+        // trigger logic you normally run on product selection
+        showProductDetails();
+    }
+});
+
+
 $(function () {
   // ===== Customer Modal =====
   var customerModal = $("#customerModal");
