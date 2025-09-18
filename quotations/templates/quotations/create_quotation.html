@@ -250,13 +250,7 @@ button:hover {
               {% for form in formset %}
                 <tr class="item-form">
                   <td>
-                    <span class="product-label">
-                      {% if form.product.value %}
-                          {{ form.product.field.queryset.get(pk=form.product.value).name }}
-                      {% else %}
-                          None
-                      {% endif %}
-                    </span>>
+                    <span class="product-label">{% if form.product.name %}{{ form.product.name }}{% else %}None{% endif %}</span>
                     <button type="button" class="select-product-btn">Select Product</button>
                     {{ form.product }}
                   </td>
@@ -338,28 +332,6 @@ button:hover {
   </div>
 
 <script>
-
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.formset-row').forEach(row => {
-        const categorySelect = row.querySelector('.category-select');
-        const productSelect = row.querySelector('.product-select');
-
-        // If category is already chosen, repopulate product options
-        if (categorySelect?.value) {
-            const savedProductId = productSelect.value;
-
-            populateProducts(categorySelect.value, productSelect, () => {
-                // after options are added, restore the saved product
-                if (savedProductId) {
-                    productSelect.value = savedProductId;
-                    productSelect.dispatchEvent(new Event('change'));
-                }
-            });
-        }
-    });
-});
-
-
 
 $(function () {
   // ===== Customer Modal =====
