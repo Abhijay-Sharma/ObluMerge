@@ -1,103 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Welcome | Quotation Maker</title>
-  <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends 'quotations/base.html' %}
+{% block content %}
    <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      height: 100vh;
-    {# changed color from linear-gradient(135deg, #e0f7fa, #80deea) to  linear-gradient(135deg, #0e0e0e, #838383)#}
-      background: linear-gradient(135deg, #0e0e0e, #838383);
-      color: #fff; {# change color #}
-      margin: 0;
-    }
-
-    /* Container that centers only the card */
-    .main-container {
-      height: calc(100vh - 56px); /* subtract navbar height (default 56px) */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-
     .card {
-      background: #ffffff;
       padding: 50px 30px;
-      border-radius: 16px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-      text-align: center;
-      animation: fadeIn 0.8s ease-out;
       max-width: 400px;
+      margin-top:5%;
+      margin-bottom: 20px;
       width: 90%;
     }
-
-    .card h1 {
-      font-size: 2rem;
-      margin-bottom: 20px;
-      background: #222; {# changed color form linear-gradient(90deg, #007bff, #00c6ff) to #222 #}
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .btn {
-      display: inline-block;
-      margin-top: 25px;
-      padding: 12px 28px;
-      background: #222; {# changed color from linear-gradient(135deg, #007bff, #00c6ff) to #222 #}
-      color: #fff;
-      font-size: 1rem;
-      font-weight: bold;
-      text-decoration: none;
-      border-radius: 30px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    .btn:hover {
-      color: #222; {# added this #}
-      transform: scale(1.05);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @media (max-width: 500px) {
-      .card {
-        padding: 30px 20px;
-      }
-
-      .card h1 {
-        font-size: 1.6rem;
-      }
-
-      .btn {
-        padding: 10px 20px;
-        font-size: 0.95rem;
-      }
-    }
   </style>
-</head>
-<body>
-  {% include 'quotations/navigation.html' %}
+
 
   <div class="main-container">
     <div class="card">
@@ -110,5 +22,5 @@
     </div>
 
   </div>
-</body>
-</html>
+
+{% endblock content %}
