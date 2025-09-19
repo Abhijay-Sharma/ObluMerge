@@ -1,102 +1,5 @@
-
-<style>
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #0e0e0e, #838383);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .main-container {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 40px 20px;
-  }
-
-  .form-container {
-    background: #ffffff;
-    padding: 40px 30px;
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-    animation: fadeIn 0.8s ease-out;
-    max-width: 1000px;
-    width: 100%;
-  }
-
-  .form-container h1 {
-    font-size: 2rem;
-    margin-bottom: 25px;
-    background: #222;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-align: center;
-  }
-
-  .customer-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-  }
-
-  .customer-card {
-    background: #f9f9f9;
-    border-radius: 14px;
-    padding: 20px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  .customer-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-  }
-
-  .customer-name {
-    font-size: 1.3rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #222;
-  }
-
-  .customer-detail {
-    font-size: 0.95rem;
-    margin-bottom: 6px;
-    color: #555;
-  }
-
-  .btn-outline-primary {
-    display: inline-block;
-    margin-top: 15px;
-    padding: 10px 22px;
-    background: linear-gradient(135deg, #0e0e0e, #656565);
-    color: #fff;
-    font-size: 0.95rem;
-    font-weight: bold;
-    text-decoration: none;
-    border-radius: 30px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  .btn-outline-primary:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(30px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-</style>
+{%extends 'quotations/base.html'%}
+{% block content %}
 
 <div class="main-container">
   <div class="form-container">
@@ -120,8 +23,9 @@
     {% endif %}
 
     <div style="text-align:center; margin-top:30px;">
-      <a href="{% url 'create_customer' %}" class="btn-outline-primary">+ Add New Customer</a>
-      <a href="{% url 'home' %}" class="btn-outline-primary">Back to home</a>
+      <a href="{% url 'create_customer' %}" class="btn-secondary">+ Add New Customer</a> {# changed class name from primary to secondary #}
+      <a href="{% url 'home' %}" class="btn-secondary">Back to home</a> {# changed class name from primary to secondary #}
     </div>
   </div>
 </div>
+{% endblock content %}
