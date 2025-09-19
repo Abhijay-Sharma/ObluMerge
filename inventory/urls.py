@@ -20,5 +20,5 @@ urlpatterns = [
     path('dashboard/<int:category>/',CategoryDashboard.as_view(), name='category_dashboard'),
     path('categories/',CategoryListView.as_view(), name='categories'),
     path('search/', search_items, name='search_items'),
-    path('inventory-report/', InventoryReportView.as_view(), name='inventory_report'),
+    path('report/', InventoryReportView.as_view(), name='inventory_report'),
 ]
