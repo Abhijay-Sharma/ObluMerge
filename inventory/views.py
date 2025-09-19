@@ -499,7 +499,7 @@ def search_items(request):
     return JsonResponse({'status': 200, 'data': payload})
 
 
-class InventoryReportView(TemplateView):
+class InventoryReportView(AccountantRequiredMixin,TemplateView):
     template_name = 'inventory/inventory_report.html'
 
     def get_context_data(self, **kwargs):
