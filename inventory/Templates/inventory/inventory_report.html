@@ -1,0 +1,98 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% block content %}
+<head>
+    <title>Inventory Report</title>
+    <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        .category-index {
+
+            top: 0;
+            z-index: 1000;
+            background-color: #1c2126;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .category-index .nav-link {
+            color: #ffffff;
+            border-radius: 50rem;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+        .category-index .nav-link:hover {
+            color: black;
+            background-color: #e9ecef;
+        }
+      .h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
+        color:#ffffff;
+      }
+    </style>
+</head>
+<body class="p-4">
+
+  <h1 class="mb-4">Inventory Report</h1>
+
+  <!-- 📌 Professional Category Index -->
+  <nav class="category-index">
+      <ul class="nav nav-pills flex-wrap gap-2">
+        {% for category in categories %}
+          <li class="nav-item">
+            <a class="nav-link" href="#category-{{ category.id }}">{{ category.name }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+  </nav>
+
+  {% for category in categories %}
+    <h3 id="category-{{ category.id }}" class="mt-5">{{ category.name }}</h3>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Product Name</th>
+            <th>Quantity</th>
+            <th>Min Qty (Closing)</th>
+            <th>Min Qty (Outwards)</th>
+            <th>Min Qty (GPT)</th>
+            <th>Min Qty (Average)</th>
+            <th>Min Qty (Last 3 Avg)</th>
+            <th>Total Historical Entries</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in category.inventoryitem_set.all %}
+            <tr>
+             <td>
+              <a href="/inventory/predict/{{ item.id }}" class="text-decoration-none fw-semibold">
+                {{ item.name }}
+              </a>
+            <td>{{ item.quantity }}</td>
+
+            <td>{% if item.min_quantity_closing != -1 %}{{ item.min_quantity_closing }}{% else %}-{% endif %}</td>
+            <td>{% if item.min_quantity_outwards != -1 %}{{ item.min_quantity_outwards }}{% else %}-{% endif %}</td>
+            <td>{% if item.min_quantity_gpt != -1 %}{{ item.min_quantity_gpt }}{% else %}-{% endif %}</td>
+            <td>{% if item.min_quantity_average != -1 %}{{ item.min_quantity_average }}{% else %}-{% endif %}</td>
+            <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three }}{% else %}-{% endif %}</td>
+
+            <td>{{ item.total_historical_entries }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted">No products in this category.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+
+</body>
+{% endblock content %}

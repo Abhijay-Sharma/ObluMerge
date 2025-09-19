@@ -497,3 +497,16 @@ def search_items(request):
             payload.append([item.name, item.id])
 
     return JsonResponse({'status': 200, 'data': payload})
+
+
+class InventoryReportView(TemplateView):
+    template_name = 'inventory/inventory_report.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get all categories with their related products
+        categories = Category.objects.prefetch_related('inventoryitem_set').all()
+
+        context['categories'] = categories
+        return context
