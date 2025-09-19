@@ -60,14 +60,14 @@ class Command(BaseCommand):
 
             # --- NEW: Average of all months ---
             try:
-                min_stock_avg_all = int(monthly_summary['outwards_quantity'].mean())
+                min_stock_avg_all = int(monthly_summary['outwards_quantity'].mean() * 1.1)
             except Exception:
                 min_stock_avg_all = -1
 
             # --- NEW: Average of last 3 months ---
             try:
                 last_3 = monthly_summary.tail(3)['outwards_quantity']
-                min_stock_avg_3 = int(last_3.mean())
+                min_stock_avg_3 = int(last_3.mean() * 1.1)
             except Exception:
                 min_stock_avg_3 = -1
 
