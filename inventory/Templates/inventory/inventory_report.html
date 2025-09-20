@@ -33,6 +33,19 @@
       .h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
         color:#ffffff;
       }
+      .instructions {
+        background-color: #f8f9fa;
+        border-left: 5px solid #0d6efd;
+        line-height: 1.6;
+      }
+      .instructions h4 {
+        color: #0d6efd;
+        font-weight: 600;
+      }
+      .instructions p {
+        margin-bottom: 1rem;
+      }
+
     </style>
 </head>
 <body class="p-4">
@@ -49,6 +62,44 @@
         {% endfor %}
       </ul>
   </nav>
+
+      <!-- 📌 Instructions -->
+  <div class="instructions my-4 p-4 rounded shadow-sm">
+    <h4 class="mb-3">📖 How to Read This Report</h4>
+    <p>📌 <b>Item Name (Link)</b> — The name of the inventory item.<br/>
+    You can click the name to open the product's prediction page. This lets you quickly see details and future stock suggestions.</p>
+
+    <p>📉 <b>min_quantity_closing — Closing</b><br/>
+    Trend based on how much stock you usually end with.<br/>
+    We look at your closing stock at the end of each month for all past months.<br/>
+    By drawing a trend line, we can predict how your stock levels are likely to change over the next 3 months.<br/>
+    We take the lowest predicted value and show it here.<br/>
+    📝 Meaning: “If my current stock usage and buying continue as usual, this is the minimum stock I might have left.”</p>
+
+    <p>📦 <b>min_quantity_outwards — Outwards</b><br/>
+    Based on how much stock goes out (used or sold).<br/>
+    We analyze monthly outwards quantities to understand your demand.<br/>
+    By predicting the next 3 months’ usage and adding a 10% safety buffer, we calculate how much stock you should ideally keep.<br/>
+    📝 Meaning: “This is the stock I need to have on hand to meet expected demand and avoid shortages.”</p>
+
+    <p>📊 <b>min_quantity_average — Avg</b><br/>
+    Average of all past outwards quantities.<br/>
+    📝 Meaning: “On average, this is how much stock has been used each month historically.”</p>
+
+    <p>📈 <b>min_quantity_average_three — Last 3 Avg</b><br/>
+    Average of last 3 months’ outwards quantities.<br/>
+    This focuses on recent trends rather than the entire history, reflecting any changes in usage patterns.<br/>
+    📝 Meaning: “This shows recent demand trends so you can adjust stock more accurately.”</p>
+
+    <p>📈 <b>min_quantity_gpt — GPT</b><br/>
+    Estimated minimum stock level predicted by GPT using historical outwards data.<br/>
+    ⚡ Note: It won’t run a GPT prediction if there’s not enough historical data<br/>
+    📝 Meaning: “This is simply an OpenAI prediction using outwards quantities fed to it as monthly data.”</p>
+
+    <p>📝 <b>Total Entries</b><br/>
+    Total number of daily stock records we have for this item.<br/>
+    📝 Meaning: “This tells you how much historical data supports these predictions. More entries usually mean more reliable suggestions.”</p>
+  </div>
 
   {% for category in categories %}
     <h3 id="category-{{ category.id }}" class="mt-5">{{ category.name }}</h3>
