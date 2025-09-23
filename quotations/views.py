@@ -32,7 +32,7 @@ QuotationItemFormSet = modelformset_factory(
 
 
 #this is login required but we are disabling it right now 16-9-25
-class CreateQuotationView(AccountantRequiredMixin, View):
+class CreateQuotationView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         quotation_form = QuotationForm(user=request.user)
         formset = QuotationItemFormSet(
