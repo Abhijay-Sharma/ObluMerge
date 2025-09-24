@@ -23,6 +23,8 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
+import datetime
+from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
 
@@ -487,6 +489,90 @@ def predict_min_stock_from_daily(request, pk):
     return render(request, 'inventory/predict_stock_daily.html', context)
 
 
+class PredictMinStockView(TemplateView):
+    template_name = "inventory/predict_stock_daily.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        pk = self.kwargs.get("pk")
+        product = get_object_or_404(InventoryItem, pk=pk)
+
+        daily_data = DailyStockData.objects.filter(product_id=pk)
+
+        df = pd.DataFrame.from_records(
+            daily_data.values(
+                "date",
+                "inwards_quantity",
+                "inwards_value",
+                "outwards_quantity",
+                "outwards_value",
+                "closing_quantity",
+                "closing_value"
+            )
+        )
+
+        if df.empty:
+            context["error"] = "No stock data available for this product."
+            return context
+
+        # Date parsing and monthly grouping
+        df["date"] = pd.to_datetime(df["date"])
+        df["month"] = df["date"].dt.month
+        df["year"] = df["date"].dt.year
+
+        monthly_summary = df.groupby(["year", "month"]).agg({
+            "inwards_quantity": "sum",
+            "inwards_value": "sum",
+            "outwards_quantity": "sum",
+            "outwards_value": "sum",
+            "closing_quantity": "last",
+            "closing_value": "last",
+        }).reset_index()
+
+        monthly_summary["Month"] = monthly_summary.apply(
+            lambda row: f"{calendar.month_name[int(row['month'])]} {int(row['year'])}",
+            axis=1
+        )
+
+        monthly_summary.reset_index(drop=True, inplace=True)
+        monthly_summary["MonthIndex"] = np.arange(len(monthly_summary)).reshape(-1, 1)
+
+        # Trend-based prediction
+        model_trend = LinearRegression()
+        model_trend.fit(monthly_summary[["MonthIndex"]], monthly_summary["closing_quantity"])
+        future_months = np.array([len(monthly_summary), len(monthly_summary)+1, len(monthly_summary)+2]).reshape(-1, 1)
+        trend_predictions = model_trend.predict(future_months)
+
+        # Demand-based prediction
+        model_demand = LinearRegression()
+        model_demand.fit(monthly_summary[["MonthIndex"]], monthly_summary["outwards_quantity"])
+        demand_predictions = model_demand.predict(future_months)
+
+        min_stock_trend = int(min(trend_predictions))
+        min_stock_demand = int(max(demand_predictions))
+        min_stock_demand_buffered = int(min_stock_demand * 1.1)
+
+        # Generate month names for future predictions
+        last_year = int(monthly_summary.iloc[-1]["year"])
+        last_month = int(monthly_summary.iloc[-1]["month"])
+        last_date = datetime.date(last_year, last_month, 1)
+        future_dates = [last_date + relativedelta(months=i+1) for i in range(3)]
+        future_labels = [f"{calendar.month_name[d.month]} {d.year}" for d in future_dates]
+
+        trend_pred = list(zip(future_labels, [int(x) for x in trend_predictions]))
+        demand_pred = list(zip(future_labels, [int(x) for x in demand_predictions]))
+
+        context.update({
+            "product": product,
+            "trend_pred": trend_pred,
+            "demand_pred": demand_pred,
+            "min_stock_trend": min_stock_trend,
+            "min_stock_demand": min_stock_demand_buffered,
+            "excel_data": monthly_summary[["Month", "closing_quantity", "outwards_quantity"]].to_dict(orient="records"),
+        })
+
+        return context
+
 def search_items(request):
     query = request.GET.get('item')
     payload = []
@@ -515,7 +601,7 @@ class InventoryReportView(AccountantRequiredMixin,TemplateView):
 
 
 
-class MonthlyStockChartView(TemplateView):
+class MonthlyStockChartView(AccountantRequiredMixin,TemplateView):
     template_name = "inventory/chartjs_stock_month.html"
 
     def get_context_data(self, **kwargs):
