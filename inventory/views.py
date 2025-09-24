@@ -516,7 +516,7 @@ class InventoryReportView(AccountantRequiredMixin,TemplateView):
 
 
 class MonthlyStockChartView(TemplateView):
-    template_name = "inventory/chartjs_stock.html"
+    template_name = "inventory/chartjs_stock_month.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
