@@ -21,6 +21,8 @@ import logging
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.db.models import Q
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth
 
 logger = logging.getLogger(__name__)
 
@@ -509,4 +511,60 @@ class InventoryReportView(AccountantRequiredMixin,TemplateView):
         categories = Category.objects.prefetch_related('inventoryitem_set').all()
 
         context['categories'] = categories
+        return context
+
+
+
+class MonthlyStockChartView(TemplateView):
+    template_name = "inventory/chartjs_stock.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        pk = self.kwargs.get("pk")
+        product = InventoryItem.objects.get(pk=pk)
+
+        # Group stock data by month
+        qs = (
+            DailyStockData.objects
+            .filter(product=product)
+            .annotate(month=TruncMonth('date'))
+            .values('month')
+            .annotate(
+                inwards_qty=Sum('inwards_quantity'),
+                outwards_qty=Sum('outwards_quantity'),
+                inwards_value=Sum('inwards_value'),
+                outwards_value=Sum('outwards_value'),
+                closing_qty=Sum('closing_quantity'),
+                closing_value=Sum('closing_value'),
+            )
+            .order_by('month')
+        )
+
+        # Prepare data for Chart.js
+        labels = []
+        inwards_qty, outwards_qty = [], []
+        inwards_value, outwards_value = [], []
+        closing_qty, closing_value = [], []
+
+        for entry in qs:
+            labels.append(entry["month"].strftime("%Y-%m"))
+            inwards_qty.append(entry["inwards_qty"] or 0)
+            outwards_qty.append(entry["outwards_qty"] or 0)
+            inwards_value.append(entry["inwards_value"] or 0)
+            outwards_value.append(entry["outwards_value"] or 0)
+            closing_qty.append(entry["closing_qty"] or 0)
+            closing_value.append(entry["closing_value"] or 0)
+
+        chart_data = {
+            "labels": labels,
+            "inwards_qty": inwards_qty,
+            "outwards_qty": outwards_qty,
+            "inwards_value": inwards_value,
+            "outwards_value": outwards_value,
+            "closing_qty": closing_qty,
+            "closing_value": closing_value,
+        }
+
+        context["product"] = product
+        context["chart_data"] = json.dumps(chart_data, cls=DjangoJSONEncoder)
         return context

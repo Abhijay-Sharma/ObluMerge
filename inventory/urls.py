@@ -21,4 +21,5 @@ urlpatterns = [
     path('categories/',CategoryListView.as_view(), name='categories'),
     path('search/', search_items, name='search_items'),
     path('report/', InventoryReportView.as_view(), name='inventory_report'),
+    path("stock/monthly/<int:pk>/", MonthlyStockChartView.as_view(), name="monthly-stock-chart"),
 ]
