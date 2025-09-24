@@ -174,6 +174,7 @@
         <p><strong>Quotation Ref. No.:</strong> OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}</p>
         <p><strong>Created By:</strong> {{ quotation.created_by }}</p>
         <p><strong>Date:</strong> {{ quotation.date_created|date:"d.m.Y" }}</p>
+        <p><strong>Validity:</strong> {{ quotation.validity|date:"d.m.Y" }}</p>
     </div>
 
     <table>
