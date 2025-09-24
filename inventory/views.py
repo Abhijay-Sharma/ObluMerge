@@ -654,3 +654,14 @@ class MonthlyStockChartView(AccountantRequiredMixin,TemplateView):
         context["product"] = product
         context["chart_data"] = json.dumps(chart_data, cls=DjangoJSONEncoder)
         return context
+
+
+
+class LowStockReportView(TemplateView):
+    template_name = "inventory/low_stock_report.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        categories = Category.objects.prefetch_related('inventoryitem_set').all()
+        context['categories'] = categories
+        return context

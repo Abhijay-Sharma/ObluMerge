@@ -1,0 +1,59 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block content %}
+<head>
+    <title>Low Stock Report</title>
+    <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        .low-stock {
+            background-color: #f8d7da !important; /* Red highlight */
+        }
+        h1 {
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+
+<body class="p-4">
+    <h1>Low Stock Report</h1>
+
+    {% for category in categories %}
+        <h3>{{ category.name }}</h3>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                        <th>Min Qty (Outwards)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in category.inventoryitem_set.all %}
+                        <tr class="{% if item.quantity < item.min_quantity_outwards %}low-stock{% endif %}">
+                            <td>
+                                <a href="/inventory/predict/{{ item.id }}" class="text-decoration-none fw-semibold">
+                                    {{ item.name }}
+                                </a>
+                            </td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{% if item.min_quantity_outwards != -1 %}{{ item.min_quantity_outwards }}{% else %}-{% endif %}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">No products in this category.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+</body>
+{% endblock content %}
