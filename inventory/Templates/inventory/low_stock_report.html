@@ -17,14 +17,45 @@
         h1 {
             margin-bottom: 2rem;
         }
+        .category-index {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: #1c2126;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .category-index .nav-link {
+            color: #ffffff;
+            border-radius: 50rem;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+        .category-index .nav-link:hover {
+            color: black;
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 
 <body class="p-4">
     <h1>Low Stock Report</h1>
 
+    <!-- 📌 Category Index Navigation -->
+    <nav class="category-index">
+        <ul class="nav nav-pills flex-wrap gap-2">
+            {% for category in categories %}
+                <li class="nav-item">
+                    <a class="nav-link" href="#category-{{ category.id }}">{{ category.name }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </nav>
+
     {% for category in categories %}
-        <h3>{{ category.name }}</h3>
+        <h3 id="category-{{ category.id }}">{{ category.name }}</h3>
 
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
