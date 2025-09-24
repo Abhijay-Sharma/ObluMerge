@@ -3,6 +3,9 @@ from django.db import models
 # quotations/models.py
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
+
 
 class ProductCategory(models.Model):
     name = models.CharField(max_length=100)
@@ -48,6 +51,10 @@ class Quotation(models.Model):
     customer_email = models.TextField(blank=True, null=True)
     customer_zip = models.TextField(blank=True, null=True)          #not needed added by mistake
     date_created = models.DateTimeField(auto_now_add=True)
+    validity = models.DateTimeField(
+        default=lambda: timezone.now() + timedelta(weeks=4)
+    )
+
     created_by=models.CharField(max_length=255,default="Oblu")
 
     def total(self):
