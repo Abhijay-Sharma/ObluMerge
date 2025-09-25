@@ -187,6 +187,9 @@
                 <th>GST (%)</th>
                 <th>GST Amount</th>
                 <th>Unit Price (Inc. GST)</th>
+                {% if has_discount %}
+                    <th>Discount (₹)</th>
+                {% endif %}
                 <th>Total (₹)</th>
             </tr>
         </thead>
@@ -200,6 +203,9 @@
                 <td>{{ item.product.tax_rate }}</td>
                 <td>{{ item.gst_amount }}</td>
                 <td>{{item.gst_unit_price}}</td>
+                {% if has_discount %}
+                    <td>{{ item.discount|default:"-" }}</td>
+                {% endif %}
                 <td>{{ item.total_price }}</td>
             </tr>
             {% endfor %}

@@ -115,8 +115,15 @@ def get_products_by_category(request):
 @login_required
 def quotation_detail(request, pk):
     quotation = get_object_or_404(Quotation, pk=pk)
+    # Fetch related items (and their products) in one query
+    items_qs = quotation.items.select_related('product').all()
+
+    # Check if ANY item has discount > 0
+    has_discount = items_qs.filter(discount__gt=0).exists()
+
     return render(request, 'quotations/quotation_detail.html', {
         'quotation': quotation,
+        'has_discount': has_discount,
         'id': pk
     })
 
