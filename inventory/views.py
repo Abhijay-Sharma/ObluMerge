@@ -665,3 +665,42 @@ class LowStockReportView(TemplateView):
         categories = Category.objects.prefetch_related('inventoryitem_set').all()
         context['categories'] = categories
         return context
+
+
+
+class DailyStockChartView(AccountantRequiredMixin, TemplateView):
+    template_name = "inventory/chartjs_stock_day.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        pk = self.kwargs.get("pk")
+        product = get_object_or_404(InventoryItem, pk=pk)
+
+        qs = DailyStockData.objects.filter(product=product).order_by("date")
+
+        labels, inwards_qty, outwards_qty = [], [], []
+        inwards_value, outwards_value = [], []
+        closing_qty, closing_value = [], []
+
+        for entry in qs:
+            labels.append(entry.date.strftime("%Y-%m-%d"))
+            inwards_qty.append(entry.inwards_quantity or 0)
+            outwards_qty.append(entry.outwards_quantity or 0)
+            inwards_value.append(entry.inwards_value or 0)
+            outwards_value.append(entry.outwards_value or 0)
+            closing_qty.append(entry.closing_quantity or 0)
+            closing_value.append(entry.closing_value or 0)
+
+        chart_data = {
+            "labels": labels,
+            "inwards_qty": inwards_qty,
+            "outwards_qty": outwards_qty,
+            "inwards_value": inwards_value,
+            "outwards_value": outwards_value,
+            "closing_qty": closing_qty,
+            "closing_value": closing_value,
+        }
+
+        context["product"] = product
+        context["chart_data"] = json.dumps(chart_data, cls=DjangoJSONEncoder)
+        return context
