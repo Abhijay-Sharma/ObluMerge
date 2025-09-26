@@ -21,6 +21,7 @@ class InventoryItem(models.Model):
     min_quantity_gpt = models.IntegerField(null=True, blank=True, default=-1)
     min_quantity_average = models.IntegerField(null=True, blank=True, default=-1)
     min_quantity_average_three=models.IntegerField(null=True, blank=True, default=-1)
+    min_quantity_nitin=models.IntegerField(null=True, blank=True, default=-1)
     unit=models.CharField(max_length=200, blank=True, null=True)
     total_historical_entries=models.IntegerField(null=True, blank=True, default=0)
 
