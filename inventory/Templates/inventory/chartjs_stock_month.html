@@ -94,11 +94,6 @@
     </div>
 
     <div class="chart-container">
-        <h2>📦 Inward vs Outward Quantity (Bar)</h2>
-        <canvas id="inwardOutwardQtyBarChart"></canvas>
-    </div>
-
-    <div class="chart-container">
         <h2>📦 Inward vs Outward Value</h2>
         <canvas id="inwardOutwardValueChart"></canvas>
     </div>
@@ -110,6 +105,27 @@
         <h2>💰 Closing Stock Value Trend</h2>
         <canvas id="closingValueChart"></canvas>
     </div>
+
+    <div class="chart-container">
+    <h2>📦 Inward vs Outward Quantity (Bar)</h2>
+    <canvas id="inwardOutwardQtyBarChart"></canvas>
+</div>
+
+<div class="chart-container">
+    <h2>📦 Inward vs Outward Value (Bar)</h2>
+    <canvas id="inwardOutwardValueBarChart"></canvas>
+</div>
+
+<div class="chart-container">
+    <h2>📊 Closing Stock Quantity (Bar)</h2>
+    <canvas id="closingQtyBarChart"></canvas>
+</div>
+
+<div class="chart-container">
+    <h2>💰 Closing Stock Value (Bar)</h2>
+    <canvas id="closingValueBarChart"></canvas>
+</div>
+
 
     <script>
         const rawData = JSON.parse('{{ chart_data|escapejs }}');
@@ -224,155 +240,79 @@
     </script>
     <script>
     // Inward vs Outward Quantity (Bar)
-    new Chart(document.getElementById("inwardOutwardQtyBarChart"), {
-        type: 'bar',
-        data: {
-            labels: data.labels,
-            datasets: [
-                {
-                    label: 'Inwards',
-                    data: data.inwards_qty,
-                    backgroundColor: '#00bfff',
-                    borderRadius: 6
-                },
-                {
-                    label: 'Outwards',
-                    data: data.outwards_qty,
-                    backgroundColor: '#ff4d4d',
-                    borderRadius: 6
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    labels: { color: "#e0e0e0" },
-                    position: 'top'
-                }
-            },
-            scales: {
-                x: {
-                    stacked: false,
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                },
-                y: {
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                }
-            }
+new Chart(document.getElementById("inwardOutwardQtyBarChart"), {
+    type: 'bar',
+    data: {
+        labels: data.labels,
+        datasets: [
+            { label: 'Inwards', data: data.inwards_qty, backgroundColor: '#00bfff', borderRadius: 6 },
+            { label: 'Outwards', data: data.outwards_qty, backgroundColor: '#ff4d4d', borderRadius: 6 }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#e0e0e0" }, position: 'top' } },
+        scales: {
+            x: { ticks: { color: '#cccccc' }, grid: { color: '#444' } },
+            y: { ticks: { color: '#cccccc' }, grid: { color: '#444' } }
         }
-    });
+    }
+});
 
-    // Inward vs Outward Value (Bar)
-    new Chart(document.getElementById("inwardOutwardValueBarChart"), {
-        type: 'bar',
-        data: {
-            labels: data.labels,
-            datasets: [
-                {
-                    label: 'Inwards',
-                    data: data.inwards_value,
-                    backgroundColor: '#00bfff',
-                    borderRadius: 6
-                },
-                {
-                    label: 'Outwards',
-                    data: data.outwards_value,
-                    backgroundColor: '#ff4d4d',
-                    borderRadius: 6
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    labels: { color: "#e0e0e0" },
-                    position: 'top'
-                }
-            },
-            scales: {
-                x: {
-                    stacked: false,
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                },
-                y: {
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                }
-            }
+// Inward vs Outward Value (Bar)
+new Chart(document.getElementById("inwardOutwardValueBarChart"), {
+    type: 'bar',
+    data: {
+        labels: data.labels,
+        datasets: [
+            { label: 'Inwards', data: data.inwards_value, backgroundColor: '#00bfff', borderRadius: 6 },
+            { label: 'Outwards', data: data.outwards_value, backgroundColor: '#ff4d4d', borderRadius: 6 }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#e0e0e0" }, position: 'top' } },
+        scales: {
+            x: { ticks: { color: '#cccccc' }, grid: { color: '#444' } },
+            y: { ticks: { color: '#cccccc' }, grid: { color: '#444' } }
         }
-    });
+    }
+});
 
-
-     // Closing Quantity (Bar)
-    new Chart(document.getElementById("closingQtyBarChart"), {
-        type: 'bar',
-        data: {
-            labels: data.labels,
-            datasets: [{
-                label: 'Closing Quantity',
-                data: data.closing_qty,
-                backgroundColor: '#ba68c8',
-                borderRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    labels: { color: "#e0e0e0" },
-                    position: 'top'
-                }
-            },
-            scales: {
-                x: {
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                },
-                y: {
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                }
-            }
+// Closing Quantity (Bar)
+new Chart(document.getElementById("closingQtyBarChart"), {
+    type: 'bar',
+    data: {
+        labels: data.labels,
+        datasets: [{ label: 'Closing Quantity', data: data.closing_qty, backgroundColor: '#ba68c8', borderRadius: 6 }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#e0e0e0" }, position: 'top' } },
+        scales: {
+            x: { ticks: { color: '#cccccc' }, grid: { color: '#444' } },
+            y: { ticks: { color: '#cccccc' }, grid: { color: '#444' } }
         }
-    });
+    }
+});
 
-    // Closing Value (Bar)
-    new Chart(document.getElementById("closingValueBarChart"), {
-        type: 'bar',
-        data: {
-            labels: data.labels,
-            datasets: [{
-                label: 'Closing Value (INR)',
-                data: data.closing_value,
-                backgroundColor: '#00e676',
-                borderRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    labels: { color: "#e0e0e0" },
-                    position: 'top'
-                }
-            },
-            scales: {
-                x: {
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                },
-                y: {
-                    ticks: { color: '#cccccc' },
-                    grid: { color: '#444' }
-                }
-            }
+// Closing Value (Bar)
+new Chart(document.getElementById("closingValueBarChart"), {
+    type: 'bar',
+    data: {
+        labels: data.labels,
+        datasets: [{ label: 'Closing Value (INR)', data: data.closing_value, backgroundColor: '#00e676', borderRadius: 6 }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#e0e0e0" }, position: 'top' } },
+        scales: {
+            x: { ticks: { color: '#cccccc' }, grid: { color: '#444' } },
+            y: { ticks: { color: '#cccccc' }, grid: { color: '#444' } }
         }
-    });
+    }
+});
+
 </script>
 
 </body>
