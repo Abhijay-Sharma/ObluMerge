@@ -10,6 +10,9 @@
         html {
             scroll-behavior: smooth;
         }
+        .low-stock {
+            background-color: #ed2537 !important; /* Red highlight */
+        }
         .category-index {
 
             top: 0;
@@ -120,7 +123,7 @@
         </thead>
         <tbody>
           {% for item in category.inventoryitem_set.all %}
-            <tr>
+            <tr class="{% if item.quantity < item.min_quantity_outwards %}low-stock{% endif %}">
              <td>
               <a href="/inventory/predict/{{ item.id }}" class="text-decoration-none fw-semibold">
                 {{ item.name }}
