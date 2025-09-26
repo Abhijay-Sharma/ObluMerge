@@ -127,118 +127,290 @@
 </div>
 
 
-    <script>
-        const rawData = JSON.parse('{{ chart_data|escapejs }}');
-        let filteredData = {...rawData};
-        let charts = [];
+<!--    <script>-->
+<!--        const rawData = JSON.parse('{{ chart_data|escapejs }}');-->
+<!--        let filteredData = {...rawData};-->
+<!--        let charts = [];-->
 
-        function filterByMonth() {
-            const start = document.getElementById("startMonth").value;
-            const end = document.getElementById("endMonth").value;
+<!--        function filterByMonth() {-->
+<!--            const start = document.getElementById("startMonth").value;-->
+<!--            const end = document.getElementById("endMonth").value;-->
 
-            if (!start && !end) {
-                filteredData = {...rawData};
-            } else {
-                filteredData = {
-                    labels: [],
-                    inwards_qty: [],
-                    outwards_qty: [],
-                    inwards_value: [],
-                    outwards_value: [],
-                    closing_qty: [],
-                    closing_value: []
-                };
+<!--            if (!start && !end) {-->
+<!--                filteredData = {...rawData};-->
+<!--            } else {-->
+<!--                filteredData = {-->
+<!--                    labels: [],-->
+<!--                    inwards_qty: [],-->
+<!--                    outwards_qty: [],-->
+<!--                    inwards_value: [],-->
+<!--                    outwards_value: [],-->
+<!--                    closing_qty: [],-->
+<!--                    closing_value: []-->
+<!--                };-->
 
-                rawData.labels.forEach((label, idx) => {
-                    if ((!start || label >= start) && (!end || label <= end)) {
-                        filteredData.labels.push(label);
-                        filteredData.inwards_qty.push(rawData.inwards_qty[idx]);
-                        filteredData.outwards_qty.push(rawData.outwards_qty[idx]);
-                        filteredData.inwards_value.push(rawData.inwards_value[idx]);
-                        filteredData.outwards_value.push(rawData.outwards_value[idx]);
-                        filteredData.closing_qty.push(rawData.closing_qty[idx]);
-                        filteredData.closing_value.push(rawData.closing_value[idx]);
-                    }
-                });
-            }
+<!--                rawData.labels.forEach((label, idx) => {-->
+<!--                    if ((!start || label >= start) && (!end || label <= end)) {-->
+<!--                        filteredData.labels.push(label);-->
+<!--                        filteredData.inwards_qty.push(rawData.inwards_qty[idx]);-->
+<!--                        filteredData.outwards_qty.push(rawData.outwards_qty[idx]);-->
+<!--                        filteredData.inwards_value.push(rawData.inwards_value[idx]);-->
+<!--                        filteredData.outwards_value.push(rawData.outwards_value[idx]);-->
+<!--                        filteredData.closing_qty.push(rawData.closing_qty[idx]);-->
+<!--                        filteredData.closing_value.push(rawData.closing_value[idx]);-->
+<!--                    }-->
+<!--                });-->
+<!--            }-->
 
-            updateCharts();
-        }
+<!--            updateCharts();-->
+<!--        }-->
 
-        function resetFilter() {
-            document.getElementById("startMonth").value = "";
-            document.getElementById("endMonth").value = "";
+<!--        function resetFilter() {-->
+<!--            document.getElementById("startMonth").value = "";-->
+<!--            document.getElementById("endMonth").value = "";-->
+<!--            filteredData = {...rawData};-->
+<!--            updateCharts();-->
+<!--        }-->
+
+<!--        function renderCharts() {-->
+<!--            charts.forEach(chart => chart.destroy());-->
+<!--            charts = [];-->
+
+<!--            charts.push(new Chart(document.getElementById("inwardOutwardQtyChart"), {-->
+<!--                type: 'line',-->
+<!--                data: {-->
+<!--                    labels: filteredData.labels,-->
+<!--                    datasets: [-->
+<!--                        { label: 'Inwards', data: filteredData.inwards_qty, borderColor: '#00bfff', fill: false, tension: 0.3, pointRadius: 4 },-->
+<!--                        { label: 'Outwards', data: filteredData.outwards_qty, borderColor: '#ff4d4d', fill: false, tension: 0.3, pointRadius: 4 }-->
+<!--                    ]-->
+<!--                },-->
+<!--                options: chartOptions-->
+<!--            }));-->
+
+<!--            charts.push(new Chart(document.getElementById("inwardOutwardValueChart"), {-->
+<!--                type: 'line',-->
+<!--                data: {-->
+<!--                    labels: filteredData.labels,-->
+<!--                    datasets: [-->
+<!--                        { label: 'Inwards', data: filteredData.inwards_value, borderColor: '#00bfff', fill: false, tension: 0.3, pointRadius: 4 },-->
+<!--                        { label: 'Outwards', data: filteredData.outwards_value, borderColor: '#ff4d4d', fill: false, tension: 0.3, pointRadius: 4 }-->
+<!--                    ]-->
+<!--                },-->
+<!--                options: chartOptions-->
+<!--            }));-->
+
+<!--            charts.push(new Chart(document.getElementById("closingQtyChart"), {-->
+<!--                type: 'line',-->
+<!--                data: {-->
+<!--                    labels: filteredData.labels,-->
+<!--                    datasets: [{ label: 'Closing Quantity', data: filteredData.closing_qty, borderColor: '#ba68c8', fill: false, tension: 0.3, pointRadius: 4 }]-->
+<!--                },-->
+<!--                options: chartOptions-->
+<!--            }));-->
+
+<!--            charts.push(new Chart(document.getElementById("closingValueChart"), {-->
+<!--                type: 'line',-->
+<!--                data: {-->
+<!--                    labels: filteredData.labels,-->
+<!--                    datasets: [{ label: 'Closing Value (INR)', data: filteredData.closing_value, borderColor: '#00e676', fill: false, tension: 0.3, pointRadius: 4 }]-->
+<!--                },-->
+<!--                options: chartOptions-->
+<!--            }));-->
+<!--        }-->
+
+
+<!--        function updateCharts() {-->
+<!--            renderCharts();-->
+<!--        }-->
+
+<!--        const chartOptions = {-->
+<!--            responsive: true,-->
+<!--            plugins: {-->
+<!--                legend: { labels: { color: "#e0e0e0" } },-->
+<!--                title: { display: false }-->
+<!--            },-->
+<!--            scales: {-->
+<!--                x: { ticks: { color: '#cccccc' }, grid: { color: '#444' } },-->
+<!--                y: { ticks: { color: '#cccccc' }, grid: { color: '#444' } }-->
+<!--            }-->
+<!--        };-->
+
+<!--        // Initial render-->
+<!--        renderCharts();-->
+<!--    </script>-->
+
+<script>
+    const rawData = JSON.parse('{{ chart_data|escapejs }}');
+    let filteredData = {...rawData};
+    let charts = [];
+
+    function filterByMonth() {
+        const start = document.getElementById("startMonth").value;
+        const end = document.getElementById("endMonth").value;
+
+        if (!start && !end) {
             filteredData = {...rawData};
-            updateCharts();
+        } else {
+            filteredData = {
+                labels: [],
+                inwards_qty: [],
+                outwards_qty: [],
+                inwards_value: [],
+                outwards_value: [],
+                closing_qty: [],
+                closing_value: []
+            };
+
+            rawData.labels.forEach((label, idx) => {
+                if ((!start || label >= start) && (!end || label <= end)) {
+                    filteredData.labels.push(label);
+                    filteredData.inwards_qty.push(rawData.inwards_qty[idx]);
+                    filteredData.outwards_qty.push(rawData.outwards_qty[idx]);
+                    filteredData.inwards_value.push(rawData.inwards_value[idx]);
+                    filteredData.outwards_value.push(rawData.outwards_value[idx]);
+                    filteredData.closing_qty.push(rawData.closing_qty[idx]);
+                    filteredData.closing_value.push(rawData.closing_value[idx]);
+                }
+            });
         }
 
-        function renderCharts() {
-            charts.forEach(chart => chart.destroy());
-            charts = [];
+        updateCharts();
+    }
 
-            charts.push(new Chart(document.getElementById("inwardOutwardQtyChart"), {
-                type: 'line',
-                data: {
-                    labels: filteredData.labels,
-                    datasets: [
-                        { label: 'Inwards', data: filteredData.inwards_qty, borderColor: '#00bfff', fill: false, tension: 0.3, pointRadius: 4 },
-                        { label: 'Outwards', data: filteredData.outwards_qty, borderColor: '#ff4d4d', fill: false, tension: 0.3, pointRadius: 4 }
-                    ]
-                },
-                options: chartOptions
-            }));
+    function resetFilter() {
+        document.getElementById("startMonth").value = "";
+        document.getElementById("endMonth").value = "";
+        filteredData = {...rawData};
+        updateCharts();
+    }
 
-            charts.push(new Chart(document.getElementById("inwardOutwardValueChart"), {
-                type: 'line',
-                data: {
-                    labels: filteredData.labels,
-                    datasets: [
-                        { label: 'Inwards', data: filteredData.inwards_value, borderColor: '#00bfff', fill: false, tension: 0.3, pointRadius: 4 },
-                        { label: 'Outwards', data: filteredData.outwards_value, borderColor: '#ff4d4d', fill: false, tension: 0.3, pointRadius: 4 }
-                    ]
-                },
-                options: chartOptions
-            }));
+    function renderCharts() {
+        charts.forEach(chart => chart.destroy());
+        charts = [];
 
-            charts.push(new Chart(document.getElementById("closingQtyChart"), {
-                type: 'line',
-                data: {
-                    labels: filteredData.labels,
-                    datasets: [{ label: 'Closing Quantity', data: filteredData.closing_qty, borderColor: '#ba68c8', fill: false, tension: 0.3, pointRadius: 4 }]
-                },
-                options: chartOptions
-            }));
-
-            charts.push(new Chart(document.getElementById("closingValueChart"), {
-                type: 'line',
-                data: {
-                    labels: filteredData.labels,
-                    datasets: [{ label: 'Closing Value (INR)', data: filteredData.closing_value, borderColor: '#00e676', fill: false, tension: 0.3, pointRadius: 4 }]
-                },
-                options: chartOptions
-            }));
-        }
-
-
-        function updateCharts() {
-            renderCharts();
-        }
-
-        const chartOptions = {
-            responsive: true,
-            plugins: {
-                legend: { labels: { color: "#e0e0e0" } },
-                title: { display: false }
+        // 📈 Line Charts
+        charts.push(new Chart(document.getElementById("inwardOutwardQtyChart"), {
+            type: 'line',
+            data: {
+                labels: filteredData.labels,
+                datasets: [
+                    { label: 'Inwards', data: filteredData.inwards_qty, borderColor: '#00bfff', fill: false, tension: 0.3, pointRadius: 4 },
+                    { label: 'Outwards', data: filteredData.outwards_qty, borderColor: '#ff4d4d', fill: false, tension: 0.3, pointRadius: 4 }
+                ]
             },
-            scales: {
-                x: { ticks: { color: '#cccccc' }, grid: { color: '#444' } },
-                y: { ticks: { color: '#cccccc' }, grid: { color: '#444' } }
-            }
-        };
+            options: chartOptions
+        }));
 
-        // Initial render
+        charts.push(new Chart(document.getElementById("inwardOutwardValueChart"), {
+            type: 'line',
+            data: {
+                labels: filteredData.labels,
+                datasets: [
+                    { label: 'Inwards', data: filteredData.inwards_value, borderColor: '#00bfff', fill: false, tension: 0.3, pointRadius: 4 },
+                    { label: 'Outwards', data: filteredData.outwards_value, borderColor: '#ff4d4d', fill: false, tension: 0.3, pointRadius: 4 }
+                ]
+            },
+            options: chartOptions
+        }));
+
+        charts.push(new Chart(document.getElementById("closingQtyChart"), {
+            type: 'line',
+            data: {
+                labels: filteredData.labels,
+                datasets: [{ label: 'Closing Quantity', data: filteredData.closing_qty, borderColor: '#ba68c8', fill: false, tension: 0.3, pointRadius: 4 }]
+            },
+            options: chartOptions
+        }));
+
+        charts.push(new Chart(document.getElementById("closingValueChart"), {
+            type: 'line',
+            data: {
+                labels: filteredData.labels,
+                datasets: [{ label: 'Closing Value (INR)', data: filteredData.closing_value, borderColor: '#00e676', fill: false, tension: 0.3, pointRadius: 4 }]
+            },
+            options: chartOptions
+        }));
+
+        // 📊 Bar Charts
+        charts.push(new Chart(document.getElementById("inwardOutwardQtyBarChart"), {
+            type: 'bar',
+            data: {
+                labels: filteredData.labels,
+                datasets: [
+                    { label: 'Inwards', data: filteredData.inwards_qty, backgroundColor: '#00bfff' },
+                    { label: 'Outwards', data: filteredData.outwards_qty, backgroundColor: '#ff4d4d' }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    x: { stacked: true, ticks: { color: '#cccccc' }, grid: { color: '#444' } },
+                    y: { stacked: true, ticks: { color: '#cccccc' }, grid: { color: '#444' } }
+                }
+            }
+        }));
+
+        charts.push(new Chart(document.getElementById("inwardOutwardValueBarChart"), {
+            type: 'bar',
+            data: {
+                labels: filteredData.labels,
+                datasets: [
+                    { label: 'Inwards Value', data: filteredData.inwards_value, backgroundColor: '#00bfff' },
+                    { label: 'Outwards Value', data: filteredData.outwards_value, backgroundColor: '#ff4d4d' }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    x: { stacked: true, ticks: { color: '#cccccc' }, grid: { color: '#444' } },
+                    y: { stacked: true, ticks: { color: '#cccccc' }, grid: { color: '#444' } }
+                }
+            }
+        }));
+
+        charts.push(new Chart(document.getElementById("closingQtyBarChart"), {
+            type: 'bar',
+            data: {
+                labels: filteredData.labels,
+                datasets: [
+                    { label: 'Closing Quantity', data: filteredData.closing_qty, backgroundColor: '#ba68c8' }
+                ]
+            },
+            options: chartOptions
+        }));
+
+        charts.push(new Chart(document.getElementById("closingValueBarChart"), {
+            type: 'bar',
+            data: {
+                labels: filteredData.labels,
+                datasets: [
+                    { label: 'Closing Value', data: filteredData.closing_value, backgroundColor: '#00e676' }
+                ]
+            },
+            options: chartOptions
+        }));
+    }
+
+    function updateCharts() {
         renderCharts();
-    </script>
+    }
+
+    const chartOptions = {
+        responsive: true,
+        plugins: {
+            legend: { labels: { color: "#e0e0e0" } },
+            title: { display: false }
+        },
+        scales: {
+            x: { ticks: { color: '#cccccc' }, grid: { color: '#444' } },
+            y: { ticks: { color: '#cccccc' }, grid: { color: '#444' } }
+        }
+    };
+
+    // Initial render
+    renderCharts();
+</script>
 
 
 </body>
