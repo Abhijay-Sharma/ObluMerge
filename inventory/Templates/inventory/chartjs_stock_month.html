@@ -219,23 +219,15 @@
             }));
         }
 
-        charts.push(new Chart(document.getElementById("inwardOutwardQtyBarChart"), {
-        type: 'bar',
-        data: {
-            labels: filteredData.labels,
-            datasets: [
-                { label: 'Inwards', data: filteredData.inwards_qty, backgroundColor: '#00bfff' },
-                { label: 'Outwards', data: filteredData.outwards_qty, backgroundColor: '#ff4d4d' }
-            ]
-        },
-        options: {
-            ...chartOptions,
-            scales: {
-                x: { stacked: true, ticks: { color: '#cccccc' }, grid: { color: '#444' } },
-                y: { stacked: true, ticks: { color: '#cccccc' }, grid: { color: '#444' } }
-            }
+            charts.push(new Chart(document.getElementById("inwardOutwardQtyBarChart"), {
+                type: 'bar',
+                data: {
+                    labels: filteredData.labels,
+                    datasets: [{ label: 'Closing Value (INR)', data: filteredData.closing_value, borderColor: '#00e676', fill: false, tension: 0.3, pointRadius: 4 }]
+                },
+                options: chartOptions
+            }));
         }
-    }));
 
         function updateCharts() {
             renderCharts();
