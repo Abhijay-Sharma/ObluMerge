@@ -150,5 +150,27 @@
     </div>
   {% endfor %}
 
+    <div id="download-tools">
+        <button onclick="downloadPDF()" style="margin-top: 20px; padding: 10px 20px; background-color: #333; color: white; border: none; cursor: pointer;">
+            Download PDF
+        </button>
+
+
+    </div>
+<script>
+
+    function downloadPDF() {
+    // Hide buttons before print
+    const tools = document.getElementById('download-tools');
+    if (tools) tools.style.display = 'none';
+
+    window.print();
+
+    // Restore buttons after short delay
+    setTimeout(() => {
+        if (tools) tools.style.display = '';
+    }, 1000);
+    }
+</script>
 </body>
 {% endblock content %}
