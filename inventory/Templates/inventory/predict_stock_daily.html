@@ -90,28 +90,29 @@
 </style>
 
 <h1>📦 Stock Prediction for {{ product.name }}</h1>
+{% if product.total_historical_entries %}
+    <div style="text-align:center; margin-bottom: 2rem;">
+        <a href="{% url 'history' product.id %}"
+           style="display:inline-block; padding:10px 20px; margin-right:15px;
+                  background:#00ffcc; color:#0f2027; text-decoration:none;
+                  border-radius:6px; font-weight:bold; transition:0.3s;">
+            📜 View History
+        </a>
 
-<div style="text-align:center; margin-bottom: 2rem;">
-    <a href="{% url 'history' product.id %}"
-       style="display:inline-block; padding:10px 20px; margin-right:15px;
-              background:#00ffcc; color:#0f2027; text-decoration:none;
-              border-radius:6px; font-weight:bold; transition:0.3s;">
-        📜 View History
-    </a>
-
-    <a href="{% url 'stock_chart_2' product.id %}"
-       style="display:inline-block; padding:10px 20px;
-              background:#00ffcc; color:#0f2027; text-decoration:none;
-              border-radius:6px; font-weight:bold; transition:0.3s;">
-        📈 View Daily Graphs
-    </a>
-    <a href="{% url 'monthly-stock-chart' product.id %}"
-       style="display:inline-block; padding:10px 20px;
-              background:#00ffcc; color:#0f2027; text-decoration:none;
-              border-radius:6px; font-weight:bold; transition:0.3s;">
-        📈 View Monthly Graphs
-    </a>
-</div>
+        <a href="{% url 'stock_chart_2' product.id %}"
+           style="display:inline-block; padding:10px 20px;
+                  background:#00ffcc; color:#0f2027; text-decoration:none;
+                  border-radius:6px; font-weight:bold; transition:0.3s;">
+            📈 View Daily Graphs
+        </a>
+        <a href="{% url 'monthly-stock-chart' product.id %}"
+           style="display:inline-block; padding:10px 20px;
+                  background:#00ffcc; color:#0f2027; text-decoration:none;
+                  border-radius:6px; font-weight:bold; transition:0.3s;">
+            📈 View Monthly Graphs
+        </a>
+    </div>
+{% endif %}
 
 {% if error %}
     <p style="color: red; text-align:center; font-weight:bold;">{{ error }}</p>
