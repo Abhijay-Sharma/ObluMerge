@@ -53,35 +53,39 @@
 
 <!-- ✅ Pagination controls -->
 {% if is_paginated %}
-<nav>
-    <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}
-                                     {% if request.GET.salesperson %}salesperson={{ request.GET.salesperson }}&{% endif %}
-                                     {% if request.GET.state %}state={{ request.GET.state }}&{% endif %}
-                                     page={{ page_obj.previous_page_number }}">Previous</a>
-        </li>
-        {% endif %}
+<nav aria-label="Page navigation">
+  <ul class="pagination justify-content-center">
 
-        {% for num in paginator.page_range %}
+    {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link"
+           href="?page={{ page_obj.previous_page_number }}&search={{ request.GET.search|urlencode }}&salesperson={{ request.GET.salesperson|urlencode }}&state={{ request.GET.state|urlencode }}">
+           Previous
+        </a>
+      </li>
+    {% endif %}
+
+    {% for num in paginator.page_range %}
+      {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
         <li class="page-item {% if num == page_obj.number %}active{% endif %}">
-            <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}
-                                         {% if request.GET.salesperson %}salesperson={{ request.GET.salesperson }}&{% endif %}
-                                         {% if request.GET.state %}state={{ request.GET.state }}&{% endif %}
-                                         page={{ num }}">{{ num }}</a>
+          <a class="page-link"
+             href="?page={{ num }}&search={{ request.GET.search|urlencode }}&salesperson={{ request.GET.salesperson|urlencode }}&state={{ request.GET.state|urlencode }}">
+             {{ num }}
+          </a>
         </li>
-        {% endfor %}
+      {% endif %}
+    {% endfor %}
 
-        {% if page_obj.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}
-                                     {% if request.GET.salesperson %}salesperson={{ request.GET.salesperson }}&{% endif %}
-                                     {% if request.GET.state %}state={{ request.GET.state }}&{% endif %}
-                                     page={{ page_obj.next_page_number }}">Next</a>
-        </li>
-        {% endif %}
-    </ul>
+    {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link"
+           href="?page={{ page_obj.next_page_number }}&search={{ request.GET.search|urlencode }}&salesperson={{ request.GET.salesperson|urlencode }}&state={{ request.GET.state|urlencode }}">
+           Next
+        </a>
+      </li>
+    {% endif %}
+
+  </ul>
 </nav>
 {% endif %}
 
