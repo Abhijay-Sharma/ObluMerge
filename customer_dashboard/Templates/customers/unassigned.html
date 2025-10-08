@@ -1,0 +1,24 @@
+{% extends 'customers/base.html' %}
+{% block content %}
+<h2>⚠️ Unassigned Customers</h2>
+{% if unassigned %}
+<p>Total: {{ unassigned|length }}</p>
+<table class="table table-striped table-bordered">
+    <thead class="table-warning">
+        <tr><th>Name</th><th>State</th><th>District</th><th>Address</th></tr>
+    </thead>
+    <tbody>
+        {% for c in unassigned %}
+        <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ c.state }}</td>
+            <td>{{ c.district }}</td>
+            <td>{{ c.address }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-success">All customers are assigned!</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'customers/base.html' %}
+{% block content %}
+<h2>📋 Customer Data</h2>
+
+<form method="get" class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" name="search" value="{{ request.GET.search }}" placeholder="Search name..." class="form-control">
+    </div>
+    <div class="col-md-3">
+        <select name="salesperson" class="form-select">
+            <option value="">All Salespersons</option>
+            {% for s in salespersons %}
+            <option value="{{ s }}" {% if request.GET.salesperson == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="state" class="form-select">
+            <option value="">All States</option>
+            {% for st in states %}
+            <option value="{{ st }}" {% if request.GET.state == st %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100">Filter</button>
+    </div>
+</form>
+
+<table class="table table-striped table-bordered">
+    <thead class="table-primary">
+        <tr>
+            <th>Name</th><th>Email</th><th>Phone</th><th>State</th>
+            <th>District</th><th>Address</th><th>Salesperson</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in customers %}
+        <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ c.email }}</td>
+            <td>{{ c.phone }}</td>
+            <td>{{ c.state }}</td>
+            <td>{{ c.district }}</td>
+            <td>{{ c.address }}</td>
+            <td>{{ c.salesperson.name|default:"Unassigned" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center">No customers found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- ✅ Pagination controls -->
+{% if is_paginated %}
+<nav>
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}
+                                     {% if request.GET.salesperson %}salesperson={{ request.GET.salesperson }}&{% endif %}
+                                     {% if request.GET.state %}state={{ request.GET.state }}&{% endif %}
+                                     page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+
+        {% for num in paginator.page_range %}
+        <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+            <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}
+                                         {% if request.GET.salesperson %}salesperson={{ request.GET.salesperson }}&{% endif %}
+                                         {% if request.GET.state %}state={{ request.GET.state }}&{% endif %}
+                                         page={{ num }}">{{ num }}</a>
+        </li>
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}
+                                     {% if request.GET.salesperson %}salesperson={{ request.GET.salesperson }}&{% endif %}
+                                     {% if request.GET.state %}state={{ request.GET.state }}&{% endif %}
+                                     page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

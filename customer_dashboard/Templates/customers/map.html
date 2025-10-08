@@ -1,0 +1,31 @@
+{% extends 'customers/base.html' %}
+{% block content %}
+<h2>🗺️ Customer Distribution Map</h2>
+<div id="map" style="height: 600px; border-radius:10px; border:1px solid #ccc;"></div>
+
+<!-- Leaflet CSS/JS (if not already in base.html) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const map = L.map('map').setView([20, 78], 5);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 10,
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+const data = JSON.parse('{{ map_data_json|escapejs }}');
+
+data.forEach(d => {
+    if (d.lat && d.lon) {
+        L.circleMarker([d.lat, d.lon], {
+            radius: Math.sqrt(d.Customer_Count) * 3,
+            color: '#ff5733',
+            fillColor: '#ff5733',
+            fillOpacity: 0.6
+        }).bindPopup(`<b>${d.State}</b><br>Customers: ${d.Customer_Count}`).addTo(map);
+    }
+});
+</script>
+{% endblock %}

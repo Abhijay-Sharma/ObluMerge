@@ -27,4 +27,5 @@ urlpatterns = [
     path('signup/',SignUpView.as_view(),name='signup'),
     path('',WelcomeView.as_view(),name='welcome'),
     path('quotations/',include('quotations.urls')),
+    path('customers/',include('customer_dashboard.urls')),
 ]

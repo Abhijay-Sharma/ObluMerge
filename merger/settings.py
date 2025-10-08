@@ -34,6 +34,7 @@ ALLOWED_HOSTS = ['65.2.57.203','127.0.0.1','43.205.240.4']
 INSTALLED_APPS = [
     'quotations',
     'inventory',
+    'customer_dashboard',
     'crispy_forms',
     'crispy_bootstrap5',
     'django.contrib.admin',

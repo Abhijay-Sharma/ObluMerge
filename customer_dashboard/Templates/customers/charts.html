@@ -1,0 +1,38 @@
+{% extends 'customers/base.html' %}
+{% block content %}
+<h2>📊 Charts</h2>
+
+<div id="salesperson_bar" style="height:400px;"></div>
+<div id="state_bar" style="height:400px;"></div>
+<div id="salesperson_pie" style="height:400px;"></div>
+
+<script>
+const salespersonData = JSON.parse('{{ salesperson_counts_json|escapejs }}');
+const stateData = JSON.parse('{{ state_counts_json|escapejs }}');
+
+Plotly.newPlot('salesperson_bar', [{
+    x: salespersonData.map(d => d.Salesperson),
+    y: salespersonData.map(d => d.count),
+    type: 'bar',
+    text: salespersonData.map(d => d.count),
+    textposition: 'outside',
+    marker: { color: 'rgba(54,162,235,0.7)' }
+}], { title: 'Customers per Salesperson' });
+
+Plotly.newPlot('state_bar', [{
+    x: stateData.map(d => d.State),
+    y: stateData.map(d => d.count),
+    type: 'bar',
+    text: stateData.map(d => d.count),
+    textposition: 'outside',
+    marker: { color: 'rgba(255,99,132,0.7)' }
+}], { title: 'Top States by Customers' });
+
+Plotly.newPlot('salesperson_pie', [{
+    labels: salespersonData.map(d => d.Salesperson),
+    values: salespersonData.map(d => d.count),
+    type: 'pie',
+    hole: .3
+}], { title: 'Share by Salesperson' });
+</script>
+{% endblock %}
