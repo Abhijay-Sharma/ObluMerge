@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
-
+#this is models file
 
 class SalesPerson(models.Model):
     name = models.CharField(max_length=255, unique=True)
