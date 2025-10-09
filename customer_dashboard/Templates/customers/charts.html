@@ -1,38 +1,182 @@
 {% extends 'customers/base.html' %}
 {% block content %}
-<h2>📊 Charts</h2>
+<style>
+body {
+  background-color: #f8f9fa;
+  color: #212529;
+}
+.card {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
+h2 {
+  color: #212529;
+  font-weight: 700;
+}
+h5 {
+  color: #495057;
+  font-weight: 500;
+}
+canvas {
+  max-height: 360px;
+}
+</style>
 
-<div id="salesperson_bar" style="height:400px;"></div>
-<div id="state_bar" style="height:400px;"></div>
-<div id="salesperson_pie" style="height:400px;"></div>
+<h2 class="text-center mb-4">📊 Customer Analytics Dashboard</h2>
 
+<!-- Summary Cards -->
+<div class="row mb-4 text-center">
+  <div class="col-md-4 mb-3">
+    <div class="card p-3">
+      <h5>Total Customers</h5>
+      <h2 class="text-primary fw-bold">{{ total_customers }}</h2>
+    </div>
+  </div>
+  <div class="col-md-4 mb-3">
+    <div class="card p-3">
+      <h5>Salespersons</h5>
+      <h2 class="text-success fw-bold">{{ unique_salespersons }}</h2>
+    </div>
+  </div>
+  <div class="col-md-4 mb-3">
+    <div class="card p-3">
+      <h5>States Covered</h5>
+      <h2 class="text-info fw-bold">{{ total_states }}</h2>
+    </div>
+  </div>
+</div>
+
+<!-- Chart Grid -->
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5 class="text-center mb-3">Customers per Salesperson</h5>
+      <canvas id="salespersonBar"></canvas>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5 class="text-center mb-3">Top 10 States by Customers</h5>
+      <canvas id="stateBar"></canvas>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5 class="text-center mb-3">Salesperson Share</h5>
+      <canvas id="salespersonPie"></canvas>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5 class="text-center mb-3">State Share</h5>
+      <canvas id="statePie"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const salespersonData = JSON.parse('{{ salesperson_counts_json|escapejs }}');
 const stateData = JSON.parse('{{ state_counts_json|escapejs }}');
 
-Plotly.newPlot('salesperson_bar', [{
-    x: salespersonData.map(d => d.Salesperson),
-    y: salespersonData.map(d => d.count),
-    type: 'bar',
-    text: salespersonData.map(d => d.count),
-    textposition: 'outside',
-    marker: { color: 'rgba(54,162,235,0.7)' }
-}], { title: 'Customers per Salesperson' });
+// Shared chart options
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      labels: { color: '#212529', font: { size: 12 } }
+    },
+    title: {
+      display: false,
+      color: '#212529',
+      font: { size: 16, weight: 'bold' }
+    }
+  },
+  scales: {
+    x: { ticks: { color: '#495057' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+    y: { ticks: { color: '#495057' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+  }
+};
 
-Plotly.newPlot('state_bar', [{
-    x: stateData.map(d => d.State),
-    y: stateData.map(d => d.count),
-    type: 'bar',
-    text: stateData.map(d => d.count),
-    textposition: 'outside',
-    marker: { color: 'rgba(255,99,132,0.7)' }
-}], { title: 'Top States by Customers' });
-
-Plotly.newPlot('salesperson_pie', [{
+// --- Salesperson Bar ---
+new Chart(document.getElementById('salespersonBar'), {
+  type: 'bar',
+  data: {
     labels: salespersonData.map(d => d.Salesperson),
-    values: salespersonData.map(d => d.count),
-    type: 'pie',
-    hole: .3
-}], { title: 'Share by Salesperson' });
+    datasets: [{
+      label: 'Customers',
+      data: salespersonData.map(d => d.count),
+      backgroundColor: '#0d6efd',
+      borderRadius: 6
+    }]
+  },
+  options: {
+    ...chartOptions,
+    plugins: { ...chartOptions.plugins, title: { display: true, text: 'Customers per Salesperson' } }
+  }
+});
+
+// --- State Bar ---
+new Chart(document.getElementById('stateBar'), {
+  type: 'bar',
+  data: {
+    labels: stateData.map(d => d.State),
+    datasets: [{
+      label: 'Customers',
+      data: stateData.map(d => d.count),
+      backgroundColor: '#dc3545',
+      borderRadius: 6
+    }]
+  },
+  options: {
+    ...chartOptions,
+    plugins: { ...chartOptions.plugins, title: { display: true, text: 'Top 10 States by Customers' } }
+  }
+});
+
+// --- Salesperson Pie ---
+new Chart(document.getElementById('salespersonPie'), {
+  type: 'doughnut',
+  data: {
+    labels: salespersonData.map(d => d.Salesperson),
+    datasets: [{
+      data: salespersonData.map(d => d.count),
+      backgroundColor: [
+        '#0d6efd', '#198754', '#ffc107', '#dc3545', '#20c997', '#6f42c1', '#fd7e14'
+      ]
+    }]
+  },
+  options: {
+    ...chartOptions,
+    cutout: '65%',
+    plugins: { ...chartOptions.plugins, title: { display: true, text: 'Salesperson Share' } }
+  }
+});
+
+// --- State Pie ---
+new Chart(document.getElementById('statePie'), {
+  type: 'pie',
+  data: {
+    labels: stateData.map(d => d.State),
+    datasets: [{
+      data: stateData.map(d => d.count),
+      backgroundColor: [
+        '#0d6efd', '#dc3545', '#20c997', '#ffc107', '#6610f2', '#198754', '#fd7e14'
+      ]
+    }]
+  },
+  options: {
+    ...chartOptions,
+    plugins: { ...chartOptions.plugins, title: { display: true, text: 'State Share' } }
+  }
+});
 </script>
+
 {% endblock %}

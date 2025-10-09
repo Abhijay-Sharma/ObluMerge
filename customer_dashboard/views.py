@@ -48,7 +48,6 @@ class ChartsView(AccountantRequiredMixin,TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
-        # Salesperson counts
         salesperson_counts = (
             Customer.objects.values("salesperson__name")
             .annotate(count=Count("id"))
@@ -58,20 +57,24 @@ class ChartsView(AccountantRequiredMixin,TemplateView):
             {"Salesperson": s["salesperson__name"] or "Unassigned", "count": s["count"]}
             for s in salesperson_counts
         ]
-        ctx["salesperson_counts_json"] = json.dumps(salesperson_data)
 
-        # State counts
         state_counts = (
             Customer.objects.values("state")
             .annotate(count=Count("id"))
-            .order_by("-count")[:10]
+            .order_by("-count")
         )
         state_data = [
             {"State": s["state"] or "Unknown", "count": s["count"]}
             for s in state_counts
         ]
-        ctx["state_counts_json"] = json.dumps(state_data)
 
+        ctx.update({
+            "salesperson_counts_json": json.dumps(salesperson_data),
+            "state_counts_json": json.dumps(state_data),
+            "total_customers": Customer.objects.count(),
+            "unique_salespersons": Customer.objects.values("salesperson").distinct().count(),
+            "total_states": Customer.objects.values("state").distinct().count(),
+        })
         return ctx
 
 
