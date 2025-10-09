@@ -3,9 +3,10 @@ from django.db.models import Count
 from django.shortcuts import render
 from .models import Customer, SalesPerson
 import json
+from inventory.mixins import AccountantRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 
-
-class CustomerListView(ListView):
+class CustomerListView(AccountantRequiredMixin,ListView):
     model = Customer
     template_name = "customers/data.html"
     context_object_name = "customers"
@@ -41,7 +42,7 @@ class CustomerListView(ListView):
         )
         return ctx
 
-class ChartsView(TemplateView):
+class ChartsView(AccountantRequiredMixin,TemplateView):
     template_name = "customers/charts.html"
 
     def get_context_data(self, **kwargs):
@@ -76,7 +77,7 @@ class ChartsView(TemplateView):
 
 
 
-class UnassignedView(TemplateView):
+class UnassignedView(AccountantRequiredMixin,TemplateView):
     template_name = "customers/unassigned.html"
 
 
@@ -93,7 +94,7 @@ from django.db.models import Count
 from .models import Customer
 
 
-class MapView(TemplateView):
+class MapView(AccountantRequiredMixin,TemplateView):
     template_name = "customers/map.html"
 
     # simplified state coords; extend as needed
