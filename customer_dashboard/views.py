@@ -165,3 +165,30 @@ class MapView(AccountantRequiredMixin,TemplateView):
 
         ctx["map_data_json"] = json.dumps(data)
         return ctx
+
+
+class DetailedMapView(AccountantRequiredMixin, TemplateView):
+    template_name = "customers/detailed_map.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        qs = (
+            Customer.objects
+            .filter(latitude__isnull=False, longitude__isnull=False)
+            .values("state", "district", "latitude", "longitude")
+            .annotate(count=Count("id"))
+        )
+
+        data = [
+            {
+                "State": q["state"],
+                "District": q["district"],
+                "Customer_Count": q["count"],
+                "lat": q["latitude"],
+                "lon": q["longitude"]
+            }
+            for q in qs
+        ]
+
+        ctx["map_data_json"] = json.dumps(data)
+        return ctx

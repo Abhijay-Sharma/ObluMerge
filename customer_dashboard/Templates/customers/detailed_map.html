@@ -1,0 +1,71 @@
+{% extends 'customers/base.html' %}
+{% block content %}
+<h2>🗺️ Customer Distribution Map (District-Level)</h2>
+
+<div id="map" style="height: 650px; border-radius: 10px; border: 1px solid #ccc;"></div>
+
+<!-- ✅ Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Optional: marker clustering if you have many districts -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Initialize map centered on India
+    const map = L.map('map').setView([22.9734, 78.6569], 5);
+
+    // Add OpenStreetMap base layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 12,
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Parse the JSON data from Django context
+    const data = JSON.parse('{{ map_data_json|escapejs }}');
+
+    // Optional: create cluster group (helps when many points overlap)
+    const markers = L.markerClusterGroup({
+        spiderfyOnEveryZoom: false,
+        showCoverageOnHover: false,
+        maxClusterRadius: 50
+    });
+
+    // Loop through each district and add marker
+    data.forEach(d => {
+        if (d.lat && d.lon) {
+            const marker = L.circleMarker([d.lat, d.lon], {
+                radius: Math.sqrt(d.Customer_Count) * 2.5,  // scale by number of customers
+                color: '#007bff',
+                fillColor: '#007bff',
+                fillOpacity: 0.6,
+                weight: 1
+            });
+
+            marker.bindPopup(`
+                <div style="font-size: 14px;">
+                    <strong>${d.District}</strong>, ${d.State}<br>
+                    Customers: <b>${d.Customer_Count}</b>
+                </div>
+            `);
+
+            markers.addLayer(marker);
+        }
+    });
+
+    // Add cluster markers to map
+    map.addLayer(markers);
+
+    // Fit bounds if there’s data
+    if (data.length > 0) {
+        const coords = data.filter(d => d.lat && d.lon).map(d => [d.lat, d.lon]);
+        if (coords.length > 0) {
+            map.fitBounds(coords);
+        }
+    }
+});
+</script>
+{% endblock %}
