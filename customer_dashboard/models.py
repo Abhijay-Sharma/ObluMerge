@@ -30,6 +30,9 @@ class Customer(models.Model):
     related_name="customers")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # new fields:
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
 
 
     class Meta:
