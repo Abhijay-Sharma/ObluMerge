@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Inventory Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f9fa; padding: 20px; }
+    h1 { color: #0d6efd; }
+    h2 { color: #212529; margin-top: 30px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+    th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+    th { background-color: #1c2126; color: white; }
+    .low-stock { background-color: #ed2537; color: white; }
+    a { color: #0d6efd; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <h1>📊 Daily Inventory Report</h1>
+  <p>This report includes all inventory items and highlights those that are below their Linear Regression Outwards threshold.</p>
+
+  {% for category in categories %}
+    {% if category.inventoryitem_set.all %}
+      <h2>{{ category.name }}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Nitin Est.</th>
+            <th>Min Qty (Closing)</th>
+            <th style="background-color:#6fc8e4;">Linear Regression Outwards</th>
+            <th>Min Qty (GPT)</th>
+            <th>Min Qty (Avg)</th>
+            <th>Min Qty (Last 3 Avg)</th>
+            <th>Total Entries</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in category.inventoryitem_set.all %}
+            {% if item.quantity < item.min_quantity_outwards %}
+              <tr class="{% if item.quantity < item.min_quantity_outwards %}low-stock{% endif %}">
+                <td><a href="https://yourdomain.com/inventory/predict/{{ item.id }}">{{ item.name }}</a></td>
+                <td>{{ item.quantity }}</td>
+                <td>{% if item.min_quantity_nitin != -1 %}{{ item.min_quantity_nitin }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_closing != -1 %}{{ item.min_quantity_closing }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_outwards != -1 %}{{ item.min_quantity_outwards }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_gpt != -1 %}{{ item.min_quantity_gpt }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_average != -1 %}{{ item.min_quantity_average }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three }}{% else %}-{% endif %}</td>
+                <td>{{ item.total_historical_entries }}</td>
+              </tr>
+             {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endfor %}
+
+  <p>— Inventory Management System</p>
+</body>
+</html>
