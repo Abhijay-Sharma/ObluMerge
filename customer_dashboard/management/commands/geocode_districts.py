@@ -2,7 +2,7 @@ import requests
 import time
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from customers.models import Customer
+from customer_dashboard.models import Customer
 
 class Command(BaseCommand):
     help = "Fetch latitude and longitude for each unique district using OpenStreetMap Nominatim API"
