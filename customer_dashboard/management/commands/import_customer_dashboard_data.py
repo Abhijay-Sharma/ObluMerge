@@ -13,7 +13,7 @@ SALESPERSON_MAPPING = {
     "Naveen": "Naveen_K",
     "Satish": "Satish_Kumar",
     "Jackson": "Jackson_Flinto",
-    "Rushikesh": "Dhornala_Rushikesh",
+    "Rushikesh": "Dhornala_Rushikesh_paused",
     "Danish": "Mohammed_Danish",
     "Akshay": "Akshay_Narayan",
     "Nitin": "Nitin_Aggarwal"
