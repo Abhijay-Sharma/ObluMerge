@@ -15,6 +15,8 @@ SALESPERSON_MAPPING = {
     "Jackson": "Jackson_Flinto",
     "Rushikesh": "Dhornala_Rushikesh",
     "Danish": "Mohammed_Danish",
+    "Akshay": "Akshay_Narayan",
+    "Nitin": "Nitin_Aggarwal"
 }
 
 class Command(BaseCommand):
