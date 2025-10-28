@@ -38,7 +38,6 @@
         </thead>
         <tbody>
           {% for item in category.inventoryitem_set.all %}
-            {% if item.quantity < item.min_quantity_outwards %}
               <tr class="{% if item.quantity < item.min_quantity_outwards %}low-stock{% endif %}">
                 <td><a href="https://yourdomain.com/inventory/predict/{{ item.id }}">{{ item.name }}</a></td>
                 <td>{{ item.quantity }}</td>
@@ -50,7 +49,6 @@
                 <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three }}{% else %}-{% endif %}</td>
                 <td>{{ item.total_historical_entries }}</td>
               </tr>
-             {% endif %}
           {% endfor %}
         </tbody>
       </table>
