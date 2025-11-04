@@ -40,7 +40,7 @@
         <tbody>
           {% for item in category.inventoryitem_set.all %}
               <tr class="{% if item.quantity < item.min_quantity_outwards %}low-stock{% endif %}">
-                <td><a href="https://yourdomain.com/inventory/predict/{{ item.id }}">{{ item.name }}</a></td>
+                <td><a href="http://43.205.240.4:8000/inventory/predict/{{ item.id }}">{{ item.name }}</a></td>
                 <td>{{ item.quantity }}</td>
                 <td>{% if item.min_quantity_nitin != -1 %}{{ item.min_quantity_nitin }}{% else %}-{% endif %}</td>
                 <td>{% if item.min_quantity_closing != -1 %}{% widthratio item.min_quantity_closing 2 1 %}{% else %}-{% endif %}</td>
