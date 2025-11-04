@@ -42,12 +42,12 @@
                 <td><a href="https://yourdomain.com/inventory/predict/{{ item.id }}">{{ item.name }}</a></td>
                 <td>{{ item.quantity }}</td>
                 <td>{% if item.min_quantity_nitin != -1 %}{{ item.min_quantity_nitin }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_closing != -1 %}{{ item.min_quantity_closing|widthratio:2:1 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_outwards != -1 %}{{ item.min_quantity_outwards|widthratio:2:1 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_gpt != -1 %}{{ item.min_quantity_gpt|widthratio:2:1 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_average != -1 %}{{ item.min_quantity_average|widthratio:2:1 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three|widthratio:2:1 }}{% else %}-{% endif %}</td>
-                <td>{{ item.total_historical_entries }}</td>
+                <td>{% if item.min_quantity_closing != -1 %}{% widthratio item.min_quantity_closing 2 1 %}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_outwards != -1 %}{% widthratio item.min_quantity_outwards 2 1 %}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_gpt != -1 %}{% widthratio item.min_quantity_gpt 2 1 %}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_average != -1 %}{% widthratio item.min_quantity_average 2 1 %}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_average_three != -1 %}{% widthratio item.min_quantity_average_three 2 1 %}{% else %}-{% endif %}</td>
+
               </tr>
           {% endfor %}
         </tbody>
