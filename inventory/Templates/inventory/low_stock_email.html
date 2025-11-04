@@ -18,7 +18,6 @@
 
   <h1>📊 Daily Inventory Report</h1>
   <p>This report includes all inventory items and highlights those that are below their Linear Regression Outwards threshold.</p>
-  <p>All the recommended values by the models have been halved as required.</p>
 
   {% for category in categories %}
     {% if category.inventoryitem_set.all %}
@@ -43,11 +42,11 @@
                 <td><a href="https://yourdomain.com/inventory/predict/{{ item.id }}">{{ item.name }}</a></td>
                 <td>{{ item.quantity }}</td>
                 <td>{% if item.min_quantity_nitin != -1 %}{{ item.min_quantity_nitin }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_closing != -1 %}{{ item.min_quantity_closing//2 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_outwards != -1 %}{{ item.min_quantity_outwards//2 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_gpt != -1 %}{{ item.min_quantity_gpt//2 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_average != -1 %}{{ item.min_quantity_average//2 }}{% else %}-{% endif %}</td>
-                <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three//2 }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_closing != -1 %}{{ item.min_quantity_closing|widthratio:2:1 }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_outwards != -1 %}{{ item.min_quantity_outwards|widthratio:2:1 }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_gpt != -1 %}{{ item.min_quantity_gpt|widthratio:2:1 }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_average != -1 %}{{ item.min_quantity_average|widthratio:2:1 }}{% else %}-{% endif %}</td>
+                <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three|widthratio:2:1 }}{% else %}-{% endif %}</td>
                 <td>{{ item.total_historical_entries }}</td>
               </tr>
           {% endfor %}
