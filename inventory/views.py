@@ -489,7 +489,7 @@ def predict_min_stock_from_daily(request, pk):
     return render(request, 'inventory/predict_stock_daily.html', context)
 
 
-class PredictMinStockView(TemplateView):
+class PredictMinStockView(AccountantRequiredMixin,TemplateView):
     template_name = "inventory/predict_stock_daily.html"
 
     def get_context_data(self, **kwargs):
