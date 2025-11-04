@@ -33,7 +33,7 @@ class Command(BaseCommand):
         # ✉️ Prepare email
         subject = "📊 Daily Inventory Report (Low Stock Alerts Included)"
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
-        to_emails = ["madderladder68@gmail.com","nitin.a@obluhc.com","swasti.obluhc@gmail.com"]  # 👈 your target email
+        to_emails = ["madderladder68@gmail.com","swasti.obluhc@gmail.com"]  # 👈 your target email
 
         msg = EmailMultiAlternatives(subject, "", from_email, to_emails)
         msg.attach_alternative(html_content, "text/html")
