@@ -18,6 +18,7 @@
 
   <h1>📊 Daily Inventory Report</h1>
   <p>This report includes all inventory items and highlights those that are below their Linear Regression Outwards threshold.</p>
+  <p>All the models recommended values have been halved as required.</p>
 
   {% for category in categories %}
     {% if category.inventoryitem_set.all %}
