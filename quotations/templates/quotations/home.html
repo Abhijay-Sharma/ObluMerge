@@ -19,6 +19,9 @@
       <a href="{% url 'create_customer' %}" class="btn">Create New Customer</a>
       <a href="{% url 'customer_list' %}" class="btn">View My Customers</a>
       <a href="{% url 'product_list' %}" class="btn">View Products</a>
+      {% if request.user.is_accountant %}
+      <a href="{% url 'price_change_requests' %}" class="btn">Price Change Requests</a>
+      {% endif %}
     </div>
 
   </div>
