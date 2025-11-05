@@ -3,7 +3,7 @@ from django.contrib import admin
 # Register your models here.
 # quotations/admin.py
 from django.contrib import admin
-from .models import ProductCategory, Product, Quotation, QuotationItem, Customer, ProductPriceTier
+from .models import ProductCategory, Product, Quotation, QuotationItem, Customer, ProductPriceTier, PriceChangeRequest
 
 admin.site.register(ProductCategory)
 admin.site.register(Product)
