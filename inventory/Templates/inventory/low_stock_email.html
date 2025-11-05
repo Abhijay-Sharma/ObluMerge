@@ -48,6 +48,7 @@
                 <td>{% if item.min_quantity_gpt != -1 %}{% widthratio item.min_quantity_gpt 2 1 %}{% else %}-{% endif %}</td>
                 <td>{% if item.min_quantity_average != -1 %}{% widthratio item.min_quantity_average 2 1 %}{% else %}-{% endif %}</td>
                 <td>{% if item.min_quantity_average_three != -1 %}{% widthratio item.min_quantity_average_three 2 1 %}{% else %}-{% endif %}</td>
+                <td>{% if item.total_historical_entries != -1 %}{{ item.total_historical_entries }}{% else %}-{% endif %}</td>
 
               </tr>
           {% endfor %}
