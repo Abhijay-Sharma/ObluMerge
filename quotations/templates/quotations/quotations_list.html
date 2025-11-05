@@ -167,6 +167,9 @@
               <td>{{ quotation.created_by}}</td>
               <td>
                 <a href="{% url 'quotation_detail' quotation.id %}" class="btn-secondary">View</a>
+                {% if request.user.is_viewer %}
+                  <a href="{% url 'request_price_change' quotation.id %}" class="btn-secondary">Request Price Change</a>
+                {% endif %}
               </td>
             </tr>
           {% empty %}
