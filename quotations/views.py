@@ -2,13 +2,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
-from django.views.generic import CreateView
+from django.views.generic import CreateView, FormView, DetailView
 from xhtml2pdf import pisa
 from django.forms import modelformset_factory
 from django.http import JsonResponse
 
-from .forms import QuotationForm, QuotationItemForm, CustomerCreateForm , ProductForm, ProductPriceTierFormSet
-from .models import Quotation, QuotationItem, Customer, ProductCategory, Product
+from .forms import QuotationForm, QuotationItemForm, CustomerCreateForm , ProductForm, ProductPriceTierFormSet, PriceChangeRequestForm
+from .models import Quotation, QuotationItem, Customer, ProductCategory, Product, PriceChangeRequest
 from django.contrib.auth.decorators import login_required
 import traceback
 from django.views import View
@@ -21,6 +21,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 
 from django.contrib import messages
+from django.utils import timezone
 
 # Create the modelformset for multiple product rows
 QuotationItemFormSet = modelformset_factory(
@@ -310,3 +311,175 @@ class CreateProductView(AccountantRequiredMixin, View):
             "form": form,
             "tier_formset": tier_formset,
         })
+
+
+# ----------------------------------------------------------
+# 1️⃣  View for non-accountant users to create price change request
+# ----------------------------------------------------------
+class PriceChangeRequestCreateView(LoginRequiredMixin, FormView):
+    template_name = "quotations/request_price_change.html"
+    form_class = PriceChangeRequestForm
+
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Only allow viewers (non-accountants) to request price changes.
+        """
+        quotation_id = self.kwargs['quotation_id']
+        self.quotation = get_object_or_404(Quotation, id=quotation_id)
+
+        if request.user.is_accountant:
+            messages.error(request, "Accountants cannot request price changes.")
+            return redirect("quotation_detail", pk=self.quotation.id)
+
+        if PriceChangeRequest.objects.filter(quotation=self.quotation, status='pending').exists():
+            messages.warning(request, "There is already a pending request for this quotation.")
+            return redirect("quotation_detail", pk=self.quotation.id)
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        """
+        Add quotation items to template context.
+        """
+        context = super().get_context_data(**kwargs)
+        context["quotation"] = self.quotation
+        context["items"] = self.quotation.items.select_related("product")
+        return context
+
+    def form_valid(self, form):
+        """
+        Save the request and attach the requested new prices.
+        """
+        items = self.quotation.items.select_related("product")
+        requested_prices = {
+            str(item.id): self.request.POST.get(f"new_price_{item.id}")
+            for item in items if self.request.POST.get(f"new_price_{item.id}")
+        }
+
+        price_request = form.save(commit=False)
+        price_request.quotation = self.quotation
+        price_request.requested_by = self.request.user
+        price_request.requested_prices = requested_prices
+        price_request.save()
+
+        messages.success(self.request, "Your price change request has been submitted for review.")
+        return redirect("quotation_detail", pk=self.quotation.id)
+
+
+# ----------------------------------------------------------
+# 2️⃣  View for accountants to list all price change requests
+# ----------------------------------------------------------
+class PriceChangeRequestListView(AccountantRequiredMixin, ListView):
+    model = PriceChangeRequest
+    template_name = "quotations/price_change_request_list.html"
+    context_object_name = "requests"
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """
+        Show all requests with related quotation and user info.
+        """
+        return PriceChangeRequest.objects.select_related(
+            "quotation", "requested_by", "reviewed_by"
+        ).prefetch_related("quotation__items__product")
+
+
+
+# ----------------------------------------------------------
+# 3️⃣  Accountant approves a request
+# ----------------------------------------------------------
+class PriceChangeRequestApproveView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(PriceChangeRequest, id=kwargs['pk'], status="pending")
+        quotation = price_request.quotation
+
+        # Update item prices
+        for item_id, new_price in price_request.requested_prices.items():
+            try:
+                item = QuotationItem.objects.get(id=item_id, quotation=quotation)
+                item.custom_price = float(new_price)  # ✅ cleaner alternative to altering product
+                item.save()
+            except QuotationItem.DoesNotExist:
+                continue
+
+        # Update request and quotation state
+        price_request.status = "approved"
+        price_request.reviewed_by = request.user
+        price_request.reviewed_at = timezone.now()
+        price_request.save()
+
+        quotation.is_price_altered = True
+        quotation.save()
+
+        messages.success(request, f"Quotation #{quotation.id} prices updated successfully.")
+        return redirect("price_change_requests")
+
+# ----------------------------------------------------------
+# 4️⃣  Accountant rejects a request
+# ----------------------------------------------------------
+class PriceChangeRequestRejectView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(PriceChangeRequest, id=kwargs['pk'], status="pending")
+
+        price_request.status = "rejected"
+        price_request.reviewed_by = request.user
+        price_request.reviewed_at = timezone.now()
+        price_request.save()
+
+        messages.info(request, f"Request #{price_request.id} has been rejected.")
+        return redirect("price_change_requests")
+
+
+class QuotationDetailView(DetailView):
+    """
+    Displays a single quotation.
+    If a price-change request has been approved for this quotation,
+    the altered prices are shown instead of the original ones.
+
+    Context variables:
+    - quotation: Quotation object
+    - items: Related quotation items
+    - has_discount: Boolean if any item has discount
+    - altered_prices: dict {item_id: new_price} if approved request exists
+    """
+    model = Quotation
+    template_name = "quotations/quotation_detail.html"
+    context_object_name = "quotation"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        quotation = self.object
+
+        # Get all related items in one query
+        items_qs = quotation.items.select_related('product').all()
+        context["items"] = items_qs
+
+        # Detect if any item has a discount
+        context["has_discount"] = items_qs.filter(discount__gt=0).exists()
+
+        # Default: no altered prices
+        altered_prices = {}
+
+        # If this quotation has been flagged as price-altered,
+        # find its most recent approved PriceChangeRequest
+        if quotation.is_price_altered:
+            print("Im here")
+            approved_request = (
+                PriceChangeRequest.objects
+                .filter(quotation=quotation, status='approved')
+                .order_by('-id')
+                .first()
+            )
+
+            if approved_request:
+                print("Im here2")
+                altered_prices = approved_request.requested_prices or {}
+
+        context["altered_prices"] = altered_prices
+
+        # If there are approved altered prices, use the alternate template
+        if altered_prices:
+            print("Im here3")
+            self.template_name = "quotations/quotation_detail_altered.html"
+
+        return context

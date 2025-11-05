@@ -1,6 +1,6 @@
 # quotations/forms.py
 from django import forms
-from .models import Quotation, QuotationItem, Product, Customer, ProductPriceTier
+from .models import Quotation, QuotationItem, Product, Customer, ProductPriceTier , PriceChangeRequest
 from django.forms import inlineformset_factory
 
 
@@ -109,3 +109,23 @@ ProductPriceTierFormSet = inlineformset_factory(
     extra=1,         # always show 1 empty row for adding new tier
     can_delete=True  # allow deleting old tiers
 )
+
+class PriceChangeRequestForm(forms.ModelForm):
+    """
+    Used by normal users to request a price change for a quotation.
+    """
+
+    class Meta:
+        model = PriceChangeRequest
+        fields = ['reason']
+        widgets = {
+            'reason': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Explain why price change is needed...'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.quotation = kwargs.pop('quotation', None)
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
