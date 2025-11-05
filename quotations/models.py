@@ -57,6 +57,8 @@ class Quotation(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     validity = models.DateTimeField(default=validity_default)
     created_by=models.CharField(max_length=255,default="Oblu")
+    is_price_altered = models.BooleanField(default=False)
+
 
     def total(self):
         return sum(item.total_price() for item in self.items.all())
@@ -158,3 +160,77 @@ class Customer(models.Model):
     class Meta:
         unique_together = ('name', 'address', 'phone')
         ordering = ['name']
+
+from django.core.serializers.json import DjangoJSONEncoder
+
+class PriceChangeRequest(models.Model):
+    """
+    Stores a request made by a normal user (viewer) to change product prices
+    in an already-created quotation. Accountants can review, approve, or reject
+    each request.
+
+    If approved, the new prices are applied to the quotation's items, and the
+    quotation is flagged as having altered prices.
+    """
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    quotation = models.ForeignKey(
+        "Quotation",
+        on_delete=models.CASCADE,
+        related_name="price_requests"
+    )
+    """
+    The quotation that this price-change request belongs to.
+    """
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="price_requests_made"
+    )
+    """
+    The user (viewer) who requested this price change.
+    """
+
+    requested_prices = models.JSONField(encoder=DjangoJSONEncoder)
+    """
+    Stores the requested new prices for one or more items.
+    Example structure:
+    {
+        "45": "550.00",   # item_id: new_price
+        "46": "780.00"
+    }
+    """
+
+    reason = models.TextField(blank=True, null=True)
+    """Optional message explaining why the price change is requested."""
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending"
+    )
+    """Tracks the current approval state of the request."""
+
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="price_requests_reviewed"
+    )
+    """The accountant who approved or rejected this request."""
+
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    """Timestamp when the accountant reviewed this request."""
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    """Timestamp when this request was created."""
+
+    def __str__(self):
+        return f"PriceChangeRequest #{self.id} for Quotation #{self.quotation.id} ({self.status})"
