@@ -1,0 +1,242 @@
+{% load static %}
+{% load quotation_extras %}
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Quotation</title>
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            padding: 40px;
+            color: #333;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+        .header img { height: 70px; }
+        .contact-info { text-align: right; font-size: 15px; }
+        .contact-info div { margin-bottom: 5px; }
+        .quotation-info, .customer-info { margin-bottom: 20px; font-size: 14px; }
+        .customer-info p, .quotation-info p { margin: 4px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background-color: #f4f4f4; }
+        .total { text-align: right; margin-top: 20px; font-size: 15px; }
+        .terms { margin-top: 20px; }
+        .terms h3 { text-decoration: underline; font-weight: bold; }
+        .terms ol { margin-left: 20px; font-size: 12px; }
+        .bank-details { margin-left: 30px; }
+        .signature { margin-top: 40px; margin-left: 60px; font-size: 14px; text-align: center; }
+        .signature img { height: 100px; margin-top: 2px; }
+        .contact-info2 {
+            margin-top: 10px;
+            height: 30px;
+            background-color: rgb(32, 31, 31);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            color: white;
+            font-size: 14px;
+        }
+        @media print {
+            .contact-info2 {
+                background-color: #333 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        .page-break { page-break-before: always; break-before: page; }
+    </style>
+</head>
+<body>
+    <div class="contact-info2"><span>QUOTATION</span></div>
+
+    <div class="header">
+        <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.png?v=1747391104" alt="OBLU Logo">
+        <div class="contact-info">
+            <div><b>A:</b> 705-706, 7th Floor, PP City Centre,<br> Pitampura, New Delhi - 110034</div>
+            <div><b>GST No.:</b> 07AAIFO0279M1ZU</div>
+            <div><b>LLPIN:</b> ABB-5224</div>
+        </div>
+    </div>
+
+    <div class="contact-info2">
+        <span>M:+91 96504 47099</span>
+        <span>E:sales@obluhc.com</span>
+        <span>W:www.obluhc.com</span>
+    </div>
+
+    <!-- Customer Info -->
+    <div class="customer-info">
+        <p><strong>To:</strong> {{ quotation.customer_name }}</p>
+        <p><strong>Address:</strong> {{ quotation.customer_address }}</p>
+        {% if quotation.customer_state %}<p><strong>State:</strong> {{ quotation.customer_state }}</p>{% endif %}
+        {% if quotation.customer_city %}<p><strong>City:</strong> {{ quotation.customer_city }}</p>{% endif %}
+        {% if quotation.customer_pincode %}<p><strong>Pincode:</strong> {{ quotation.customer_pincode }}</p>{% endif %}
+        {% if quotation.customer_phone %}<p><strong>Phone:</strong> {{ quotation.customer_phone }}</p>{% endif %}
+        {% if quotation.customer_email %}<p><strong>Email:</strong> {{ quotation.customer_email }}</p>{% endif %}
+        {% if quotation.customer_company %}<p><strong>Company:</strong> {{ quotation.customer_company }}</p>{% endif %}
+    </div>
+
+    <!-- Quotation Info -->
+    <div class="quotation-info">
+        <p><strong>Quotation Ref. No.:</strong> OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}</p>
+        <p><strong>Created By:</strong> {{ quotation.created_by }}</p>
+        <p><strong>Date:</strong> {{ quotation.date_created|date:"d.m.Y" }}</p>
+        <p><strong>Validity:</strong> {{ quotation.validity|date:"d.m.Y" }}</p>
+    </div>
+
+    <!-- Product Table -->
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Net Price (₹)</th>
+                <th>GST (%)</th>
+                <th>GST Amount</th>
+                <th>Unit Price (Inc. GST)</th>
+                {% if has_discount %}
+                    <th>Discount (₹)</th>
+                {% endif %}
+                <th>Total (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in quotation.items.all %}
+                {% with new_price=altered_prices|get_item:item.id %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+
+                    {% if new_price %}
+                        <td>{{ new_price }}</td>
+                        <td>{{ item.product.tax_rate }}</td>
+
+                        {% comment %} Calculate GST Amount {% endcomment %}
+                        {% with gst_amount=new_price|multiply:item.product.tax_rate|divide:100 %}
+                            <td>{{ gst_amount|floatformat:2 }}</td>
+
+                            {% comment %} Unit Price including GST (net + GST) {% endcomment %}
+                            <td>{{ gst_amount|add:new_price|floatformat:2 }}</td>
+                        {% endwith %}
+
+                    {% else %}
+                        <td>{{ item.unit_price_without_tax }}</td>
+                        <td>{{ item.product.tax_rate }}</td>
+                        <td>{{ item.gst_amount }}</td>
+                        <td>{{ item.gst_unit_price }}</td>
+                    {% endif %}
+
+                    {% if has_discount %}
+                        <td>{{ item.discount|default:"-" }}</td>
+                    {% endif %}
+
+                    <td>
+                        {% if new_price %}
+                            {{ item.quantity|multiply:new_price|floatformat:2 }}
+                        {% else %}
+                            {{ item.total_price }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endwith %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Total -->
+    <div class="total">
+        <strong>
+            Grand Total: ₹
+            {% with grand_total=0 %}
+                {% for item in quotation.items.all %}
+                    {% with new_price=altered_prices|get_item:item.id %}
+                        {% if new_price %}
+                            {% widthratio item.quantity 1 new_price as subtotal %}
+                        {% else %}
+                            {% widthratio item.quantity 1 item.unit_price_without_tax as subtotal %}
+                        {% endif %}
+                        {% with grand_total=grand_total|add:subtotal %}{% endwith %}
+                    {% endwith %}
+                {% endfor %}
+                {{ grand_total|floatformat:2 }}
+            {% endwith %}
+        </strong>
+    </div>
+
+    <div class="signature">
+        <p><strong>This is a system generated quotation</strong></p>
+    </div>
+
+    <hr class="page-break">
+
+    <!-- Terms & Conditions -->
+    <div class="contact-info2"><span>QUOTATION</span></div>
+    <div class="header">
+        <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.png?v=1747391104" alt="OBLU Logo">
+        <div class="contact-info">
+            <div><b>A:</b> 705-706, 7th Floor, PP City Centre,<br> Pitampura, New Delhi - 110034</div>
+            <div><b>GST No.:</b> 07AAIFO0279M1ZU</div>
+            <div><b>LLPIN:</b> ABB-5224</div>
+        </div>
+    </div>
+
+    <div class="contact-info2">
+        <span>M:+91 96504 47099</span>
+        <span>E:sales@obluhc.com</span>
+        <span>W:www.obluhc.com</span>
+    </div>
+
+    <div class="terms">
+        <h3>Terms And Conditions</h3>
+        <ol>
+            <li>Prices: Quoted are on F.O.R Destination and inclusive of GST.</li><br>
+            <li>
+                Payment: 100% payment in advance by NEFT / RTGS / Demand Draft / Cheque in our favor, payable at New Delhi.
+                <br><br>
+                <div class="bank-details">
+                    <span style="text-decoration: underline;">Our bank details are as follows:</span><br><br>
+                    OBLU HEALTHCARE LLP<br>
+                    AC NO- 629305041976<br>
+                    IFSC CODE- ICIC0006293<br>
+                    ICICI BANK LTD<br>
+                    ADDRESS - J-12/18 RAJOURI GARDEN NEW DELHI 110027
+                </div>
+            </li><br>
+            <li>Delivery: 2-3 weeks from the date of receipt of confirmed order along with advance.</li><br>
+
+            {% if quotation.product_terms %}
+            <li><strong>Product-specific terms:</strong>
+                <ul>
+                    {% for line in quotation.product_terms.splitlines %}
+                        <li>{{ line }}</li>
+                    {% endfor %}
+                </ul>
+            </li><br>
+            {% endif %}
+
+            <li>
+                Force Majeure Clause: Our offer is subject to force majeure and we shall not be responsible for any breach
+                of contract arising out of unforeseen situation viz. acts of God, Govt, fires, floods, strike, war, freight
+                embargo, severe weather. <br><br>
+                Order Cancellation fee of 25% of the Order Value will be charged, if Customer cancels the order after
+                confirmation.
+            </li><br>
+            <li>All disputes are subject to Delhi Jurisdiction.</li>
+        </ol>
+    </div>
+
+    <div class="signature">
+        <p><strong>This is a system generated quotation</strong></p>
+    </div>
+
+</body>
+</html>
