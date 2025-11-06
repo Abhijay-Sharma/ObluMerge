@@ -776,3 +776,69 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
         }
 
         return render(request, self.template_name, context)
+
+
+class SalesComparisonDashboardView(AccountantRequiredMixin, View):
+    template_name = "inventory/sales_comparison_dashboard.html"
+
+    def get(self, request):
+        # :date: calendar
+        from_date_str = request.GET.get("from")
+        to_date_str = request.GET.get("to")
+
+        if not from_date_str or not to_date_str:
+            to_date = datetime.today().date()
+            from_date = to_date - timedelta(days=30)  # defualt one month
+        else:
+            from_date = datetime.strptime(from_date_str, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date_str, "%Y-%m-%d").date()
+
+        # :white_check_mark: Calculate the previous period
+        days_diff = (to_date - from_date).days
+        prev_from = from_date - timedelta(days=days_diff)
+        prev_to = from_date - timedelta(days=1)
+
+        # :white_check_mark: Fetch data from your DailyStockData
+        current_sales = (
+            DailyStockData.objects
+            .filter(date__range=[from_date, to_date])
+            .values("product__name")
+            .annotate(total_sold=Sum("outwards_quantity"))
+        )
+
+        previous_sales = (
+            DailyStockData.objects
+            .filter(date__range=[prev_from, prev_to])
+            .values("product__name")
+            .annotate(total_sold=Sum("outwards_quantity"))
+        )
+
+        # :white_check_mark: Convert to dictionary for easy lookup
+        prev_dict = {p["product__name"]: p["total_sold"] for p in previous_sales}
+
+        comparison = []
+        for item in current_sales:
+            name = item["product__name"]
+            curr = item["total_sold"] or 0
+            prev = prev_dict.get(name, 0)
+            diff = curr - prev
+            percent_change = ((curr - prev) / prev * 100) if prev > 0 else None
+
+            comparison.append({
+                "name": name,
+                "current": curr,
+                "previous": prev,
+                "difference": diff,
+                "percent_change": round(percent_change, 2) if percent_change else "N/A",
+                "trend": "down" if diff < 0 else "up"
+                # if diff > 0 else "same"
+            })
+
+        # Sort least sold (biggest drop)
+        comparison.sort(key=lambda x: x["difference"])
+
+        return render(request, self.template_name, {
+            "comparison": comparison,
+            "from_date": from_date,
+            "to_date": to_date,
+        })

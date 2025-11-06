@@ -1,0 +1,234 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+  body {
+    background: linear-gradient(135deg, #e3f2fd, #ffffff);
+  }
+
+  .filter-form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+  }
+
+  .filter-form label {
+    font-weight: 600;
+    color: #333;
+  }
+
+  .filter-form input {
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    padding: 6px 10px;
+    transition: 0.3s ease;
+  }
+
+  .filter-form input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0,123,255,0.3);
+    outline: none;
+  }
+
+  .comparison-table {
+    background: #1e1e1e;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    color: white;
+    width: 100%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead {
+    position: sticky;
+    top: 0;
+    background: #000;
+    z-index: 2;
+  }
+
+  th {
+    color: white;
+    text-align: center;
+    padding: 12px;
+    font-size: 15px;
+    border-bottom: 2px solid #333;
+  }
+
+  td {
+    text-align: center;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  tbody tr:nth-child(odd) {
+    background: #2f2f2f;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #404040;
+  }
+
+  tbody {
+    display: block;
+    max-height: 480px;
+    overflow-y: auto;
+    width: 100%;
+  }
+
+  thead, tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .trend-up {
+    color: #00ff87;
+    font-weight: 600;
+  }
+  .trend-down {
+    color: #ff5c5c;
+    font-weight: 600;
+  }
+  .trend-same {
+    color: #9e9e9e;
+    font-weight: 600;
+  }
+
+  .insight-row {
+    display: flex;
+    gap: 20px;
+    margin-top: 25px;
+    flex-wrap: wrap;
+  }
+
+  .card {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  .card h5 {
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #007bff;
+  }
+
+  .card ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .card li {
+    margin-bottom: 6px;
+  }
+
+  /* 📱 Responsive */
+  @media (max-width: 900px) {
+    .insight-row {
+      flex-direction: column;
+    }
+  }
+</style>
+
+
+<div class="container mt-4">
+  <h2 class="text-center mb-3">📈 Sales Comparison Dashboard</h2>
+
+  <form method="get" class="filter-form">
+    <label>From:</label>
+    <input type="date" name="from" value="{{ from_date|date:'Y-m-d' }}">
+    <label>To:</label>
+    <input type="date" name="to" value="{{ to_date|date:'Y-m-d' }}">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+
+  <!-- FULL WIDTH TABLE -->
+  <div class="comparison-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Previous</th>
+          <th>Current</th>
+          <th>Δ Diff</th>
+          <th>% Change</th>
+          <th>Trend</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in comparison %}
+          {% if item.current != item.previous %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.previous }}</td>
+              <td>{{ item.current }}</td>
+              <td>{{ item.difference }}</td>
+              <td>
+                {% if item.percent_change != "N/A" %}
+                  {{ item.percent_change }}%
+                {% else %}N/A{% endif %}
+              </td>
+              <td>
+                {% if item.trend == "up" %}
+                  <span class="trend-up">▲</span>
+                {% elif item.trend == "down" %}
+                  <span class="trend-down">▼</span>
+                {% else %}
+                  <span class="trend-same">▬</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endif %}
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted">No data available</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- INSIGHTS BELOW -->
+  <div class="insight-row">
+    <div class="card">
+      <h5>📊 Top 3 Risers</h5>
+      <ul class="mb-0">
+        {% for item in comparison|dictsortreversed:"difference"|slice:":3" %}
+          {% if item.current != item.previous %}
+            <li>✅ <b>{{ item.name }}</b> — +{{ item.difference }}</li>
+          {% endif %}
+        {% empty %}
+          <li>No data</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <h5>📉 Biggest Drops</h5>
+      <ul class="mb-0">
+        {% for item in comparison|dictsort:"difference"|slice:":3" %}
+          {% if item.current != item.previous %}
+            <li>⚠️ <b>{{ item.name }}</b> — {{ item.difference }}</li>
+          {% endif %}
+        {% empty %}
+          <li>No data</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

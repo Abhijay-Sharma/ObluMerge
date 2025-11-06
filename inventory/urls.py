@@ -23,5 +23,6 @@ urlpatterns = [
     path('report/', InventoryReportView.as_view(), name='inventory_report'),
     path("stock/monthly/<int:pk>/", MonthlyStockChartView.as_view(), name="monthly-stock-chart"),
     path('low-stock-outwards-trend/', LowStockReportView.as_view(), name='low_stock_report'),
-    path('dead-stock/', DeadStockDashboardView.as_view() , name='dead_stock')
+    path('dead-stock/', DeadStockDashboardView.as_view() , name='dead_stock'),
+    path('sales-comparison/', SalesComparisonDashboardView.as_view(), name='sales_comparison'),
 ]
