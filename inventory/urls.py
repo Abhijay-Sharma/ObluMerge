@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from .views import Index  , SignUpView , LogoutView , Dashboard, Dashboard2 , AddItem , EditItem, DeleteItem , stock_chart_view, predict_min_stock_view, ShowProductData, stock_chart_view_2, predict_min_stock_2, ShowProductStockHistory, stock_chart_view_3 , predict_min_stock_from_daily , CategoryDashboard , CategoryListView, search_items, InventoryReportView, MonthlyStockChartView, PredictMinStockView, LowStockReportView, DailyStockChartView #this Index is name of the class we created in views
+from .views import Index  , SignUpView , LogoutView , Dashboard, Dashboard2 , AddItem , EditItem, DeleteItem , stock_chart_view, predict_min_stock_view, ShowProductData, stock_chart_view_2, predict_min_stock_2, ShowProductStockHistory, stock_chart_view_3 , predict_min_stock_from_daily , CategoryDashboard , CategoryListView, search_items, InventoryReportView, MonthlyStockChartView, PredictMinStockView, LowStockReportView, DailyStockChartView, DeadStockDashboardView #this Index is name of the class we created in views
 from django.contrib.auth import views as auth_views
 
 
@@ -23,4 +23,5 @@ urlpatterns = [
     path('report/', InventoryReportView.as_view(), name='inventory_report'),
     path("stock/monthly/<int:pk>/", MonthlyStockChartView.as_view(), name="monthly-stock-chart"),
     path('low-stock-outwards-trend/', LowStockReportView.as_view(), name='low_stock_report'),
+    path('dead-stock/', DeadStockDashboardView.as_view() , name='dead_stock')
 ]

@@ -25,6 +25,8 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 import datetime
 from dateutil.relativedelta import relativedelta
+from django.db.models import Sum, Max
+
 
 logger = logging.getLogger(__name__)
 
@@ -704,3 +706,73 @@ class DailyStockChartView(AccountantRequiredMixin, TemplateView):
         context["product"] = product
         context["chart_data"] = json.dumps(chart_data, cls=DjangoJSONEncoder)
         return context
+
+from datetime import timedelta, datetime
+
+class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
+    template_name = "inventory/dead_stock_dashboard.html"
+
+    def get(self, request):
+        # 🗓 Get date range from GET params (with defaults)
+        from_date = request.GET.get('from')
+        to_date = request.GET.get('to')
+
+        if not from_date or not to_date:
+            # Default: last 3 months
+            to_date = datetime.today().date()
+            from_date = to_date.replace(month=max(1, to_date.month - 3))
+        else:
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+
+        # ✅ Step 1: Products sold in this range
+        sold_products = DailyStockData.objects.filter(
+            date__range=(from_date, to_date),
+            outwards_quantity__gt=0
+        ).values_list('product_id', flat=True).distinct()
+
+        # ✅ Step 2: Products not sold = Dead Stock
+        dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
+
+        # ✅ Step 3: Get last sold date for each product
+        last_sales = DailyStockData.objects.filter(
+            outwards_quantity__gt=0
+        ).values('product_id').annotate(last_sold=Max('date'))
+
+        last_sold_map = {x['product_id']: x['last_sold'] for x in last_sales}
+
+        # ✅ Step 4: Prepare clean data
+        data = []
+        total_dead_value = 0
+        valid_dates = []
+
+        for item in dead_stock_items:
+            # skip items with zero quantity
+            if not item.quantity or item.quantity <= 0:
+                continue
+
+            last_sold = last_sold_map.get(item.id)
+            value = (item.quantity or 0) * (getattr(item, 'rate', 0) or 0)
+            total_dead_value += value
+            if last_sold:
+                valid_dates.append(last_sold)
+
+            data.append({
+                'name': item.name,
+                'quantity': item.quantity,
+                'value': round(value, 2),
+                'last_sold': last_sold,
+            })
+        #
+        # oldest_last_sold = min(valid_dates, default=None)
+
+        context = {
+            'dead_stock': data,
+            'total_dead_value': round(total_dead_value, 2),
+            'total_dead_products': len(data),
+            # 'oldest_last_sold': oldest_last_sold,
+            'from_date': from_date,
+            'to_date': to_date,
+        }
+
+        return render(request, self.template_name, context)
