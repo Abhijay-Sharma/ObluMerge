@@ -23,10 +23,10 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
+import datetime
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Max
-from datetime import timedelta
-import datetime as dt
+
 
 logger = logging.getLogger(__name__)
 
@@ -557,7 +557,7 @@ class PredictMinStockView(AccountantRequiredMixin,TemplateView):
         # Generate month names for future predictions
         last_year = int(monthly_summary.iloc[-1]["year"])
         last_month = int(monthly_summary.iloc[-1]["month"])
-        last_date = dt.date(last_year, last_month, 1)
+        last_date = datetime.date(last_year, last_month, 1)
         future_dates = [last_date + relativedelta(months=i+1) for i in range(3)]
         future_labels = [f"{calendar.month_name[d.month]} {d.year}" for d in future_dates]
 
@@ -707,6 +707,7 @@ class DailyStockChartView(AccountantRequiredMixin, TemplateView):
         context["chart_data"] = json.dumps(chart_data, cls=DjangoJSONEncoder)
         return context
 
+from datetime import timedelta, datetime
 
 class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
     template_name = "inventory/dead_stock_dashboard.html"
@@ -718,11 +719,11 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
 
         if not from_date or not to_date:
             # Default: last 3 months
-            to_date = dt.today().date()
+            to_date = datetime.today().date()
             from_date = to_date.replace(month=max(1, to_date.month - 3))
         else:
-            from_date = dt.strptime(from_date, "%Y-%m-%d").date()
-            to_date = dt.strptime(to_date, "%Y-%m-%d").date()
+            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
 
         # ✅ Step 1: Products sold in this range
         sold_products = DailyStockData.objects.filter(
@@ -786,11 +787,11 @@ class SalesComparisonDashboardView(AccountantRequiredMixin, View):
         to_date_str = request.GET.get("to")
 
         if not from_date_str or not to_date_str:
-            to_date = dt.today().date()
+            to_date = datetime.today().date()
             from_date = to_date - timedelta(days=30)  # defualt one month
         else:
-            from_date = dt.strptime(from_date_str, "%Y-%m-%d").date()
-            to_date = dt.strptime(to_date_str, "%Y-%m-%d").date()
+            from_date = datetime.strptime(from_date_str, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_date_str, "%Y-%m-%d").date()
 
         # :white_check_mark: Calculate the previous period
         days_diff = (to_date - from_date).days
