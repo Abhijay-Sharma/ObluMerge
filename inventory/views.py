@@ -719,7 +719,7 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
 
         if not from_date or not to_date:
             # Default: last 3 months
-            to_date = datetime.date.today().date()
+            to_date = datetime.date.today()
             from_date = to_date.replace(month=max(1, to_date.month - 3))
         else:
             from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d").date()
@@ -787,7 +787,7 @@ class SalesComparisonDashboardView(AccountantRequiredMixin, View):
         to_date_str = request.GET.get("to")
 
         if not from_date_str or not to_date_str:
-            to_date = datetime.date.today().date()
+            to_date = datetime.date.today()
             from_date = to_date - timedelta(days=30)  # defualt one month
         else:
             from_date = datetime.datetime.strptime(from_date_str, "%Y-%m-%d").date()
