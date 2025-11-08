@@ -24,7 +24,7 @@ from django.db.models import Q
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 import datetime
-from datetime import timedelta, datetime
+from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Max
 
@@ -719,11 +719,11 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
 
         if not from_date or not to_date:
             # Default: last 3 months
-            to_date = datetime.today().date()
+            to_date = datetime.date.today().date()
             from_date = to_date.replace(month=max(1, to_date.month - 3))
         else:
-            from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
-            to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+            from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
 
         # ✅ Step 1: Products sold in this range
         sold_products = DailyStockData.objects.filter(
@@ -787,11 +787,11 @@ class SalesComparisonDashboardView(AccountantRequiredMixin, View):
         to_date_str = request.GET.get("to")
 
         if not from_date_str or not to_date_str:
-            to_date = datetime.today().date()
+            to_date = datetime.date.today().date()
             from_date = to_date - timedelta(days=30)  # defualt one month
         else:
-            from_date = datetime.strptime(from_date_str, "%Y-%m-%d").date()
-            to_date = datetime.strptime(to_date_str, "%Y-%m-%d").date()
+            from_date = datetime.datetime.strptime(from_date_str, "%Y-%m-%d").date()
+            to_date = datetime.datetime.strptime(to_date_str, "%Y-%m-%d").date()
 
         # :white_check_mark: Calculate the previous period
         days_diff = (to_date - from_date).days
