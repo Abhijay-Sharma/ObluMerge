@@ -24,6 +24,7 @@ from django.db.models import Q
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 import datetime
+from datetime import timedelta, datetime
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Max
 
@@ -707,7 +708,6 @@ class DailyStockChartView(AccountantRequiredMixin, TemplateView):
         context["chart_data"] = json.dumps(chart_data, cls=DjangoJSONEncoder)
         return context
 
-from datetime import timedelta, datetime
 
 class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
     template_name = "inventory/dead_stock_dashboard.html"
