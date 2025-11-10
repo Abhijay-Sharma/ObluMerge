@@ -10,6 +10,27 @@
         html {
             scroll-behavior: smooth;
         }
+         h3[id^="category-"] {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          background: black;
+          padding: 0.5rem 0;
+          border-bottom: 2px solid #dee2e6;
+        }
+
+       .table-responsive {
+          max-height: 80vh; /*scrollable height */
+          overflow-y: auto;
+       }
+
+       .table thead th {
+         position: sticky;
+         top: 0;
+         background-color: #212529;
+         color: white;
+         z-index: 10;
+       }
         .low-stock {
             background-color: #ed2537 !important; /* Red highlight */
         }
