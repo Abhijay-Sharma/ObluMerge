@@ -1,6 +1,90 @@
 {% extends 'quotations/base.html' %}
 {% load quotation_extras %}
 {% block content %}
+
+<style>
+    h2{ color:white; font-size: 2rem; margin-top:20px; margin-left:40px;}
+
+    .table-container {
+      width: 95%;
+      margin: 0 auto;
+      overflow-x: auto;
+      border-radius:10px;
+    }
+
+    table{
+      width: 95%;
+      margin: 0 auto;
+    }
+
+    .table-dark{
+      border-radius: 10px;
+    }
+
+    .table-secondary{
+       border-color: #595555;
+       width: 100%;
+       border-radius:10px;
+    }
+
+    .btn-outline-secondary:hover {
+       color: #222 !important;
+    }
+
+
+    @media (max-width: 768px) {
+      table {
+        width:95%;
+      }
+
+      .table container{
+         width: 100%;
+      }
+
+      td, th {
+        padding: 8px;
+        text-align: left;
+      }
+
+      .table-secondary{
+         border-color: #595555;
+         width: 100%;
+
+      }
+
+      .btn {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+
+    }
+
+    @media (max-width: 500px) {
+
+      h2 {
+        font-size: 18px;
+      }
+
+      table{
+        overflow-x: auto;
+        display: block;
+      }
+
+      table th, table td {
+        font-size: 12px;
+      }
+
+      .table-secondary{
+         border-color: #595555;
+         max-width:90%;
+      }
+
+      .btn{ width: 50%;}
+    }
+
+</style>
+
+
 <h2>All Price Change Requests</h2>
 
 <table>
@@ -17,7 +101,7 @@
   </thead>
   <tbody>
     {% for req in requests %}
-    <tr style="background-color: #767676;">
+    <tr style="background-color: #595555 !important;">
       <td>{{ req.id }}</td>
       <td>#{{ req.quotation.id }}</td>
       <td>{{ req.requested_by.username }}</td>
@@ -52,7 +136,7 @@
     {# Expandable Row to Show Requested Prices #}
     <tr class="table-light">
       <td colspan="7">
-        <button class="btn btn-sm btn-outline-secondary mb-2" type="button"
+        <button class="btn btn-sm btn-outline-secondary mb-2" type="button" style="background-color: #fff !important;"
                 data-bs-toggle="collapse" data-bs-target="#details-{{ req.id }}">
           View Requested Price Changes
         </button>
@@ -61,10 +145,10 @@
           <table class="table table-sm table-bordered mt-2">
             <thead>
               <tr class="table-secondary">
-                <th>Item ID</th>
-                <th>Product</th>
-                <th>Old Price (₹)</th>
-                <th>Requested Price (₹)</th>
+                <th style="background-color: #595555 !important">Item ID</th>
+                <th style="background-color: #595555 !important">Product</th>
+                <th style="background-color: #595555 !important">Old Price (₹)</th>
+                <th style="background-color: #595555 !important">Requested Price (₹)</th>
               </tr>
             </thead>
             <tbody>
