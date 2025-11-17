@@ -29,13 +29,17 @@
         </thead>
         <tbody>
             {% for item in quotation.items.all %}
-                {% if requested_prices.item.id|stringformat:"s" %}
-                <tr>
-                    <td>{{ item.product.name }}</td>
-                    <td>{{ item.price_per_unit }}</td>
-                    <td>{{ requested_prices.item.gst_unit_price|floatformat:2}}</td>
-                </tr>
-                {% endif %}
+                {% with item_id=item.id|stringformat:"s" %}
+                    {% with new_price=requested_prices|get_item:item_id %}
+                        {% if new_price %}
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td>{{ item.gst_unit_price|floatformat:2 }}</td>
+                            <td>{{ new_price|floatformat:2 }}</td>
+                        </tr>
+                        {% endif %}
+                    {% endwith %}
+                {% endwith %}
             {% endfor %}
         </tbody>
     </table>
