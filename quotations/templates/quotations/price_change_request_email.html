@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Price Change Request</title>
+</head>
+<body style="font-family: Arial, sans-serif;">
+    <h2>🔔 Price Change Request Submitted</h2>
+
+    <p>
+        A new price change request has been submitted for
+        <strong>Quotation #{{ quotation.id }}</strong>.
+    </p>
+
+    <p>
+        <strong>Requested by:</strong> {{ requested_by.get_full_name|default:requested_by.username }}<br>
+        <strong>Customer:</strong> {{ quotation.customer.name }}<br>
+    </p>
+
+    <h3>Requested Price Changes</h3>
+
+    <table border="1" cellspacing="0" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Old Price</th>
+                <th>Requested Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in quotation.items.all %}
+                {% if requested_prices.item.id|stringformat:"s" %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.price }}</td>
+                    <td>{{ requested_prices.item.id }}</td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p style="margin-top:20px;">
+        <a href="{{ review_url }}" style="
+            background: #007bff;
+            color: #fff;
+            padding: 10px 16px;
+            text-decoration: none;
+            border-radius: 6px;
+        ">
+            Review Request
+        </a>
+    </p>
+</body>
+</html>
