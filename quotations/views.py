@@ -23,6 +23,11 @@ from django.views.generic import ListView
 from django.contrib import messages
 from django.utils import timezone
 
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.conf import settings
+
+
 # Create the modelformset for multiple product rows
 QuotationItemFormSet = modelformset_factory(
     QuotationItem,
@@ -361,6 +366,35 @@ class PriceChangeRequestCreateView(LoginRequiredMixin, FormView):
         price_request.requested_by = self.request.user
         price_request.requested_prices = requested_prices
         price_request.save()
+
+        # --- SEND EMAIL TO ADMINS ---
+        to_emails = [
+            "madderladder68@gmail.com",
+            "swasti.obluhc@gmail.com",
+        ]
+
+        email_context = {
+            "request_obj": price_request,
+            "quotation": self.quotation,
+            "requested_by": self.request.user,
+            "requested_prices": requested_prices,
+            "review_url": self.request.build_absolute_uri(
+                reverse("price_change_request_list")
+            ),
+        }
+
+        html_content = render_to_string(
+            "quotations/price_change_request_email.html",
+            email_context
+        )
+
+        subject = f"🔔 Price Change Request Submitted (Quotation #{self.quotation.id})"
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
+
+        msg = EmailMultiAlternatives(subject, "", from_email, to_emails)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+        # ------------------------------
 
         messages.success(self.request, "Your price change request has been submitted for review.")
         return redirect("quotation_detail", pk=self.quotation.id)
