@@ -379,7 +379,7 @@ class PriceChangeRequestCreateView(LoginRequiredMixin, FormView):
             "requested_by": self.request.user,
             "requested_prices": requested_prices,
             "review_url": self.request.build_absolute_uri(
-                reverse("price_change_request_list")
+                reverse("price_change_requests")
             ),
         }
 
