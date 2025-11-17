@@ -4,70 +4,52 @@
     <meta charset="utf-8">
     <title>Price Change Request</title>
 </head>
+<body style="font-family: Arial, sans-serif;">
+    <h2>🔔 Price Change Request Submitted</h2>
 
-<body style="font-family: Arial, sans-serif; background:#f8f9fa; padding:20px;">
+    <p>
+        A new price change request has been submitted for
+        <strong>Quotation #{{ quotation.id }}</strong>.
+    </p>
 
-    <div style="max-width:700px; margin:auto; background:white; padding:25px; border-radius:8px; border:1px solid #ddd;">
+    <p>
+        <strong>Requested by:</strong> {{ requested_by.get_full_name|default:requested_by.username }}<br>
+        <strong>Customer:</strong> {{ quotation.customer_name }}<br>
+    </p>
 
-        <h2 style="color:#333; margin-bottom:10px;">
-            🔔 New Price Change Request
-        </h2>
+    <h3>Requested Price Changes</h3>
 
-        <p style="font-size:15px; color:#333;">
-            A price change request has been submitted.
-        </p>
-
-        <p style="font-size:15px; color:#333;">
-            <strong>Quotation #:</strong> {{ quotation.id }}<br>
-            <strong>Customer:</strong> {{ quotation.customer.name }}<br>
-            <strong>Requested by:</strong>
-            {{ requested_by.get_full_name|default:requested_by.username }}
-        </p>
-
-        <h3 style="margin-top:25px; color:#444;">Requested Price Changes</h3>
-
-        <table style="width:100%; border-collapse:collapse; margin-top:10px;">
-            <thead>
+    <table border="1" cellspacing="0" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Old Price</th>
+                <th>Requested Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in quotation.items.all %}
+                {% if requested_prices.item.id|stringformat:"s" %}
                 <tr>
-                    <th style="border:1px solid #ccc; padding:8px; background:#f0f0f0; text-align:left;">Product</th>
-                    <th style="border:1px solid #ccc; padding:8px; background:#f0f0f0; text-align:left;">Old Price</th>
-                    <th style="border:1px solid #ccc; padding:8px; background:#f0f0f0; text-align:left;">Requested Price</th>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.price_per_unit }}</td>
+                    <td>{{ requested_prices.item.gst_unit_price|floatformat:2}}</td>
                 </tr>
-            </thead>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
 
-            <tbody>
-                {% for item in quotation.items.all %}
-                    {% with item_id=item.id|stringformat:"s" %}
-                        {% if requested_prices.item_id %}
-                            <tr>
-                                <td style="border:1px solid #ccc; padding:8px;">{{ item.product.name }}</td>
-                                <td style="border:1px solid #ccc; padding:8px;">{{ item.price }}</td>
-                                <td style="border:1px solid #ccc; padding:8px;">{{ requested_prices.item_id }}</td>
-                            </tr>
-                        {% endif %}
-                    {% endwith %}
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <div style="margin-top:30px; text-align:center;">
-            <a href="{{ review_url }}" style="
-                padding:12px 20px;
-                background:#0069d9;
-                color:white;
-                font-size:15px;
-                text-decoration:none;
-                border-radius:6px;
-                display:inline-block;">
-                Review Request
-            </a>
-        </div>
-
-        <p style="font-size:12px; color:#666; text-align:center; margin-top:25px;">
-            This is an automated notification from your quotation system.
-        </p>
-
-    </div>
-
+    <p style="margin-top:20px;">
+        <a href="{{ review_url }}" style="
+            background: #007bff;
+            color: #fff;
+            padding: 10px 16px;
+            text-decoration: none;
+            border-radius: 6px;
+        ">
+            Review Request
+        </a>
+    </p>
 </body>
 </html>
