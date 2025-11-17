@@ -371,6 +371,7 @@ class PriceChangeRequestCreateView(LoginRequiredMixin, FormView):
         to_emails = [
             "madderladder68@gmail.com",
             "swasti.obluhc@gmail.com",
+            "nitin.a@obluhc.com"
         ]
 
         email_context = {
