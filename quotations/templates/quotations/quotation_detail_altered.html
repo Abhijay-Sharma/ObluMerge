@@ -121,7 +121,7 @@
                         <td>{{ item.product.tax_rate }}</td>
 
                         {% comment %} Calculate GST Amount {% endcomment %}
-                        {% with gst_amount=new_price|multiply:item.product.tax_rate|divide:100 %}
+                        {% with gst_amount=new_price|divide:item.product.tax_rate|divide:100 %}
                             <td>{{ gst_amount|floatformat:2 }}</td>
 
                             {% comment %} Unit Price including GST (net + GST) {% endcomment %}
