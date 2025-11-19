@@ -117,16 +117,19 @@
                     <td>{{ item.quantity }}</td>
 
                     {% if new_price %}
-                        <td>{{ new_price }}</td>
-                        <td>{{ item.product.tax_rate }}</td>
 
-                        {% comment %} Calculate GST Amount {% endcomment %}
-                        {% with gst_amount=new_price|divide:item.product.tax_rate|divide:100 %}
-                            <td>{{ gst_amount|floatformat:2 }}</td>
 
-                            {% comment %} Unit Price including GST (net + GST) {% endcomment %}
-                            <td>{{ gst_amount|add:new_price|floatformat:2 }}</td>
+
+                        {% with tax_fraction=item.product.tax_rate|divide:100 %}
+                            {% with divisor=tax_fraction|add:1 %}
+                                {% with net_amount=new_price|divide:divisor %}
+                                    <td>{{ net_amount|floatformat:2 }}</td>
+                                {% endwith %}
+                            {% endwith %}
                         {% endwith %}
+                        <td>{{ item.product.tax_rate }}</td>
+                        <td>{{ new_price|subtract:net_amount|floatformat:2 }}</td>
+                        <td>{{ new_price }}</td>
 
                     {% else %}
                         <td>{{ item.unit_price_without_tax }}</td>
