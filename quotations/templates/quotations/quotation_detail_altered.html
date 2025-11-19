@@ -124,12 +124,13 @@
                             {% with divisor=tax_fraction|add:1 %}
                                 {% with net_amount=new_price|divide:divisor %}
                                     <td>{{ net_amount|floatformat:2 }}</td>
+
+                                    <td>{{ item.product.tax_rate }}</td>
+                                    <td>{{ new_price|subtract:net_amount|floatformat:2 }}</td>
+                                    <td>{{ new_price }}</td>
                                 {% endwith %}
                             {% endwith %}
                         {% endwith %}
-                        <td>{{ item.product.tax_rate }}</td>
-                        <td>{{ new_price|subtract:net_amount|floatformat:2 }}</td>
-                        <td>{{ new_price }}</td>
 
                     {% else %}
                         <td>{{ item.unit_price_without_tax }}</td>
