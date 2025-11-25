@@ -842,3 +842,11 @@ class SalesComparisonDashboardView(AccountantRequiredMixin, View):
             "from_date": from_date,
             "to_date": to_date,
         })
+
+
+
+
+def get_inventory_by_category(request):
+    category_id = request.GET.get("category_id")
+    items = InventoryItem.objects.filter(category_id=category_id).values("id", "name")
+    return JsonResponse({"products": list(items)})
