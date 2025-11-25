@@ -11,4 +11,5 @@ urlpatterns = [
     path("unassigned/", views.UnassignedView.as_view(), name="unassigned"),
     path("map/", views.MapView.as_view(), name="map"),
     path("detailedmap/", views.DetailedMapView.as_view(), name="detailedmap"),
+    path("sales-dashboard/", views.SalesPersonCustomerOrdersView.as_view(), name="salesperson_customer_orders"),
 ]
