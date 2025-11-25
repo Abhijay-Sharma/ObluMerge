@@ -1,0 +1,51 @@
+<h2>Your Customers & Their Order History</h2>
+
+{% for customer in customers %}
+<div style="
+    margin-bottom: 25px;
+    padding: 12px;
+    border: 2px solid {% if customer.is_red_flag %}red{% else %}#ccc{% endif %};
+    background-color: {% if customer.is_red_flag %}#ffe5e5{% else %}white{% endif %};
+">
+    <h3>{{ customer.name }}</h3>
+    <p><strong>Phone:</strong> {{ customer.phone }}</p>
+    <p><strong>Address:</strong> {{ customer.address }}</p>
+
+    <p><strong>Total Orders:</strong> {{ customer.total_orders }}</p>
+
+    <p><strong>Total Order Value:</strong> ₹{{ customer.total_order_value }}</p>
+
+    <p style="{% if customer.is_red_flag %}color: red; font-weight: bold;{% endif %}">
+        <strong>Last Order:</strong>
+        {% if customer.last_order_date %}
+            {{ customer.last_order_date }}
+        {% else %}
+            No orders yet
+        {% endif %}
+    </p>
+    <p>
+        <a href="{% url 'customer_item_purchases' customer.id %}">
+            View Item Purchases
+        </a>
+    </p>
+
+
+    <details style="margin-top: 10px;">
+        <summary><strong>View Order History</strong></summary>
+        <ul>
+            {% for v in customer.vouchers_list %}
+                <li>
+                    <a href="{% url 'voucher_detail' v.pk %}">
+                        {{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}
+                    </a>
+                </li>
+            {% empty %}
+                <li>No vouchers found.</li>
+            {% endfor %}
+        </ul>
+    </details>
+</div>
+
+{% empty %}
+    <p>No customers assigned to you.</p>
+{% endfor %}

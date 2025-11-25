@@ -41,3 +41,8 @@ class Customer(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.state})"
+
+    @property
+    def vouchers(self):
+        from tally_voucher.models import Voucher
+        return Voucher.objects.filter(party_name__iexact=self.name).order_by('-date')

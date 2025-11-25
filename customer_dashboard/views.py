@@ -5,6 +5,8 @@ from .models import Customer, SalesPerson
 import json
 from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
+from datetime import date, timedelta
+from tally_voucher.models import Voucher, VoucherRow
 
 class CustomerListView(AccountantRequiredMixin,ListView):
     model = Customer
@@ -88,6 +90,57 @@ class UnassignedView(AccountantRequiredMixin,TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx["unassigned"] = Customer.objects.filter(salesperson__isnull=True)
         return ctx
+
+
+
+class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
+    template_name = "customers/salesperson_customer_orders.html"
+    context_object_name = "customers"
+    model = Customer
+
+    def get_queryset(self):
+        user = self.request.user
+        cutoff_date = date.today() - timedelta(days=90)
+
+        salesperson = user.salesperson_profile.first()
+        if not salesperson:
+            return Customer.objects.none()
+
+        customers = Customer.objects.filter(salesperson=salesperson)
+
+        for customer in customers:
+
+            # ALL vouchers for this customer
+            vouchers = Voucher.objects.filter(
+                party_name__iexact=customer.name
+            ).order_by('-date')
+
+            customer.vouchers_list = vouchers
+            customer.last_order_date = vouchers.first().date if vouchers.exists() else None
+
+            # Count TAX INVOICE vouchers
+            tax_vouchers = vouchers.filter(voucher_type__iexact="TAX INVOICE")
+            customer.total_orders = tax_vouchers.count()
+
+            # --- NEW: Compute Total Order Value ---
+            total_value = 0
+
+            for v in tax_vouchers:
+                # Find the VoucherRow that represents the final bill
+                total_row = v.rows.filter(ledger__iexact=v.party_name).first()
+                if total_row:
+                    total_value += total_row.amount
+
+            customer.total_order_value = total_value
+
+            # Red flag
+            if customer.last_order_date is None:
+                customer.is_red_flag = True
+            else:
+                customer.is_red_flag = customer.last_order_date < cutoff_date
+
+        return customers
+
 
 
 
