@@ -782,63 +782,74 @@ class SalesComparisonDashboardView(AccountantRequiredMixin, View):
     template_name = "inventory/sales_comparison_dashboard.html"
 
     def get(self, request):
-        # :date: calendar
+
         from_date_str = request.GET.get("from")
         to_date_str = request.GET.get("to")
 
         if not from_date_str or not to_date_str:
             to_date = datetime.date.today()
-            from_date = to_date - timedelta(days=30)  # defualt one month
+            from_date = to_date - timedelta(days=30)
         else:
             from_date = datetime.datetime.strptime(from_date_str, "%Y-%m-%d").date()
             to_date = datetime.datetime.strptime(to_date_str, "%Y-%m-%d").date()
 
-        # :white_check_mark: Calculate the previous period
         days_diff = (to_date - from_date).days
         prev_from = from_date - timedelta(days=days_diff)
         prev_to = from_date - timedelta(days=1)
 
-        # :white_check_mark: Fetch data from your DailyStockData
+        # ✅ Fetch current & previous sales grouped by product and category
         current_sales = (
             DailyStockData.objects
             .filter(date__range=[from_date, to_date])
-            .values("product__name")
+            .values("product__name", "product__category__name")
             .annotate(total_sold=Sum("outwards_quantity"))
         )
 
         previous_sales = (
             DailyStockData.objects
             .filter(date__range=[prev_from, prev_to])
-            .values("product__name")
+            .values("product__name", "product__category__name")
             .annotate(total_sold=Sum("outwards_quantity"))
         )
 
-        # :white_check_mark: Convert to dictionary for easy lookup
         prev_dict = {p["product__name"]: p["total_sold"] for p in previous_sales}
 
-        comparison = []
+        # ✅ Group by category
+        category_data = {}
+        comparison = []   # <<<<<<<<<<<< NEW LIST
+
         for item in current_sales:
+            cat = item["product__category__name"] or "Uncategorized"
             name = item["product__name"]
             curr = item["total_sold"] or 0
             prev = prev_dict.get(name, 0)
             diff = curr - prev
             percent_change = ((curr - prev) / prev * 100) if prev > 0 else None
 
-            comparison.append({
+            product_data = {
                 "name": name,
                 "current": curr,
                 "previous": prev,
                 "difference": diff,
                 "percent_change": round(percent_change, 2) if percent_change else "N/A",
                 "trend": "down" if diff < 0 else "up"
-                # if diff > 0 else "same"
-            })
+            }
 
-        # Sort least sold (biggest drop)
-        comparison.sort(key=lambda x: x["difference"])
+            # Add to category
+            category_data.setdefault(cat, []).append(product_data)
+
+            # Add to global comparison list
+            comparison.append(product_data)  # <<<<<<<<<< NEW
 
         return render(request, self.template_name, {
-            "comparison": comparison,
+            "category_data": category_data,
+            "comparison": comparison,  # <<<<<<<<<< PASS TO TEMPLATE
+            "from_date": from_date,
+            "to_date": to_date,
+        })
+
+        return render(request, self.template_name, {
+            "category_data": category_data,
             "from_date": from_date,
             "to_date": to_date,
         })
