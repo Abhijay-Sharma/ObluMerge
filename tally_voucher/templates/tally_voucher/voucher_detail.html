@@ -1,0 +1,44 @@
+<h2>Voucher Details</h2>
+
+<p><strong>Date:</strong> {{ voucher.date }}</p>
+<p><strong>Type:</strong> {{ voucher.voucher_type }}</p>
+<p><strong>Number:</strong> {{ voucher.voucher_number }}</p>
+<p><strong>Party:</strong> {{ voucher.party_name }}</p>
+<p><strong>Category:</strong> {{ voucher.voucher_category }}</p>
+
+<hr>
+
+<h3>Ledger Entries</h3>
+<ul>
+    {% for row in voucher.rows.all %}
+        <li>{{ row.ledger }} — ₹{{ row.amount }}</li>
+    {% empty %}
+        <li>No ledger rows</li>
+    {% endfor %}
+</ul>
+
+<hr>
+
+<h3>Stock Items</h3>
+<ul>
+    {% for item in voucher.stock_rows.all %}
+        <li>
+            {% if item.item %}
+                {{ item.item.name }}
+            {% else %}
+                {{ item.item_name_text }}
+            {% endif %}
+            — Qty: {{ item.quantity }} — ₹{{ item.amount }}
+
+            {% if item.godown %}
+                (Godown: {{ item.godown }})
+            {% endif %}
+        </li>
+    {% empty %}
+        <li>No stock items</li>
+    {% endfor %}
+</ul>
+
+<hr>
+
+<a href="javascript:history.back()">⬅ Back</a>

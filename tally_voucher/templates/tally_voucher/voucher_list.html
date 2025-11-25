@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Vouchers</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .voucher { border: 1px solid #ccc; padding: 15px; margin-bottom: 25px; }
+        .section-title { font-weight: bold; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px; border: 1px solid #ddd; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<h1>All Vouchers</h1>
+
+{% for v in vouchers %}
+<div class="voucher">
+
+    <h2>{{ v.voucher_type }} - {{ v.voucher_number }}</h2>
+    <p><strong>Date:</strong> {{ v.date }}</p>
+    <p><strong>Party:</strong> {{ v.party_name }}</p>
+    <p><strong>Category:</strong> {{ v.voucher_category }}</p>
+
+    <!-- Voucher Ledger Rows -->
+    <div class="section-title">Voucher Rows</div>
+    {% if v.rows.all %}
+        <table>
+            <tr>
+                <th>Ledger</th>
+                <th>Narration</th>
+                <th>Amount</th>
+            </tr>
+            {% for row in v.rows.all %}
+            <tr>
+                <td>{{ row.ledger }}</td>
+                <td>{{ row.narration }}</td>
+                <td>{{ row.amount }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No voucher rows.</p>
+    {% endif %}
+
+    <!-- Stock Item Rows -->
+    <div class="section-title">Stock Items</div>
+    {% if v.stock_rows.all %}
+        <table>
+            <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Amount</th>
+                <th>Godown</th>
+            </tr>
+            {% for s in v.stock_rows.all %}
+            <tr>
+                <td>
+                    {% if s.item %}
+                        {{ s.item.name }}
+                    {% else %}
+                        {{ s.item_name_text }}
+                    {% endif %}
+                </td>
+                <td>{{ s.quantity }}</td>
+                <td>{{ s.amount }}</td>
+                <td>{{ s.godown }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No stock rows.</p>
+    {% endif %}
+
+</div>
+{% endfor %}
+
+</body>
+</html>

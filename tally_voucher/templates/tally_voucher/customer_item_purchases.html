@@ -1,0 +1,25 @@
+<h2>Items Purchased by {{ customer.name }}</h2>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Item</th>
+        <th>Total Quantity</th>
+        <th>Total Value</th>
+    </tr>
+
+    {% for row in items_summary %}
+        <tr>
+            <td>
+                {{ row.item__name|default:row.item_name_text }}
+            </td>
+            <td>{{ row.total_qty }}</td>
+            <td>₹{{ row.total_value }}</td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="3">No purchases found.</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<p><a href="javascript:history.back()">← Back</a></p>
