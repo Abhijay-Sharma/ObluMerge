@@ -1,0 +1,291 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PROFORMA INVOICE</title>
+
+<style>
+  @page { size: A4 portrait; margin: 12mm; }
+
+  body {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+    color: #000;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  td, th {
+    border: 1px solid #000;
+    padding: 4px 5px;
+    vertical-align: top;
+    font-size: 12px;
+  }
+
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .bold { font-weight: bold; }
+  .italic { font-style: italic; }
+
+  .header-title {
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+
+  .wrapper {
+    width: 96%;
+    margin: auto;
+  }
+
+  .header-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .logo-cell {
+    width: 18%;
+    padding: 0;
+    border-right: 1px solid #000;
+  }
+
+  .logo {
+    width: 60%;
+    display: block;
+    margin: 20% auto;
+  }
+
+  .company-cell {
+    width: 47%;
+    padding: 4px;
+    line-height: 1.35;
+  }
+
+  .invoice-cell {
+    width: 35%;
+    padding: 0;
+  }
+
+  .invoice-inner-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .invoice-inner-table td {
+    border: 1px solid #000;
+    padding: 3px 4px;
+  }
+
+  .contact-line {
+    background: #20201f;
+    color: white;
+    font-size: 12px;
+    text-align: center;
+    padding: 4px 0;
+    margin: 6px 0 8px 0;
+  }
+
+  .footer-text {
+    text-align: center;
+    font-size: 11px;
+    margin-top: 8px;
+  }
+
+  @media print {
+    .no-print { display:none !important; }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+
+  <div class="header-title">PROFORMA INVOICE</div>
+
+  <!-- ================= HEADER TABLE ================= -->
+  <table class="header-table">
+    <tr>
+      <!-- Logo -->
+      <td class="logo-cell">
+        <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.webp?v=1757743482"
+             class="logo" alt="OBLU Logo">
+      </td>
+
+      <!-- Company Info -->
+      <td class="company-cell">
+        <b>OBLU HEALTHCARE LLP</b><br>
+        UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE, ROAD NO.44,<br>
+        Pitampura, New Delhi, Delhi, 110034<br>
+        MD42 REG-RMD/DCD/23/Z0-5329/251<br>
+        GSTIN/UIN: 07AAIFO0279M1ZU &nbsp; State Name: Delhi, Code: 07<br>
+        E-Mail: sales@obluhc.com
+      </td>
+
+      <!-- Invoice Meta Table -->
+      <td class="invoice-cell">
+        <table class="invoice-inner-table">
+          <tr><td>Invoice No.</td><td>{{ invoice.id }}</td></tr>
+          <tr><td>Dated</td><td><b>{{ invoice.date_created|date:"d-M-Y" }}</b></td></tr>
+          <tr><td>Delivery Note</td><td></td></tr>
+          <tr><td>Mode/Terms of Payment</td><td></td></tr>
+          <tr><td>Reference No. & Date</td><td></td></tr>
+          <tr><td>Other References</td><td></td></tr>
+          <tr><td>Buyer's Order No.</td><td></td></tr>
+          <tr><td>Dated</td><td></td></tr>
+          <tr><td>Dispatch Doc No.</td><td></td></tr>
+          <tr><td>Delivery Note Date</td><td></td></tr>
+          <tr><td>Dispatched through</td><td></td></tr>
+          <tr><td>Destination</td><td></td></tr>
+          <tr><td>Terms of Delivery</td><td></td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- CONTACT BAR -->
+  <div class="contact-line">
+    M:+91 96504 47099 &nbsp; | &nbsp; E:sales@obluhc.com &nbsp; | &nbsp; W:www.obluhc.com
+  </div>
+
+  <!-- ================= CONSIGNEE / BUYER ================= -->
+  <table>
+    <tr>
+      <td style="width:50%;">
+        <b>Consignee (Ship to)</b><br>
+        <b>{{ invoice.customer.name }}</b><br>
+        {{ invoice.customer.address }}<br>
+        {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
+        {{ invoice.customer.state }}<br>
+        Phone: {{ invoice.customer.phone }}<br>
+        Email: {{ invoice.customer.email }}
+      </td>
+
+      <td style="width:50%;">
+        <b>Buyer (Bill to)</b><br>
+        <b>{{ invoice.customer.name }}</b><br>
+        {{ invoice.customer.address }}<br>
+        {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
+        {{ invoice.customer.state }}<br>
+        Phone: {{ invoice.customer.phone }}<br>
+        Email: {{ invoice.customer.email }}
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+  <!-- ================= ITEM TABLE ================= -->
+  <table>
+    <thead>
+      <tr class="center bold">
+        <th style="width:5%;">Sl No.</th>
+        <th style="width:35%;">Description of Goods</th>
+        <th style="width:10%;">HSN/SAC</th>
+        <th style="width:10%;">Quantity</th>
+        <th style="width:10%;">Rate (Incl. Tax)</th>
+        <th style="width:10%;">Rate</th>
+        <th style="width:8%;">Per</th>
+        <th style="width:12%;">Amount</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="center">{{ forloop.counter }}</td>
+        <td><b>{{ item.product.name }}</b></td>
+        <td class="center">{{ item.hsn|default_if_none:"" }}</td>
+        <td class="center bold">{{ item.quantity }} PCS</td>
+        <td class="right">{{ item.unit_price|floatformat:2 }}</td>
+        <td class="right">{{ item.unit_price_excl_tax|floatformat:2 }}</td>
+        <td class="center">PCS</td>
+        <td class="right bold">{{ item.total_price|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+
+      <!-- Totals row -->
+      <tr class="bold">
+        <td colspan="6"></td>
+        <td class="center">Total</td>
+        <td class="right">₹ {{ invoice.total|floatformat:2 }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <br>
+
+  <!-- AMOUNT IN WORDS (simple demo version) -->
+  <b>Amount Chargeable (in words)</b><br>
+  <b>INR {{ invoice.total|floatformat:0 }} Only</b>
+
+  <br><br>
+
+  <!-- ================= TAX TABLE (simple) ================= -->
+  <table>
+    <thead>
+      <tr class="center bold">
+        <th>HSN/SAC</th>
+        <th>Taxable Value</th>
+        <th>IGST Rate</th>
+        <th>IGST Amount</th>
+        <th>Total Tax Amount</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for item in items %}
+        <tr class="center">
+          <td>{{ item.hsn|default_if_none:"" }}</td>
+          <td>{{ invoice.total|floatformat:2 }}</td>
+          <td>{{ item.taxrate|default_if_none:"" }}%</td>
+          <td>0.00</td>
+          <td>0.00</td>
+        </tr>
+      {% endfor %}
+
+      <tr class="bold center">
+        <td>Total</td>
+        <td>{{ invoice.total|floatformat:2 }}</td>
+        <td></td>
+        <td>0.00</td>
+        <td>0.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <br>
+
+  <!-- DECLARATION -->
+  <b>Tax Amount (in words):</b> INR Zero Only<br>
+  <b>Company's PAN:</b> AAIFO0279M<br><br>
+
+  <b>Declaration</b><br>
+  We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+
+  <div style="text-align:right; margin-top:20px;">
+    <b>for OBLU HEALTHCARE LLP</b><br>
+    Authorised Signatory
+  </div>
+
+  <div class="footer-text">
+    This is a Computer Generated Invoice
+  </div>
+
+  <div class="no-print" style="text-align:center;margin-top:15px;">
+    <button onclick="window.print()" style="padding:6px 12px;background:#333;color:#fff;border:none;cursor:pointer;">
+      Print / Save as PDF
+    </button>
+  </div>
+
+</div>
+</body>
+</html>

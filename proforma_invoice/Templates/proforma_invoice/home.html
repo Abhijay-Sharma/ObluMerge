@@ -1,0 +1,25 @@
+{% extends 'quotations/base.html' %}
+{% block content %}
+   <style>
+    .card {
+      padding: 50px 30px;
+      max-width: 400px;
+      margin-top:5%;
+      margin-bottom: 20px;
+      width: 90%;
+    }
+  </style>
+
+
+  <div class="main-container">
+    <div class="card">
+      <h1>Welcome to Proforma Maker</h1>
+      <a href="{% url 'create_proforma' %}" class="btn">Create New Proforma</a>
+      <a href="{% url 'quotation_list' %}" class="btn">View My Proformas</a>
+      <a href="{% url 'create_customer' %}" class="btn">Create New Customer</a>
+      <a href="{% url 'customer_list' %}" class="btn">View My Customers</a>
+    </div>
+
+  </div>
+
+{% endblock content %}
