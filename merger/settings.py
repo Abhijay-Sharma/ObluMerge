@@ -32,6 +32,7 @@ ALLOWED_HOSTS = ['65.2.57.203','127.0.0.1','13.235.9.16']
 # Application definition
 
 INSTALLED_APPS = [
+    'proforma_invoice',
     'quotations',
     'inventory',
     'customer_dashboard',
