@@ -31,11 +31,11 @@
          color: white;
          z-index: 10;
        }
-        .low-stock {
-            background-color: #ed2537 !important; /* Red highlight */
-        }
-        .category-index {
 
+       .low-stock {
+           background-color: #ed2537 !important; /* Red highlight */
+       }
+        .category-index {
             top: 0;
             z-index: 1000;
             background-color: #1c2126;
@@ -54,27 +54,97 @@
             color: black;
             background-color: #e9ecef;
         }
-      .h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
-        color:#ffffff;
-      }
-      .instructions {
-        background-color: #1c2126;
-        border-left: 5px solid #0d6efd;
-        line-height: 1.6;
-      }
-      .instructions h4 {
-        color: #0d6efd;
-        font-weight: 600;
-      }
-      .instructions p {
-        margin-bottom: 1rem;
-      }
+       .h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
+         color:#ffffff;
+       }
+       .instructions {
+         background-color: #1c2126;
+         border-left: 5px solid #0d6efd;
+         line-height: 1.6;
+       }
+       .instructions h4 {
+         color: #0d6efd;
+         font-weight: 600;
+       }
+       .instructions p {
+         margin-bottom: 1rem;
+       }
 
+       /* 🔍 Search Bar Styling */
+        .wrapper {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+
+        .autocomplete {
+          position: relative;
+          width: 60%;
+          margin-top: 10px;
+        }
+
+        .autocomplete-input {
+          width: 100%;
+          padding: 12px 45px 12px 15px;
+          font-size: 16px;
+          border: none;
+          outline: none;
+          border-radius: 50px;
+          background-color: #f9f9f9;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          border: 3px solid grey;
+          transition: all 0.3s ease;
+        }
+
+        .autocomplete::after {
+          content: "🔍";
+          position: absolute;
+          right: 15px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 18px;
+          color: #222;
+          pointer-events: none;
+        }
+
+        .autocomplete-result-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            color:#222;
+            position: absolute;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 0 0 10px 10px;
+            z-index: 1000;
+        }
+
+        .autocomplete-result-list li {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .autocomplete-result-list li:hover {
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 <body class="p-4">
 
   <h1 class="mb-4">Inventory Report</h1>
+
+   <!-- Search Bar -->
+  <div class="wrapper">
+    <div id="autocomplete" class="autocomplete">
+      <input id="search-input" class="autocomplete-input" placeholder="Search product name..." />
+      <ul class="autocomplete-result-list"></ul>
+    </div>
+  </div>
+  <!-- End Search Bar -->
 
   <!-- 📌 Professional Category Index -->
   <nav class="category-index">
@@ -141,6 +211,7 @@
             <th>Min Qty (Average)</th>
             <th>Min Qty (Last 3 Avg)</th>
             <th>Total Historical Entries</th>
+            <th>Expected Deliveries</th>
           </tr>
         </thead>
         <tbody>
@@ -160,6 +231,12 @@
             <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three }}{% else %}-{% endif %}</td>
 
             <td>{{ item.total_historical_entries }}</td>
+            <td>
+                {% for row in item.expected_delivery %}
+                {{ row }} <br>
+                {% endfor %}
+            </td>
+
             </tr>
           {% empty %}
             <tr>
@@ -192,6 +269,87 @@
         if (tools) tools.style.display = '';
     }, 1000);
     }
+
+    // --- Collect product names and their corresponding rows ---
+    const products = [];
+    document.querySelectorAll("table tbody tr").forEach(row => {
+        const link = row.querySelector("td a");
+        if (link) {
+            const name = link.textContent.trim();
+            const id = link.getAttribute("href");
+            products.push({ name, id });
+        }
+    });
+
+    const searchInput = document.getElementById("search-input");
+    const resultList = document.querySelector(".autocomplete-result-list");
+
+    // Helper: remove previous highlights
+    function clearHighlights() {
+      document.querySelectorAll(".highlighted-row").forEach(row => {
+        row.classList.remove("highlighted-row");
+      });
+    }
+
+    // Helper: scroll to product by name
+    function scrollToProduct(name) {
+      const link = Array.from(document.querySelectorAll("td a")).find(a =>
+        a.textContent.trim().toLowerCase() === name.toLowerCase()
+      );
+      if (link) {
+        const row = link.closest("tr");
+        clearHighlights();
+        row.classList.add("highlighted-row");
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        alert("Product not found!");
+      }
+    }
+
+    // Add highlight style
+    const style = document.createElement("style");
+    style.textContent = `
+      .highlighted-row {
+        outline: 3px solid yellow;
+
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Show autocomplete suggestions
+    searchInput.addEventListener("input", function() {
+      const query = this.value.toLowerCase();
+      resultList.innerHTML = "";
+
+      if (!query) return;
+
+      const matches = products.filter(p =>
+        p.name.toLowerCase().includes(query)
+      );
+
+      matches.forEach(p => {
+        const li = document.createElement("li");
+        li.textContent = p.name;
+        li.addEventListener("click", () => {
+          searchInput.value = p.name;
+          resultList.innerHTML = "";
+          scrollToProduct(p.name);
+        });
+        resultList.appendChild(li);
+      });
+    });
+
+    // Handle Enter key press
+    searchInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const name = searchInput.value.trim();
+        resultList.innerHTML = "";
+        scrollToProduct(name);
+      }
+    });
+
 </script>
+
 </body>
 {% endblock content %}
