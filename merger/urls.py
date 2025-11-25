@@ -28,4 +28,5 @@ urlpatterns = [
     path('',WelcomeView.as_view(),name='welcome'),
     path('quotations/',include('quotations.urls')),
     path('customers/',include('customer_dashboard.urls')),
+    path('proforma/', include('proforma_invoice.urls')),
 ]
