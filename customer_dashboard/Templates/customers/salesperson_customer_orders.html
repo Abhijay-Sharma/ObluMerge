@@ -1,4 +1,10 @@
+{% extends 'customers/base.html' %}
 {% load static %}
+
+{% block wrapper_start %}{% endblock %}
+{% block wrapper_end %}{% endblock %}
+
+{% block content %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -29,10 +35,69 @@
         font-size: 34px;
         font-weight: 600;
         margin: 30px 0 40px;
-        color: #fff;
+        background: none !important;
+        -webkit-background-clip: initial !important;
+        -webkit-text-fill-color: #fff !important;
+        color: #fff !important;
     }
 
-    .container {
+    .search-wrapper {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto 30px;
+        position: relative;
+    }
+
+    .search {
+        position: sticky;
+        top: 1px;
+        z-index: 999;
+        padding: 10px 0 10px;
+    }
+
+    #customerSearch {
+        width: 100%;
+        padding: 12px 18px;
+        border-radius: 30px;
+        border: 1px solid #666;
+        background: #111;
+        color: #fff;
+        font-size: 15px;
+        outline: none;
+    }
+
+    #customerSearch::placeholder {
+        color: #aaa;
+    }
+
+    .search-suggestions {
+        position: absolute;
+        width: 100%;
+        background: #1a1a1a;
+        border-radius: 10px;
+        margin-top: 5px;
+        display: none;
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .search-suggestions div {
+        padding: 10px 15px;
+        cursor: pointer;
+        color: #fff;
+        border-bottom: 1px solid #333;
+    }
+
+    .search-suggestions div:hover {
+        background: #333;
+    }
+
+    .card{
+      max-width: 100%;
+    }
+
+    .container2 {
         max-width: 1100px;
         margin: 0 auto;              /* centers the whole block */
         display: flex;
@@ -42,16 +107,17 @@
         padding-bottom: 40px;
     }
 
-    .container .card {
+    .container2 .card {
         position: relative;
-        height: 350px;
+        height: 450px;
         background: #fff;
         display: flex;
-        width: 45%;
+        width: 90%;
         margin: 10px 0;
+        overflow: hidden;
     }
 
-    .container .card .customer-card {
+    .container2 .card .customer-card {
         position: absolute;
         top: 0;
         left: 0;
@@ -69,15 +135,17 @@
         font-style: arial;
     }
 
-    .container .card:hover .customer-card {
+    .container2 .card:hover .customer-card,
+    .container2 .card.active .customer-card {
+
         width: 150px;
-        height: 150px;
-        left: -55px;
+        height: 220px;
+        left: -0px;
         top: calc(50% - 75px);
         transition: 0.5s ease-in-out;
     }
 
-    .container .card .customer-card:before {
+    .container2 .card .customer-card:before {
         content: attr(data-text);
         position: absolute;
         bottom: 0;
@@ -90,40 +158,57 @@
         font-weight: 700;
     }
 
-    .container .card .customer-card .text .name {
-        transition: 0.5s ease-in-out;
-        font-size: 35px;
-        font-family: "Playfair Display", serif;
-        text-align: inline;
-        margin-bottom: 10px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 250px;
+    .container2 .card .customer-card .text {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
     }
 
-    .container .card:hover .customer-card .text .name {
+    .container2 .card .customer-card .text .name {
+        transition: 0.5s ease-in-out;
+        font-size: clamp(18px, 2.5vw, 32px);
+        font-family: "Playfair Display", serif;
+        margin-bottom: 10px;
+        text-align: center;
+        white-space: normal;     /* allows multiple lines */
+        word-break: keep-all;  /* breaks long words safely */
+        overflow-wrap: break-word;
+        max-width: 80%;
+        line-height: 1.3;
+    }
+
+    .container2 .card:hover .customer-card .text .name,
+    .container2 .card.active .customer-card .text .name {
         max-width: 90px;
         font-size:20px;
     }
 
-    .container .card .content {
+    .container2 .card .customer-card .text .contact {
+        margin-top: 8px;
+        font-size: 16px;
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    .container2 .card .content {
         position: absolute;
-        right: 0;
+        margin-left: 100px;
         width: calc(100% - 85px);
         height: 100%;
         padding: 20px;
         display: flex;
         justify-content: center;
         align-items: center;
+        overflow: hidden;
     }
 
-    .container .card .content h3 {
+    .container2 .card .content h3 {
         margin-bottom: 5px;
         font-size: 24px;
     }
 
-    .container .card .content a {
+    .container2 .card .content a {
         display: inline-block;
         margin-top: 10px;
         text-decoration: underline;
@@ -218,32 +303,179 @@
         font-weight: 600;
     }
 
+    /* Modal background (overlay) */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+    }
+
+    /* Modal box */
+    .modal-box {
+        background: #ffffff;          /* WHITE background */
+        color: #000;                  /* BLACK text */
+        padding: 30px;
+        border-radius: 18px;
+        width: 90%;
+        max-width: 550px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 50px rgba(0,0,0,0.6);
+        animation: popup 0.3s ease;
+    }
+
+    /* Header */
+    .modal-box h2 {
+        margin-bottom: 20px;
+        text-align: center;
+        font-family: "Playfair Display", serif;
+        letter-spacing: 1px;
+    }
+
+    /* List styling */
+    .modal-box ul {
+        padding-left: 0;
+        list-style: none;
+    }
+
+    /* Divider + spacing */
+    .modal-box li {
+        padding: 12px 0;
+        font-size: 15px;
+        color: #000;
+        position: relative;
+    }
+
+    /* Elegant horizontal divider */
+    .modal-box li::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(
+            to right,
+            transparent,
+            #222,
+            transparent
+        );
+    }
+
+    /* Remove divider from last item */
+    .modal-box li:last-child::after {
+        display: none;
+    }
+
+
+    /* Last item no border */
+    .modal-box li:last-child {
+        border-bottom: none;
+    }
+
+    /* Popup animation */
+    @keyframes popup {
+        from { transform: scale(0.85); opacity: 0; }
+        to   { transform: scale(1); opacity: 1; }
+    }
+
+    .open-history {
+        margin-top: 15px;
+        padding: 10px 18px;
+        background: linear-gradient(135deg, #000, #444);
+        color: #fff;
+        border: 1px solid #666;
+        border-radius: 30px;
+        font-family: "Playfair Display", serif;
+        font-size: 14px;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .open-history:hover {
+        background: #fff;
+        color: #000;
+        border: 1px solid #000;
+        transform: translateY(-2px);
+    }
+
 
     @media (max-width: 992px) {
         body {
             align-items: flex-start;
         }
 
-        .container {
+        .container2 {
             flex-direction: column;
             /* THIS stacks cards */
             align-items: center;
+            gap: 30px;
         }
 
-        .container .card {
-            width: 90%;
+        .container2 .card {
+            width: 90% !important;
+            height:auto !important;
+            min-height:380px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .container .card:hover .customer-card{
-            left: -50px;
+        .container2 .card .customer-card{
+            width: 90% !important;
+            height:auto !important;
+            min-height:380px;
         }
 
-        .container .card .customer-card .text .name {
-            font-size: 20px;
+        .container2 .card.active .customer-card {
+            width: 150px !important;
+            height: 220px !important;
+            left: 0 !important;
+            top: calc(50% - 75px) !important;
+            border-radius: 20px;
         }
 
-        .container .card .content {
-            width: calc(100% - 85px);
+
+        .container2 .card .customer-card{
+            position: relative !important;
+            height: 180px !important;
+            width: 100% !important;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .container2 .card .content {
+            position:relative !important;
+            width: 100% !important;
+            padding: 25px 20px 20px !important;
+            margin-top: 10px;
+        }
+
+        .container2 .card .customer-card .text .name {
+            font-size: 20px !important;
+            max-width: 95% !important;
+            white-space: normal!important;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .container .card .customer-card .text .contact {
+            font-size: 15px;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .container .card.active .customer-card {
+            width: 150px;
+            height: 210px;
+            left: -55px;
+            top: calc(50% - 75px);
+            transition: 0.5s ease-in-out;
         }
     }
 
@@ -252,20 +484,20 @@
             align-items: flex-start;
         }
 
-        .container {
+        .container2 {
             flex-direction: column;
             align-items: center;
         }
 
-        .container .card {
+        .container2 .card {
             width: 90%;
         }
 
-        .container .card:hover .customer-card{
+        .container2 .card:hover .customer-card{
             left: -30px;
         }
 
-        .container .card .content {
+        .container2 .card .content {
             width: calc(100% - 100px);
         }
 
@@ -276,48 +508,141 @@
             align-items: flex-start;
        }
 
-       .container {
+       .container2 {
             flex-direction: column;
             /* THIS stacks cards */
             align-items: center;
-
        }
 
-       .container .card {
+       .container2 .card {
             width: 90%;
+            height:500px;
        }
 
-       .container .card:hover .customer-card{
+       .container2 .card:hover .customer-card{
             left: -20px;
        }
 
-       .container .card .content {
+       .container2 .card .content {
             width: calc(100% - 110px);
-        }
        }
 
+       .container2 .card .customer-card .text .name {
+            font-size: clamp(16px, 4vw, 22px);
+       }
     }
 
 </style>
 
-<body>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
 
+    const cards = document.querySelectorAll('.card');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalContent = document.getElementById('modalContent');
+    const searchInput = document.getElementById('customerSearch');
+    const suggestionsBox = document.getElementById('suggestions');
+
+    /* ========== CARD OPEN / CLOSE ========== */
+    cards.forEach(card => {
+        card.addEventListener('click', function () {
+            cards.forEach(c => {
+                if (c !== this) c.classList.remove('active');
+            });
+            this.classList.toggle('active');
+        });
+    });
+
+    /* ========== MODAL LOGIC ========== */
+    document.querySelectorAll('.open-history').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            const id = this.dataset.customer;
+            const historyHTML = document.getElementById('history-' + id).innerHTML;
+
+            modalContent.innerHTML = historyHTML;
+            modalOverlay.style.display = 'flex';
+        });
+    });
+
+    modalOverlay.addEventListener('click', function() {
+        modalOverlay.style.display = 'none';
+        modalContent.innerHTML = '';
+    });
+
+    /* ========== SEARCH + SUGGESTION LOGIC ========== */
+    if(searchInput){
+        searchInput.addEventListener('input', function () {
+            const value = this.value.toLowerCase();
+            suggestionsBox.innerHTML = '';
+
+            if (value === '') {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+
+            let matches = 0;
+
+            cards.forEach(card => {
+                const name = card.dataset.name;
+
+                if (name.includes(value)) {
+                    matches++;
+
+                    const div = document.createElement('div');
+                    div.textContent = card.dataset.name; // original case
+
+                    div.addEventListener('click', function () {
+                        suggestionsBox.style.display = 'none';
+                        searchInput.value = this.textContent;
+
+                        card.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+
+                        card.classList.add('active');
+                        setTimeout(() => card.classList.remove('active'), 1500);
+                    });
+
+                    suggestionsBox.appendChild(div);
+                }
+            });
+
+            suggestionsBox.style.display = matches ? 'block' : 'none';
+        });
+    }
+
+});
+</script>
+
+<body>
  <h1 class="page-title">Your Customers & Their Order History</h1>
 
-<div class="container">
+<div class="search">
+     <div class="search-wrapper">
+        <input type="text" id="customerSearch" placeholder="Search customer..." autocomplete="off">
+        <div class="search-suggestions" id="suggestions"></div>
+    </div>
+</div>
+
+<div class="container2">
 
 {% for customer in customers %}
-    <div class="card {% if customer.is_red_flag %}red-flag{% endif %}">
+    <div class="card {% if customer.is_red_flag %}red-flag{% endif %}"
+        data-name="{{ customer.name|lower }}"
+        id="customer-{{ customer.id }}">
 
         <div class="customer-card">
             <div class="text">
                 <div class="name">
                     {{ customer.name }}
                 </div>
+
                 <div class="contact">
                     Phone: {{ customer.phone }}
                 </div>
-
             </div>
         </div>
 
@@ -342,23 +667,21 @@
                     View Item Purchases
                 </a>
 
-                <details class="order-history">
-                    <summary>View Order History</summary>
-                    <div class="history-box">
-                        <ul>
-                            {% for v in customer.vouchers_list %}
-                                <li>
-                                    <a href="{% url 'voucher_detail' v.pk %}">
-                                        {{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}
-                                    </a>
-                                </li>
-                            {% empty %}
-                                <li class="empty">No vouchers found.</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </details>
+                <button class="open-history" data-customer="{{ customer.id }}">
+                    View Order History
+                </button>
 
+                <div class="history-data" id="history-{{ customer.id }}" style="display:none;">
+                    <ul>
+                        {% for v in customer.vouchers_list %}
+                            <li>
+                                {{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}
+                            </li>
+                        {% empty %}
+                            <li>No vouchers found.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -368,6 +691,13 @@
 {% endfor %}
 
 </div>
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box" id="modalBox">
+        <h2>Order History</h2>
+        <div id="modalContent"></div>
+    </div>
+</div>
 
 </body>
 </html>
+{%endblock content%}
