@@ -1,4 +1,3 @@
-{% load static %}
 
 
 <!DOCTYPE html>
@@ -7,7 +6,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Dashboard</title>
-    <link rel="stylesheet" href="{% static 'css/customer_dashboard.css' %}">
 </head>
 
 <style>
@@ -195,6 +193,7 @@
         justify-content: center;
         align-items: center;
         overflow: hidden;
+        left: 30px;
     }
 
     .container2 .card .content h3 {
@@ -467,7 +466,7 @@
 
       .container2 .card {
         width: 95%;
-        min-height: 350px;
+        min-height: 500px;
       }
 
       /* Default FULL VIEW */
@@ -503,6 +502,11 @@
         padding: 20px;
       }
 
+    }
+    @media (max-width: 365px) {
+        .container2 .card{
+            height: 450px;
+        }
     }
 
 
