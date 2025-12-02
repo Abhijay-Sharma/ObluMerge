@@ -1,25 +1,165 @@
+<style>
+
+    html{
+       scroll-behaviour: smooth;
+    }
+    body {
+        background: #000;
+        font-family: "Poppins", sans-serif;
+        padding: 40px;
+        color: #fff;
+        overflow-x: hidden;
+    }
+
+    .glass-table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        display: block;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 12px;
+    }
+
+    /* TABLE */
+    .glass-table {
+        border-collapse: collapse;
+        width: 100%;
+
+        background: linear-gradient(
+            to bottom right,
+            rgba(40, 77, 61, 0.45),
+            rgba(19, 29, 34, 0.55)
+        );
+
+        backdrop-filter: blur(35px);
+        -webkit-backdrop-filter: blur(35px);
+
+        border-radius: 22px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.10);
+
+        box-shadow:
+            0 0 40px rgba(0, 255, 200, 0.10),
+            0 0 80px rgba(0, 255, 200, 0.05),
+            inset 0 0 25px rgba(255, 255, 255, 0.03);
+    }
+
+    /* TABLE HEADER */
+    .glass-table th {
+        padding: 18px;
+        text-align: left;
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 0.4px;
+        color: #d7f8e8;
+        background: rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+        white-space: nowrap;
+    }
+
+    /* TABLE CELLS */
+    .glass-table td {
+        padding: 20px 18px;
+        color: #e8fffa;
+        font-size: 17px;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        white-space: nowrap;
+    }
+
+    .glass-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .glass-table tr:hover td {
+        background: rgba(255, 255, 255, 0.04);
+        transition: 0.25s ease;
+    }
+
+    .glass-table td[colspan] {
+        text-align: center;
+        opacity: 0.7;
+    }
+
+    .back-btn {
+        display: inline-block;
+        padding: 12px 28px;
+        margin-top: 25px;
+
+        background: linear-gradient(
+            to bottom right,
+            rgba(40, 77, 61, 0.45),
+            rgba(19, 29, 34, 0.55)
+        );
+
+        border-radius: 14px;
+        backdrop-filter: blur(18px) saturate(180%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
+
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow:
+            0 0 18px rgba(0, 255, 200, 0.10),
+            inset 0 0 10px rgba(255, 255, 255, 0.03);
+
+        color: #d9fff3;
+        font-size: 16px;
+        letter-spacing: 0.4px;
+        font-weight: 500;
+        text-decoration: none;
+
+        transition: 0.25s ease;
+    }
+
+    .back-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow:
+            0 0 25px rgba(0, 255, 200, 0.18),
+            inset 0 0 12px rgba(255, 255, 255, 0.05);
+        transform: translateY(-1px);
+    }
+
+    .back-btn:active {
+        transform: scale(0.96);
+        box-shadow:
+            0 0 15px rgba(0, 255, 200, 0.11),
+            inset 0 0 8px rgba(255, 255, 255, 0.08);
+    }
+
+
+    @media (max-width: 700px) {
+        .glass-table {
+            min-width: 900px;
+        }
+    }
+
+</style>
+
 <h2>Items Purchased by {{ customer.name }}</h2>
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Item</th>
-        <th>Total Quantity</th>
-        <th>Total Value</th>
-    </tr>
+<div class="glass-table-responsive">
 
-    {% for row in items_summary %}
-        <tr>
-            <td>
-                {{ row.item__name|default:row.item_name_text }}
-            </td>
-            <td>{{ row.total_qty }}</td>
-            <td>₹{{ row.total_value }}</td>
-        </tr>
-    {% empty %}
-        <tr>
-            <td colspan="3">No purchases found.</td>
-        </tr>
-    {% endfor %}
-</table>
+        <table border="1" cellpadding="8" class="glass-table">
+            <tr>
+                <th>Item</th>
+                <th>Total Quantity</th>
+                <th>Total Value</th>
+            </tr>
 
-<p><a href="javascript:history.back()">← Back</a></p>
+            {% for row in items_summary %}
+                <tr>
+                    <td>
+                        {{ row.item__name|default:row.item_name_text }}
+                    </td>
+                    <td>{{ row.total_qty }}</td>
+                    <td>₹{{ row.total_value }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="3">No purchases found.</td>
+                </tr>
+            {% endfor %}
+        </table>
+
+</div>
+
+<p><a href="javascript:history.back()" class="back-btn">← Back</a></p>
