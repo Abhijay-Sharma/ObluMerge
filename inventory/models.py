@@ -25,6 +25,7 @@ class InventoryItem(models.Model):
     unit=models.CharField(max_length=200, blank=True, null=True)
     total_historical_entries=models.IntegerField(null=True, blank=True, default=0)
     expected_delivery = models.DateField(null=True, blank=True)
+    expected_quantity = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.name
