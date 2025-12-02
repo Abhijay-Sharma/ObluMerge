@@ -232,8 +232,8 @@
             <td>{% if item.min_quantity_average_three != -1 %}{{ item.min_quantity_average_three }}{% else %}-{% endif %}</td>
 
             <td>{{ item.total_historical_entries }}</td>
-            <td>{{ item.expected_delivery }}</td>
-            <td>{{ item.expected_quantity }}</td>
+            <td>{% if item.expected_delivery %}{{ item.expected_delivery }}{% else %}-{% endif %}</td>
+            <td>{% if item.expected_quantity %}{{ item.expected_quantity }}{% else %}-{% endif %}</td>
 
             </tr>
           {% empty %}
