@@ -8,6 +8,68 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from datetime import date, timedelta
 from tally_voucher.models import Voucher, VoucherRow
 
+
+class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
+    template_name = "customers/admin_salesperson_customers.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        ctx["salespersons"] = SalesPerson.objects.all()
+        selected_id = self.request.GET.get("salesperson")
+
+        if not selected_id:
+            ctx["customers"] = []
+            ctx["selected_salesperson"] = None
+            return ctx
+
+        salesperson = SalesPerson.objects.filter(id=selected_id).first()
+        ctx["selected_salesperson"] = salesperson
+
+        if not salesperson:
+            ctx["customers"] = []
+            return ctx
+
+        customers = Customer.objects.filter(salesperson=salesperson)
+        cutoff_date = date.today() - timedelta(days=90)
+
+        for customer in customers:
+            vouchers = Voucher.objects.filter(
+                party_name__iexact=customer.name
+            ).order_by('-date')
+
+            customer.vouchers_list = vouchers
+            customer.last_order_date = vouchers.first().date if vouchers.exists() else None
+
+            tax_vouchers = vouchers.filter(voucher_type__iexact="TAX INVOICE")
+            customer.total_orders = tax_vouchers.count()
+
+            total_value = 0
+            for v in tax_vouchers:
+                total_row = v.rows.filter(ledger__iexact=v.party_name).first()
+                if total_row:
+                    total_value += total_row.amount
+
+            customer.total_order_value = total_value
+
+            customer.is_red_flag = (
+                customer.last_order_date is None or
+                customer.last_order_date < cutoff_date
+            )
+
+        # --- NEW CODE HERE ---
+        customers = list(customers)
+
+        active = sum(1 for c in customers if not c.is_red_flag)
+        inactive = sum(1 for c in customers if c.is_red_flag)
+
+        ctx["customers"] = customers
+        ctx["active_count"] = active
+        ctx["inactive_count"] = inactive
+
+        return ctx
+
+
 class CustomerListView(AccountantRequiredMixin,ListView):
     model = Customer
     template_name = "customers/data.html"
