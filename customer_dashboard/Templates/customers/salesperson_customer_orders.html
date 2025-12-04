@@ -1,49 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard</title>
-</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customers Dashboard</title>
 
 <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        font-family: 'Poppins', sans-serif;
-    }
-
+    /* ========== BASE ========== */
     body {
-        background: black;
-        font-family: 'Poppins', sans-serif;
-        margin: 0;
+        background: #000;
+        color: #fff;
+        font-family: "Poppins", sans-serif;
     }
 
     .page-title {
         text-align: center;
         font-family: "Playfair Display", serif;
-        font-size: 34px;
-        font-weight: 600;
-        margin: 30px 0 40px;
-        background: none !important;
-        -webkit-background-clip: initial !important;
-        -webkit-text-fill-color: #fff !important;
-        color: #fff !important;
+        font-size: 30px;
+        margin-bottom: 25px;
     }
 
+    /* ========== SEARCH BAR ========== */
     .search-wrapper {
         width: 100%;
         max-width: 400px;
-        margin: 0 auto 30px;
+        margin: 0 auto 20px;
         position: relative;
-    }
-
-    .search {
-        position: sticky;
-        top: 1px;
-        z-index: 999;
-        padding: 10px 0 10px;
     }
 
     #customerSearch {
@@ -52,748 +34,255 @@
         border-radius: 30px;
         border: 1px solid #666;
         background: #111;
-        color: #fff;
-        font-size: 15px;
-        outline: none;
+        color: white;
     }
-
-    #customerSearch::placeholder {
-        color: #aaa;
-    }
-
     .search-suggestions {
+        background: #1a1a1a;
         position: absolute;
         width: 100%;
-        background: #1a1a1a;
         border-radius: 10px;
-        margin-top: 5px;
         display: none;
-        z-index: 1000;
         max-height: 200px;
         overflow-y: auto;
+        z-index: 1000;
     }
-
     .search-suggestions div {
-        padding: 10px 15px;
-        cursor: pointer;
-        color: #fff;
+        padding: 10px;
         border-bottom: 1px solid #333;
-    }
-
-    .search-suggestions div:hover {
-        background: #333;
-    }
-
-    .card{
-      max-width: 100%;
-    }
-
-    .container2 {
-        max-width: 1100px;
-        margin: 0 auto;              /* centers the whole block */
-        display: flex;
-        justify-content: center;     /* centers cards inside */
-        gap: 90px;                   /* spacing between cards */
-        flex-wrap: wrap;
-        padding-bottom: 40px;
-    }
-
-    .container2 .card {
-        position: relative;
-        height: 450px;
-        background: #fff;
-        display: flex;
-        width: 90%;
-        margin: 10px 0;
-        overflow: hidden;
-    }
-
-    .container2 .card .customer-card {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #0e0e0e, #838383);
-        color:#fff;
-        font-size: 1rem;
-        z-index: 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-        transition: 0.5s ease-in-out;
-        font-style: arial;
-    }
-
-    .container2 .card:hover .customer-card,
-    .container2 .card.active .customer-card {
-        width: 150px;
-        height: 220px;
-        left: -0px;
-        top: calc(50% - 75px);
-        transition: 0.5s ease-in-out;
-    }
-
-    .container2 .card .customer-card:before {
-        content: attr(data-text);
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        text-align: center;
-        font-size: 6em;
-        color: rgba(255, 255, 255, .05);
-        font-weight: 700;
-    }
-
-    .container2 .card .customer-card .text {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-
-    .container2 .card .customer-card .text .name {
-        transition: 0.5s ease-in-out;
-        font-size: clamp(18px, 2.5vw, 32px);
-        font-family: "Playfair Display", serif;
-        margin-bottom: 10px;
-        text-align: center;
-        white-space: normal;     /* allows multiple lines */
-        word-break: keep-all;  /* breaks long words safely */
-        overflow-wrap: break-word;
-        max-width: 80%;
-        line-height: 1.3;
-    }
-
-    .container2 .card:hover .customer-card .text .name,
-    .container2 .card.active .customer-card .text .name {
-        max-width: 90px;
-        font-size:20px;
-    }
-
-    .container2 .card .customer-card .text .contact {
-        margin-top: 8px;
-        font-size: 16px;
-        white-space: nowrap;
-        text-align: center;
-    }
-
-    .container2 .card .content {
-        position: absolute;
-        margin-left: 100px;
-        width: calc(100% - 85px);
-        height: 100%;
-        padding: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-        left: 30px;
-    }
-
-    .container2 .card .content h3 {
-        margin-bottom: 5px;
-        font-size: 24px;
-    }
-
-    .container2 .card .content a {
-        display: inline-block;
-        margin-top: 10px;
-        text-decoration: underline;
-        color:black;
-    }
-
-    .order-history {
-        margin-top: 10px;
-    }
-
-    /* Styled toggle */
-    .order-history summary {
         cursor: pointer;
-        font-weight: 600;
-        color: black;
     }
 
-    /* This box CONTAINS everything */
-    .history-box {
-        margin-top: 8px;
-        background: #f7f9ff;
-        border-radius: 8px;
-        padding: 8px;
-        max-height: 50px;     /* controls height */
-        overflow-y: auto;      /* internal scroll */
-        overflow-x: hidden;
+    /* ========== UNIVERSAL ACCORDION STYLE ========== */
+    .mobile-list {
+        width: 90vw !important ;
+        max-width: 100vw !important;
+        padding: 0;
+        margin: 0 auto !important;
+        display: block !important;
     }
 
-    /* List styling */
-    .history-box ul {
-        margin: 0;
-        padding-left: 15px;
+    .mobile-list .accordian{
+        width: 90% !important ;
+        margin: 12px auto !important;
+        border-radius: 12px;
     }
 
-    /* Force text to stay inside */
-    .history-box li {
-        font-size: 14px;
-        line-height: 1.4;
-        word-break: break-word;
-        white-space: normal;
+    .accordion {
+        width: 100%;
+        background: #1e1e1e;
+        color: #fff;
+        padding: 15px;
+        border-radius: 10px;
+        border: none;
+        text-align: left;
+        font-size: 17px;
+        margin-top: 12px;
+        cursor: pointer;
+        position: relative;
+    }
+    .accordion.red-flag {
+        background: #6b0000;
+        border: 1px solid #ff4d4d;
     }
 
-    /* Links stay inside too */
-    .history-box a {
-        color: #333;
-        text-decoration: none;
-        display: block;
+    /* Arrow */
+    .accordion::after {
+        content: "▼";
+        position: absolute;
+        right: 15px;
+        transition: 0.3s;
+    }
+    .accordion.active::after {
+        transform: rotate(180deg);
     }
 
-    .history-box a:hover {
+    .panel {
+        display: none;
+        background: #2b2b2b;
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    /* Links + text */
+    .panel a {
+        color: #e6e6e6;
         text-decoration: underline;
     }
 
-    .card.red-flag {
-        border: 2px solid #c0392b;
-        box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.2),
-                    0 20px 40px rgba(0,0,0,0.3);
-    }
-
-    /* Change background slightly for red-flag cards */
-    .card.red-flag .customer-card {
-        background: linear-gradient(135deg, #2b0000, #8b0000);
-    }
-
-    .card.red-flag::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: 10px;
-        box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
-        pointer-events: none;
-    }
-
-    /* Last order text turns red */
+    /* Last order red */
     .last-order-red {
-        color: #c0392b;
-        font-weight: 600;
+        color: #ff4d4d;
     }
 
-    /* Warning badge */
-    .card.red-flag::before {
-        content: "NO RECENT ORDERS";
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        background: #c0392b;
-        color: #fff;
-        padding: 5px 10px;
-        font-size: 11px;
-        letter-spacing: 1px;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-
-    /* Modal background (overlay) */
+    /* ========== MODAL ========== */
     .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0,0,0,0.8);
         display: none;
-        align-items: center;
         justify-content: center;
+        align-items: center;
         z-index: 999;
     }
-
-    /* Modal box */
     .modal-box {
-        background: #ffffff;          /* WHITE background */
-        color: #000;                  /* BLACK text */
-        padding: 30px;
-        border-radius: 18px;
+        background: #fff;
+        color: #000;
+        padding: 25px;
+        border-radius: 10px;
         width: 90%;
-        max-width: 550px;
+        max-width: 450px;
         max-height: 80vh;
         overflow-y: auto;
-        box-shadow: 0 0 50px rgba(0,0,0,0.6);
-        animation: popup 0.3s ease;
+    }
+    .modal-box h2{
+        text-align:center;
     }
 
-    /* Header */
-    .modal-box h2 {
-        margin-bottom: 20px;
-        text-align: center;
-        font-family: "Playfair Display", serif;
-        letter-spacing: 1px;
-    }
-
-    /* List styling */
-    .modal-box ul {
-        padding-left: 0;
-        list-style: none;
-    }
-
-    /* Divider + spacing */
-    .modal-box li {
-        padding: 12px 0;
-        font-size: 15px;
-        color: #000;
-        position: relative;
-    }
-
-    /* Elegant horizontal divider */
-    .modal-box li::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        height: 1px;
+    .open-history{
+        width: 130px;
+        height: 40px;
+        color: #fff;
+        border-radius: 20px;
         background: linear-gradient(
-            to right,
-            transparent,
-            #222,
-            transparent
+                to right,
+                transparent,
+                #222,
+                transparent
         );
     }
 
-    /* Remove divider from last item */
-    .modal-box li:last-child::after {
-        display: none;
+    .modal-box ul li {
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.2);
+        font-size: 15px;
     }
 
-
-    /* Last item no border */
-    .modal-box li:last-child {
+    /* Remove divider on last item */
+    .modal-box ul li:last-child {
         border-bottom: none;
     }
 
-    /* Popup animation */
-    @keyframes popup {
-        from { transform: scale(0.85); opacity: 0; }
-        to   { transform: scale(1); opacity: 1; }
-    }
-
-    .open-history {
-        margin-top: 15px;
-        padding: 10px 18px;
-        background: linear-gradient(135deg, #000, #444);
-        color: #fff;
-        border: 1px solid #666;
-        border-radius: 30px;
-        font-family: "Playfair Display", serif;
-        font-size: 14px;
-        letter-spacing: 1px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .open-history:hover {
-        background: #fff;
-        color: #000;
-        border: 1px solid #000;
-        transform: translateY(-2px);
-    }
-
-    .mobile-list{
-        display: none;
-    }
-
-    @media (max-width: 992px) {
-
-      .container2 {
-        margin: 0 auto;              /* centers the whole block */
-        display: flex;
-        flex-direction: column;
-        justify-content: center !important;
-        align-items: center !important;
-        gap: 30px;
-      }
-
-      .container2 .card {
-        width: 85% !important;
-        height: auto !important;
-        align-items: center;
-        min-height: 380px;
-        margin-left: auto;
-        margin-right: auto;
-        display: flex;
-      }
-
-      /* Disable hover effect on mobile */
-      .container2 .card:hover .customer-card {
-        width: 100%;
-        height: 100%;
-        left: 0;
-        top: 0;
-      }
-
-      /* ONLY click-based animation */
-      .container2 .card.active .customer-card {
-        width: 150px !important;
-        height: 220px !important;
-        left: 0 !important;
-        top: calc(50% - 75px) !important;
-        border-radius: 20px;
-      }
-
-      .container2 .card .content {
-        position: relative;
-        margin-left: 120px;
-        width: calc(100% - 120px);
-        padding: 20px;
-      }
-
-      /* Prevent text overflow */
-      .container2 .card .customer-card .text .name {
-        font-size: 20px;
-        max-width: 90%;
-        line-height: 1.3;
-      }
-
-      .container2 .card .customer-card .text .contact {
-        font-size: 14px;
-        text-align: center;
-      }
-    }
-
-    @media (max-width: 768px) {
-
-      .container2 {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-      }
-
-      .container2 .card {
-        width: 95%;
-        min-height: 500px;
-      }
-
-      /* Default FULL VIEW */
-      .container2 .card .customer-card {
-        position: absolute !important;
-        width: 100% !important;
-        height: 100% !important;
-        left: 0 !important;
-        top: 0 !important;
-        border-radius: 20px;
-      }
-
-      /* Disable hover on mobile */
-      .container2 .card:hover .customer-card {
-        width: 100% !important;
-        height: 100% !important;
-        left: 0 !important;
-        top: 0 !important;
-      }
-
-      .container2 .card.active .customer-card {
-        width: 150px !important;
-        height: 220px !important;
-        left: -10px !important;
-        top: calc(50% - 110px) !important;
-        border-radius: 20px;
-      }
-
-      .container2 .card .content {
-        margin-left: 90px !important;
-        width: calc(100% - 90px);
-        padding: 20px;
-      }
-    }
-
-    @media (max-width: 600px) {
-
-        /* REMOVE DESKTOP DESIGN COMPLETELY */
-        .container2 {
-            display: none !important;
-        }
-
-        /* MOBILE ACCORDION WRAPPER */
-        .mobile-list {
-            width: 100%;
-            padding: 15px;
-            display: block !important;
-            margin: auto;
-        }
-
-        /* Accordion Header */
-        .accordion {
-            background: #1e1e1e;
-            color: white;
-            cursor: pointer;
-            padding: 15px;
-            width: 100%;
-            border: none;
-            font-size: 17px;
-            border-radius: 10px;
-            text-align: left;
-            margin-top: 10px;
-            position: relative;
-        }
-
-        /* RED FLAG MOBILE */
-        .accordion.red-flag {
-            background: #6b0000 !important;
-            border: 1px solid #ff4d4d;
-        }
-
-        /* Arrow */
-        .accordion::after {
-            content: "▼";
-            position: absolute;
-            right: 15px;
-            font-size: 16px;
-            transition: transform 0.3s ease;
-        }
-
-        .accordion.active::after {
-            transform: rotate(180deg);
-        }
-
-        /* Panel opens */
-        .panel {
-            display: none;
-            background: #2c2c2c;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-        }
-
-        .panel p,
-        .panel a {
-            font-size: 14px;
-            color: #eee;
-            margin-bottom: 6px;
-        }
-
-        .panel a {
-            color: #e6e6e6;
-            text-decoration: underline;
-        }
-
-
-        /* MODAL */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-
-        .modal-box {
-            background: #ffffff;
-            color: #000;
-            padding: 30px;
-            border-radius: 18px;
-            width: 90%;
-            max-width: 550px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-    }
-
-
 </style>
+</head>
 
 <body>
 
-<h1 class="page-title">
-    {{ request.user.username|title|cut:"_" }} <br>
-    Customers & Order History
-</h1>
+    <h1 class="page-title">
+        {{ request.user.username}} <br> Customers & Order History
+    </h1>
 
-<div class="search">
-    <div class="search-wrapper">
-        <input type="text" id="customerSearch" placeholder="Search customer..." autocomplete="off">
-        <div class="search-suggestions" id="suggestions"></div>
-    </div>
-</div>
-
-<!-- DESKTOP VIEW -->
-<div class="container2">
-    {% for customer in customers %}
-    <div class="card {% if customer.is_red_flag %}red-flag{% endif %}" data-name="{{ customer.name|lower }}">
-        <div class="customer-card">
-            <div class="text">
-                <div class="name">{{ customer.name }}</div>
-                <div class="contact">Phone: {{ customer.phone }}</div>
-            </div>
-        </div>
-        <div class="content">
-            <div>
-                <h2 style="text-decoration:underline;">{{ customer.name }}</h2>
-                <p><strong>Address:</strong> {{ customer.address }}</p>
-                <p><strong>Total Orders:</strong> {{ customer.total_orders }}</p>
-                <p><strong>Total Value:</strong> ₹{{ customer.total_order_value }}</p>
-
-                <p class="{% if customer.is_red_flag %}last-order-red{% endif %}">
-                    <strong>Last Order:</strong>
-                    {% if customer.last_order_date %}{{ customer.last_order_date }}{% else %}No orders yet{% endif %}
-                </p>
-
-                <a href="{% url 'customer_item_purchases' customer.id %}">View Item Purchases</a>
-
-                <button class="open-history" data-customer="{{ customer.id }}">
-                    View Order History
-                </button>
-
-                <div class="history-data" id="history-{{ customer.id }}" style="display:none;">
-                    <ul>
-                        {% for v in customer.vouchers_list %}
-                        <li>{{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}</li>
-                        {% empty %}<li>No vouchers found.</li>{% endfor %}
-                    </ul>
-                </div>
-            </div>
+    <div class="search">
+        <div class="search-wrapper">
+            <input id="customerSearch" placeholder="Search customer...">
+            <div id="suggestions" class="search-suggestions"></div>
         </div>
     </div>
-    {% endfor %}
-</div>
 
+    <!-- ========== MOBILE ACCORDION ONLY VIEW (USED FOR ALL SCREENS) ========== -->
+    <div class="mobile-list">
 
-
-<!-- MOBILE ACCORDION VIEW -->
-<div class="mobile-list">
     {% for customer in customers %}
-
-    <button class="accordion {% if customer.is_red_flag %}red-flag{% endif %}">
-        {{ customer.name }}
-    </button>
-
-    <div class="panel">
-        <p><strong>Phone:</strong> {{ customer.phone }}</p>
-        <p><strong>Address:</strong> {{ customer.address }}</p>
-        <p><strong>Total Orders:</strong> {{ customer.total_orders }}</p>
-        <p><strong>Total Value:</strong> ₹{{ customer.total_order_value }}</p>
-
-        <p class="{% if customer.is_red_flag %}last-order-red{% endif %}">
-            <strong>Last Order:</strong>
-            {% if customer.last_order_date %}{{ customer.last_order_date }}{% else %}No orders yet{% endif %}
-        </p>
-
-        <a href="{% url 'customer_item_purchases' customer.id %}">View Item Purchases</a>
-
-        <button class="open-history" data-customer="{{ customer.id }}">
-            View Order History
+        <button class="accordion {% if customer.is_red_flag %}red-flag{% endif %}">
+            {{ customer.name }}
         </button>
 
-        <div class="history-data" id="history-{{ customer.id }}" style="display:none;">
-            <ul>
-                {% for v in customer.vouchers_list %}
-                <li>{{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}</li>
-                {% empty %}<li>No vouchers found.</li>{% endfor %}
-            </ul>
+        <div class="panel">
+            <p><strong>Phone:</strong> {{ customer.phone }}</p>
+            <p><strong>Address:</strong> {{ customer.address }}</p>
+            <p><strong>Total Orders:</strong> {{ customer.total_orders }}</p>
+            <p><strong>Total Value:</strong> ₹{{ customer.total_order_value }}</p>
+
+            <p class="{% if customer.is_red_flag %}last-order-red{% endif %}">
+                <strong>Last Order:</strong>
+                {% if customer.last_order_date %}{{ customer.last_order_date }}{% else %}No orders yet{% endif %}
+            </p>
+
+            <a href="{% url 'customer_item_purchases' customer.id %}">View Item Purchases</a>
+
+            <button class="open-history" data-customer="{{ customer.id }}">
+                View Order History
+            </button>
+
+            <div class="history-data" id="history-{{ customer.id }}" style="display:none;">
+                <ul>
+                    {% for v in customer.vouchers_list %}
+                    <li>{{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}</li>
+                    {% empty %}<li>No vouchers found.</li>{% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endfor %}
+
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <h2>Order History</h2>
+            <div id="modalContent"></div>
         </div>
     </div>
 
-    {% endfor %}
-</div>
-
-
-<!-- MODAL -->
-<div class="modal-overlay" id="modalOverlay">
-    <div class="modal-box">
-        <h2>Order History</h2>
-        <div id="modalContent"></div>
-    </div>
-</div>
-
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-
-    const cards = document.querySelectorAll('.card');
-    const modalOverlay = document.getElementById('modalOverlay');
-    const modalContent = document.getElementById('modalContent');
-    const searchInput = document.getElementById('customerSearch');
-    const suggestionsBox = document.getElementById('suggestions');
-
-    /* ========== CARD OPEN / CLOSE ========== */
-    cards.forEach(card => {
-        card.addEventListener('click', function () {
-            cards.forEach(c => {
-                if (c !== this) c.classList.remove('active');
-            });
-            this.classList.toggle('active');
-        });
-    });
-
-    /* ========== MOBILE ACCORDION ========== */
-    document.querySelectorAll(".accordion").forEach(acc => {
-        acc.addEventListener("click", () => {
-            acc.classList.toggle("active");
-            const panel = acc.nextElementSibling;
+    /* Accordion toggle */
+    document.querySelectorAll(".accordion").forEach(btn => {
+        btn.addEventListener("click", () => {
+            btn.classList.toggle("active");
+            const panel = btn.nextElementSibling;
             panel.style.display = panel.style.display === "block" ? "none" : "block";
         });
     });
 
-    /* ========== MODAL LOGIC ========== */
-    document.querySelectorAll('.open-history').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+    /* Modal */
+    document.querySelectorAll(".open-history").forEach(btn => {
+        btn.addEventListener("click", e => {
             e.stopPropagation();
+            const id = btn.dataset.customer;
+            document.getElementById("modalContent").innerHTML =
+                document.getElementById("history-" + id).innerHTML;
 
-            const id = this.dataset.customer;
-            const historyHTML = document.getElementById('history-' + id).innerHTML;
-
-            modalContent.innerHTML = historyHTML;
-            modalOverlay.style.display = 'flex';
+            document.getElementById("modalOverlay").style.display = "flex";
         });
     });
-
-    modalOverlay.addEventListener('click', function() {
-        modalOverlay.style.display = 'none';
-        modalContent.innerHTML = '';
+    document.getElementById("modalOverlay").addEventListener("click", () => {
+        document.getElementById("modalOverlay").style.display = "none";
     });
 
-    /* ========== SEARCH + SUGGESTION LOGIC ========== */
-    if(searchInput){
-        searchInput.addEventListener('input', function () {
-            const value = this.value.toLowerCase();
-            suggestionsBox.innerHTML = '';
+    /* Search */
+    const searchInput = document.getElementById("customerSearch");
+    const suggestions = document.getElementById("suggestions");
+    const accordions = document.querySelectorAll(".accordion");
 
-            if (value === '') {
-                suggestionsBox.style.display = 'none';
-                return;
+    searchInput.addEventListener("input", () => {
+        const value = searchInput.value.toLowerCase();
+        suggestions.innerHTML = "";
+
+        if (!value) {
+            suggestions.style.display = "none";
+            return;
+        }
+
+        accordions.forEach((acc, index) => {
+            const name = acc.textContent.trim().toLowerCase();
+            if (name.includes(value)) {
+                let div = document.createElement("div");
+                div.textContent = acc.textContent.trim();
+
+                div.onclick = () => {
+                    suggestions.style.display = "none";
+                    searchInput.value = div.textContent;
+
+                    acc.scrollIntoView({behavior:"smooth", block:"center"});
+                    acc.classList.add("active");
+                    acc.nextElementSibling.style.display = "block";
+                };
+
+                suggestions.appendChild(div);
             }
-
-            let matches = 0;
-
-            cards.forEach(card => {
-                const name = card.dataset.name;
-
-                if (name.includes(value)) {
-                    matches++;
-
-                    const div = document.createElement('div');
-                    div.textContent = card.dataset.name;
-
-                    div.addEventListener('click', function () {
-                        suggestionsBox.style.display = 'none';
-                        searchInput.value = this.textContent;
-
-                        card.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center'
-                        });
-
-                        card.classList.add('active');
-                        setTimeout(() => card.classList.remove('active'), 1500);
-                    });
-
-                    suggestionsBox.appendChild(div);
-                }
-            });
-
-            suggestionsBox.style.display = matches ? 'block' : 'none';
         });
-    }
 
-});
+        suggestions.style.display = "block";
+    });
 </script>
 
 </body>
