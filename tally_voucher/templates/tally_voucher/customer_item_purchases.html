@@ -5,102 +5,116 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Items Purchased</title>
 
-{% load static %}
 
 <style>
-body {
-    background: #3a3a3a;
-    font-family: "Poppins", sans-serif;
-    color: white;
-    padding: 25px;
-}
-
-/* Accordion Button */
-.accordion {
-    background-color: #1e1e1e;
-    color: white;
-    cursor: pointer;
-    padding: 15px;
-    width: 100%;
-    border: none;
-    text-align: left;
-    outline: none;
-    font-size: 17px;
-    border-radius: 10px;
-    transition: background 0.3s ease;
-    margin-top: 10px;
-}
-
-.accordion:hover,
-.accordion.active {
-    background-color: #333;
-}
-
-.panel {
-    padding: 0 18px;
-    display: none;
-    background-color: #2c2c2c;
-    overflow: hidden;
-    border-radius: 10px;
-    margin-bottom: 10px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-th, td {
-    text-align: left;
-    padding: 10px;
-    color: white;
-}
-
-thead {
-    background: #000;
-}
-
-tbody tr:nth-child(odd) {
-    background: #3a3a3a;
-}
-
-tbody tr:nth-child(even) {
-    background: #4a4a4a;
-}
-
-.back-btn {
-    display: inline-block;
-    background: #1e1e1e;
-    padding: 10px 20px;
-    border-radius: 8px;
-    color: white;
-    border: 1px solid #444;
-    margin-top: 20px;
-    text-decoration: none;
-}
-
-.back-btn:hover {
-    background: #333;
-}
-
-/* RESPONSIVE */
-@media (max-width: 700px) {
     body {
-        padding: 15px;
+        background: #3a3a3a;
+        font-family: "Poppins", sans-serif;
+        color: white;
+        padding: 25px;
     }
-    h2 {
-        font-size: 20px;
-    }
+
+    /* Accordion Button */
     .accordion {
-        font-size: 15px;
-        padding: 12px;
+        background-color: #1e1e1e;
+        color: white;
+        cursor: pointer;
+        padding: 15px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 17px;
+        border-radius: 10px;
+        transition: background 0.3s ease;
+        margin-top: 10px;
+        position: relative;
     }
+
+    .accordion:hover,
+    .accordion.active {
+        background-color: #333;
+    }
+
+    .accordion::after {
+        content: "▼";
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 16px;
+        transition: transform 0.3s ease;
+    }
+
+    .accordion.active::after {
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    .panel {
+        padding: 0 18px;
+        display: none;
+        background-color: #2c2c2c;
+        overflow: hidden;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
     th, td {
-        padding: 8px;
-        font-size: 14px;
+        text-align: left;
+        padding: 10px;
+        color: white;
     }
-}
+
+    thead {
+        background: #000;
+    }
+
+    tbody tr:nth-child(odd) {
+        background: #3a3a3a;
+    }
+
+    tbody tr:nth-child(even) {
+        background: #4a4a4a;
+    }
+
+    .back-btn {
+        display: inline-block;
+        background: #1e1e1e;
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: white;
+        border: 1px solid #444;
+        margin-top: 20px;
+        text-decoration: none;
+    }
+
+    .back-btn:hover {
+        background: #333;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 700px) {
+        body {
+            padding: 15px;
+        }
+        h2 {
+            font-size: 20px;
+        }
+        .accordion {
+            font-size: 15px;
+            padding: 12px;
+        }
+        th, td {
+            padding: 8px;
+            font-size: 14px;
+        }
+    }
 </style>
 
 </head>
@@ -142,15 +156,22 @@ tbody tr:nth-child(even) {
 <a href="javascript:history.back()" class="back-btn">← Back</a>
 
 <script>
-const acc = document.getElementsByClassName("accordion");
+    const acc = document.getElementsByClassName("accordion");
 
-for (let i = 0; i < acc.length; i++) {
-    acc[i].addEventListener("click", function() {
-        this.classList.toggle("active");
-        const panel = this.nextElementSibling;
-        panel.style.display = panel.style.display === "block" ? "none" : "block";
-    });
-}
+    for (let i = 0; i < acc.length; i++) {
+        acc[i].addEventListener("click", function() {
+
+            this.classList.toggle("active"); // rotates arrow
+
+            const panel = this.nextElementSibling;
+            if (panel.style.display === "block") {
+                panel.style.display = "none";
+            } else {
+                panel.style.display = "block";
+            }
+        });
+    }
+
 </script>
 
 </body>
