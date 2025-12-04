@@ -1,10 +1,39 @@
 {% extends "inventory/base.html" %}
-
 {% load static %}
 {% block content %}
 
+<style>
+    /* Google-style search box */
+    #customerSearch {
+        border-radius: 25px;
+        padding-left: 18px;
+        height: 42px;
+        font-size: 16px;
+    }
 
+    #searchSuggestions {
+        border-radius: 12px;
+        background: white;
+        max-height: 250px;
+        overflow-y: auto;
+        display: none;
+    }
 
+    #searchSuggestions .suggest-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        font-size: 15px;
+    }
+
+    #searchSuggestions .suggest-item:hover {
+        background: #f3f3f3;
+    }
+
+    mark {
+        background-color: yellow;
+        padding: 0 2px;
+    }
+</style>
 
 <div class="container mt-4">
 
@@ -12,41 +41,47 @@
 
     <!-- Salesperson Selector -->
     <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Select Salesperson</label>
-                        <select name="salesperson" class="form-select" onchange="this.form.submit()">
-                            <option value="">-- Select --</option>
-                            {% for s in salespersons %}
-                            <option value="{{ s.id }}"
-                                {% if selected_salesperson and s.id == selected_salesperson.id %}selected{% endif %}>
-                                {{ s.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+        <div class="card-body">
 
-                    {% if selected_salesperson %}
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Search Customer</label>
-                        <input type="text" name="search" class="form-control"
-                               placeholder="Search name or state..."
-                               value="{{ request.GET.search }}"
-                               onchange="this.form.submit()">
-                    </div>
-                    {% endif %}
-                </form>
-            </div>
+            <form method="GET" id="searchForm" class="row g-3">
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Select Salesperson</label>
+                    <select name="salesperson" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Select --</option>
+                        {% for s in salespersons %}
+                        <option value="{{ s.id }}"
+                            {% if selected_salesperson and s.id == selected_salesperson.id %}selected{% endif %}>
+                            {{ s.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if selected_salesperson %}
+                <div class="col-md-4 position-relative">
+                    <label class="form-label fw-semibold">Search Customer</label>
+
+                    <input type="text"
+                           id="customerSearch"
+                           class="form-control"
+                           placeholder="Search customer..."
+                           autocomplete="off">
+
+                    <div id="searchSuggestions"
+                         class="shadow position-absolute w-100"
+                         style="z-index: 1000;"></div>
+                </div>
+                {% endif %}
+
+            </form>
         </div>
-
+    </div>
 
     {% if selected_salesperson %}
 
     <!-- Stats Cards -->
-<div class="container mt-4">
     <div class="row g-4">
-
         <div class="col-md-4">
             <div class="card shadow-sm text-center p-3 h-100">
                 <h5 class="text-secondary">Total Customers</h5>
@@ -67,18 +102,14 @@
                 <h2 class="fw-bold text-danger">{{ inactive_count }}</h2>
             </div>
         </div>
-
     </div>
-</div>
 
-    <h4 class="fw-bold mb-3">
-        Customers handled by: {{ selected_salesperson.name }}
-    </h4>
+    <h4 class="fw-bold mt-4">Customers handled by: {{ selected_salesperson.name }}</h4>
 
     <!-- Table -->
-    <div class="card shadow-sm">
+    <div class="card shadow-sm mt-3">
         <div class="card-body p-0">
-            <table class="table table-striped table-hover mb-0">
+            <table id="customerTable" class="table table-hover table-striped mb-0">
                 <thead class="table-dark">
                     <tr>
                         <th>S.No</th>
@@ -95,12 +126,11 @@
                     {% for c in customers %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
-                        <td>{{ c.name }}</td>
+                        <td class="cust-name">{{ c.name }}</td>
                         <td>{{ c.state }}</td>
                         <td>{{ c.total_orders }}</td>
                         <td>₹ {{ c.total_order_value|floatformat:2 }}</td>
                         <td>{{ c.last_order_date }}</td>
-
                         <td>
                             {% if c.is_red_flag %}
                                 <span class="badge bg-danger">Inactive</span>
@@ -109,19 +139,91 @@
                             {% endif %}
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center py-4">No customers found</td>
-                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 
-
-
     {% endif %}
 </div>
+
+
+<!-- GOOGLE STYLE LIVE SEARCH JS -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+
+    const input = document.getElementById("customerSearch");
+    const suggestions = document.getElementById("searchSuggestions");
+    const rows = document.querySelectorAll("#customerTable tbody tr");
+
+    if (!input) return;
+
+    // Build customer list from table (no need Django)
+    const customerList = [...rows].map(r =>
+        r.querySelector(".cust-name").innerText.trim()
+    );
+
+    function highlight(text, q) {
+        const reg = new RegExp("(" + q + ")", "gi");
+        return text.replace(reg, "<mark>$1</mark>");
+    }
+
+    function showSuggestions(list, query) {
+        if (!query) {
+            suggestions.style.display = "none";
+            return;
+        }
+
+        const filtered = list.filter(name =>
+            name.toLowerCase().includes(query.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+            suggestions.style.display = "none";
+            return;
+        }
+
+        suggestions.innerHTML = "";
+        filtered.forEach(name => {
+            let div = document.createElement("div");
+            div.className = "suggest-item";
+            div.innerHTML = highlight(name, query);
+
+            div.onclick = () => {
+                input.value = name;
+                suggestions.style.display = "none";
+                filterTable(name);
+            };
+
+            suggestions.appendChild(div);
+        });
+
+        suggestions.style.display = "block";
+    }
+
+    function filterTable(query) {
+        rows.forEach(r => {
+            const cell = r.querySelector(".cust-name").innerText.toLowerCase();
+            r.style.display = cell.includes(query.toLowerCase()) ? "" : "none";
+        });
+    }
+
+    input.addEventListener("input", () => {
+        const q = input.value.trim();
+        showSuggestions(customerList, q);
+        filterTable(q);
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            filterTable(input.value.trim());
+            suggestions.style.display = "none";
+        }
+    });
+
+});
+</script>
 
 {% endblock %}
