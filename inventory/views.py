@@ -807,7 +807,7 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             else:
                 customer_link = None
 
-            value = (item.quantity or 0) * (item.rate or 0)
+            value = (item.quantity or 0)
             total_dead_value += value
 
             data.append({
