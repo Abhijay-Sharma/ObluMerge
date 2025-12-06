@@ -171,7 +171,6 @@ this is dashboard that display the dead stock product (not sold in long time-->
       <tr>
         <th>Product Name</th>
         <th>Quantity</th>
-        <th>Value</th>
         <th>Last Sold</th>
           <th>Last Customer</th>
 
@@ -183,7 +182,6 @@ this is dashboard that display the dead stock product (not sold in long time-->
           <tr>
             <td>{{ item.name }}</td>
             <td>{{ item.quantity }}</td>
-            <td>{{ item.value }}</td>
             <td>{% if item.last_sold %}{{ item.last_sold }}{% else %}<i>Never Sold</i>{% endif %}</td>
            <td>
               {% if item.customer_link %}
