@@ -27,7 +27,7 @@ import datetime
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Max
-from tally_voucher.models import VoucherRow
+from tally_voucher.models import VoucherStockItem
 
 logger = logging.getLogger(__name__)
 
@@ -752,16 +752,15 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
 
             # ✔ Find last customer from Tally (VoucherRow)
             last_customer = None
-            last_row = (
-                VoucherRow.objects
-                .filter(ledger__icontains=item.name)
+            last_stock_row = (
+                VoucherStockItem.objects
+                .filter(item=item)  # match by FK to InventoryItem
                 .select_related("voucher")
                 .order_by("-voucher__date")
                 .first()
             )
 
-            if last_row:
-                last_customer = last_row.voucher.party_name
+            last_customer = last_stock_row.voucher.party_name if last_stock_row else None
 
             value = (item.quantity or 0) * (getattr(item, 'rate', 0) or 0)
             total_dead_value += value
