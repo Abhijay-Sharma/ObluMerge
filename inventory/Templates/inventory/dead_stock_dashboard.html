@@ -186,12 +186,12 @@ this is dashboard that display the dead stock product (not sold in long time-->
             <td>{{ item.value }}</td>
             <td>{% if item.last_sold %}{{ item.last_sold }}{% else %}<i>Never Sold</i>{% endif %}</td>
            <td>
-              {% if item.last_customer %}
-                  {{ item.last_customer }}
+              {% if item.customer_link %}
+                  <a href="{{ item.customer_link }}">{{ item.last_customer }}</a>
               {% else %}
-                  <i>No Customer Found</i>
+                  -
               {% endif %}
-            </td>
+          </td>
 
           </tr>
         {% endif %}
