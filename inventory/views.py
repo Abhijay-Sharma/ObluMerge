@@ -709,7 +709,7 @@ class DailyStockChartView(AccountantRequiredMixin, TemplateView):
         return context
 
 
-class DeadStockDashboardView(TemplateView):
+class DeadStockDashboardView(AccountantRequiredMixin,TemplateView):
     template_name = "inventory/dead_stock_dashboard.html"
 
     def get(self, request):
@@ -717,8 +717,8 @@ class DeadStockDashboardView(TemplateView):
         # -------------------------
         # DATE FILTER
         # -------------------------
-        from_date = request.GET.get('from')
-        to_date = request.GET.get('to')
+        from_date = request.GET.get("from")
+        to_date = request.GET.get("to")
 
         if not from_date or not to_date:
             to_date = datetime.date.today()
@@ -728,7 +728,7 @@ class DeadStockDashboardView(TemplateView):
             to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
 
         # -------------------------
-        # FIND SOLD PRODUCTS
+        # SOLD PRODUCTS
         # -------------------------
         sold_products = DailyStockData.objects.filter(
             date__range=(from_date, to_date),
@@ -738,74 +738,68 @@ class DeadStockDashboardView(TemplateView):
         dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
 
         # -------------------------
-        # LAST SOLD DATE
+        # LAST SOLD DATE MAP
         # -------------------------
         last_sales = DailyStockData.objects.filter(
             outwards_quantity__gt=0
         ).values("product_id").annotate(last_sold=Max("date"))
 
-        last_sold_map = {x['product_id']: x['last_sold'] for x in last_sales}
+        last_sold_map = {x["product_id"]: x["last_sold"] for x in last_sales}
+
+        # -------------------------
+        # BUILD ITEM NAME → ID MAP (1 db hit)
+        # -------------------------
+        item_name_map = {
+            item.name.strip().lower(): item.id
+            for item in InventoryItem.objects.all()
+        }
 
         # -------------------------
         # LAST CUSTOMER (TAX INVOICE ONLY)
         # -------------------------
-        last_customers_raw = (
+        last_customer_map = {}
+        last_customer_vid_map = {}
+
+        for row in (
             VoucherStockItem.objects.filter(
                 voucher__voucher_type__iexact="Tax Invoice"
             )
+            .select_related("voucher")
+            .order_by("-voucher__date")
             .values(
                 "item_id",
                 "item_name_text",
                 "voucher__party_name",
                 "voucher__date",
-                "voucher_id"
+                "voucher_id",
             )
-            .order_by("-voucher__date")
-        )
+        ):
 
-        last_customer_map = {}        # item_id → customer name
-        last_customer_vid_map = {}    # item_id → voucher_id
-
-        for row in last_customers_raw:
-
-            # Matched through FK
+            # Priority 1: FK match
             if row["item_id"]:
-                item_id = row["item_id"]
-                if item_id not in last_customer_map:
+                if row["item_id"] not in last_customer_map:
+                    last_customer_map[row["item_id"]] = row["voucher__party_name"]
+                    last_customer_vid_map[row["item_id"]] = row["voucher_id"]
+                continue
+
+            # Priority 2: Name match
+            if row["item_name_text"]:
+                normalized = row["item_name_text"].strip().lower()
+                item_id = item_name_map.get(normalized)
+
+                if item_id and item_id not in last_customer_map:
                     last_customer_map[item_id] = row["voucher__party_name"]
                     last_customer_vid_map[item_id] = row["voucher_id"]
-
-            # Match by item_name_text
-            elif row["item_name_text"]:
-                try:
-                    item = InventoryItem.objects.get(
-                        name__iexact=row["item_name_text"].strip()
-                    )
-                    if item.id not in last_customer_map:
-                        last_customer_map[item.id] = row["voucher__party_name"]
-                        last_customer_vid_map[item.id] = row["voucher_id"]
-                except InventoryItem.DoesNotExist:
-                    pass
 
         # -------------------------
         # FINAL DATA
         # -------------------------
-        data = []
         total_dead_value = 0
+        data = []
 
         for item in dead_stock_items:
-
             if not item.quantity or item.quantity <= 0:
                 continue
-
-            last_sold = last_sold_map.get(item.id)
-            last_customer = last_customer_map.get(item.id)
-            voucher_id = last_customer_vid_map.get(item.id)
-
-            if last_customer and voucher_id:
-                customer_link = reverse("customer_item_purchases", args=[voucher_id])
-            else:
-                customer_link = None
 
             value = (item.quantity or 0) * (item.rate or 0)
             total_dead_value += value
@@ -814,20 +808,22 @@ class DeadStockDashboardView(TemplateView):
                 "name": item.name,
                 "quantity": item.quantity,
                 "value": round(value, 2),
-                "last_sold": last_sold,
-                "last_customer": last_customer,
-                "customer_link": customer_link,
+                "last_sold": last_sold_map.get(item.id),
+                "last_customer": last_customer_map.get(item.id),
+                "voucher_id": last_customer_vid_map.get(item.id),  # for linking
             })
 
-        context = {
-            "dead_stock": data,
-            "total_dead_value": round(total_dead_value, 2),
-            "total_dead_products": len(data),
-            "from_date": from_date,
-            "to_date": to_date,
-        }
-
-        return render(request, self.template_name, context)
+        return render(
+            request,
+            self.template_name,
+            {
+                "dead_stock": data,
+                "total_dead_value": round(total_dead_value, 2),
+                "total_dead_products": len(data),
+                "from_date": from_date,
+                "to_date": to_date,
+            },
+        )
 
 
 class SalesComparisonDashboardView(AccountantRequiredMixin, View):
