@@ -27,7 +27,7 @@ import datetime
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Max
-
+from tally_voucher.models import VoucherRow
 
 logger = logging.getLogger(__name__)
 
@@ -713,70 +713,74 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
     template_name = "inventory/dead_stock_dashboard.html"
 
     def get(self, request):
-        # 🗓 Get date range from GET params (with defaults)
+        # 🗓 Date range
         from_date = request.GET.get('from')
         to_date = request.GET.get('to')
 
         if not from_date or not to_date:
-            # Default: last 3 months
             to_date = datetime.date.today()
             from_date = to_date.replace(month=max(1, to_date.month - 3))
         else:
             from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
 
-        # ✅ Step 1: Products sold in this range
+        # ✔ Products sold in date range
         sold_products = DailyStockData.objects.filter(
             date__range=(from_date, to_date),
             outwards_quantity__gt=0
         ).values_list('product_id', flat=True).distinct()
 
-        # ✅ Step 2: Products not sold = Dead Stock
+        # ✔ Dead stock
         dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
 
-        # ✅ Step 3: Get last sold date for each product
+        # ✔ Last sold date for all products
         last_sales = DailyStockData.objects.filter(
             outwards_quantity__gt=0
         ).values('product_id').annotate(last_sold=Max('date'))
 
         last_sold_map = {x['product_id']: x['last_sold'] for x in last_sales}
 
-        # ✅ Step 4: Prepare clean data
         data = []
         total_dead_value = 0
-        valid_dates = []
 
         for item in dead_stock_items:
-            # skip items with zero quantity
+
             if not item.quantity or item.quantity <= 0:
                 continue
 
             last_sold = last_sold_map.get(item.id)
+
+            # ✔ Find last customer from Tally (VoucherRow)
+            last_customer = None
+            last_row = (
+                VoucherRow.objects
+                .filter(ledger__icontains=item.name)
+                .select_related("voucher")
+                .order_by("-voucher__date")
+                .first()
+            )
+
+            if last_row:
+                last_customer = last_row.voucher.party_name
+
             value = (item.quantity or 0) * (getattr(item, 'rate', 0) or 0)
             total_dead_value += value
-            if last_sold:
-                valid_dates.append(last_sold)
 
             data.append({
                 'name': item.name,
                 'quantity': item.quantity,
                 'value': round(value, 2),
                 'last_sold': last_sold,
+                'last_customer': last_customer,
             })
-        #
-        # oldest_last_sold = min(valid_dates, default=None)
 
-        context = {
+        return render(request, self.template_name, {
             'dead_stock': data,
             'total_dead_value': round(total_dead_value, 2),
             'total_dead_products': len(data),
-            # 'oldest_last_sold': oldest_last_sold,
             'from_date': from_date,
             'to_date': to_date,
-        }
-
-        return render(request, self.template_name, context)
-
+        })
 
 class SalesComparisonDashboardView(AccountantRequiredMixin, View):
     template_name = "inventory/sales_comparison_dashboard.html"

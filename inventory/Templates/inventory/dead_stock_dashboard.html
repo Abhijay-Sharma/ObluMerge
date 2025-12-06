@@ -173,6 +173,8 @@ this is dashboard that display the dead stock product (not sold in long time-->
         <th>Quantity</th>
         <th>Value</th>
         <th>Last Sold</th>
+          <th>Last Customer</th>
+
       </tr>
     </thead>
     <tbody>
@@ -183,6 +185,14 @@ this is dashboard that display the dead stock product (not sold in long time-->
             <td>{{ item.quantity }}</td>
             <td>{{ item.value }}</td>
             <td>{% if item.last_sold %}{{ item.last_sold }}{% else %}<i>Never Sold</i>{% endif %}</td>
+           <td>
+              {% if item.last_customer %}
+                  {{ item.last_customer }}
+              {% else %}
+                  <i>No Customer Found</i>
+              {% endif %}
+            </td>
+
           </tr>
         {% endif %}
       {% empty %}
