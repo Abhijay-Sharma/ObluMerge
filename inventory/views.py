@@ -803,7 +803,7 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             voucher_id = last_customer_vid_map.get(item.id)
 
             if last_customer and voucher_id:
-                customer_link = reverse("customer_item_purchases", args=[voucher_id])
+                customer_link = reverse("voucher_detail", args=[voucher_id])
             else:
                 customer_link = None
 
