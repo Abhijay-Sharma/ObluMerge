@@ -5,323 +5,379 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Salesperson → Customer Overview</title>
 
-<!-- Bootstrap CSS (CDN) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
-  :root{
-    --card-bg: #fff;
-    --page-bg: #f5f5f5;
-    --accent: #222;
-    --inactive-red: #d9534f;
-    --active-green: #28a745;
-  }
 
-  body{
-    background: var(--page-bg);
-    font-family: "Poppins", sans-serif;
-    color: #111;
-  }
+:root{
+  --page-bg: #000;
+  --card-bg: #111;
+  --table-header: #000;
+  --row-hover: #1a1a1a;
+  --accordion-closed: #600000;
+  --accordion-open: #222222;
+  --text-light: #ffffff;
+  --border-light: #aa0000;
+  --active-green: #00c851;
+  --inactive-red: #ff4444;
+}
 
-  /* ========== FIRST CENTER CARD ========== */
-  .center-card {
-    max-width: 640px;
-    margin: 72px auto;
-    padding: 30px;
-    border-radius: 16px;
-    background: var(--card-bg);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-  }
+body{
+  background: var(--page-bg);
+  font-family: "Poppins", sans-serif;
+  color: var(--text-light);
+}
 
-  /* ========== SEARCH & SUGGESTIONS ========== */
-  .search-wrapper { position: relative; }
-  #customerSearch {
-    border-radius: 24px;
-    padding-left: 16px;
-    height: 44px;
-    font-size: 15px;
-  }
+/* ------------------------------------------------------
+    MAIN PAGE CARD
+------------------------------------------------------ */
+.center-card {
+  max-width: 640px;
+  margin: 72px auto;
+  padding: 30px;
+  border-radius: 16px;
+  background: var(--card-bg);
+  box-shadow: 0 0 25px rgba(255,0,0,0.15);
+}
 
-  /* Suggestions box positioned under input to avoid overlap with stat cards */
-  .suggestions {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(100% + 8px); /* ensures it drops below the input */
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
-    max-height: 260px;
-    overflow-y: auto;
-    z-index: 1200;
-    display: none;
-  }
-  .suggestions .item {
-    padding: 12px 16px;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-  }
-  .suggestions .item:hover { background: #f7f7f7; }
+/* ------------------------------------------------------
+    SEARCH + SUGGESTIONS
+------------------------------------------------------ */
+.search-wrapper { position: relative; }
 
-  /* ========== STAT CARDS ========== */
-  .stat-card { border-radius: 10px; padding: 22px; text-align: center; background: #fff; box-shadow: none; }
-  .stat-card h2 { margin: 6px 0; }
+#customerSearch {
+  border-radius: 25px;
+  border: 1px solid #444;
+  background: gray;
+  height: 44px;
+}
 
-  /* ========== TABLE DESKTOP ========== */
-  .card-table { overflow-x: auto; }
-  .table thead th { background: #222; color: #fff; }
-  .cust-highlight { outline: 4px solid rgba(255,193,7,0.18); transition: outline 300ms; }
+.suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #111;
+  border-radius: 12px;
+  border: 1px solid #333;
+  box-shadow: 0 0 18px rgba(255,0,0,0.15);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+}
 
-  /* badges */
-  .badge-active { background: var(--active-green); color: #fff; }
-  .badge-inactive { background: var(--inactive-red); color: #fff; }
+.suggestions .item {
+  padding: 12px 16px;
+  cursor: pointer;
+  color: white;
+  border-bottom: 1px solid #2a2a2a;
+}
+.suggestions .item:hover {
+  background: #222;
+}
 
-/* ACTION BUTTONS */
-    .action-btn {
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: 0.25s ease;
-        white-space: nowrap;
-    }
+/* ------------------------------------------------------
+     STATS CARDS
+------------------------------------------------------ */
+.stat-card {
+  background: #111;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 14px;
+  text-align: center;
+}
 
-    /* Buttons */
+/* ------------------------------------------------------
+      TABLE
+------------------------------------------------------ */
+.table thead th {
+  background: var(--table-header);
+  color: white;
+  border-color: #333;
+}
 
-    .btn{
-        border-radius:20px;
-    }
-  /* ========== MOBILE ACCORDION ========== */
-  @media (max-width: 767px) {
-    /* hide desktop table */
-    .desktop-table { display: none !important; }
+.table tbody tr {
+  background: #1A1A1A !important;
+  color: white;
+}
+.table tbody tr:hover {
+  background: var(--row-hover);
+}
 
-    .mobile-accordion .accordion-btn {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 14px 16px;
-      border-radius: 10px;
-      border: none;
-      background: #fff;
-      margin-bottom: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      font-weight: 600;
-      cursor: pointer;
-      position: relative;
-    }
+.accordion-btn {
+    background: #111 !important;
+    color: #fff;
+}
 
-    .accordion-btn .arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); transition: transform .25s; }
-    .accordion-btn.active .arrow { transform: translateY(-50%) rotate(180deg); }
+.accordion-btn.active {
+    background: #222222;
+    color: #fff;
+    border: 1px solid #000;
+}
 
-    .accordion-panel {
-      display: none;
-      background: #fff;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    }
+.accordion-btn.inactive {
+    background: #7a0000 !important;
+    border: 1px solid #b30000;
+}
 
-    .accordion-btn.inactive { background: #fff0f0; border: 1px solid rgba(217,83,79,0.18); color: #6b0000; }
-  }
+.accordion-btn.inactive.active {
+    background: #222222 !important;
+    border: 1px solid #000;
+}
 
-  /* larger screens show table and hide mobile list */
-  @media (min-width: 768px) {
-    .mobile-accordion { display: none; }
-  }
+/* PANEL styling */
+.accordion-panel {
+    background: #111;          /* match theme */
+    border: 1px solid #333;
+    color: #fff;
+}
 
-  /* modal styling override */
-  .modal-content { border-radius: 12px; }
+
+.badge-active { background: var(--active-green); }
+.badge-inactive { background: var(--inactive-red); }
+
+.btn {
+  color:#fff;
+  background: #111;
+  border: #fff 2px solid;
+  border-radius: 20px !important;
+}
+
+/* ------------------------------------------------------
+      MOBILE ACCORDION STYLING — MATCHING YOUR SS
+------------------------------------------------------ */
+.mobile-accordion .accordion-btn {
+  width: 100%;
+  padding: 16px;
+  font-weight: 600;
+  color: white;
+  background: var(--accordion-closed);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: 0.25s ease-in-out;
+}
+
+.mobile-accordion .accordion-btn .arrow {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: white;
+  transition: 0.25s;
+}
+
+.mobile-accordion .accordion-btn.active {
+  background: var(--accordion-open);
+  border-color: black;
+}
+
+.mobile-accordion .accordion-btn.active .arrow {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.accordion-panel {
+  display: none;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: -5px;
+  margin-bottom: 12px;
+  color: white;
+}
+
+/* ------------------------------------------------------
+      DESKTOP HIDE / MOBILE HIDE
+------------------------------------------------------ */
+@media (max-width: 767px) {
+  .desktop-table { display: none !important; }
+}
+
+@media (min-width: 768px) {
+  .mobile-accordion { display: none !important; }
+}
+
+/* ------------------------------------------------------
+      MODAL DARK THEME
+------------------------------------------------------ */
+.modal-content {
+  background: #111;
+  color: white;
+  border-radius: 15px;
+  border: 1px solid #333;
+}
 </style>
-
 </head>
+
 <body>
 
-  <div class="container mt-5 mb-5">
+<div class="container mt-5 mb-5">
 
-    {% if not selected_salesperson %}
-    <!-- FIRST PAGE : SELECT SALES PERSON -->
-    <div class="center-card text-center">
-      <h3 class="fw-bold mb-3">Admin: Salesperson → Customer Overview</h3>
+{% if not selected_salesperson %}
+<!-- FIRST PAGE -->
+<div class="center-card text-center">
+  <h3 class="fw-bold mb-3">Admin: Salesperson → Customer Overview</h3>
 
-      <form method="GET">
-        <label class="form-label fw-semibold">Select Salesperson</label>
-        <select name="salesperson" class="form-select mb-3" required>
-          <option value="">-- Select --</option>
-          {% for s in salespersons %}
-            <option value="{{ s.id }}">{{ s.name }}</option>
-          {% endfor %}
-        </select>
+  <form method="GET">
+    <label class="form-label">Select Salesperson</label>
+    <select name="salesperson" class="form-select mb-3" required>
+      <option value="">-- Select --</option>
+      {% for s in salespersons %}
+      <option value="{{ s.id }}">{{ s.name }}</option>
+      {% endfor %}
+    </select>
 
-        <button type="submit" class="btn btn-dark w-100">Continue →</button>
-      </form>
+    <button type="submit" class="btn btn-danger w-100">Continue →</button>
+  </form>
+</div>
+
+{% else %}
+
+<!-- MAIN PAGE -->
+<h2 class="fw-bold mb-4">Customers handled by: {{ selected_salesperson.name }}</h2>
+
+<!-- SEARCH + SELECTOR -->
+<div class="card shadow-sm p-4 mb-4" style="background:#111; border:1px solid #333;">
+  <form method="GET" class="row g-3 align-items-end">
+    <input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}">
+
+    <div class="col-md-4">
+      <label class="form-label" style="color:#fff;">Select Salesperson</label>
+      <select name="salesperson" class="form-select" onchange="this.form.submit()">
+        {% for s in salespersons %}
+        <option value="{{ s.id }}" {% if selected_salesperson.id == s.id %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
     </div>
 
-    {% else %}
-    <!-- MAIN PAGE AFTER SELECTION -->
-    <h2 class="fw-bold mb-4">Admin: Salesperson → Customer Overview</h2>
-
-    <!-- SEARCH + SELECTOR -->
-    <div class="card shadow-sm p-4 mb-4">
-      <form method="GET" class="row g-3 align-items-end">
-        <input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}">
-
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">Select Salesperson</label>
-          <select name="salesperson" class="form-select" onchange="this.form.submit()">
-            {% for s in salespersons %}
-              <option value="{{ s.id }}" {% if selected_salesperson.id == s.id %}selected{% endif %}>{{ s.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="col-md-5 position-relative search-wrapper">
-          <label class="form-label fw-semibold">Search Customer</label>
-          <!-- NOTE: we add data-customer-name on accordions / rows below -->
-          <input id="customerSearch" class="form-control" placeholder="Search customer..." autocomplete="off" />
-          <div id="searchSuggestions" class="suggestions" role="listbox" aria-hidden="true"></div>
-        </div>
-      </form>
+    <div class="col-md-5 search-wrapper">
+      <label class="form-label" style="color:#fff;">Search Customer</label>
+      <input id="customerSearch" class="form-control" placeholder="Search customer..." autocomplete="off" >
+      <div id="searchSuggestions" class="suggestions"></div>
     </div>
+  </form>
+</div>
 
-    <!-- STATS -->
-    <div class="row g-4 mb-4">
-      <div class="col-md-4">
-        <div class="stat-card card p-3"><h6>Total Customers</h6><h2>{{ customers|length }}</h2></div>
-      </div>
-      <div class="col-md-4">
-        <div class="stat-card card p-3"><h6>Active (Last 90 Days)</h6><h2 class="text-success">{{ active_count }}</h2></div>
-      </div>
-      <div class="col-md-4">
-        <div class="stat-card card p-3"><h6>Inactive</h6><h2 class="text-danger">{{ inactive_count }}</h2></div>
-      </div>
-    </div>
+<!-- STATS -->
+<div class="row g-4 mb-4">
+  <div class="col-md-4"><div class="stat-card"><h3>Total Customers</h3><h2>{{ customers|length }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Active</h3><h2 class="text-success">{{ active_count }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Inactive</h3><h2 class="text-danger">{{ inactive_count }}</h2></div></div>
+</div>
 
-    <h4 class="fw-bold mb-3">Customers handled by: {{ selected_salesperson.name }}</h4>
+<!-- DESKTOP TABLE -->
+<div class="card shadow-sm card-table" style="background:#111; border:1px solid #333;">
+  <div class="card-body p-0">
+    <table id="customerTable" class="table table-hover mb-0 desktop-table">
+      <thead><tr>
+        <th>S.No</th><th>Customer</th><th>State</th><th>Total Orders</th>
+        <th>Total Value</th><th>Last Order</th><th>Status</th><th>Actions</th>
+      </tr></thead>
 
-    <div class="card shadow-sm mb-4 card-table">
-      <div class="card-body p-0">
+      <tbody>
+        {% for c in customers %}
+        <tr
+          class="{% if c.is_red_flag %}inactive{% endif %}"
+          data-customer-id="{{ c.id }}"
+          data-customer-name="{{ c.name }}">
 
-        <!-- DESKTOP TABLE -->
-        <table id="customerTable" class="table table-hover mb-0 desktop-table">
-          <thead class="table-dark">
-            <tr>
-              <th style="width:48px">S.No</th>
-              <th>Customer Name</th>
-              <th>State</th>
-              <th>Total Orders</th>
-              <th>Total Order Value</th>
-              <th>Last Order Date</th>
-              <th>Status</th>
-              <th style="width:180px">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for c in customers %}
-            <!-- add data-customer-id and data-customer-name on the row for robust JS selection -->
-            <tr id="cust-row-{{ c.id }}" data-customer-id="{{ c.id }}" data-customer-name="{{ c.name|escape }}" class="{% if c.is_red_flag %}table-danger{% endif %}">
-              <td>{{ forloop.counter }}</td>
-              <td class="cust-name">{{ c.name }}</td>
-              <td>{{ c.state }}</td>
-              <td>{{ c.total_orders }}</td>
-              <td>₹ {{ c.total_order_value|floatformat:2 }}</td>
-              <td>{{ c.last_order_date|default:"None" }}</td>
-              <td>
-                {% if c.is_red_flag %}
-                  <span class="badge badge-inactive">Inactive</span>
-                {% else %}
-                  <span class="badge badge-active">Active</span>
-                {% endif %}
-              </td>
-              <td>
-                <!-- View Item Purchases (link) -->
-                <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-sm btn-outline-dark me-2" style="border-radius: 20px; margin-bottom:5px;">View Item Purchases</a>
 
-                <!-- View Order History (opens modal) -->
-                <button type="button" class="btn btn-sm btn-dark open-history" data-customer="{{ c.id }}" style="border-radius: 20px;">View Order History</button>
+          <td style="background: #1A1A1A; color: #fff;">{{ forloop.counter }}</td>
+          <td class="cust-name" style="background: #1A1A1A; color: #fff;">{{ c.name }}</td>
+          <td style="background: #1A1A1A; color: #fff;">{{ c.state }}</td>
+          <td style="background: #1A1A1A; color: #fff;">{{ c.total_orders }}</td>
+          <td style="background: #1A1A1A; color: #fff;">₹ {{ c.total_order_value|floatformat:2 }}</td>
+          <td style="background: #1A1A1A; color: #fff;">{{ c.last_order_date|default:"None" }}</td>
+          <td style="background: #1A1A1A; color: #fff;">
+            {% if c.is_red_flag %}
+            <span class="badge badge-inactive">Inactive</span>
+            {% else %}
+            <span class="badge badge-active">Active</span>
+            {% endif %}
+          </td>
+          <td style="background: #1A1A1A; color: #fff;">
+            <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Item Purchases</a>
+            <button class="btn btn-danger btn-sm open-history" data-customer="{{ c.id }}">View Order History</button>
+          </td>
 
-                <!-- Hidden history template copied to modal when needed -->
-                <div id="history-data-{{ c.id }}" style="display:none;">
-                  <ul class="list-unstyled mb-0">
-                    {% for v in c.vouchers_list %}
-                      <li class="py-1"><strong>{{ v.date }}</strong> &mdash; {{ v.voucher_type }} {{ v.voucher_number }}</li>
-                    {% empty %}
-                      <li class="py-1">No vouchers found.</li>
-                    {% endfor %}
-                  </ul>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-
-        <!-- MOBILE ACCORDION -->
-        <div class="mobile-accordion d-md-none p-3">
-          {% for c in customers %}
-          <div class="mb-2">
-            <!-- provide data-customer-id and data-customer-name (escapejs not needed in attribute because Django autoescapes) -->
-            <button type="button" class="accordion-btn {% if c.is_red_flag %}inactive{% endif %}" data-customer-id="{{ c.id }}" data-customer-name="{{ c.name|escape }}">
-              {{ c.name }}
-              <span class="arrow">▼</span>
-            </button>
-
-            <div class="accordion-panel">
-              <p><strong>State:</strong> {{ c.state }}</p>
-              <p><strong>Total Orders:</strong> {{ c.total_orders }}</p>
-              <p><strong>Total Order Value:</strong> ₹ {{ c.total_order_value|floatformat:2 }}</p>
-              <p><strong>Last Order:</strong> {{ c.last_order_date|default:"None" }}</p>
-
-              <p><strong>Status:</strong>
-                {% if c.is_red_flag %}
-                  <span class="badge badge-inactive">Inactive</span>
-                {% else %}
-                  <span class="badge badge-active">Active</span>
-                {% endif %}
-              </p>
-
-              <p class="mb-1">
-                <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-dark btn-sm me-2">View Item Purchases</a>
-                <button type="button" class="btn btn-dark btn-sm open-history" data-customer="{{ c.id }}">View Order History</button>
-              </p>
-
-              <!-- Hidden history for modal -->
-              <div id="history-data-{{ c.id }}" style="display:none;">
-                <ul class="list-unstyled mb-0">
-                  {% for v in c.vouchers_list %}
-                    <li class="py-1"><strong>{{ v.date }}</strong> &mdash; {{ v.voucher_type }} {{ v.voucher_number }}</li>
-                  {% empty %}
-                    <li class="py-1">No vouchers found.</li>
-                  {% endfor %}
-                </ul>
-              </div>
-            </div>
+          <!-- Hidden History -->
+          <div id="history-data-{{ c.id }}" style="display:none;">
+            <ul>
+              {% for v in c.vouchers_list %}
+              <li><strong>{{ v.date }}</strong> — {{ v.voucher_type }} {{ v.voucher_number }}</li>
+              {% empty %}
+              <li>No vouchers found.</li>
+              {% endfor %}
+            </ul>
           </div>
-          {% endfor %}
-        </div>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
+    <!-- MOBILE ACCORDION -->
+    <div class="mobile-accordion p-2">
+      {% for c in customers %}
+    <button
+        class="accordion-btn {% if c.is_red_flag %}inactive{% endif %}"
+        data-customer-id="{{ c.id }}"
+        data-customer-name="{{ c.name }}">
+
+        {{ c.name }}
+        <span class="arrow">▼</span>
+      </button>
+
+      <div class="accordion-panel">
+        <p><strong>State:</strong> {{ c.state }}</p>
+        <p><strong>Total Orders:</strong> {{ c.total_orders }}</p>
+        <p><strong>Total Value:</strong> ₹ {{ c.total_order_value|floatformat:2 }}</p>
+        <p><strong>Last:</strong> {{ c.last_order_date|default:"None" }}</p>
+
+        <p>
+          <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Item Purchases</a>
+          <button class="btn btn-danger btn-sm open-history" data-customer="{{ c.id }}">View Order History</button>
+        </p>
+
+        <div id="history-data-{{ c.id }}" style="display:none;">
+          <ul>
+          {% for v in c.vouchers_list %}
+            <li><strong>{{ v.date }}</strong> — {{ v.voucher_type }} {{ v.voucher_number }}</li>
+          {% empty %}
+            <li>No vouchers found.</li>
+          {% endfor %}
+          </ul>
+        </div>
       </div>
+      {% endfor %}
     </div>
+
+  </div>
+</div>
 
     <!-- ORDER HISTORY MODAL -->
-    <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered modal-md">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Order History</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body" id="historyModalBody">
-            <!-- filled by JS -->
-          </div>
-        </div>
+<div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Order History</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body" id="historyModalBody">
+        <!-- JS will inject history here -->
       </div>
     </div>
-
-    {% endif %}
   </div>
+</div>
+
+
+{% endif %}
+</div>
 
   <!-- Bootstrap JS (includes Popper) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
