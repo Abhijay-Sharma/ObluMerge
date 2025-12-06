@@ -709,11 +709,14 @@ class DailyStockChartView(AccountantRequiredMixin, TemplateView):
         return context
 
 
-class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
+class DeadStockDashboardView(TemplateView):
     template_name = "inventory/dead_stock_dashboard.html"
 
     def get(self, request):
-        # 🗓 Date range
+
+        # -------------------------
+        # DATE FILTER
+        # -------------------------
         from_date = request.GET.get('from')
         to_date = request.GET.get('to')
 
@@ -724,22 +727,69 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
 
-        # ✔ Products sold in date range
+        # -------------------------
+        # FIND SOLD PRODUCTS
+        # -------------------------
         sold_products = DailyStockData.objects.filter(
             date__range=(from_date, to_date),
             outwards_quantity__gt=0
-        ).values_list('product_id', flat=True).distinct()
+        ).values_list("product_id", flat=True).distinct()
 
-        # ✔ Dead stock
         dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
 
-        # ✔ Last sold date for all products
+        # -------------------------
+        # LAST SOLD DATE
+        # -------------------------
         last_sales = DailyStockData.objects.filter(
             outwards_quantity__gt=0
-        ).values('product_id').annotate(last_sold=Max('date'))
+        ).values("product_id").annotate(last_sold=Max("date"))
 
         last_sold_map = {x['product_id']: x['last_sold'] for x in last_sales}
 
+        # -------------------------
+        # LAST CUSTOMER (TAX INVOICE ONLY)
+        # -------------------------
+        last_customers_raw = (
+            VoucherStockItem.objects.filter(
+                voucher__voucher_type__iexact="Tax Invoice"
+            )
+            .values(
+                "item_id",
+                "item_name_text",
+                "voucher__party_name",
+                "voucher__date",
+                "voucher_id"
+            )
+            .order_by("-voucher__date")
+        )
+
+        last_customer_map = {}        # item_id → customer name
+        last_customer_vid_map = {}    # item_id → voucher_id
+
+        for row in last_customers_raw:
+
+            # Matched through FK
+            if row["item_id"]:
+                item_id = row["item_id"]
+                if item_id not in last_customer_map:
+                    last_customer_map[item_id] = row["voucher__party_name"]
+                    last_customer_vid_map[item_id] = row["voucher_id"]
+
+            # Match by item_name_text
+            elif row["item_name_text"]:
+                try:
+                    item = InventoryItem.objects.get(
+                        name__iexact=row["item_name_text"].strip()
+                    )
+                    if item.id not in last_customer_map:
+                        last_customer_map[item.id] = row["voucher__party_name"]
+                        last_customer_vid_map[item.id] = row["voucher_id"]
+                except InventoryItem.DoesNotExist:
+                    pass
+
+        # -------------------------
+        # FINAL DATA
+        # -------------------------
         data = []
         total_dead_value = 0
 
@@ -749,37 +799,36 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
                 continue
 
             last_sold = last_sold_map.get(item.id)
+            last_customer = last_customer_map.get(item.id)
+            voucher_id = last_customer_vid_map.get(item.id)
 
-            # ✔ Find last customer from Tally (VoucherRow)
-            last_customer = None
-            last_stock_row = (
-                VoucherStockItem.objects
-                .filter(item=item)  # match by FK to InventoryItem
-                .select_related("voucher")
-                .order_by("-voucher__date")
-                .first()
-            )
+            if last_customer and voucher_id:
+                customer_link = reverse("customer_item_purchases", args=[voucher_id])
+            else:
+                customer_link = None
 
-            last_customer = last_stock_row.voucher.party_name if last_stock_row else None
-
-            value = (item.quantity or 0) * (getattr(item, 'rate', 0) or 0)
+            value = (item.quantity or 0) * (item.rate or 0)
             total_dead_value += value
 
             data.append({
-                'name': item.name,
-                'quantity': item.quantity,
-                'value': round(value, 2),
-                'last_sold': last_sold,
-                'last_customer': last_customer,
+                "name": item.name,
+                "quantity": item.quantity,
+                "value": round(value, 2),
+                "last_sold": last_sold,
+                "last_customer": last_customer,
+                "customer_link": customer_link,
             })
 
-        return render(request, self.template_name, {
-            'dead_stock': data,
-            'total_dead_value': round(total_dead_value, 2),
-            'total_dead_products': len(data),
-            'from_date': from_date,
-            'to_date': to_date,
-        })
+        context = {
+            "dead_stock": data,
+            "total_dead_value": round(total_dead_value, 2),
+            "total_dead_products": len(data),
+            "from_date": from_date,
+            "to_date": to_date,
+        }
+
+        return render(request, self.template_name, context)
+
 
 class SalesComparisonDashboardView(AccountantRequiredMixin, View):
     template_name = "inventory/sales_comparison_dashboard.html"
