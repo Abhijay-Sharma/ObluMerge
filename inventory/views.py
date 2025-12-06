@@ -714,11 +714,9 @@ class DeadStockDashboardView(AccountantRequiredMixin,TemplateView):
 
     def get(self, request):
 
-        # -------------------------
-        # DATE FILTER
-        # -------------------------
-        from_date = request.GET.get("from")
-        to_date = request.GET.get("to")
+        # 🗓 Date Range
+        from_date = request.GET.get('from')
+        to_date = request.GET.get('to')
 
         if not from_date or not to_date:
             to_date = datetime.date.today()
@@ -727,103 +725,97 @@ class DeadStockDashboardView(AccountantRequiredMixin,TemplateView):
             from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d").date()
             to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
 
-        # -------------------------
-        # SOLD PRODUCTS
-        # -------------------------
+        # 🔍 Products sold recently
         sold_products = DailyStockData.objects.filter(
             date__range=(from_date, to_date),
             outwards_quantity__gt=0
-        ).values_list("product_id", flat=True).distinct()
+        ).values_list('product_id', flat=True).distinct()
 
+        # ❌ Dead stock = NOT sold
         dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
 
-        # -------------------------
-        # LAST SOLD DATE MAP
-        # -------------------------
+        # 🗂 Last Sold Date
         last_sales = DailyStockData.objects.filter(
             outwards_quantity__gt=0
-        ).values("product_id").annotate(last_sold=Max("date"))
+        ).values('product_id').annotate(last_sold=Max('date'))
 
-        last_sold_map = {x["product_id"]: x["last_sold"] for x in last_sales}
+        last_sold_map = {x['product_id']: x['last_sold'] for x in last_sales}
 
-        # -------------------------
-        # BUILD ITEM NAME → ID MAP (1 db hit)
-        # -------------------------
-        item_name_map = {
-            item.name.strip().lower(): item.id
-            for item in InventoryItem.objects.all()
-        }
+        # 🧾 LAST CUSTOMER LOGIC (Robust)
 
-        # -------------------------
-        # LAST CUSTOMER (TAX INVOICE ONLY)
-        # -------------------------
-        last_customer_map = {}
-        last_customer_vid_map = {}
-
-        for row in (
-            VoucherStockItem.objects.filter(
-                voucher__voucher_type__iexact="Tax Invoice"
+        # Step A: Get voucher rows matching items OR item_name_text
+        last_customers_raw = (
+            VoucherStockItem.objects
+            .filter(
+                Q(item__isnull=False) | Q(item_name_text__isnull=False)
             )
-            .select_related("voucher")
-            .order_by("-voucher__date")
+            .filter(
+                Q(voucher__voucher_type__icontains="sale") |
+                Q(voucher__voucher_type__icontains="invoice") |
+                Q(voucher__voucher_type__icontains="sales") |
+                Q(voucher__voucher_type__icontains="gst")
+            )
             .values(
                 "item_id",
                 "item_name_text",
                 "voucher__party_name",
-                "voucher__date",
-                "voucher_id",
+                "voucher__date"
             )
-        ):
+            .order_by("-voucher__date")
+        )
 
-            # Priority 1: FK match
-            if row["item_id"]:
-                if row["item_id"] not in last_customer_map:
-                    last_customer_map[row["item_id"]] = row["voucher__party_name"]
-                    last_customer_vid_map[row["item_id"]] = row["voucher_id"]
-                continue
+        # Step B: Build LAST CUSTOMER map
+        last_customer_map = {}
 
-            # Priority 2: Name match
-            if row["item_name_text"]:
-                normalized = row["item_name_text"].strip().lower()
-                item_id = item_name_map.get(normalized)
+        for row in last_customers_raw:
+            product_id = row["item_id"]
 
-                if item_id and item_id not in last_customer_map:
-                    last_customer_map[item_id] = row["voucher__party_name"]
-                    last_customer_vid_map[item_id] = row["voucher_id"]
+            # If item_id exists → use direct match
+            if product_id and product_id not in last_customer_map:
+                last_customer_map[product_id] = row["voucher__party_name"]
 
-        # -------------------------
-        # FINAL DATA
-        # -------------------------
-        total_dead_value = 0
+            # If item_id is missing, match via item_name_text
+            if not product_id and row["item_name_text"]:
+                # Match with InventoryItem name
+                try:
+                    item = InventoryItem.objects.get(name__iexact=row["item_name_text"].strip())
+                    if item.id not in last_customer_map:
+                        last_customer_map[item.id] = row["voucher__party_name"]
+                except InventoryItem.DoesNotExist:
+                    pass
+
+        # 🧮 Prepare Data
         data = []
+        total_dead_value = 0
 
         for item in dead_stock_items:
+
             if not item.quantity or item.quantity <= 0:
                 continue
 
-            value = (item.quantity or 0) * (item.rate or 0)
+            last_sold = last_sold_map.get(item.id)
+            last_customer = last_customer_map.get(item.id)
+
+            value = (item.quantity or 0) * (getattr(item, 'rate', 0) or 0)
             total_dead_value += value
 
             data.append({
                 "name": item.name,
                 "quantity": item.quantity,
                 "value": round(value, 2),
-                "last_sold": last_sold_map.get(item.id),
-                "last_customer": last_customer_map.get(item.id),
-                "voucher_id": last_customer_vid_map.get(item.id),  # for linking
+                "last_sold": last_sold,
+                "last_customer": last_customer or "—",
             })
 
-        return render(
-            request,
-            self.template_name,
-            {
-                "dead_stock": data,
-                "total_dead_value": round(total_dead_value, 2),
-                "total_dead_products": len(data),
-                "from_date": from_date,
-                "to_date": to_date,
-            },
-        )
+        context = {
+            "dead_stock": data,
+            "total_dead_value": round(total_dead_value, 2),
+            "total_dead_products": len(data),
+            "from_date": from_date,
+            "to_date": to_date,
+        }
+
+        return render(request, self.template_name, context)
 
 
 class SalesComparisonDashboardView(AccountantRequiredMixin, View):
