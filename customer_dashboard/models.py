@@ -11,7 +11,12 @@ class SalesPerson(models.Model):
     name = models.CharField(max_length=255, unique=True)
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
     related_name="salesperson_profile")
-
+    manager = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="team_members")
     def __str__(self):
         return self.name
 
