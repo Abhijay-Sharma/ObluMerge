@@ -164,15 +164,42 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
         user = self.request.user
         cutoff_date = date.today() - timedelta(days=90)
 
+        # --------------------------------------------------
+        # 1) Identify logged-in SalesPerson
+        # --------------------------------------------------
         salesperson = user.salesperson_profile.first()
         if not salesperson:
             return Customer.objects.none()
 
-        customers = Customer.objects.filter(salesperson=salesperson)
+        selected_sp = self.request.GET.get("team_member")
 
-        for customer in customers:
+        # --------------------------------------------------
+        # 2) If MANAGER (manager = None)
+        # --------------------------------------------------
+        if salesperson.manager is None:
+            team_members = salesperson.team_members.all()
 
-            # ALL vouchers for this customer
+            if selected_sp == "me":
+                qs = Customer.objects.filter(salesperson=salesperson)
+
+            elif selected_sp == "all" or selected_sp is None:
+                qs = Customer.objects.filter(
+                    salesperson__in=[salesperson, *team_members]
+                )
+
+            else:
+                qs = Customer.objects.filter(salesperson__id=selected_sp)
+
+        # --------------------------------------------------
+        # 3) If SALESPERSON (has a manager)
+        # --------------------------------------------------
+        else:
+            qs = Customer.objects.filter(salesperson=salesperson)
+
+        # --------------------------------------------------
+        # 4) Attach order stats to each customer
+        # --------------------------------------------------
+        for customer in qs:
             vouchers = Voucher.objects.filter(
                 party_name__iexact=customer.name
             ).order_by('-date')
@@ -180,28 +207,43 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             customer.vouchers_list = vouchers
             customer.last_order_date = vouchers.first().date if vouchers.exists() else None
 
-            # Count TAX INVOICE vouchers
+            # TAX INVOICE vouchers
             tax_vouchers = vouchers.filter(voucher_type__iexact="TAX INVOICE")
             customer.total_orders = tax_vouchers.count()
 
-            # --- NEW: Compute Total Order Value ---
+            # total order value
             total_value = 0
-
             for v in tax_vouchers:
-                # Find the VoucherRow that represents the final bill
                 total_row = v.rows.filter(ledger__iexact=v.party_name).first()
                 if total_row:
                     total_value += total_row.amount
 
             customer.total_order_value = total_value
 
-            # Red flag
+            # Red flag (inactive 90+ days)
             if customer.last_order_date is None:
                 customer.is_red_flag = True
             else:
                 customer.is_red_flag = customer.last_order_date < cutoff_date
 
-        return customers
+        return qs
+
+    # --------------------------------------------------
+    # 5) Pass manager/team info to template
+    # --------------------------------------------------
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        salesperson = self.request.user.salesperson_profile.first()
+
+        # check if manager
+        ctx["is_manager"] = salesperson and salesperson.manager is None
+        ctx["selected_member"] = self.request.GET.get("team_member", "all")
+
+        if ctx["is_manager"]:
+            ctx["team_members"] = salesperson.team_members.all()
+
+        return ctx
 
 
 
