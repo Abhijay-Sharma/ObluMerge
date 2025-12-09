@@ -202,7 +202,7 @@
       {% endif %}
       <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
       {% if request.user.is_viewer %}
-        <button class="btn" onclick="redirectTo('salesperson_customer_orders')">Customers Status</button>
+        <button class="btn" onclick="redirectTo('customers:salesperson_customer_orders')">Customers Status</button>
       {% endif %}
     </div>
   </div>
