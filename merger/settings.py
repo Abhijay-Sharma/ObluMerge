@@ -28,6 +28,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['65.2.57.203','127.0.0.1','13.235.9.16','www.oblutools.com','oblutools.com','localhost']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://oblutools.com',
+    'https://www.oblutools.com',
+]
+
+
 
 # Application definition
 
