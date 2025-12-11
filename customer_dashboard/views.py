@@ -7,7 +7,11 @@ from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from datetime import date, timedelta
 from tally_voucher.models import Voucher, VoucherRow
-
+from django.shortcuts import get_object_or_404, render
+from django.shortcuts import redirect
+from django.contrib import messages
+from django.http import HttpResponseForbidden
+from .models import CustomerRemark
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -160,29 +164,29 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
     context_object_name = "customers"
     model = Customer
 
+    # --------------------------------------------------
+    # GET: Customer list + orders + remarks
+    # --------------------------------------------------
     def get_queryset(self):
         user = self.request.user
         cutoff_date = date.today() - timedelta(days=90)
 
-        # --------------------------------------------------
-        # 1) Identify logged-in SalesPerson
-        # --------------------------------------------------
         salesperson = user.salesperson_profile.first()
         if not salesperson:
             return Customer.objects.none()
 
         selected_sp = self.request.GET.get("team_member")
 
-        # --------------------------------------------------
-        # 2) If MANAGER (manager = None)
-        # --------------------------------------------------
+        # ============================
+        # MANAGER (manager is None)
+        # ============================
         if salesperson.manager is None:
             team_members = salesperson.team_members.all()
 
             if selected_sp == "me":
                 qs = Customer.objects.filter(salesperson=salesperson)
 
-            elif selected_sp == "all" or selected_sp is None:
+            elif selected_sp == "all" or not selected_sp:
                 qs = Customer.objects.filter(
                     salesperson__in=[salesperson, *team_members]
                 )
@@ -190,61 +194,125 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             else:
                 qs = Customer.objects.filter(salesperson__id=selected_sp)
 
-        # --------------------------------------------------
-        # 3) If SALESPERSON (has a manager)
-        # --------------------------------------------------
+        # ============================
+        # NORMAL SALESPERSON
+        # ============================
         else:
             qs = Customer.objects.filter(salesperson=salesperson)
 
         # --------------------------------------------------
-        # 4) Attach order stats to each customer
+        # Attach order stats + remarks
         # --------------------------------------------------
         for customer in qs:
             vouchers = Voucher.objects.filter(
                 party_name__iexact=customer.name
-            ).order_by('-date')
+            ).order_by("-date")
 
             customer.vouchers_list = vouchers
             customer.last_order_date = vouchers.first().date if vouchers.exists() else None
 
-            # TAX INVOICE vouchers
             tax_vouchers = vouchers.filter(voucher_type__iexact="TAX INVOICE")
             customer.total_orders = tax_vouchers.count()
 
-            # total order value
             total_value = 0
             for v in tax_vouchers:
-                total_row = v.rows.filter(ledger__iexact=v.party_name).first()
+                total_row = v.rows.filter(
+                    ledger__iexact=v.party_name
+                ).first()
                 if total_row:
                     total_value += total_row.amount
 
             customer.total_order_value = total_value
 
-            # Red flag (inactive 90+ days)
             if customer.last_order_date is None:
                 customer.is_red_flag = True
             else:
                 customer.is_red_flag = customer.last_order_date < cutoff_date
 
+            # ✅ ALL remarks (no restriction)
+            customer.remarks_list = customer.remarks.select_related(
+                "salesperson", "salesperson__user"
+            )
+
         return qs
 
     # --------------------------------------------------
-    # 5) Pass manager/team info to template
+    # POST: Save remark (MANAGER + SALESPERSON)
+    # --------------------------------------------------
+    def post(self, request, *args, **kwargs):
+        customer_id = request.POST.get("customer_id")
+        remark_text = request.POST.get("remark", "").strip()
+
+        if not remark_text:
+            return redirect(request.path)
+
+        salesperson = request.user.salesperson_profile.first()
+        if not salesperson:
+            return redirect(request.path)
+
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        CustomerRemark.objects.create(
+            customer=customer,
+            salesperson=salesperson,
+            remark=remark_text
+        )
+
+        return redirect(request.path)
+    def post(self, request):
+        # ✅ ADD THIS AT TOP (DELETE REMARK HANDLING)
+        if request.POST.get("delete_remark_id"):
+            remark_id = request.POST.get("delete_remark_id")
+            remark = get_object_or_404(CustomerRemark, id=remark_id)
+
+            salesperson = request.user.salesperson_profile.first()
+            if not salesperson:
+                return redirect(request.path)
+
+            # ✅ only owner can delete
+            if remark.salesperson != salesperson:
+                return HttpResponseForbidden("Not allowed")
+
+            remark.delete()
+            return redirect(request.path)
+
+        # ✅ BELOW IS YOUR EXISTING SAVE-REMARK CODE (UNCHANGED)
+        customer_id = request.POST.get("customer_id")
+        remark_text = request.POST.get("remark", "").strip()
+
+        if not remark_text:
+            return redirect(request.path)
+
+        salesperson = request.user.salesperson_profile.first()
+        if not salesperson:
+            return redirect(request.path)
+
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        CustomerRemark.objects.create(
+            customer=customer,
+            salesperson=salesperson,
+            remark=remark_text
+        )
+
+        return redirect(request.path)
+
+
+    # --------------------------------------------------
+    # Context data
     # --------------------------------------------------
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
         salesperson = self.request.user.salesperson_profile.first()
 
-        # check if manager
         ctx["is_manager"] = salesperson and salesperson.manager is None
-        ctx["selected_member"] = self.request.GET.get("team_member", "all")
+        ctx["selected_member"] = self.request.GET.get("team_member", "me")
 
         if ctx["is_manager"]:
             ctx["team_members"] = salesperson.team_members.all()
 
         return ctx
-
 
 
 

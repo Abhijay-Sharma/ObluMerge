@@ -19,7 +19,6 @@
         margin-bottom: 15px;
     }
 
-    /* ===== MANAGER DROPDOWN (NEW, SAFE) ===== */
     .manager-filter {
         text-align: center;
         margin-bottom: 20px;
@@ -34,7 +33,6 @@
         font-size: 14px;
     }
 
-    /* ===== SEARCH ===== */
     .search-wrapper {
         width: 100%;
         max-width: 400px;
@@ -68,7 +66,6 @@
         cursor: pointer;
     }
 
-    /* ===== ACCORDION ===== */
     .mobile-list {
         width: 90vw;
         margin: 0 auto;
@@ -115,7 +112,7 @@
         color: #ff4d4d;
     }
 
-    /* ===== MODAL ===== */
+        /* ========== MODAL ========== */
     .modal-overlay {
         position: fixed;
         inset: 0;
@@ -125,7 +122,6 @@
         align-items: center;
         z-index: 999;
     }
-
     .modal-box {
         background: #fff;
         color: #000;
@@ -136,38 +132,91 @@
         max-height: 80vh;
         overflow-y: auto;
     }
+    .modal-box h2{
+        text-align:center;
+    }
+
+
+
+    .open-history,
+    .remark-btn {
+        width: 160px;
+        height: 40px;
+        margin-top: 10px;
+        border-radius: 20px;
+        border: none;
+        color: #fff;
+        cursor: pointer;
+    }
 
     .open-history {
-        width: 140px;
-        height: 40px;
-        color: #fff;
-        border-radius: 20px;
         background: linear-gradient(to right, transparent, #222, transparent);
-        margin-top: 10px;
+    }
+
+    .remark-btn {
+        background: linear-gradient(to right, #007bff, #0044aa);
+    }
+
+    .remark-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .remark-box {
+        background: #fff;
+        color: #000;
+        padding: 25px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 420px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .remark-box textarea {
+        width: 100%;
+        height: 120px;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        resize: none;
+    }
+
+    .save-remark {
+        margin-top: 12px;
+        width: 100%;
+        height: 40px;
+        border-radius: 20px;
+        background: #28a745;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+
+    hr {
+        border-color: #ccc;
     }
 </style>
 </head>
 
 <body>
 
-<!-- ===== PAGE TITLE (UNCHANGED) ===== -->
 <h1 class="page-title">
     {{ request.user.username }} <br> Customers & Order History
 </h1>
 
-<!-- ===== MANAGER DROPDOWN (NEW, SAFE ADDITION) ===== -->
 {% if is_manager %}
 <div class="manager-filter">
     <select id="teamFilter">
-        <option value="all" {% if selected_member == "all" %}selected{% endif %}>
-            All Team Customers
-        </option>
-        <option value="me" {% if selected_member == "me" %}selected{% endif %}>
-            My Customers
-        </option>
+        <option value="all" {% if selected_member == "all" %}selected{% endif %}>All Team Customers</option>
+        <option value="me" {% if selected_member == "me" %}selected{% endif %}>My Customers</option>
         {% for member in team_members %}
-            <option value="{{ member.id }}"
-                {% if selected_member == member.id|stringformat:"s" %}selected{% endif %}>
+            <option value="{{ member.id }}" {% if selected_member == member.id|stringformat:"s" %}selected{% endif %}>
                 {{ member.name }}
             </option>
         {% endfor %}
@@ -175,91 +224,154 @@
 </div>
 {% endif %}
 
-<!-- ===== SEARCH (UNCHANGED) ===== -->
 <div class="search-wrapper">
     <input id="customerSearch" placeholder="Search customer...">
     <div id="suggestions" class="search-suggestions"></div>
 </div>
 
-<!-- ===== CUSTOMER LIST (UNCHANGED) ===== -->
 <div class="mobile-list">
 
 {% for customer in customers %}
-    <button class="accordion {% if customer.is_red_flag %}red-flag{% endif %}">
-        {{ customer.name }}
+<button class="accordion {% if customer.is_red_flag %}red-flag{% endif %}">
+    {{ customer.name }}
+</button>
+
+<div class="panel">
+
+    <!-- ✅ NOTHING REMOVED -->
+    <p><strong>Phone:</strong> {{ customer.phone }}</p>
+    <p><strong>Address:</strong> {{ customer.address }}</p>
+    <p><strong>Total Orders:</strong> {{ customer.total_orders }}</p>
+    <p><strong>Total Value:</strong> ₹{{ customer.total_order_value }}</p>
+
+    <p class="{% if customer.is_red_flag %}last-order-red{% endif %}">
+        <strong>Last Order:</strong>
+        {{ customer.last_order_date|default:"No orders yet" }}
+    </p>
+
+    <a href="{% url 'customer_item_purchases' customer.id %}">
+        View Item Purchases
+    </a><br>
+
+    <button class="open-history" data-customer="{{ customer.id }}">
+        View Order History
     </button>
 
-    <div class="panel">
-        <p><strong>Phone:</strong> {{ customer.phone }}</p>
-        <p><strong>Address:</strong> {{ customer.address }}</p>
-        <p><strong>Total Orders:</strong> {{ customer.total_orders }}</p>
-        <p><strong>Total Value:</strong> ₹{{ customer.total_order_value }}</p>
+    <!-- ✅ ADD REMARK -->
+    <button class="remark-btn" onclick="openRemark('{{ customer.id }}')">
+        Add Remark
+    </button>
 
-        <p class="{% if customer.is_red_flag %}last-order-red{% endif %}">
-            <strong>Last Order:</strong>
-            {% if customer.last_order_date %}
-                {{ customer.last_order_date }}
-            {% else %}
-                No orders yet
-            {% endif %}
-        </p>
+    <!-- ✅ VIEW REMARKS -->
+    <button class="remark-btn" onclick="openRemarkList('{{ customer.id }}')">
+        View Remarks ({{ customer.remarks_list|length }})
+    </button>
 
-        <a href="{% url 'customer_item_purchases' customer.id %}">
-            View Item Purchases
-        </a>
+    <!-- ✅ ADD REMARK MODAL -->
+    <div class="remark-modal" id="remarkModal{{ customer.id }}">
+        <div class="remark-box">
+            <h3>Add Remark – {{ customer.name }}</h3>
 
-        <button class="open-history" data-customer="{{ customer.id }}">
-            View Order History
-        </button>
-
-        <div class="history-data" id="history-{{ customer.id }}" style="display:none;">
-            <ul>
-                {% for v in customer.vouchers_list %}
-                    <li>{{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}</li>
-                {% empty %}
-                    <li>No vouchers found.</li>
-                {% endfor %}
-            </ul>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="customer_id" value="{{ customer.id }}">
+                <textarea name="remark" required></textarea>
+                <button type="submit" class="save-remark">Save Remark</button>
+            </form>
         </div>
     </div>
+
+    <!-- ✅ VIEW REMARKS MODAL -->
+    <div class="remark-modal" id="remarkList{{ customer.id }}">
+        <div class="remark-box">
+            <h3>Remarks – {{ customer.name }}</h3>
+
+            {% for r in customer.remarks_list %}
+                <p>{{ r.remark }}</p>
+                <small>{{ r.salesperson }} | {{ r.created_at }}</small>
+
+                {% if r.salesperson.user == request.user %}
+                <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="delete_remark_id" value="{{ r.id }}">
+                    <button type="submit" style="border:none;background:none;color:red;cursor:pointer;">
+                        🗑
+                    </button>
+                </form>
+                {% endif %}
+                <hr>
+            {% empty %}
+                <p>No remarks yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="history-data" id="history-{{ customer.id }}" style="display:none;">
+        <ul>
+            {% for v in customer.vouchers_list %}
+                <li>{{ v.date }} — {{ v.voucher_type }} {{ v.voucher_number }}</li>
+            {% empty %}
+                <li>No vouchers found.</li>
+            {% endfor %}
+        </ul>
+    </div>
+        <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <h2>Order History</h2>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+
+</div>
 {% endfor %}
 
 </div>
 
-<!-- ===== MODAL (UNCHANGED) ===== -->
-<div class="modal-overlay" id="modalOverlay">
-    <div class="modal-box">
-        <h2>Order History</h2>
-        <div id="modalContent"></div>
-    </div>
-</div>
-
 <script>
-    /* Accordion Toggle */
-    document.querySelectorAll(".accordion").forEach(btn => {
-        btn.addEventListener("click", () => {
-            btn.classList.toggle("active");
-            const panel = btn.nextElementSibling;
-            panel.style.display = panel.style.display === "block" ? "none" : "block";
-        });
+document.querySelectorAll(".accordion").forEach(btn => {
+    btn.addEventListener("click", () => {
+        btn.classList.toggle("active");
+        const panel = btn.nextElementSibling;
+        panel.style.display = panel.style.display === "block" ? "none" : "block";
     });
+});
+
+
+
+function openRemark(id) {
+    document.getElementById("remarkModal" + id).style.display = "flex";
+}
+
+function openRemarkList(id) {
+    document.getElementById("remarkList" + id).style.display = "flex";
+}
+
+document.querySelectorAll(".remark-modal").forEach(modal => {
+    modal.addEventListener("click", e => {
+        if (e.target === modal) modal.style.display = "none";
+    });
+});
 
     /* Modal */
-    document.querySelectorAll(".open-history").forEach(btn => {
-        btn.addEventListener("click", e => {
-            e.stopPropagation();
-            const id = btn.dataset.customer;
-            document.getElementById("modalContent").innerHTML =
-                document.getElementById("history-" + id).innerHTML;
-            document.getElementById("modalOverlay").style.display = "flex";
+        document.querySelectorAll(".open-history").forEach(btn => {
+            btn.addEventListener("click", e => {
+                e.stopPropagation();
+                const id = btn.dataset.customer;
+                document.getElementById("modalContent").innerHTML =
+                    document.getElementById("history-" + id).innerHTML;
+                document.getElementById("modalContent").innerHTML =
+                    document.getElementById("history-" + id).innerHTML;
+
+                document.getElementById("modalOverlay").style.display = "flex";
+            });
         });
-    });
+        document.getElementById("modalOverlay").addEventListener("click", () => {
+            document.getElementById("modalOverlay").style.display = "none";
+        });
 
-    document.getElementById("modalOverlay").addEventListener("click", () => {
-        document.getElementById("modalOverlay").style.display = "none";
-    });
-
-    /* Search (UNCHANGED) */
+    /* Search */
     const searchInput = document.getElementById("customerSearch");
     const suggestions = document.getElementById("suggestions");
     const accordions = document.querySelectorAll(".accordion");
@@ -267,37 +379,44 @@
     searchInput.addEventListener("input", () => {
         const value = searchInput.value.toLowerCase();
         suggestions.innerHTML = "";
+
         if (!value) {
             suggestions.style.display = "none";
             return;
         }
-        accordions.forEach(acc => {
+
+        accordions.forEach((acc, index) => {
             const name = acc.textContent.trim().toLowerCase();
             if (name.includes(value)) {
                 let div = document.createElement("div");
                 div.textContent = acc.textContent.trim();
+
                 div.onclick = () => {
                     suggestions.style.display = "none";
                     searchInput.value = div.textContent;
-                    acc.scrollIntoView({ behavior: "smooth", block: "center" });
+
+                    acc.scrollIntoView({behavior:"smooth", block:"center"});
                     acc.classList.add("active");
                     acc.nextElementSibling.style.display = "block";
                 };
+
                 suggestions.appendChild(div);
             }
         });
+
         suggestions.style.display = "block";
     });
 
-    /* ===== MANAGER DROPDOWN JS (NEW, SAFE) ===== */
-    const teamFilter = document.getElementById("teamFilter");
-    if (teamFilter) {
-        teamFilter.addEventListener("change", function () {
-            const params = new URLSearchParams(window.location.search);
-            params.set("team_member", this.value);
-            window.location.search = params.toString();
-        });
-    }
+
+
+const teamFilter = document.getElementById("teamFilter");
+if (teamFilter) {
+    teamFilter.addEventListener("change", function () {
+        const params = new URLSearchParams(window.location.search);
+        params.set("team_member", this.value);
+        window.location.search = params.toString();
+    });
+}
 </script>
 
 </body>
