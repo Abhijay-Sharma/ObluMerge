@@ -51,3 +51,16 @@ class Customer(models.Model):
     def vouchers(self):
         from tally_voucher.models import Voucher
         return Voucher.objects.filter(party_name__iexact=self.name).order_by('-date')
+
+
+class CustomerRemark(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="remarks")
+    salesperson = models.ForeignKey(SalesPerson, on_delete=models.CASCADE)
+    remark = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def str(self):
+        return f"{self.customer.name} - {self.salesperson}"
