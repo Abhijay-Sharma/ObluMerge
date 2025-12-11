@@ -190,6 +190,17 @@ this is dashboard that display the dead stock product (not sold in long time-->
   <input type="date" name="to" value="{{ to_date|date:'Y-m-d' }}">
   <button class="btn btn-primary">Apply</button>
 </form>
+      <div class="row mb-4 justify-content-center">
+      <div class="col-md-3 col-6">
+        <div class="card summary-card bg-warning text-dark shadow-sm">
+          <div class="card-body text-center">
+            <h5>Total Dead Stock</h5>
+            <h3>{{ dead_stock |length }}</h3>
+          </div>
+        </div>
+      </div>
+  </div>
+
 
 {% for category, items in category_data.items %}
   <button class="accordion">{{ category }}</button>

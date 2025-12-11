@@ -736,6 +736,8 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
         ).values_list("product_id", flat=True).distinct()
 
         dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products).select_related("category")
+        # dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
+
 
         # -------------------------
         # LAST SOLD DATE
@@ -786,6 +788,11 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
         # -------------------------
         category_data = defaultdict(list)
 
+        # flat list for original summary card / templates that expect `dead_stock`
+        data = []
+        total_dead_value = 0  # placeholder; keep as 0 unless you want actual valuation
+
+
         for item in dead_stock_items:
             if not item.quantity or item.quantity <= 0:
                 continue
@@ -797,21 +804,33 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             customer_link = reverse("voucher_detail", args=[voucher_id]) if voucher_id else None
             category_name = item.category.name if item.category else "Uncategorized"
 
-            category_data[category_name].append({
+            entry = {
                 "name": item.name,
                 "quantity": item.quantity,
                 "last_sold": last_sold,
                 "last_customer": last_customer,
                 "customer_link": customer_link,
-            })
+            }
+
+            # add to flat list and category grouping
+            data.append(entry)
+            category_data[category_name].append(entry)
+
+            # optionally compute value if you have a cost field, e.g. item.cost_price
+            # if getattr(item, "cost_price", None):
+            #     total_dead_value += (item.cost_price or 0) * item.quantity
 
         context = {
-            "category_data": dict(category_data),
+            "dead_stock": data,                        # preserves previous template variable
+            "category_data": dict(category_data),      # new accordion data
             "from_date": from_date,
             "to_date": to_date,
+            "total_dead_value": round(total_dead_value, 2),
+            "total_dead_products": len(data),
         }
 
         return render(request, self.template_name, context)
+
 
 class SalesComparisonDashboardView(AccountantRequiredMixin, View):
     template_name = "inventory/sales_comparison_dashboard.html"
