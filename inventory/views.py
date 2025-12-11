@@ -28,7 +28,7 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Max
 from tally_voucher.models import VoucherStockItem
-
+from collections import defaultdict
 logger = logging.getLogger(__name__)
 
 
@@ -728,14 +728,14 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
 
         # -------------------------
-        # FIND SOLD PRODUCTS
+        # SOLD PRODUCTS
         # -------------------------
         sold_products = DailyStockData.objects.filter(
             date__range=(from_date, to_date),
             outwards_quantity__gt=0
         ).values_list("product_id", flat=True).distinct()
 
-        dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
+        dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products).select_related("category")
 
         # -------------------------
         # LAST SOLD DATE
@@ -747,7 +747,7 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
         last_sold_map = {x['product_id']: x['last_sold'] for x in last_sales}
 
         # -------------------------
-        # LAST CUSTOMER (TAX INVOICE ONLY)
+        # LAST CUSTOMER (TAX INVOICE)
         # -------------------------
         last_customers_raw = (
             VoucherStockItem.objects.filter(
@@ -763,24 +763,18 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             .order_by("-voucher__date")
         )
 
-        last_customer_map = {}        # item_id → customer name
-        last_customer_vid_map = {}    # item_id → voucher_id
+        last_customer_map = {}
+        last_customer_vid_map = {}
 
         for row in last_customers_raw:
-
-            # Matched through FK
             if row["item_id"]:
-                item_id = row["item_id"]
-                if item_id not in last_customer_map:
-                    last_customer_map[item_id] = row["voucher__party_name"]
-                    last_customer_vid_map[item_id] = row["voucher_id"]
+                if row["item_id"] not in last_customer_map:
+                    last_customer_map[row["item_id"]] = row["voucher__party_name"]
+                    last_customer_vid_map[row["item_id"]] = row["voucher_id"]
 
-            # Match by item_name_text
             elif row["item_name_text"]:
                 try:
-                    item = InventoryItem.objects.get(
-                        name__iexact=row["item_name_text"].strip()
-                    )
+                    item = InventoryItem.objects.get(name__iexact=row["item_name_text"].strip())
                     if item.id not in last_customer_map:
                         last_customer_map[item.id] = row["voucher__party_name"]
                         last_customer_vid_map[item.id] = row["voucher_id"]
@@ -788,13 +782,11 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
                     pass
 
         # -------------------------
-        # FINAL DATA
+        # ✅ CATEGORY WISE GROUPING
         # -------------------------
-        data = []
-        total_dead_value = 0
+        category_data = defaultdict(list)
 
         for item in dead_stock_items:
-
             if not item.quantity or item.quantity <= 0:
                 continue
 
@@ -802,13 +794,10 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             last_customer = last_customer_map.get(item.id)
             voucher_id = last_customer_vid_map.get(item.id)
 
-            if last_customer and voucher_id:
-                customer_link = reverse("voucher_detail", args=[voucher_id])
-            else:
-                customer_link = None
+            customer_link = reverse("voucher_detail", args=[voucher_id]) if voucher_id else None
+            category_name = item.category.name if item.category else "Uncategorized"
 
-
-            data.append({
+            category_data[category_name].append({
                 "name": item.name,
                 "quantity": item.quantity,
                 "last_sold": last_sold,
@@ -817,9 +806,7 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
             })
 
         context = {
-            "dead_stock": data,
-            "total_dead_value": round(total_dead_value, 2),
-            "total_dead_products": len(data),
+            "category_data": dict(category_data),
             "from_date": from_date,
             "to_date": to_date,
         }
