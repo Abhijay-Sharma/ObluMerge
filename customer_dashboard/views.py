@@ -38,19 +38,29 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         cutoff_date = date.today() - timedelta(days=90)
 
         for customer in customers:
+            # ---- REMARK LOGIC STARTS HERE ----
+            customer.remarks_list = customer.remarks.select_related(
+                "salesperson", "salesperson__user"
+            ).order_by("-created_at")
+            # ---- REMARK LOGIC ENDS HERE ----
+
             vouchers = Voucher.objects.filter(
                 party_name__iexact=customer.name
-            ).order_by('-date')
+            ).order_by("-date")
 
             customer.vouchers_list = vouchers
             customer.last_order_date = vouchers.first().date if vouchers.exists() else None
 
-            tax_vouchers = vouchers.filter(voucher_type__iexact="TAX INVOICE")
+            tax_vouchers = vouchers.filter(
+                voucher_type__iexact="TAX INVOICE"
+            )
             customer.total_orders = tax_vouchers.count()
 
             total_value = 0
             for v in tax_vouchers:
-                total_row = v.rows.filter(ledger__iexact=v.party_name).first()
+                total_row = v.rows.filter(
+                    ledger__iexact=v.party_name
+                ).first()
                 if total_row:
                     total_value += total_row.amount
 
@@ -61,7 +71,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
                 customer.last_order_date < cutoff_date
             )
 
-        # --- NEW CODE HERE ---
+        # ---- NEW CODE HERE ----
         customers = list(customers)
 
         active = sum(1 for c in customers if not c.is_red_flag)
@@ -73,6 +83,27 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         return ctx
 
+    def post(self, request, *args, **kwargs):
+        customer_id = request.POST.get("customer_id")
+        remark_text = request.POST.get("remark", "").strip()
+        salesperson_id = request.GET.get("salesperson")  # keep page state
+
+        salesperson = request.user.salesperson_profile.first()
+        if not salesperson:
+            return redirect(request.path)
+
+        if not customer_id or not remark_text:
+            return redirect(f"{request.path}?salesperson={salesperson_id}")
+
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        CustomerRemark.objects.create(
+            customer=customer,
+            salesperson=salesperson,
+            remark=remark_text
+        )
+
+        return redirect(f"{request.path}?salesperson={salesperson_id}")
 
 class CustomerListView(AccountantRequiredMixin,ListView):
     model = Customer
