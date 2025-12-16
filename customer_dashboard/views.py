@@ -6,12 +6,18 @@ import json
 from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from datetime import date, timedelta
-from tally_voucher.models import Voucher, VoucherRow
+from tally_voucher.models import Voucher, VoucherRow, VoucherStockItem
 from django.shortcuts import get_object_or_404, render
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.http import HttpResponseForbidden
 from .models import CustomerRemark
+from django.http import HttpResponseForbidden
+from .models import CustomerRemark
+import base64
+from django.db.models import Count, OuterRef, Subquery
+from django.views.generic import ListView
+from django.db.models.functions import Lower, Trim
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -105,7 +111,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         return redirect(f"{request.path}?salesperson={salesperson_id}")
 
-class CustomerListView(AccountantRequiredMixin,ListView):
+class CustomerListView(AccountantRequiredMixin, ListView):
     model = Customer
     template_name = "customers/data.html"
     context_object_name = "customers"
@@ -113,33 +119,87 @@ class CustomerListView(AccountantRequiredMixin,ListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
         salesperson = self.request.GET.get("salesperson")
         state = self.request.GET.get("state")
         search = self.request.GET.get("search", "")
 
         if salesperson:
             qs = qs.filter(salesperson__name=salesperson)
+
         if state:
             qs = qs.filter(state=state)
+
         if search:
             qs = qs.filter(name__icontains=search)
+
+        # --------------------------------------------------
+        # 1️⃣ Latest voucher (ID + DATE) per customer
+        # --------------------------------------------------
+        latest_voucher = (
+            Voucher.objects
+            .annotate(party_clean=Lower(Trim("party_name")))
+            .filter(
+                party_clean=Lower(Trim(OuterRef("name"))),
+                voucher_type="TAX INVOICE"
+            )
+            .order_by("-date")
+        )
+
+        qs = qs.annotate(
+            last_purchase_date=Subquery(
+                latest_voucher.values("date")[:1]
+            ),
+            last_voucher_id=Subquery(
+                latest_voucher.values("id")[:1]
+            )
+        )
+
+        # --------------------------------------------------
+        # 2️⃣ Product name from that voucher
+        # --------------------------------------------------
+        last_product = (
+            VoucherStockItem.objects
+            .filter(
+                voucher_id=OuterRef("last_voucher_id")
+            )
+            .values("item__name", "item_name_text")
+        )
+
+        qs = qs.annotate(
+            last_product_name=Subquery(
+                last_product.values("item__name")[:1]
+            )
+        )
 
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["salespersons"] = SalesPerson.objects.values_list("name", flat=True).distinct()
-        ctx["states"] = Customer.objects.values_list("state", flat=True).distinct()
+
+        ctx["salespersons"] = SalesPerson.objects.values_list(
+            "name", flat=True
+        ).distinct()
+
+        ctx["states"] = Customer.objects.values_list(
+            "state", flat=True
+        ).distinct()
+
         ctx["total_customers"] = Customer.objects.count()
         ctx["total_salespersons"] = SalesPerson.objects.count()
-        ctx["unassigned_count"] = Customer.objects.filter(salesperson__isnull=True).count()
+        ctx["unassigned_count"] = Customer.objects.filter(
+            salesperson__isnull=True
+        ).count()
+
         ctx["top_state"] = (
             Customer.objects.values("state")
             .annotate(c=Count("id"))
             .order_by("-c")
             .first()
         )
+
         return ctx
+
 
 class ChartsView(AccountantRequiredMixin,TemplateView):
     template_name = "customers/charts.html"
