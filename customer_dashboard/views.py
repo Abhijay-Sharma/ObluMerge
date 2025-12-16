@@ -201,41 +201,169 @@ class CustomerListView(AccountantRequiredMixin, ListView):
         return ctx
 
 
-class ChartsView(AccountantRequiredMixin,TemplateView):
+class ChartsView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/charts.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
+        cutoff_date = date.today() - timedelta(days=90)
+
+        # =====================================================
+        # 1️⃣ SALESPERSON TOTAL CUSTOMER COUNT (OLD – KEEP)
+        # =====================================================
         salesperson_counts = (
             Customer.objects.values("salesperson__name")
             .annotate(count=Count("id"))
             .order_by("-count")
         )
+
         salesperson_data = [
-            {"Salesperson": s["salesperson__name"] or "Unassigned", "count": s["count"]}
+            {
+                "Salesperson": s["salesperson__name"] or "Unassigned",
+                "count": s["count"],
+            }
             for s in salesperson_counts
         ]
 
+        # =====================================================
+        # 2️⃣ STATE TOTAL CUSTOMER COUNT (OLD – KEEP)
+        # =====================================================
         state_counts = (
             Customer.objects.values("state")
             .annotate(count=Count("id"))
             .order_by("-count")
         )
+
         state_data = [
-            {"State": s["state"] or "Unknown", "count": s["count"]}
+            {
+                "State": s["state"] or "Unknown",
+                "count": s["count"],
+            }
             for s in state_counts
         ]
 
+        # =====================================================
+        # 3️⃣ ACTIVE / INACTIVE CUSTOMERS (BASE LOGIC)
+        # =====================================================
+        active_customers = {}
+        inactive_customers = {}
+
+        customers = Customer.objects.select_related("salesperson")
+
+        for cust in customers:
+            salesperson_id = cust.salesperson_id or 0
+
+            if salesperson_id not in active_customers:
+                active_customers[salesperson_id] = 0
+                inactive_customers[salesperson_id] = 0
+
+            last_voucher = (
+                Voucher.objects.filter(
+                    party_name__iexact=cust.name
+                )
+                .order_by("-date")
+                .first()
+            )
+
+            if not last_voucher:
+                inactive_customers[salesperson_id] += 1
+            else:
+                if last_voucher.date >= cutoff_date:
+                    active_customers[salesperson_id] += 1
+                else:
+                    inactive_customers[salesperson_id] += 1
+
+        # =====================================================
+        # 4️⃣ SALESPERSON CHART (TOTAL + ACTIVE)
+        # =====================================================
+        salesperson_chart = []
+
+        salespersons = (
+            Customer.objects.select_related("salesperson")
+            .values("salesperson__id", "salesperson__name")
+            .distinct()
+        )
+
+        for sp in salespersons:
+            sp_id = sp["salesperson__id"] or 0
+            sp_name = sp["salesperson__name"] or "Unassigned"
+
+            total = Customer.objects.filter(
+                salesperson_id=sp_id
+            ).count()
+
+            active = active_customers.get(sp_id, 0)
+
+            salesperson_chart.append({
+                "name": sp_name,
+                "total": total,
+                "active": active,
+            })
+
+        # =====================================================
+        # 5️⃣ TOP 10 STATES (TOTAL + ACTIVE)
+        # =====================================================
+        state_totals = (
+            Customer.objects.values("state")
+            .annotate(total=Count("id"))
+            .order_by("-total")[:10]
+        )
+
+        state_chart = []
+
+        for row in state_totals:
+            state = row["state"] or "Unknown"
+            total = row["total"]
+
+            active = 0
+            for cust in Customer.objects.filter(state=row["state"]):
+                last_voucher = (
+                    Voucher.objects.filter(
+                        party_name__iexact=cust.name
+                    )
+                    .order_by("-date")
+                    .first()
+                )
+
+                if last_voucher and last_voucher.date >= cutoff_date:
+                    active += 1
+
+            state_chart.append({
+                "state": state,
+                "total": total,
+                "active": active,
+            })
+
+        # =====================================================
+        # 6️⃣ SUMMARY COUNTS
+        # =====================================================
+        ctx["active_customers_total"] = sum(active_customers.values())
+        ctx["inactive_customers_total"] = sum(inactive_customers.values())
+
+        # =====================================================
+        # 7️⃣ CONTEXT
+        # =====================================================
         ctx.update({
+            # OLD (keep existing charts alive)
             "salesperson_counts_json": json.dumps(salesperson_data),
             "state_counts_json": json.dumps(state_data),
+
+            # NEW (enhanced charts)
+            "salesperson_chart_json": json.dumps(salesperson_chart),
+            "state_chart_json": json.dumps(state_chart),
+
+            # Active / Inactive
+            "active_customers_json": json.dumps(active_customers),
+            "inactive_customers_json": json.dumps(inactive_customers),
+
+            # Summary cards
             "total_customers": Customer.objects.count(),
             "unique_salespersons": Customer.objects.values("salesperson").distinct().count(),
             "total_states": Customer.objects.values("state").distinct().count(),
         })
-        return ctx
 
+        return ctx
 
 
 

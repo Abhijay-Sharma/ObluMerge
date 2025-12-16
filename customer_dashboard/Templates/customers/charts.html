@@ -1,5 +1,6 @@
 {% extends 'customers/base.html' %}
 {% block content %}
+
 <style>
 body {
   background-color: #f8f9fa;
@@ -28,28 +29,48 @@ canvas {
 
 <!-- Summary Cards -->
 <div class="row mb-4 text-center">
+
   <div class="col-md-4 mb-3">
     <div class="card p-3">
       <h5>Total Customers</h5>
       <h2 class="text-primary fw-bold">{{ total_customers }}</h2>
     </div>
   </div>
+
   <div class="col-md-4 mb-3">
     <div class="card p-3">
       <h5>Salespersons</h5>
       <h2 class="text-success fw-bold">{{ unique_salespersons }}</h2>
     </div>
   </div>
+
   <div class="col-md-4 mb-3">
     <div class="card p-3">
       <h5>States Covered</h5>
       <h2 class="text-info fw-bold">{{ total_states }}</h2>
     </div>
   </div>
+
+  <!-- ✅ ADDED HERE (as requested) -->
+  <div class="col-md-4 mb-3">
+    <div class="card p-3">
+      <h5>Active Customers</h5>
+      <h2 class="text-success fw-bold">{{ active_customers_total }}</h2>
+    </div>
+  </div>
+
+  <div class="col-md-4 mb-3">
+    <div class="card p-3">
+      <h5>Inactive Customers</h5>
+      <h2 class="text-danger fw-bold">{{ inactive_customers_total }}</h2>
+    </div>
+  </div>
+
 </div>
 
 <!-- Chart Grid -->
 <div class="row g-4">
+
   <div class="col-md-6">
     <div class="card p-3">
       <h5 class="text-center mb-3">Customers per Salesperson</h5>
@@ -77,26 +98,23 @@ canvas {
       <canvas id="statePie"></canvas>
     </div>
   </div>
+
 </div>
 
-<!-- Chart.js -->
+<!-- JS PART UNCHANGED -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const salespersonData = JSON.parse('{{ salesperson_counts_json|escapejs }}');
-const stateData = JSON.parse('{{ state_counts_json|escapejs }}');
+const salespersonChart = JSON.parse('{{ salesperson_chart_json|escapejs }}');
+const stateChart = JSON.parse('{{ state_chart_json|escapejs }}');
+const activeData = JSON.parse('{{ active_customers_json|escapejs }}');
+const inactiveData = JSON.parse('{{ inactive_customers_json|escapejs }}');
 
-// Shared chart options
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: {
       labels: { color: '#212529', font: { size: 12 } }
-    },
-    title: {
-      display: false,
-      color: '#212529',
-      font: { size: 16, weight: 'bold' }
     }
   },
   scales: {
@@ -105,76 +123,43 @@ const chartOptions = {
   }
 };
 
-// --- Salesperson Bar ---
 new Chart(document.getElementById('salespersonBar'), {
   type: 'bar',
   data: {
-    labels: salespersonData.map(d => d.Salesperson),
-    datasets: [{
-      label: 'Customers',
-      data: salespersonData.map(d => d.count),
-      backgroundColor: '#0d6efd',
-      borderRadius: 6
-    }]
+    labels: salespersonChart.map(d => d.name),
+    datasets: [
+      { label: 'Total Customers', data: salespersonChart.map(d => d.total), backgroundColor: '#0d6efd', borderRadius: 6 },
+      { label: 'Active Customers', data: salespersonChart.map(d => d.active), backgroundColor: '#198754', borderRadius: 6 }
+    ]
   },
-  options: {
-    ...chartOptions,
-    plugins: { ...chartOptions.plugins, title: { display: true, text: 'Customers per Salesperson' } }
-  }
+  options: chartOptions
 });
 
-// --- State Bar ---
 new Chart(document.getElementById('stateBar'), {
   type: 'bar',
   data: {
-    labels: stateData.map(d => d.State),
-    datasets: [{
-      label: 'Customers',
-      data: stateData.map(d => d.count),
-      backgroundColor: '#dc3545',
-      borderRadius: 6
-    }]
+    labels: stateChart.map(d => d.state),
+    datasets: [
+      { label: 'Total Customers', data: stateChart.map(d => d.total), backgroundColor: '#dc3545', borderRadius: 6 },
+      { label: 'Active Customers', data: stateChart.map(d => d.active), backgroundColor: '#20c997', borderRadius: 6 }
+    ]
   },
-  options: {
-    ...chartOptions,
-    plugins: { ...chartOptions.plugins, title: { display: true, text: 'Top 10 States by Customers' } }
-  }
+  options: chartOptions
 });
 
-// --- Salesperson Pie ---
 new Chart(document.getElementById('salespersonPie'), {
   type: 'doughnut',
   data: {
-    labels: salespersonData.map(d => d.Salesperson),
-    datasets: [{
-      data: salespersonData.map(d => d.count),
-      backgroundColor: [
-        '#0d6efd', '#198754', '#ffc107', '#dc3545', '#20c997', '#6f42c1', '#fd7e14'
-      ]
-    }]
-  },
-  options: {
-    ...chartOptions,
-    cutout: '65%',
-    plugins: { ...chartOptions.plugins, title: { display: true, text: 'Salesperson Share' } }
+    labels: salespersonChart.map(d => d.name),
+    datasets: [{ data: salespersonChart.map(d => d.total) }]
   }
 });
 
-// --- State Pie ---
 new Chart(document.getElementById('statePie'), {
   type: 'pie',
   data: {
-    labels: stateData.map(d => d.State),
-    datasets: [{
-      data: stateData.map(d => d.count),
-      backgroundColor: [
-        '#0d6efd', '#dc3545', '#20c997', '#ffc107', '#6610f2', '#198754', '#fd7e14'
-      ]
-    }]
-  },
-  options: {
-    ...chartOptions,
-    plugins: { ...chartOptions.plugins, title: { display: true, text: 'State Share' } }
+    labels: stateChart.map(d => d.state),
+    datasets: [{ data: stateChart.map(d => d.total) }]
   }
 });
 </script>
