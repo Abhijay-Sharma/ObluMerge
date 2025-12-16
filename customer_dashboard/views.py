@@ -526,7 +526,7 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
         salesperson = self.request.user.salesperson_profile.first()
 
         ctx["is_manager"] = salesperson and salesperson.manager is None
-        ctx["selected_member"] = self.request.GET.get("team_member", "me")
+        ctx["selected_member"] = self.request.GET.get("team_member", "all")
 
         if ctx["is_manager"]:
             ctx["team_members"] = salesperson.team_members.all()
