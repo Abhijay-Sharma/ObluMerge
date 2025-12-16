@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Items Purchased</title>
 
-
 <style>
     body {
         background: #3a3a3a;
@@ -123,13 +122,15 @@
 
 <h2 style="text-align:center; margin-bottom:20px;"> Items Purchased by {{ customer.name }}</h2>
 
-{% for row in items_summary %}
+{% for key, row in items_summary.items %}
 
 <button class="accordion">
-    {{ row.item__name|default:row.item_name_text }}
+    {{ key }}
 </button>
 
 <div class="panel">
+
+    <!-- OLD SUMMARY TABLE (unchanged) -->
     <table>
         <thead>
             <tr>
@@ -149,6 +150,25 @@
             </tr>
         </tbody>
     </table>
+
+    <!-- NEW DATE-WISE PURCHASE TABLE -->
+    <table style="margin-top:20px;">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Qty</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in row.entries %}
+            <tr>
+                <td>{{ entry.date }}</td>
+                <td>{{ entry.qty }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
 </div>
 
 {% endfor %}
@@ -171,7 +191,6 @@
             }
         });
     }
-
 </script>
 
 </body>
