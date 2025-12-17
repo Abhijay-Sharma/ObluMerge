@@ -23,6 +23,11 @@ class Product(models.Model):
     min_requirement = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     terms_and_conditions = models.TextField(blank=True, null=True)
     has_dynamic_pricing = models.BooleanField(default=False)
+    product_info = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="List of bullet points for product info"
+    )
 
     def __str__(self):
         return self.name
