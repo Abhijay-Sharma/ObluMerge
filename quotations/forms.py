@@ -84,6 +84,15 @@ class CustomerCreateForm(forms.ModelForm):
 
 
 class ProductForm(forms.ModelForm):
+    product_info_text = forms.CharField(
+        label="Product Information (one point per line)",
+        required=False,
+        widget=forms.Textarea(attrs={
+            "rows": 5,
+            "placeholder": "High precision scanning\n2 Years warranty\nInstallation included"
+        })
+    )
+
     class Meta:
         model = Product
         fields = [
@@ -99,6 +108,32 @@ class ProductForm(forms.ModelForm):
         widgets = {
             "terms_and_conditions": forms.Textarea(attrs={"rows": 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # preload JSON into textarea
+        if self.instance and self.instance.product_info:
+            self.fields["product_info_text"].initial = "\n".join(
+                self.instance.product_info
+            )
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        raw_text = self.cleaned_data.get("product_info_text", "")
+        points = [
+            line.strip()
+            for line in raw_text.splitlines()
+            if line.strip()
+        ]
+
+        instance.product_info = points if points else None
+
+        if commit:
+            instance.save()
+
+        return instance
 
 
 # Inline formset for dynamic pricing tiers
