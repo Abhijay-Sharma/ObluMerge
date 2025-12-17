@@ -199,7 +199,17 @@
             {% for item in quotation.items.all %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ item.product.name }}</td>
+                <td>
+                    <strong>{{ item.product.name }}</strong>
+
+                    {% if item.product.product_info %}
+                        <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 12px;">
+                            {% for point in item.product.product_info %}
+                                <li>{{ point }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </td>
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.unit_price_without_tax }}</td>
                 <td>{{ item.product.tax_rate }}</td>

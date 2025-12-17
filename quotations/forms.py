@@ -89,7 +89,7 @@ class ProductForm(forms.ModelForm):
         required=False,
         widget=forms.Textarea(attrs={
             "rows": 5,
-            "placeholder": "High precision scanning\n2 Years warranty\nInstallation included"
+            "placeholder": "Point 1\nPoint 2\nPoint 3"
         })
     )
 
