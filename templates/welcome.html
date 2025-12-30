@@ -201,7 +201,9 @@
         <button class="btn" onclick="redirectTo('customer_data')">Customer Dashboard</button>
       {% endif %}
       <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
-      {% if request.user.is_viewer %}
+      {% if request.user.is_accountant %}
+        <button class="btn" onclick="location.href='/customers/salesperson-customers/'">Salesperson-Customers</button>
+      {% else %}
         <button class="btn" onclick="location.href='/customers/sales-dashboard/'">Customers Status</button>
       {% endif %}
     </div>
