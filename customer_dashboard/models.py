@@ -87,3 +87,56 @@ class CustomerCreditProfile(models.Model):
 
     def __str__(self):
         return f"{self.customer.name} | Balance: {self.outstanding_balance}"
+
+
+class CustomerVoucherStatus(models.Model):
+    customer = models.ForeignKey(
+        "Customer",
+        on_delete=models.CASCADE,
+        related_name="voucher_statuses"
+    )
+
+    voucher = models.ForeignKey(
+        "tally_voucher.Voucher",
+        on_delete=models.CASCADE,
+        related_name="customer_status"
+    )
+
+    # Always stored (for ALL voucher types)
+    voucher_type = models.CharField(max_length=100)
+    voucher_category = models.CharField(max_length=100)
+    voucher_date = models.DateField()
+
+    # -------------------------------
+    # TAX INVOICE ONLY (nullable)
+    # -------------------------------
+    voucher_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    unpaid_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    is_fully_paid = models.BooleanField(null=True, blank=True)
+    is_partially_paid = models.BooleanField(null=True, blank=True)
+    is_unpaid = models.BooleanField(null=True, blank=True)
+
+    credit_days_elapsed = models.PositiveIntegerField(null=True, blank=True)
+    is_credit_period_crossed = models.BooleanField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("customer", "voucher")
+        ordering = ["-voucher_date"]
+
+    def __str__(self):
+        return f"{self.customer.name} | {self.voucher.voucher_number}"
