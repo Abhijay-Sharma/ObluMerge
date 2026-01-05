@@ -1,0 +1,138 @@
+{% extends "customers/base.html" %}
+
+{% block content %}
+
+<h2>{{ customer.name }}</h2>
+
+<div style="margin-bottom: 20px;">
+    <strong>Outstanding Balance:</strong>
+    {{ credit_profile.outstanding_balance|default:"N/A" }}
+    &nbsp;&nbsp;
+    <strong>Credit Period (days):</strong>
+    {{ credit_profile.credit_period_days|default:"N/A" }}
+</div>
+
+<hr>
+
+<form method="get" style="margin-bottom: 20px;">
+    <label>
+        Voucher Type:
+        <select name="voucher_type">
+            <option value="">All</option>
+            {% for vt in voucher_types %}
+                <option value="{{ vt }}" {% if filters.voucher_type == vt %}selected{% endif %}>
+                    {{ vt }}
+                </option>
+            {% endfor %}
+        </select>
+    </label>
+
+    &nbsp;&nbsp;
+
+    <label>
+        From:
+        <input type="date" name="start_date" value="{{ filters.start_date }}">
+    </label>
+
+    &nbsp;&nbsp;
+
+    <label>
+        To:
+        <input type="date" name="end_date" value="{{ filters.end_date }}">
+    </label>
+
+    <br><br>
+
+    <label>
+        Payment Status (Tax Invoices):
+        <select name="payment_status">
+            <option value="">All</option>
+            <option value="paid" {% if filters.payment_status == "paid" %}selected{% endif %}>
+                Fully Paid
+            </option>
+            <option value="partial" {% if filters.payment_status == "partial" %}selected{% endif %}>
+                Partially Paid
+            </option>
+            <option value="unpaid" {% if filters.payment_status == "unpaid" %}selected{% endif %}>
+                Unpaid
+            </option>
+        </select>
+    </label>
+
+    &nbsp;&nbsp;
+
+    <label>
+        Credit Period Crossed:
+        <select name="credit_crossed">
+            <option value="">All</option>
+            <option value="yes" {% if filters.credit_crossed == "yes" %}selected{% endif %}>
+                Yes
+            </option>
+            <option value="no" {% if filters.credit_crossed == "no" %}selected{% endif %}>
+                No
+            </option>
+        </select>
+    </label>
+
+    &nbsp;&nbsp;
+
+    <button type="submit">Apply Filters</button>
+</form>
+
+<table border="1" cellpadding="8" cellspacing="0" width="100%">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Voucher No</th>
+            <th>Voucher Type</th>
+            <th>Amount</th>
+            <th>Unpaid Amount</th>
+            <th>Payment Status</th>
+            <th>Credit Days</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for v in vouchers %}
+            {% if v.is_fully_paid %}
+                <tr style="background-color:#d4edda;">
+            {% elif v.is_partially_paid %}
+                <tr style="background-color:#fff3cd;">
+            {% elif v.is_unpaid %}
+                <tr style="background-color:#f8d7da;">
+            {% else %}
+                <tr>
+            {% endif %}
+
+                <td>{{ v.voucher_date }}</td>
+                <td>{{ v.voucher.voucher_number }}</td>
+                <td>{{ v.voucher_type }}</td>
+                <td>{{ v.voucher_amount|default:"-" }}</td>
+                <td>{{ v.unpaid_amount|default:"-" }}</td>
+                <td>
+                    {% if v.is_fully_paid %}Fully Paid{% endif %}
+                    {% if v.is_partially_paid %}Partially Paid{% endif %}
+                    {% if v.is_unpaid %}Unpaid{% endif %}
+                    {% if not v.is_fully_paid and not v.is_partially_paid and not v.is_unpaid %}-{% endif %}
+                </td>
+                <td>
+                    {% if v.is_credit_period_crossed %}
+                        <span style="color:red;font-weight:bold;">
+                            {{ v.credit_days_elapsed }}
+                        </span>
+                    {% else %}
+                        {{ v.credit_days_elapsed|default:"-" }}
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="7" style="text-align:center;">
+                    No vouchers found
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

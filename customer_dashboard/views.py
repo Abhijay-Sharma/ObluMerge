@@ -1,7 +1,7 @@
 from django.views.generic import TemplateView, ListView
 from django.db.models import Count
 from django.shortcuts import render
-from .models import Customer, SalesPerson
+from .models import Customer, SalesPerson, CustomerVoucherStatus
 import json
 from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -18,6 +18,10 @@ import base64
 from django.db.models import Count, OuterRef, Subquery
 from django.views.generic import ListView
 from django.db.models.functions import Lower, Trim
+from django.db.models import Q
+
+
+
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -531,6 +535,70 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
         if ctx["is_manager"]:
             ctx["team_members"] = salesperson.team_members.all()
 
+        return ctx
+
+class CustomerPaymentStatusView(TemplateView):
+    template_name = "customers/customer_payment_status.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        customer = get_object_or_404(Customer, pk=kwargs["pk"])
+        ctx["customer"] = customer
+
+        credit_profile = getattr(customer, "credit_profile", None)
+        ctx["credit_profile"] = credit_profile
+
+        qs = CustomerVoucherStatus.objects.filter(
+            customer=customer
+        ).order_by("-voucher_date")
+
+        # -----------------------------
+        # Filters
+        # -----------------------------
+        voucher_type = self.request.GET.get("voucher_type")
+        start_date = self.request.GET.get("start_date")
+        end_date = self.request.GET.get("end_date")
+
+        payment_status = self.request.GET.get("payment_status")
+        credit_crossed = self.request.GET.get("credit_crossed")
+
+        if voucher_type:
+            qs = qs.filter(voucher_type=voucher_type)
+
+        if start_date:
+            qs = qs.filter(voucher_date__gte=start_date)
+
+        if end_date:
+            qs = qs.filter(voucher_date__lte=end_date)
+
+        # -----------------------------
+        # Tax-invoice specific filters
+        # -----------------------------
+        if payment_status:
+            if payment_status == "paid":
+                qs = qs.filter(is_fully_paid=True)
+            elif payment_status == "partial":
+                qs = qs.filter(is_partially_paid=True)
+            elif payment_status == "unpaid":
+                qs = qs.filter(is_unpaid=True)
+
+        if credit_crossed == "yes":
+            qs = qs.filter(is_credit_period_crossed=True)
+        elif credit_crossed == "no":
+            qs = qs.filter(is_credit_period_crossed=False)
+
+        ctx["vouchers"] = qs
+
+        # Dropdown values
+        ctx["voucher_types"] = (
+            CustomerVoucherStatus.objects
+            .filter(customer=customer)
+            .values_list("voucher_type", flat=True)
+            .distinct()
+        )
+
+        ctx["filters"] = self.request.GET
         return ctx
 
 

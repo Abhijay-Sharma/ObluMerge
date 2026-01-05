@@ -12,5 +12,6 @@ urlpatterns = [
     path("map/", views.MapView.as_view(), name="map"),
     path("detailedmap/", views.DetailedMapView.as_view(), name="detailedmap"),
     path("sales-dashboard/", views.SalesPersonCustomerOrdersView.as_view(), name="salesperson_customer_orders"),
-    path("salesperson-customers/", views.AdminSalesPersonCustomersView.as_view(), name="salesperson_customers")
+    path("salesperson-customers/", views.AdminSalesPersonCustomersView.as_view(), name="salesperson_customers"),
+    path("customers/<int:pk>/payment-status/",views.CustomerPaymentStatusView.as_view(),name="customerpaymentstatus"),
 ]
