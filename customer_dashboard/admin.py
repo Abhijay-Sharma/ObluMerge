@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SalesPerson, Customer
+from .models import SalesPerson, Customer, CustomerCreditProfile
 
 
 
@@ -17,3 +17,8 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ("name", "phone", "state", "district", "salesperson")
     list_filter = ("state", "salesperson")
     search_fields = ("name", "phone", "email", "address")
+
+
+@admin.register(CustomerCreditProfile)
+class CustomerCreditProfileAdmin(admin.ModelAdmin):
+    list_display = ("customer","outstanding_balance","credit_period_days")
