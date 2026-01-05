@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -64,3 +64,26 @@ class CustomerRemark(models.Model):
 
     def str(self):
         return f"{self.customer.name} - {self.salesperson}"
+
+
+class CustomerCreditProfile(models.Model):
+    customer = models.OneToOneField(
+        "Customer",
+        on_delete=models.CASCADE,
+        related_name="credit_profile"
+    )
+
+    # Outstanding balance as per Tally (uploaded from Excel)
+    outstanding_balance = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00")
+    )
+
+    # Credit period allowed for this customer (in days)
+    credit_period_days = models.PositiveIntegerField(default=0)
+
+    last_synced_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.customer.name} | Balance: {self.outstanding_balance}"
