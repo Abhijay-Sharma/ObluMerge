@@ -67,7 +67,8 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             ).order_by("-date")
 
             customer.vouchers_list = vouchers
-            customer.last_order_date = vouchers.first().date if vouchers.exists() else None
+            tax_invoice_vouchers = vouchers.filter(voucher_type='TAX INVOICE')
+            customer.last_order_date = tax_invoice_vouchers.first().date if tax_invoice_vouchers.exists() else None
 
             tax_vouchers = vouchers.filter(
                 voucher_type__iexact="TAX INVOICE"
