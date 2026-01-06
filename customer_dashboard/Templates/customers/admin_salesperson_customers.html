@@ -369,8 +369,10 @@ table tbody td {
     <p><strong>Last:</strong> {{ c.last_order_date|default:"None" }}</p>
 
     <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-danger btn-sm">View Item Purchases</a>
+    <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Payment Status</a>
     <button class="btn btn-danger btn-sm open-history" data-customer="{{ c.id }}">View Order History</button>
     <button class="btn btn-danger btn-sm" onclick="openModal('{{ c.id }}')">View Remarks ({{ c.remarks_list|length }})</button>
+    <button class="btn btn-danger btn-sm" onclick="openAddRemark('{{ c.id }}')">Add Remark</button>
 
     <div id="history-data-{{ c.id }}" style="display:none;">
       <ul>
