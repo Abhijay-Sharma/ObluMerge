@@ -379,7 +379,7 @@ table tbody td {
     <div id="history-data-{{ c.id }}" style="display:none;">
       <ul>
         {% for v in c.vouchers_list %}
-          <li><strong>{{ v.date }}</strong> — {{ v.voucher_type }} {{ v.voucher_number }}</li>
+          <li><strong>{{ v.date }}</strong> — {{ v.voucher_type }} <a href="{% url 'voucher_detail' v.id %}" style="color:#fff; text-decoration:underline;" target="_blank"> {{ v.voucher_number }}</a></li>
         {% empty %}
           <li>No vouchers</li>
         {% endfor %}
