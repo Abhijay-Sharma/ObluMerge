@@ -58,8 +58,9 @@ class Command(BaseCommand):
             # Negative balance => customer owes us money
             if balance < 0:
                 outstanding_balance = abs(balance)
+            # changing signs so in this case we ow the customer money
             else:
-                outstanding_balance = Decimal("0.00")
+                outstanding_balance = Decimal(balance)*-1
 
             obj, was_created = CustomerCreditProfile.objects.update_or_create(
                 customer=customer,
