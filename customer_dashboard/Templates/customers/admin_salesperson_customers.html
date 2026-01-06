@@ -286,6 +286,7 @@ table tbody td {
       <th>State</th>
       <th>Orders</th>
       <th>Total</th>
+      <th>Outstanding</th>
       <th>Last</th>
       <th>Status</th>
       <th>Actions</th>
@@ -302,6 +303,13 @@ table tbody td {
       <td>{{ c.state }}</td>
       <td>{{ c.total_orders }}</td>
       <td>₹ {{ c.total_order_value|floatformat:2 }}</td>
+      <td>
+        {% if c.trial_balance is not None %}
+          ₹ {{ c.trial_balance|floatformat:2 }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
       <td>{{ c.last_order_date|default:"None" }}</td>
 
       <td>

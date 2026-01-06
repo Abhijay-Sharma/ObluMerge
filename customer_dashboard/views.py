@@ -53,6 +53,14 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
                 "salesperson", "salesperson__user"
             ).order_by("-created_at")
             # ---- REMARK LOGIC ENDS HERE ----
+            # ---- CREDIT PROFILE LOGIC (NEW) ----
+            credit_profile = getattr(customer, "credit_profile", None)
+
+            if credit_profile:
+                customer.trial_balance = credit_profile.outstanding_balance
+            else:
+                customer.trial_balance = None
+            # ---- CREDIT PROFILE LOGIC ENDS (NEW) ----
 
             vouchers = Voucher.objects.filter(
                 party_name__iexact=customer.name
