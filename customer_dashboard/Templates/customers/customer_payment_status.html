@@ -106,7 +106,7 @@
 
                 <td>{{ v.voucher_date }}</td>
                 <td>{{ v.voucher.voucher_number }}</td>
-                <td><a href="{% url 'voucher_detail' v.id %}" style="color:#2c19b2; text-decoration:underline;" target="_blank"> {{ v.voucher_type }}</a></td>
+                <td><a href="{% url 'voucher_detail' v.voucher.id %}" style="color:#2c19b2; text-decoration:underline;" target="_blank"> {{ v.voucher_type }}</a></td>
                 <td>{{ v.voucher_amount|default:"-" }}</td>
                 <td>{{ v.unpaid_amount|default:"-" }}</td>
                 <td>
