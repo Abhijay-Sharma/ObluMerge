@@ -271,6 +271,8 @@ table tbody td {
   <div class="col-md-4"><div class="stat-card"><h3>Total Customers</h3><h2>{{ customers|length }}</h2></div></div>
   <div class="col-md-4"><div class="stat-card"><h3>Active</h3><h2 class="text-success">{{ active_count }}</h2></div></div>
   <div class="col-md-4"><div class="stat-card"><h3>Inactive</h3><h2 class="text-danger">{{ inactive_count }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Outstanding Customers</h3><h2 class="text-warning">{{ outstanding_count }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Total Outstanding Amount</h3><h2 class="text-danger">₹ {{ total_outstanding_amount|floatformat:2 }}</h2></div></div>
 </div>
 
 

@@ -95,10 +95,18 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         active = sum(1 for c in customers if not c.is_red_flag)
         inactive = sum(1 for c in customers if c.is_red_flag)
+        outstanding_count = sum(
+            1 for c in customers if c.trial_balance and c.trial_balance > 0
+        )
+        total_outstanding_amount = sum(
+            c.trial_balance for c in customers if c.trial_balance and c.trial_balance > 0
+        )
 
         ctx["customers"] = customers
         ctx["active_count"] = active
         ctx["inactive_count"] = inactive
+        ctx["outstanding_count"] = outstanding_count
+        ctx["total_outstanding_amount"] = total_outstanding_amount
 
         return ctx
 
