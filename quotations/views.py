@@ -517,4 +517,22 @@ class QuotationDetailView(DetailView):
             print("Im here3")
             self.template_name = "quotations/quotation_detail_altered.html"
 
+        # Total calculations part added by kashish on 7-1-26
+        original_total = 0
+        discount_total = 0
+
+        for item in items_qs:
+            qty = item.quantity
+
+            # ✅ ALWAYS use GST INCLUDED price (matches table)
+            unit_price = item.gst_unit_price()
+
+            line_original = unit_price * qty
+            original_total += line_original
+
+            discount_total += item.discount or 0
+
+        context["original_total"] = original_total
+        context["discount_total"] = discount_total
+
         return context

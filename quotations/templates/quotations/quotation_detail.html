@@ -88,7 +88,7 @@
             margin-top: 40px;
             margin-left: 60px;
             font-size: 14px;
-            text-align: right;
+            text-align: left;
         }
 
         .signature img {
@@ -149,6 +149,13 @@
         <span>W:www.obluhc.com</span>
     </div>
 
+    <div class="quotation-info">
+        <p><strong>Quotation Ref. No.:</strong> OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}</p>
+        <p><strong>Created By:</strong> {{ quotation.created_by }}</p>
+        <p><strong>Date:</strong> {{ quotation.date_created|date:"d.m.Y" }}</p>
+        <p><strong>Validity:</strong> {{ quotation.validity|date:"d.m.Y" }}</p>
+    </div>
+
     <div class="customer-info">
         <p><strong>To:</strong> {{ quotation.customer_name }}</p>
         <p><strong>Address:</strong> {{ quotation.customer_address }}</p>
@@ -172,12 +179,7 @@
         {% endif %}
     </div>
 
-    <div class="quotation-info">
-        <p><strong>Quotation Ref. No.:</strong> OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}</p>
-        <p><strong>Created By:</strong> {{ quotation.created_by }}</p>
-        <p><strong>Date:</strong> {{ quotation.date_created|date:"d.m.Y" }}</p>
-        <p><strong>Validity:</strong> {{ quotation.validity|date:"d.m.Y" }}</p>
-    </div>
+
 
     <table>
         <thead>
@@ -225,7 +227,19 @@
     </table>
 
     <div class="total">
-        <strong>Grand Total: ₹{{ quotation.total }}</strong>
+        {% if has_discount %}
+            <p>
+               <strong>Total (Before Discount): ₹{{ original_total }}</strong>
+            </p>
+
+            <p style="font-size:18px; color:green; margin-top:6px;">
+                <strong>Special Total (After Discount): ₹{{ quotation.total }}</strong>
+            </p>
+        {% else %}
+            <p style="font-size:18px;">
+                <strong>Grand Total: ₹{{ quotation.total }}</strong>
+            </p>
+        {% endif %}
     </div>
 
     <div class="signature">
