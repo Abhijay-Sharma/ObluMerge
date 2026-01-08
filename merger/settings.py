@@ -31,6 +31,8 @@ ALLOWED_HOSTS = ['65.2.57.203','127.0.0.1','13.235.9.16','www.oblutools.com','ob
 CSRF_TRUSTED_ORIGINS = [
     'https://oblutools.com',
     'https://www.oblutools.com',
+    'http://oblutools.com',
+    'http://www.oblutools.com',
 ]
 
 
@@ -38,6 +40,7 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'incentive_calculator',
     'tally_voucher',
     'proforma_invoice',
     'quotations',
