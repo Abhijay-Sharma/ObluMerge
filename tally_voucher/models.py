@@ -27,7 +27,13 @@ class VoucherRow(models.Model):
     def __str__(self):
         return f"{self.ledger} ({self.amount})"
 
-
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voucher", "ledger", "narration", "amount"],
+                name="unique_voucher_row"
+            )
+        ]
 
 class VoucherStockItem(models.Model):
     voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE, related_name="stock_rows")
