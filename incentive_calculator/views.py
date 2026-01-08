@@ -1090,6 +1090,7 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
                 "voucher_no": si.voucher.voucher_number,
                 "product": product.name,
                 "quantity": si.quantity,
+                "amount": si.amount,
                 "has_incentive": has_incentive,  # ✅ ADD THIS
                 "is_fully_paid": is_fully_paid,
                 "is_partially_paid": bool(voucher_status and voucher_status.is_partially_paid),

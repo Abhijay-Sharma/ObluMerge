@@ -90,6 +90,7 @@ h2, h3 { margin-bottom:12px; }
     <th>Voucher</th>
     <th>Product</th>
     <th>Qty</th>
+    <th>Amount</th>
 </tr>
 </thead>
 
@@ -127,6 +128,7 @@ h2, h3 { margin-bottom:12px; }
         </span>
     </td>
     <td>{{ r.quantity }}</td>
+    <td>₹{{ r.amount }}</td>
 </tr>
 {% endfor %}
 </tbody>
