@@ -1055,6 +1055,7 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
         total_quantity_map = {}   # paid + unpaid
         paid_quantity_map = {}    # only paid
         product_map = {}          # product_id → product
+        total_sales = Decimal("0.00")
 
         # --------------------------------------------------
         # BUILD ROW DATA + QUANTITY MAPS
@@ -1068,6 +1069,7 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
             product_map[product_id] = product
             #new change
             has_incentive = product_id in incentives
+            total_sales += Decimal(str(si.amount))
 
             voucher_status = voucher_status_map.get(si.voucher_id)
             is_fully_paid = bool(voucher_status and voucher_status.is_fully_paid)
@@ -1154,5 +1156,6 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
         ctx["rows"] = rows
         ctx["product_totals"] = product_totals
         ctx["grand_total_incentive"] = grand_total_incentive
+        ctx["total_sales"] = total_sales
 
         return ctx

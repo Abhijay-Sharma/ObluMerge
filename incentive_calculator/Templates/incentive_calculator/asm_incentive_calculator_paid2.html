@@ -131,6 +131,15 @@ h2, h3 { margin-bottom:12px; }
     <td>₹{{ r.amount }}</td>
 </tr>
 {% endfor %}
+<!-- ✅ TOTAL ROW -->
+<tr style="font-weight:bold; border-top:2px solid #555;">
+    <td></td>   <!-- Date -->
+    <td></td>   <!-- Customer -->
+    <td></td>   <!-- Voucher -->
+    <td></td>   <!-- Product -->
+    <td style="text-align:right;">TOTAL</td>
+    <td>₹{{ total_sales }}</td>
+</tr>
 </tbody>
 </table>
 </div>
