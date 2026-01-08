@@ -965,3 +965,192 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
         ctx["grand_total_incentive"] = grand_total_incentive
 
         return ctx
+
+# this view marks all the products which have incentive as green
+class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
+    template_name = "incentive_calculator/asm_incentive_calculator_paid2.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # --------------------------------------------------
+        # BASIC FILTER DATA
+        # --------------------------------------------------
+        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
+
+        salesperson_id = self.request.GET.get("salesperson")
+
+        today = date.today()
+        default_start = today - timedelta(days=90)
+
+        start_date = self.request.GET.get("start_date") or default_start
+        end_date = self.request.GET.get("end_date") or today
+
+        ctx["start_date"] = start_date
+        ctx["end_date"] = end_date
+
+        if not salesperson_id:
+            ctx.update({
+                "rows": [],
+                "product_totals": {},
+                "grand_total_incentive": Decimal("0.00"),
+                "selected_salesperson": None,
+            })
+            return ctx
+
+        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
+        ctx["selected_salesperson"] = salesperson
+
+        if not salesperson:
+            return ctx
+
+        # --------------------------------------------------
+        # FETCH CUSTOMERS
+        # --------------------------------------------------
+        customers = Customer.objects.filter(salesperson=salesperson)
+        customer_names = customers.values_list("name", flat=True)
+
+        # --------------------------------------------------
+        # FETCH TAX INVOICE VOUCHERS
+        # --------------------------------------------------
+        vouchers = Voucher.objects.filter(
+            voucher_type__iexact="TAX INVOICE",
+            party_name__in=customer_names,
+            date__range=[start_date, end_date],
+        )
+
+        # --------------------------------------------------
+        # FETCH PAYMENT STATUS
+        # --------------------------------------------------
+        voucher_status_map = {
+            cvs.voucher_id: cvs
+            for cvs in CustomerVoucherStatus.objects.filter(
+                voucher__in=vouchers
+            )
+        }
+
+        # --------------------------------------------------
+        # FETCH STOCK ITEMS
+        # --------------------------------------------------
+        stock_items = (
+            VoucherStockItem.objects
+            .filter(voucher__in=vouchers)
+            .select_related("voucher", "item")
+            .order_by("voucher__date")
+        )
+
+        # --------------------------------------------------
+        # PRELOAD INCENTIVES
+        # --------------------------------------------------
+        incentives = {
+            pi.product_id: pi
+            for pi in ProductIncentive.objects.select_related("product")
+        }
+
+        # --------------------------------------------------
+        # TRACKING MAPS
+        # --------------------------------------------------
+        rows = []
+
+        total_quantity_map = {}   # paid + unpaid
+        paid_quantity_map = {}    # only paid
+        product_map = {}          # product_id → product
+
+        # --------------------------------------------------
+        # BUILD ROW DATA + QUANTITY MAPS
+        # --------------------------------------------------
+        for si in stock_items:
+            product = si.item
+            if not product:
+                continue
+
+            product_id = product.id
+            product_map[product_id] = product
+            #new change
+            has_incentive = product_id in incentives
+
+            voucher_status = voucher_status_map.get(si.voucher_id)
+            is_fully_paid = bool(voucher_status and voucher_status.is_fully_paid)
+
+            # ---------- TOTAL QUANTITY (ALL) ----------
+            total_quantity_map.setdefault(product_id, Decimal("0.00"))
+            total_quantity_map[product_id] += si.quantity
+
+            # ---------- PAID QUANTITY ONLY ----------
+            if is_fully_paid:
+                paid_quantity_map.setdefault(product_id, Decimal("0.00"))
+                paid_quantity_map[product_id] += si.quantity
+
+            # ---------- ROW DISPLAY ----------
+            rows.append({
+                "date": si.voucher.date,
+                "customer": si.voucher.party_name,
+                "customer_id": voucher_status.customer_id if voucher_status else None,
+                "voucher_no": si.voucher.voucher_number,
+                "product": product.name,
+                "quantity": si.quantity,
+                "has_incentive": has_incentive,  # ✅ ADD THIS
+                "is_fully_paid": is_fully_paid,
+                "is_partially_paid": bool(voucher_status and voucher_status.is_partially_paid),
+                "is_unpaid": bool(voucher_status and voucher_status.is_unpaid),
+            })
+
+        # --------------------------------------------------
+        # PRELOAD TIERS
+        # --------------------------------------------------
+        tiers_map = {}
+        for tier in ProductIncentiveTier.objects.select_related("Product_Incentive"):
+            pid = tier.Product_Incentive.product_id
+            tiers_map.setdefault(pid, []).append(tier)
+
+        # --------------------------------------------------
+        # APPLY DYNAMIC PRICING PER PRODUCT
+        # --------------------------------------------------
+        product_totals = {}
+        grand_total_incentive = Decimal("0.00")
+
+        for product_id, total_qty in total_quantity_map.items():
+            product = product_map[product_id]
+            paid_qty = paid_quantity_map.get(product_id, Decimal("0.00"))
+            incentive_obj = incentives.get(product_id)
+
+            if not incentive_obj:
+                continue
+
+            incentive_rate = incentive_obj.ASM_incentive
+            applied_tier = None
+
+            # ---------- DYNAMIC TIER LOGIC ----------
+            if incentive_obj.has_dynamic_price:
+                tiers = sorted(
+                    tiers_map.get(product_id, []),
+                    key=lambda t: t.min_quantity,
+                    reverse=True
+                )
+
+                for tier in tiers:
+                    if total_qty >= tier.min_quantity:
+                        incentive_rate = tier.ASM_incentive
+                        applied_tier = tier
+                        break
+
+            incentive_amount = paid_qty * incentive_rate
+            grand_total_incentive += incentive_amount
+
+            product_totals[product.name] = {
+                "total_qty": total_qty,
+                "paid_qty": paid_qty,
+                "rate": incentive_rate,
+                "tier": applied_tier.min_quantity if applied_tier else None,
+                "incentive": incentive_amount,
+                "has_dynamic": incentive_obj.has_dynamic_price,
+            }
+
+        # --------------------------------------------------
+        # CONTEXT
+        # --------------------------------------------------
+        ctx["rows"] = rows
+        ctx["product_totals"] = product_totals
+        ctx["grand_total_incentive"] = grand_total_incentive
+
+        return ctx

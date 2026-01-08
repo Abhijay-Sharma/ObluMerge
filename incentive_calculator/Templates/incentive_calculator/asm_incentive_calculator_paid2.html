@@ -105,7 +105,11 @@ h2, h3 { margin-bottom:12px; }
     </td>
 
     <td>{{ r.voucher_no }}</td>
-    <td>{{ r.product }}</td>
+    <td>
+        <span class="{% if r.has_incentive %}product-green{% else %}product-yellow{% endif %}">
+            {{ r.product }}
+        </span>
+    </td>
     <td>{{ r.quantity }}</td>
 </tr>
 {% endfor %}
