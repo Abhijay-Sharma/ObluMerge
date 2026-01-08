@@ -1,6 +1,7 @@
 import pandas as pd
 from django.core.management.base import BaseCommand
 from tally_voucher.models import Voucher, VoucherRow
+from django.db import IntegrityError
 
 # how to run - python manage.py import_accounting_vouchers <path_to_excel_file>
 
@@ -59,17 +60,25 @@ class Command(BaseCommand):
             # ------------------------------
             # Create the row entry
             # ------------------------------
-            VoucherRow.objects.create(
-                voucher=voucher,
-                ledger=ledger,
-                narration=narration,
-                amount=amount
-            )
-
-            self.stdout.write(
-                self.style.NOTICE(
-                    f"   → Row added: Ledger={ledger}, Amount={amount}"
+            try:
+                VoucherRow.objects.create(
+                    voucher=voucher,
+                    ledger=ledger,
+                    narration=narration,
+                    amount=amount
                 )
-            )
+
+                self.stdout.write(
+                    self.style.NOTICE(
+                        f"   → Row added: Ledger={ledger}, Amount={amount}"
+                    )
+                )
+
+            except IntegrityError:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"   ⚠️ Duplicate row skipped: Ledger={ledger}, Amount={amount}"
+                    )
+                )
 
         self.stdout.write(self.style.SUCCESS("Excel import completed successfully."))
