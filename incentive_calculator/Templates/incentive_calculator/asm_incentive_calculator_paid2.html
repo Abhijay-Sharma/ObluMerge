@@ -114,7 +114,13 @@ h2, h3 { margin-bottom:12px; }
         {% endif %}
     </td>
 
-    <td>{{ r.voucher_no }}</td>
+    <td>
+        <a href="{% url 'voucher_detail' r.voucher_id %}"
+           target="_blank"
+           style="color:#fff; text-decoration:underline;">
+            {{ r.voucher_no }}
+        </a>
+    </td>
     <td>
         <span class="{% if r.has_incentive %}product-green{% else %}product-yellow{% endif %}">
             {{ r.product }}

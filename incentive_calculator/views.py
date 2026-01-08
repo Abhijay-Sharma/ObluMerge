@@ -1086,6 +1086,7 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
                 "date": si.voucher.date,
                 "customer": si.voucher.party_name,
                 "customer_id": voucher_status.customer_id if voucher_status else None,
+                "voucher_id": si.voucher.id,  # ✅ ADD THIS
                 "voucher_no": si.voucher.voucher_number,
                 "product": product.name,
                 "quantity": si.quantity,
