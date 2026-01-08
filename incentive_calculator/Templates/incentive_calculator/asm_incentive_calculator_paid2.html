@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ASM Incentive Calculator</title>
+
+<style>
+body {
+    background:#000;
+    color:white;
+    font-family:Poppins, sans-serif;
+    padding:25px;
+}
+.card {
+    background:#111;
+    border:1px solid #333;
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+}
+table {
+    width:100%;
+    border-collapse:collapse;
+}
+th, td {
+    padding:10px;
+    border-bottom:1px solid #333;
+}
+tr.unpaid { background:#2a0000; }
+tr.partial { background:#2a1a00; }
+
+.badge {
+    font-size:11px;
+    padding:4px 8px;
+    border-radius:6px;
+    margin-left:5px;
+}
+.badge.red { background:#ff4d4d; }
+.badge.orange { background:#ffb84d; color:black; }
+
+a { color:#00ff99; text-decoration:none; }
+h2, h3 { margin-bottom:12px; }
+</style>
+</head>
+
+<body>
+
+<h2>ASM Incentive Calculator — Paid Only + Dynamic Tiers</h2>
+
+<!-- FILTER -->
+<div class="card">
+<form method="get">
+    <select name="salesperson" required>
+        <option value="">-- Select Salesperson --</option>
+        {% for sp in salespersons %}
+            <option value="{{ sp.id }}"
+                {% if selected_salesperson and sp.id == selected_salesperson.id %}selected{% endif %}>
+                {{ sp.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <input type="date" name="start_date" value="{{ start_date }}">
+    <input type="date" name="end_date" value="{{ end_date }}">
+
+    <button type="submit">Calculate</button>
+</form>
+</div>
+
+<!-- ROWS -->
+{% if rows %}
+<div class="card">
+<h3>Sales Rows</h3>
+
+<table>
+<thead>
+<tr>
+    <th>Date</th>
+    <th>Customer</th>
+    <th>Voucher</th>
+    <th>Product</th>
+    <th>Qty</th>
+</tr>
+</thead>
+
+<tbody>
+{% for r in rows %}
+<tr class="{% if r.is_unpaid %}unpaid{% elif r.is_partially_paid %}partial{% endif %}">
+    <td>{{ r.date }}</td>
+
+    <td>
+        {% if r.customer_id %}
+            <a href="{% url 'customers:customerpaymentstatus' r.customer_id%}">
+                {{ r.customer }}
+            </a>
+        {% else %}
+            {{ r.customer }}
+        {% endif %}
+
+        {% if r.is_unpaid %}
+            <span class="badge red">UNPAID</span>
+        {% elif r.is_partially_paid %}
+            <span class="badge orange">PARTIAL</span>
+        {% endif %}
+    </td>
+
+    <td>{{ r.voucher_no }}</td>
+    <td>{{ r.product }}</td>
+    <td>{{ r.quantity }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endif %}
+
+<!-- PRODUCT TOTALS -->
+{% if product_totals %}
+<div class="card">
+<h3>Product-wise Incentive Summary (Paid Only)</h3>
+
+<table>
+<thead>
+<tr>
+    <th>Product</th>
+    <th>Total Qty (All)</th>
+    <th>Paid Qty</th>
+    <th>Rate Used</th>
+    <th>Tier Applied</th>
+    <th>Total Incentive</th>
+</tr>
+</thead>
+
+<tbody>
+{% for product, data in product_totals.items %}
+<tr>
+    <td>{{ product }}</td>
+    <td>{{ data.total_qty }}</td>
+    <td>{{ data.paid_qty }}</td>
+    <td>₹{{ data.rate }}</td>
+    <td>
+        {% if data.has_dynamic %}
+            {% if data.tier %}
+                ≥ {{ data.tier }}
+            {% else %}
+                Base
+            {% endif %}
+        {% else %}
+            Fixed
+        {% endif %}
+    </td>
+    <td>₹{{ data.incentive }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<h3 style="margin-top:15px;">
+Grand Total Incentive: ₹{{ grand_total_incentive }}
+</h3>
+</div>
+{% endif %}
+
+</body>
+</html>
