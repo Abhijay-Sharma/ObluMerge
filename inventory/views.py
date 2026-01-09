@@ -29,6 +29,8 @@ from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Max
 from tally_voucher.models import VoucherStockItem
 from collections import defaultdict
+from customer_dashboard.models import Customer
+
 logger = logging.getLogger(__name__)
 
 
@@ -915,3 +917,198 @@ def get_inventory_by_category(request):
     category_id = request.GET.get("category_id")
     items = InventoryItem.objects.filter(category_id=category_id).values("id", "name")
     return JsonResponse({"products": list(items)})
+
+
+# it is getting all data from tally vouchers for time being we have removed all use of dailystcokdata model
+class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
+    template_name = "inventory/dead_stock_dashboard2.html"
+
+    def get(self, request):
+
+        # -------------------------
+        # DATE FILTER
+        # -------------------------
+        from_date = request.GET.get('from')
+        to_date = request.GET.get('to')
+
+        if not from_date or not to_date:
+            to_date = datetime.date.today()
+            from_date = to_date.replace(month=max(1, to_date.month - 3))
+        else:
+            from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
+
+        # -------------------------
+        # ✅ SOLD PRODUCTS (FROM TALLY TAX INVOICE)
+        # -------------------------
+        sold_products_set = set()
+
+        sold_rows = (
+            VoucherStockItem.objects.filter(
+                voucher__voucher_type__iexact="Tax Invoice",
+                voucher__date__range=(from_date, to_date)
+            )
+            .values("item_id", "item_name_text")
+        )
+
+        for row in sold_rows:
+            if row["item_id"]:
+                sold_products_set.add(row["item_id"])
+
+            elif row["item_name_text"]:
+                try:
+                    item = InventoryItem.objects.get(
+                        name__iexact=row["item_name_text"].strip()
+                    )
+                    sold_products_set.add(item.id)
+                except InventoryItem.DoesNotExist:
+                    pass
+
+        dead_stock_items = InventoryItem.objects.exclude(
+            id__in=sold_products_set
+        ).select_related("category")
+        # dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
+
+
+
+
+        # -------------------------
+        # LAST CUSTOMER (TAX INVOICE)
+        # -------------------------
+        last_customers_raw = (
+            VoucherStockItem.objects.filter(
+                voucher__voucher_type__iexact="Tax Invoice"
+            )
+            .values(
+                "item_id",
+                "item_name_text",
+                "voucher__party_name",
+                "voucher__date",
+                "voucher_id"
+            )
+            .order_by("-voucher__date")
+        )
+
+        last_customers_raw = (
+            VoucherStockItem.objects.filter(
+                voucher__voucher_type__iexact="Tax Invoice"
+            )
+            .values(
+                "item_id",
+                "item_name_text",
+                "voucher__party_name",
+                "voucher__date",
+                "voucher_id"
+            )
+            .order_by("-voucher__date")  # latest first
+        )
+
+        product_last_sold_map = {}
+        product_customers_map = defaultdict(list)
+
+        # -------------------------
+        # ✅ CUSTOMER → SALESPERSON LOOKUP
+        # -------------------------
+        customer_salesperson_map = {}
+
+        customers = Customer.objects.select_related("salesperson").all()
+
+        for c in customers:
+            if c.name:
+                customer_salesperson_map[c.name.strip().lower()] = (
+                    c.salesperson.name if c.salesperson else None
+                )
+
+        for row in last_customers_raw:
+            product_id = None
+
+            # --- resolve product id ---
+            if row["item_id"]:
+                product_id = row["item_id"]
+
+            elif row["item_name_text"]:
+                try:
+                    item = InventoryItem.objects.get(
+                        name__iexact=row["item_name_text"].strip()
+                    )
+                    product_id = item.id
+                except InventoryItem.DoesNotExist:
+                    continue
+
+            if not product_id:
+                continue
+
+            customer_name = row["voucher__party_name"]
+            voucher_id = row["voucher_id"]
+            voucher_date = row["voucher__date"]
+
+            # -----------------------
+            # ✅ LAST SOLD DATE (latest voucher date wins automatically because ordering is DESC)
+            # -----------------------
+            if product_id not in product_last_sold_map:
+                product_last_sold_map[product_id] = voucher_date
+
+            # -----------------------
+            # ✅ CUSTOMER LIST
+            # -----------------------
+            already_added = any(
+                c["name"] == customer_name
+                for c in product_customers_map[product_id]
+            )
+            if already_added:
+                continue
+
+            salesperson_name = customer_salesperson_map.get(
+                customer_name.strip().lower()
+            )
+
+            product_customers_map[product_id].append({
+                "name": customer_name,
+                "voucher_id": voucher_id,
+                "link": reverse("voucher_detail", args=[voucher_id]) if voucher_id else None,
+                "salesperson": salesperson_name,  # 👈 added
+            })
+
+        # -------------------------
+        # ✅ CATEGORY WISE GROUPING
+        # -------------------------
+        category_data = defaultdict(list)
+
+        # flat list for original summary card / templates that expect `dead_stock`
+        data = []
+        total_dead_value = 0  # placeholder; keep as 0 unless you want actual valuation
+
+
+        for item in dead_stock_items:
+            if not item.quantity or item.quantity <= 0:
+                continue
+
+            last_sold = product_last_sold_map.get(item.id)
+            customers = product_customers_map.get(item.id, [])
+            category_name = item.category.name if item.category else "Uncategorized"
+
+            entry = {
+                "name": item.name,
+                "quantity": item.quantity,
+                "last_sold": last_sold,
+                "customers": customers,  # 👈 list now
+            }
+
+            # add to flat list and category grouping
+            data.append(entry)
+            category_data[category_name].append(entry)
+
+            # optionally compute value if you have a cost field, e.g. item.cost_price
+            # if getattr(item, "cost_price", None):
+            #     total_dead_value += (item.cost_price or 0) * item.quantity
+
+        context = {
+            "dead_stock": data,                        # preserves previous template variable
+            "category_data": dict(category_data),      # new accordion data
+            "from_date": from_date,
+            "to_date": to_date,
+            "total_dead_value": round(total_dead_value, 2),
+            "total_dead_products": len(data),
+        }
+
+        return render(request, self.template_name, context)
