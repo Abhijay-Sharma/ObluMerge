@@ -14,4 +14,5 @@ urlpatterns = [
     path("sales-dashboard/", views.SalesPersonCustomerOrdersView.as_view(), name="salesperson_customer_orders"),
     path("salesperson-customers/", views.AdminSalesPersonCustomersView.as_view(), name="salesperson_customers"),
     path("customers/<int:pk>/payment-status/",views.CustomerPaymentStatusView.as_view(),name="customerpaymentstatus"),
+    path("customer/<int:pk>/edit/", views.CustomerEditView.as_view(), name="customer_edit"),
 ]

@@ -19,6 +19,8 @@ from django.db.models import Count, OuterRef, Subquery
 from django.views.generic import ListView
 from django.db.models.functions import Lower, Trim
 from django.db.models import Q
+from .forms import CustomerReassignForm
+from django.views import View
 
 
 
@@ -618,6 +620,33 @@ class CustomerPaymentStatusView(TemplateView):
         ctx["filters"] = self.request.GET
         return ctx
 
+
+class CustomerEditView(AccountantRequiredMixin, View):
+    template_name = "customers/edit_customer.html"
+
+    def get(self, request, pk):
+        customer = get_object_or_404(Customer, pk=pk)
+        form = CustomerReassignForm(instance=customer)
+
+        return render(request, self.template_name, {
+            "customer": customer,
+            "form": form,
+        })
+
+    def post(self, request, pk):
+        customer = get_object_or_404(Customer, pk=pk)
+        form = CustomerReassignForm(request.POST, instance=customer)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Customer updated successfully.")
+            return redirect("customers:data")
+
+        messages.error(request, "Please fix the errors below.")
+        return render(request, self.template_name, {
+            "customer": customer,
+            "form": form,
+        })
 
 
 import json
