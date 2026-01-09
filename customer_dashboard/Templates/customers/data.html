@@ -31,7 +31,7 @@
     <thead class="table-primary">
         <tr>
             <th>Name</th><th>Email</th><th>Phone</th><th>State</th>
-            <th>District</th><th>Address</th><th>Salesperson</th> <th>Last Purchase</th>
+            <th>District</th><th>Address</th><th>Salesperson</th> <th>Last Purchase</th><th>Edit Salesperson</th>
 
         </tr>
     </thead>
@@ -57,6 +57,8 @@
                     <span class="text-muted">No Purchase</span>
                 {% endif %}
             </td>
+            <td><a href="{% url 'customers:customer_edit' c.id %}" class="btn btn-sm btn-outline-primary">Edit</a></td>
+
 
 
         </tr>
