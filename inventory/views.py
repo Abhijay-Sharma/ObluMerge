@@ -1271,8 +1271,7 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
 
             salesperson_name = customer_info.get("salesperson")
             salesperson_email = customer_info.get("email")
-            if salesperson_email:
-                print("xyz = ",salesperson_email)
+
 
             voucher_link = reverse("voucher_detail", args=[voucher_id]) if voucher_id else ""
 
@@ -1284,7 +1283,7 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
                     f"Hi {salesperson_name},\n\n"
                     f"The product '{product_name}' has not been sold since {voucher_date}.\n"
                     f"Customer '{customer_name}' had previously purchased this product.\n"
-                    f"Last voucher: {request.build_absolute_uri(voucher_link) if voucher_link else ''}\n\n"
+                    f"Last voucher: {'https://oblutools.com' + voucher_link if voucher_link else ''}\n\n"
                     f"Please try to reconnect with this customer to promote this product again.\n\n"
                     f"Thanks."
                 )
