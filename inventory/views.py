@@ -30,6 +30,7 @@ from django.db.models import Sum, Max
 from tally_voucher.models import VoucherStockItem
 from collections import defaultdict
 from customer_dashboard.models import Customer
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -1092,6 +1093,241 @@ class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
                 "quantity": item.quantity,
                 "last_sold": last_sold,
                 "customers": customers,  # 👈 list now
+            }
+
+            # add to flat list and category grouping
+            data.append(entry)
+            category_data[category_name].append(entry)
+
+            # optionally compute value if you have a cost field, e.g. item.cost_price
+            # if getattr(item, "cost_price", None):
+            #     total_dead_value += (item.cost_price or 0) * item.quantity
+
+        context = {
+            "dead_stock": data,                        # preserves previous template variable
+            "category_data": dict(category_data),      # new accordion data
+            "from_date": from_date,
+            "to_date": to_date,
+            "total_dead_value": round(total_dead_value, 2),
+            "total_dead_products": len(data),
+        }
+
+        return render(request, self.template_name, context)
+
+
+# this dead stock view is same as above but with ability to send mail
+class DeadStockDashboardView(AccountantRequiredMixin, TemplateView):
+    template_name = "inventory/dead_stock_dashboard_3mail.html"
+
+    def get(self, request):
+
+        # -------------------------
+        # DATE FILTER
+        # -------------------------
+        from_date = request.GET.get('from')
+        to_date = request.GET.get('to')
+
+        if not from_date or not to_date:
+            to_date = datetime.date.today()
+            from_date = to_date.replace(month=max(1, to_date.month - 3))
+        else:
+            from_date = datetime.datetime.strptime(from_date, "%Y-%m-%d").date()
+            to_date = datetime.datetime.strptime(to_date, "%Y-%m-%d").date()
+
+        # -------------------------
+        # ✅ SOLD PRODUCTS (FROM TALLY TAX INVOICE)
+        # -------------------------
+        sold_products_set = set()
+
+        sold_rows = (
+            VoucherStockItem.objects.filter(
+                voucher__voucher_type__iexact="Tax Invoice",
+                voucher__date__range=(from_date, to_date)
+            )
+            .values("item_id", "item_name_text")
+        )
+
+        for row in sold_rows:
+            if row["item_id"]:
+                sold_products_set.add(row["item_id"])
+
+            elif row["item_name_text"]:
+                try:
+                    item = InventoryItem.objects.get(
+                        name__iexact=row["item_name_text"].strip()
+                    )
+                    sold_products_set.add(item.id)
+                except InventoryItem.DoesNotExist:
+                    pass
+
+        dead_stock_items = InventoryItem.objects.exclude(
+            id__in=sold_products_set
+        ).select_related("category")
+        # dead_stock_items = InventoryItem.objects.exclude(id__in=sold_products)
+
+
+
+
+        # -------------------------
+        # LAST CUSTOMER (TAX INVOICE)
+        # -------------------------
+        last_customers_raw = (
+            VoucherStockItem.objects.filter(
+                voucher__voucher_type__iexact="Tax Invoice"
+            )
+            .values(
+                "item_id",
+                "item_name_text",
+                "voucher__party_name",
+                "voucher__date",
+                "voucher_id"
+            )
+            .order_by("-voucher__date")
+        )
+
+        last_customers_raw = (
+            VoucherStockItem.objects.filter(
+                voucher__voucher_type__iexact="Tax Invoice"
+            )
+            .values(
+                "item_id",
+                "item_name_text",
+                "voucher__party_name",
+                "voucher__date",
+                "voucher_id"
+            )
+            .order_by("-voucher__date")  # latest first
+        )
+
+        product_last_sold_map = {}
+        product_customers_map = defaultdict(list)
+
+        # -------------------------
+        # ✅ CUSTOMER → SALESPERSON LOOKUP
+        # -------------------------
+        customer_salesperson_map = {}
+
+        customers = Customer.objects.select_related("salesperson").all()
+
+        for c in customers:
+            if c.name:
+                customer_salesperson_map[c.name.strip().lower()] = {
+                    "salesperson": c.salesperson.name if c.salesperson else None,
+                    "email": (
+                        c.salesperson.user.email
+                        if c.salesperson and c.salesperson.user and c.salesperson.user.email
+                        else None
+                    )
+                }
+
+        for row in last_customers_raw:
+            product_id = None
+            product_name = None
+            # --- resolve product id ---
+            if row["item_id"]:
+                product_id = row["item_id"]
+                try:
+                    product_name = InventoryItem.objects.get(id=product_id).name
+                except InventoryItem.DoesNotExist:
+                    product_name = None
+
+            elif row["item_name_text"]:
+                try:
+                    item = InventoryItem.objects.get(
+                        name__iexact=row["item_name_text"].strip()
+                    )
+                    product_id = item.id
+                    product_name = item.name
+                except InventoryItem.DoesNotExist:
+                    continue
+
+            if not product_id:
+                continue
+
+            customer_name = row["voucher__party_name"]
+            voucher_id = row["voucher_id"]
+            voucher_date = row["voucher__date"]
+
+            # -----------------------
+            # ✅ LAST SOLD DATE (latest voucher date wins automatically because ordering is DESC)
+            # -----------------------
+            if product_id not in product_last_sold_map:
+                product_last_sold_map[product_id] = voucher_date
+
+            # -----------------------
+            # ✅ CUSTOMER LIST
+            # -----------------------
+            already_added = any(
+                c["name"] == customer_name
+                for c in product_customers_map[product_id]
+            )
+            if already_added:
+                continue
+
+            customer_info = customer_salesperson_map.get(
+                customer_name.strip().lower(),
+                {}
+            )
+
+            salesperson_name = customer_info.get("salesperson")
+            salesperson_email = customer_info.get("email")
+            if salesperson_email:
+                print("xyz = ",salesperson_email)
+
+            voucher_link = reverse("voucher_detail", args=[voucher_id]) if voucher_id else ""
+
+            mail_link = None
+            if salesperson_email and voucher_date:
+                subject = f"Dead Stock Follow-up: {row.get('item_name_text') or ''}"
+
+                body = (
+                    f"Hi {salesperson_name},\n\n"
+                    f"The product '{product_name}' has not been sold since {voucher_date}.\n"
+                    f"Customer '{customer_name}' had previously purchased this product.\n"
+                    f"Last voucher: {request.build_absolute_uri(voucher_link) if voucher_link else ''}\n\n"
+                    f"Please try to reconnect with this customer to promote this product again.\n\n"
+                    f"Thanks."
+                )
+
+                mail_link = (
+                    f"mailto:{salesperson_email}"
+                    f"?subject={quote(subject)}"
+                    f"&body={quote(body)}"
+                )
+
+            product_customers_map[product_id].append({
+                "name": customer_name,
+                "voucher_id": voucher_id,
+                "link": voucher_link,
+                "salesperson": salesperson_name,
+                "salesperson_email": salesperson_email,
+                "mail_link": mail_link,  # ✅ THIS IS WHAT TEMPLATE NEEDS
+            })
+
+        # -------------------------
+        # ✅ CATEGORY WISE GROUPING
+        # -------------------------
+        category_data = defaultdict(list)
+
+        # flat list for original summary card / templates that expect `dead_stock`
+        data = []
+        total_dead_value = 0  # placeholder; keep as 0 unless you want actual valuation
+
+
+        for item in dead_stock_items:
+            if not item.quantity or item.quantity <= 0:
+                continue
+
+            last_sold = product_last_sold_map.get(item.id)
+            customers = product_customers_map.get(item.id, [])
+            category_name = item.category.name if item.category else "Uncategorized"
+
+            entry = {
+                "name": item.name,
+                "quantity": item.quantity,
+                "last_sold": last_sold,
+                "customers": customers,  # 👈 list now
+                "product_name": item.name,  # explicit for mail template
             }
 
             # add to flat list and category grouping
