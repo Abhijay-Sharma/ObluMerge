@@ -102,11 +102,30 @@
       width: 90%;
       max-width: 450px;
     }
+
     .close { float:right; cursor:pointer; font-size:20px; }
     @keyframes fadeIn {
       from { opacity:0; transform: translateY(30px); }
       to { opacity:1; transform: translateY(0); }
     }
+  .courier-btn {
+  padding: 10px 22px;
+  border-radius: 30px;
+  border: 2px solid #222;
+  background: transparent;
+  color: #222;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.courier-btn.active {
+  background: #222;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+
   </style>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -231,6 +250,29 @@
             </tbody>
 
           </table>
+            <!-- ================= COURIER MODE ================= -->
+<div class="form-section" style="text-align:center; margin-top:25px;">
+  <h3>Courier Mode</h3>
+
+  <!-- Hidden field bound to model -->
+<!--  {{ invoice_form.courier_mode }}-->
+<input type="hidden" name="courier_mode" id="id_courier_mode" value="surface">
+
+  <button type="button"
+          class="courier-btn active"
+          data-mode="surface"
+<!--          id="btn-surface">-->
+    🚚 Surface
+  </button>
+
+  <button type="button"
+          class="courier-btn"
+          data-mode="air"
+<!--          id="btn-air">-->
+    ✈️ Air
+  </button>
+</div>
+
         </div>
       </div>
 
@@ -378,6 +420,24 @@ $(function () {
   });
 
 });
+    /* ================= COURIER MODE TOGGLE ================= */
+const courierInput = $("#id_courier_mode");
+
+// Default
+courierInput.val("surface");
+
+$(".courier-btn").click(function () {
+  $(".courier-btn").removeClass("active");
+  $(this).addClass("active");
+
+  const mode = $(this).data("mode");
+  $("#id_courier_mode").val(mode);
+
+  console.log("Courier mode set to:", mode); // DEBUG
+});
+
+
+
 </script>
 
 </body>

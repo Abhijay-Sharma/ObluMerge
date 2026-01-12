@@ -114,13 +114,11 @@
   <!-- ================= HEADER TABLE ================= -->
   <table class="header-table">
     <tr>
-      <!-- Logo -->
       <td class="logo-cell">
         <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.webp?v=1757743482"
              class="logo" alt="OBLU Logo">
       </td>
 
-      <!-- Company Info -->
       <td class="company-cell">
         <b>OBLU HEALTHCARE LLP</b><br>
         UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE, ROAD NO.44,<br>
@@ -130,7 +128,6 @@
         E-Mail: sales@obluhc.com
       </td>
 
-      <!-- Invoice Meta Table -->
       <td class="invoice-cell">
         <table class="invoice-inner-table">
           <tr><td>Invoice No.</td><td>{{ invoice.id }}</td></tr>
@@ -151,7 +148,6 @@
     </tr>
   </table>
 
-  <!-- CONTACT BAR -->
   <div class="contact-line">
     M:+91 96504 47099 &nbsp; | &nbsp; E:sales@obluhc.com &nbsp; | &nbsp; W:www.obluhc.com
   </div>
@@ -205,31 +201,51 @@
         <td><b>{{ item.product.name }}</b></td>
         <td class="center">{{ item.hsn|default_if_none:"" }}</td>
         <td class="center bold">{{ item.quantity }} PCS</td>
+
         <td class="right">{{ item.unit_price|floatformat:2 }}</td>
         <td class="right">{{ item.unit_price_excl_tax|floatformat:2 }}</td>
         <td class="center">PCS</td>
-        <td class="right bold">{{ item.total_price|floatformat:2 }}</td>
+          <td class="right bold">{{ item.amount_excl_tax|floatformat:2 }}</td>
+
+<!--        <td class="right bold">{{ item.total_price|floatformat:2 }}</td>-->
       </tr>
       {% endfor %}
 
-      <!-- Totals row -->
       <tr class="bold">
         <td colspan="6"></td>
         <td class="center">Total</td>
-        <td class="right">₹ {{ invoice.total|floatformat:2 }}</td>
+        <td class="right">₹ {{ invoice.items_total|floatformat:2 }}</td>
+      </tr>
+
+      <!-- ADDED -->
+      <tr>
+        <td colspan="6"></td>
+        <td class="center">Courier Charges</td>
+        <td class="right">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
+      </tr>
+
+      <tr>
+        <td colspan="6"></td>
+        <td class="center">Courier GST</td>
+        <td class="right">₹ {{ invoice.courier_gst|floatformat:2 }}</td>
+      </tr>
+
+      <tr class="bold">
+        <td colspan="6"></td>
+        <td class="center">Grand Total</td>
+        <td class="right">₹ {{ invoice.grand_total|floatformat:2 }}</td>
       </tr>
     </tbody>
   </table>
 
   <br>
 
-  <!-- AMOUNT IN WORDS (simple demo version) -->
   <b>Amount Chargeable (in words)</b><br>
-  <b>INR {{ invoice.total|floatformat:0 }} Only</b>
+  <b>INR {{ invoice.grand_total|floatformat:0 }} Only</b>
 
   <br><br>
 
-  <!-- ================= TAX TABLE (simple) ================= -->
+  <!-- ================= TAX TABLE ================= -->
   <table>
     <thead>
       <tr class="center bold">
@@ -243,18 +259,18 @@
 
     <tbody>
       {% for item in items %}
-        <tr class="center">
-          <td>{{ item.hsn|default_if_none:"" }}</td>
-          <td>{{ invoice.total|floatformat:2 }}</td>
-          <td>{{ item.taxrate|default_if_none:"" }}%</td>
-          <td>0.00</td>
-          <td>0.00</td>
-        </tr>
+      <tr class="center">
+        <td>{{ item.hsn|default_if_none:"" }}</td>
+        <td>{{ invoice.items_total|floatformat:2 }}</td>
+        <td>{{ item.taxrate|default_if_none:"" }}%</td>
+        <td>0.00</td>
+        <td>0.00</td>
+      </tr>
       {% endfor %}
 
       <tr class="bold center">
         <td>Total</td>
-        <td>{{ invoice.total|floatformat:2 }}</td>
+        <td>{{ invoice.items_total|floatformat:2 }}</td>
         <td></td>
         <td>0.00</td>
         <td>0.00</td>
@@ -264,7 +280,6 @@
 
   <br>
 
-  <!-- DECLARATION -->
   <b>Tax Amount (in words):</b> INR Zero Only<br>
   <b>Company's PAN:</b> AAIFO0279M<br><br>
 
