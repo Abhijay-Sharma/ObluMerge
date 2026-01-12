@@ -57,6 +57,13 @@ class ProductPriceTier(models.Model):
         return f"{self.product.product.name} - {self.min_quantity}+ @ ₹{self.unit_price}"
 
 
+
+# ------adding mode------
+class CourierMode(models.TextChoices):
+    SURFACE = "surface", "Surface"
+    AIR = "air", "Air"
+
+
 # 📅 2. Proforma Invoice Core Models
 def validity_default():
     return timezone.now() + timedelta(weeks=2)
@@ -70,6 +77,10 @@ class ProformaInvoice(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     validity = models.DateTimeField(default=validity_default)
     created_by = models.CharField(max_length=255, default="Oblu")
+    courier_mode = models.CharField(
+        max_length=10,
+        choices=CourierMode.choices,
+        default=CourierMode.SURFACE)
 
     def total(self):
         return sum(item.total_price() for item in self.items.all())
