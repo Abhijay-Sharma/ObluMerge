@@ -9,7 +9,7 @@ from collections import defaultdict
 class Command(BaseCommand):
     help = "Import SURFACE courier rates from Excel"
 
-    EXCEL_PATH = r"C:\Users\abhij\Downloads\Courier_Rates_Surface.xlsx"
+    EXCEL_PATH = r"C:\Users\Administrator\Desktop\Courier_Rates_Surface.xlsx"
     def handle(self, *args, **options):
         self.stdout.write(f"\n📥 Loading SURFACE Excel: {self.EXCEL_PATH}")
 
