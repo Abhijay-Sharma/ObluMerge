@@ -39,6 +39,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
             selected_customer = Customer.objects.filter(id=customer_id).first()
         if invoice_form.is_valid() and formset.is_valid():
             invoice = invoice_form.save(commit=False)
+            invoice.courier_mode = request.POST.get("courier_mode", "surface")
             if not request.user.is_accountant:
                 invoice.created_by = request.user.username
             invoice.save()
