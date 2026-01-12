@@ -14,4 +14,6 @@ urlpatterns = [
     path('api/inventory_by_category/', views.get_inventory_by_category, name='get_inventory_by_category'),
 
     path('',views.home,name='home'),
+
+    path("proformas/", views.ProformaInvoiceListView.as_view(), name="proforma_list"),
 ]

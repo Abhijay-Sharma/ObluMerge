@@ -1,0 +1,106 @@
+{% extends "quotations/base.html" %}
+{% block content %}
+
+<style>
+  @media (max-width: 600px) {
+    table th, table td {
+      padding: 8px;
+      font-size: 0.85rem;
+    }
+    h1 {
+      font-size: 1.6rem;
+    }
+  }
+</style>
+
+<div class="container">
+  <div class="table-container">
+
+    <h1>Proforma Invoices</h1>
+
+    <div class="top-actions">
+      <a href="{% url 'home' %}" class="btn-secondary">Back to Home</a>
+      <a href="{% url 'create_proforma' %}" class="btn-secondary">+ Create Proforma</a>
+    </div>
+
+    <!-- ---------------- FILTER BAR ---------------- -->
+    <form method="get" class="filters" style="margin-bottom: 15px; display:flex; gap:10px; flex-wrap:wrap;">
+
+      {% if request.user.is_accountant %}
+        <select name="created_by">
+          <option value="">Created By</option>
+          {% for u in users %}
+            <option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>
+              {{ u.username }}
+            </option>
+          {% endfor %}
+        </select>
+      {% endif %}
+
+      <select name="customer">
+        <option value="">Customer</option>
+        {% for c in customers %}
+          <option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>
+            {{ c.customer__name }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <input type="date" name="start_date" value="{{ request.GET.start_date }}">
+      <input type="date" name="end_date" value="{{ request.GET.end_date }}">
+
+      <select name="sort_by">
+        <option value="">Sort By</option>
+        <option value="date_desc" {% if request.GET.sort_by == "date_desc" %}selected{% endif %}>Latest</option>
+        <option value="date_asc" {% if request.GET.sort_by == "date_asc" %}selected{% endif %}>Oldest</option>
+        <option value="customer" {% if request.GET.sort_by == "customer" %}selected{% endif %}>Customer</option>
+      </select>
+
+      <button type="submit" class="btn-secondary">Apply</button>
+    </form>
+
+    <!-- ---------------- TABLE ---------------- -->
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Customer</th>
+          <th>Created By</th>
+          <th>Date</th>
+          <th>Total Qty</th>
+          <th>Grand Total</th>
+          <th>Courier Mode</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for inv in invoices %}
+          <tr>
+            <td>#{{ inv.id }}</td>
+            <td>{{ inv.customer.name }}</td>
+            <td>{{ inv.created_by }}</td>
+            <td>{{ inv.date_created|date:"d M Y" }}</td>
+            <td>{{ inv.total_quantity }}</td>
+            <td>₹{{ inv.grand_total|floatformat:2 }}</td>
+            <td>{{ inv.get_courier_mode_display }}</td>
+            <td>
+              <a href="{{ inv.get_absolute_url }}" class="btn-secondary" target="_blank">
+                View
+              </a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="8" style="text-align:center; padding:20px;">
+              No proforma invoices found.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+{% endblock %}

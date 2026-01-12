@@ -8,6 +8,8 @@ from inventory.models import Category, InventoryItem
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.views.generic import ListView
+from django.contrib.auth import get_user_model
 
 
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
@@ -94,3 +96,74 @@ def get_inventory_by_category(request):
 @login_required
 def home(request):
     return render(request, 'proforma_invoice/home.html')
+
+
+class ProformaInvoiceListView(LoginRequiredMixin, ListView):
+    model = ProformaInvoice
+    template_name = "proforma_invoice/proforma_list.html"
+    context_object_name = "invoices"
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # -------------------------
+        # ROLE BASED ACCESS
+        # -------------------------
+        if user.is_accountant:
+            qs = ProformaInvoice.objects.select_related("customer").all()
+        else:
+            # Normal users see only their own invoices
+            qs = ProformaInvoice.objects.select_related("customer").filter(
+                created_by=user.username
+            )
+
+        # -------------------------
+        # FILTERS
+        # -------------------------
+        created_by = self.request.GET.get("created_by")
+        customer = self.request.GET.get("customer")
+        start_date = self.request.GET.get("start_date")
+        end_date = self.request.GET.get("end_date")
+        sort_by = self.request.GET.get("sort_by")
+
+        if created_by:
+            qs = qs.filter(created_by=created_by)
+
+        if customer:
+            qs = qs.filter(customer__id=customer)
+
+        if start_date and end_date:
+            qs = qs.filter(date_created__date__range=[start_date, end_date])
+
+        # -------------------------
+        # SORTING
+        # -------------------------
+        if sort_by == "date_desc":
+            qs = qs.order_by("-date_created")
+        elif sort_by == "date_asc":
+            qs = qs.order_by("date_created")
+        elif sort_by == "customer":
+            qs = qs.order_by("customer__name")
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        User = get_user_model()
+
+        # For filters dropdowns
+        ctx["users"] = (
+            User.objects.filter(is_active=True)
+            if self.request.user.is_accountant
+            else []
+        )
+
+        ctx["customers"] = (
+            ProformaInvoice.objects
+            .select_related("customer")
+            .values("customer__id", "customer__name")
+            .distinct()
+        )
+
+        return ctx
