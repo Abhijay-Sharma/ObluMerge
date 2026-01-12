@@ -1,0 +1,104 @@
+{% extends "quotations/base.html" %}
+{% block content %}
+
+<style>
+  select {
+    padding: 4px;
+    font-size: 0.9rem;
+  }
+  .terms {
+    max-width: 280px;
+    font-size: 0.85rem;
+    color: #444;
+  }
+</style>
+
+<div class="container">
+  <div class="table-container">
+
+    <h1>Proforma Products</h1>
+
+    <div class="top-actions">
+      <a href="{% url 'home' %}" class="btn-secondary">Back to Home</a>
+      <a href="{% url 'admin:proforma_invoice_productprice_add' %}" class="btn-secondary">
+        + Add Product Price
+      </a>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th>Stock Qty</th>
+          <th>Base Price</th>
+          <th>Tax %</th>
+          <th>Dynamic</th>
+          <th>Price Tiers</th>
+          <th>Terms</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for p in products %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+
+            <td>
+              <strong>{{ p.product.name }}</strong>
+            </td>
+
+            <td>
+              {{ p.product.quantity|default:"-" }}
+            </td>
+
+            <td>
+              ₹{{ p.price }}
+            </td>
+
+            <td>
+              {{ p.tax_rate }}%
+            </td>
+
+            <td>
+              {% if p.has_dynamic_price %}
+                ✅ Yes
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <td>
+              {% if p.price_tiers.all %}
+                <select>
+                  <option>Base → ₹{{ p.price }}</option>
+                  {% for tier in p.price_tiers.all %}
+                    <option>
+                      {{ tier.min_quantity }}+ → ₹{{ tier.unit_price }}
+                    </option>
+                  {% endfor %}
+                </select>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <td class="terms">
+              {{ p.terms_and_conditions|default:"—" }}
+            </td>
+          </tr>
+
+        {% empty %}
+          <tr>
+            <td colspan="8" style="text-align:center; padding:20px;">
+              No products configured.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+{% endblock %}

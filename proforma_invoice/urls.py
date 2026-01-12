@@ -16,4 +16,6 @@ urlpatterns = [
     path('',views.home,name='home'),
 
     path("proformas/", views.ProformaInvoiceListView.as_view(), name="proforma_list"),
+
+    path("products/", views.ProformaProductListView.as_view(), name="proforma_product_list"),
 ]

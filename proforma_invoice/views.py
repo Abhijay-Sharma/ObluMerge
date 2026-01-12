@@ -10,6 +10,9 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView
 from django.contrib.auth import get_user_model
+from .models import ProductPrice, ProductPriceTier
+from django.db.models import Prefetch
+
 
 
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
@@ -167,3 +170,26 @@ class ProformaInvoiceListView(LoginRequiredMixin, ListView):
         )
 
         return ctx
+
+
+
+
+class ProformaProductListView(LoginRequiredMixin, ListView):
+    model = ProductPrice
+    template_name = "proforma_invoice/product_list.html"
+    context_object_name = "products"
+
+    def get_queryset(self):
+        qs = (
+            ProductPrice.objects
+            .select_related("product")
+            .prefetch_related(
+                Prefetch(
+                    "price_tiers",
+                    queryset=ProductPriceTier.objects.order_by("min_quantity")
+                )
+            )
+            .order_by("product__name")
+        )
+
+        return qs
