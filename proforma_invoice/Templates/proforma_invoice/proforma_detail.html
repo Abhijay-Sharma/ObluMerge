@@ -3,304 +3,315 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PROFORMA INVOICE</title>
+<title>Proforma Invoice</title>
 
 <style>
-  @page { size: A4 portrait; margin: 12mm; }
+@page { size: A4 portrait; margin: 14mm; }
 
-  body {
-    font-family: 'DejaVu Sans', Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    font-size: 12px;
-    color: #000;
-  }
+body{
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  color:#000;
+  margin:0;
+}
 
-  table {
-    border-collapse: collapse;
-    width: 100%;
-  }
+.wrapper{ width:100%; }
 
-  td, th {
-    border: 1px solid #000;
-    padding: 4px 5px;
-    vertical-align: top;
-    font-size: 12px;
-  }
+.invoice-container{
+  padding: 10px 14px;
+}
 
-  .center { text-align: center; }
-  .right { text-align: right; }
-  .bold { font-weight: bold; }
-  .italic { font-style: italic; }
+/* ---------- GLOBAL ---------- */
+table{ width:100%; border-collapse:collapse; }
+td, th{ border:none; padding:6px; vertical-align:top; }
 
-  .header-title {
-    text-align: center;
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 6px;
-  }
+.bold{ font-weight:bold; }
+.center{ text-align:center; }
+.right{ text-align:right; }
 
-  .wrapper {
-    width: 96%;
-    margin: auto;
-  }
+/* ---------- HEADER ---------- */
+.header-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
 
-  .header-table {
-    width: 100%;
-    table-layout: fixed;
-  }
+.company-info{ width:65%; line-height:1.4; }
 
-  .logo-cell {
-    width: 18%;
-    padding: 0;
-    border-right: 1px solid #000;
-  }
+.logo{ width:140px; }
 
-  .logo {
-    width: 60%;
-    display: block;
-    margin: 20% auto;
-  }
+hr{
+  border:none;
+  border-top:2px solid #0b78a8;
+  margin:10px 0 14px 0;
+}
 
-  .company-cell {
-    width: 47%;
-    padding: 4px;
-    line-height: 1.35;
-  }
+.header-title{
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+  color:#0b78a8;
+  margin-bottom:14px;
+}
 
-  .invoice-cell {
-    width: 35%;
-    padding: 0;
-  }
+/* ---------- INFO GRID ---------- */
+.info-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap:30px;
+  margin-bottom:18px;
+}
+.info-grid b{ display:block; margin-bottom:6px; }
 
-  .invoice-inner-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
+/* ---------- ITEM TABLE ---------- */
+.item-table thead th{
+  background:#0b78a8;
+  color:#fff;
+  font-weight:bold;
+  padding:7px;
+  text-align:center;
+}
 
-  .invoice-inner-table td {
-    border: 1px solid #000;
-    padding: 3px 4px;
-  }
+.item-table thead th.item-name{
+  text-align:left;
+  padding-left:14px;
+}
 
-  .contact-line {
-    background: #20201f;
-    color: white;
-    font-size: 12px;
-    text-align: center;
-    padding: 4px 0;
-    margin: 6px 0 8px 0;
-  }
+.item-table tbody td{
+  border-bottom:1px solid #999;
+}
 
-  .footer-text {
-    text-align: center;
-    font-size: 11px;
-    margin-top: 8px;
-  }
+.item-table tbody td.item-name{
+  text-align:left;
+  padding-left:14px;
+}
 
-  @media print {
-    .no-print { display:none !important; }
-  }
+.item-table th.right,
+.item-table td.right{
+  text-align: right;
+  padding-right: 12px;
+}
+
+.item-table th.center,
+.item-table td.center{
+  text-align: center;
+}
+
+
+/* ---------- TOTALS ---------- */
+.totals-wrapper{ margin-top:16px; }
+
+.totals-table td{ padding:6px 4px; }
+
+.totals-highlight{
+  background:#0b78a8;
+  color:#fff;
+  font-weight:bold;
+}
+
+/* ---------- PAY TO ---------- */
+.pay-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top:22px;
+}
+
+.signature{
+  text-align:center;
+  margin-top:30px;
+}
+
+/* ---------- FOOTER ---------- */
+.footer-text{
+  text-align:center;
+  font-size:11px;
+  margin-top:30px;
+}
+
+@media print{
+  .no-print{ display:none; }
+}
 </style>
 </head>
 
 <body>
-
+<div class="invoice-container">
 <div class="wrapper">
 
-  <div class="header-title">PROFORMA INVOICE</div>
-
-  <!-- ================= HEADER TABLE ================= -->
-  <table class="header-table">
-    <tr>
-      <td class="logo-cell">
-        <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.webp?v=1757743482"
-             class="logo" alt="OBLU Logo">
-      </td>
-
-      <td class="company-cell">
-        <b>OBLU HEALTHCARE LLP</b><br>
-        UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE, ROAD NO.44,<br>
-        Pitampura, New Delhi, Delhi, 110034<br>
-        MD42 REG-RMD/DCD/23/Z0-5329/251<br>
-        GSTIN/UIN: 07AAIFO0279M1ZU &nbsp; State Name: Delhi, Code: 07<br>
-        E-Mail: sales@obluhc.com
-      </td>
-
-      <td class="invoice-cell">
-        <table class="invoice-inner-table">
-          <tr><td>Invoice No.</td><td>{{ invoice.id }}</td></tr>
-          <tr><td>Dated</td><td><b>{{ invoice.date_created|date:"d-M-Y" }}</b></td></tr>
-          <tr><td>Delivery Note</td><td></td></tr>
-          <tr><td>Mode/Terms of Payment</td><td></td></tr>
-          <tr><td>Reference No. & Date</td><td></td></tr>
-          <tr><td>Other References</td><td></td></tr>
-          <tr><td>Buyer's Order No.</td><td></td></tr>
-          <tr><td>Dated</td><td></td></tr>
-          <tr><td>Dispatch Doc No.</td><td></td></tr>
-          <tr><td>Delivery Note Date</td><td></td></tr>
-          <tr><td>Dispatched through</td><td></td></tr>
-          <tr><td>Destination</td><td></td></tr>
-          <tr><td>Terms of Delivery</td><td></td></tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-
-  <div class="contact-line">
-    M:+91 96504 47099 &nbsp; | &nbsp; E:sales@obluhc.com &nbsp; | &nbsp; W:www.obluhc.com
+<!-- ================= HEADER ================= -->
+<div class="header-top">
+  <div class="company-info">
+    <b>OBLU HEALTHCARE LLP</b><br>
+    UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
+    ROAD NO.44, Pitampura, New Delhi – 110034<br>
+    Phone : 96504 47099<br>
+    Email : sales@obluhc.com<br>
+    GSTIN : 07AAIFO0279M1ZU<br>
+    State : 07-Delhi
   </div>
 
-  <!-- ================= CONSIGNEE / BUYER ================= -->
-  <table>
-    <tr>
-      <td style="width:50%;">
-        <b>Consignee (Ship to)</b><br>
-        <b>{{ invoice.customer.name }}</b><br>
-        {{ invoice.customer.address }}<br>
-        {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-        {{ invoice.customer.state }}<br>
-        Phone: {{ invoice.customer.phone }}<br>
-        Email: {{ invoice.customer.email }}
-      </td>
+  <div>
+    <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.webp?v=1757743482"
+         class="logo" alt="OBLU Logo">
+  </div>
+</div>
 
-      <td style="width:50%;">
-        <b>Buyer (Bill to)</b><br>
-        <b>{{ invoice.customer.name }}</b><br>
-        {{ invoice.customer.address }}<br>
-        {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-        {{ invoice.customer.state }}<br>
-        Phone: {{ invoice.customer.phone }}<br>
-        Email: {{ invoice.customer.email }}
-      </td>
-    </tr>
-  </table>
+<hr>
 
-  <br>
+<div class="header-title">Proforma Invoice</div>
 
-  <!-- ================= ITEM TABLE ================= -->
-  <table>
-    <thead>
-      <tr class="center bold">
-        <th style="width:5%;">Sl No.</th>
-        <th style="width:35%;">Description of Goods</th>
-        <th style="width:10%;">HSN/SAC</th>
-        <th style="width:10%;">Quantity</th>
-        <th style="width:10%;">Rate (Incl. Tax)</th>
-        <th style="width:10%;">Rate</th>
-        <th style="width:8%;">Per</th>
-        <th style="width:12%;">Amount</th>
-      </tr>
-    </thead>
+<!-- ================= ORDER / SHIP / DETAILS ================= -->
+<div class="info-grid">
 
-    <tbody>
-      {% for item in items %}
+  <div>
+    <b>Order From</b>
+    {{ invoice.customer.name }}<br>
+    {{ invoice.customer.address }}<br>
+    {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
+    {{ invoice.customer.state }}<br>
+    Contact No. : {{ invoice.customer.phone }}
+  </div>
+
+  <div>
+    <b>Ship To</b>
+    {{ invoice.customer.name }}<br>
+    {{ invoice.customer.address }}<br>
+    {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
+    {{ invoice.customer.state }}<br>
+    Mob : {{ invoice.customer.phone }}
+  </div>
+
+  <div>
+    <b>Order Details</b>
+    Order No. : {{ invoice.id }}<br>
+    Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
+    Place of supply : Delhi
+  </div>
+
+</div>
+
+<!-- ================= ITEM TABLE ================= -->
+<table class="item-table">
+<thead>
+<tr>
+  <th style="width:5%;">#</th>
+  <th class="item-name" style="width:35%;">Item name</th>
+  <th style="width:10%;">HSN / SAC</th>
+  <th style="width:10%;">Qty</th>
+  <th class="right" style="width:15%;">Price / Unit</th>
+  <th class="center" style="width:10%;">GST</th>
+  <th class="right" style="width:15%;">Amount</th>
+
+</tr>
+</thead>
+
+<tbody>
+{% for item in items %}
+<tr>
+  <td class="center">{{ forloop.counter }}</td>
+  <td class="item-name">{{ item.product.name }}</td>
+  <td class="center">{{ item.hsn }}</td>
+  <td class="center">{{ item.quantity }}</td>
+  <td class="right" style="align-items:left; padding-right:10px;">₹ {{ item.unit_price|floatformat:2 }}</td>
+  <td class="center">{{ item.taxrate }}%</td>
+  <td class="right">
+      {% widthratio item.total_price 100 item.taxrate as item_gst %}
+      ₹ {{ item.total_price|add:item_gst|floatformat:2 }}
+  </td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<!-- ================= TOTALS ================= -->
+{% with items.0.taxrate as gst_rate %}
+{% widthratio invoice.items_total 100 gst_rate as igst_value %}
+{% with invoice.items_total|add:igst_value as subtotal_plus_igst %}
+{% with subtotal_plus_igst|add:invoice.courier_charge|add:invoice.courier_gst as display_total %}
+
+<div class="totals-wrapper">
+<table>
+<tr>
+  <td width="60%">
+    <b>Order Amount In Words</b><br>
+    INR {{ display_total|floatformat:0 }} Only
+
+    <br><br>
+
+    <b>Terms and Conditions</b><br>
+    1. 100% payment on order confirmation.<br>
+    2. Shipping charges will be added for Air shipment (if needed)
+  </td>
+
+  <td width="40%">
+    <table class="totals-table">
       <tr>
-        <td class="center">{{ forloop.counter }}</td>
-        <td><b>{{ item.product.name }}</b></td>
-        <td class="center">{{ item.hsn|default_if_none:"" }}</td>
-        <td class="center bold">{{ item.quantity }} PCS</td>
-
-        <td class="right">{{ item.unit_price|floatformat:2 }}</td>
-        <td class="right">{{ item.unit_price_excl_tax|floatformat:2 }}</td>
-        <td class="center">PCS</td>
-          <td class="right bold">{{ item.amount_excl_tax|floatformat:2 }}</td>
-
-<!--        <td class="right bold">{{ item.total_price|floatformat:2 }}</td>-->
-      </tr>
-      {% endfor %}
-
-      <tr class="bold">
-        <td colspan="6"></td>
-        <td class="center">Total</td>
+        <td class="right">Sub Total</td>
         <td class="right">₹ {{ invoice.items_total|floatformat:2 }}</td>
       </tr>
 
-      <!-- ADDED -->
       <tr>
-        <td colspan="6"></td>
-        <td class="center">Courier Charges</td>
+        <td class="right">IGST @ {{ gst_rate }}%</td>
+        <td class="right">₹ {{ igst_value|floatformat:2 }}</td>
+      </tr>
+
+      <tr>
+        <td class="right">Courier Charges</td>
         <td class="right">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
       </tr>
 
       <tr>
-        <td colspan="6"></td>
-        <td class="center">Courier GST</td>
+        <td class="right">Courier GST</td>
         <td class="right">₹ {{ invoice.courier_gst|floatformat:2 }}</td>
       </tr>
 
-      <tr class="bold">
-        <td colspan="6"></td>
-        <td class="center">Grand Total</td>
-        <td class="right">₹ {{ invoice.grand_total|floatformat:2 }}</td>
+      <tr class="totals-highlight">
+        <td class="right bold">Total</td>
+        <td class="right bold">₹ {{ display_total|floatformat:2 }}</td>
       </tr>
-    </tbody>
-  </table>
+    </table>
+  </td>
+</tr>
+</table>
+</div>
 
-  <br>
+{% endwith %}
+{% endwith %}
+{% endwith %}
 
-  <b>Amount Chargeable (in words)</b><br>
-  <b>INR {{ invoice.grand_total|floatformat:0 }} Only</b>
 
-  <br><br>
 
-  <!-- ================= TAX TABLE ================= -->
-  <table>
-    <thead>
-      <tr class="center bold">
-        <th>HSN/SAC</th>
-        <th>Taxable Value</th>
-        <th>IGST Rate</th>
-        <th>IGST Amount</th>
-        <th>Total Tax Amount</th>
-      </tr>
-    </thead>
 
-    <tbody>
-      {% for item in items %}
-      <tr class="center">
-        <td>{{ item.hsn|default_if_none:"" }}</td>
-        <td>{{ invoice.items_total|floatformat:2 }}</td>
-        <td>{{ item.taxrate|default_if_none:"" }}%</td>
-        <td>0.00</td>
-        <td>0.00</td>
-      </tr>
-      {% endfor %}
+<!-- ================= PAY TO ================= -->
+<div class="pay-grid">
 
-      <tr class="bold center">
-        <td>Total</td>
-        <td>{{ invoice.items_total|floatformat:2 }}</td>
-        <td></td>
-        <td>0.00</td>
-        <td>0.00</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <br>
-
-  <b>Tax Amount (in words):</b> INR Zero Only<br>
-  <b>Company's PAN:</b> AAIFO0279M<br><br>
-
-  <b>Declaration</b><br>
-  We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
-
-  <div style="text-align:right; margin-top:20px;">
-    <b>for OBLU HEALTHCARE LLP</b><br>
-    Authorised Signatory
+  <div>
+    <b>Pay To:</b><br>
+    Bank Name : HDFC BANK, KATTUPAKKAM<br>
+    Bank Account No. : 50200061430046<br>
+    Bank IFSC Code : HDFC0009035<br>
+    Account Holder : OBLU HEALTHCARE LLP
   </div>
 
-  <div class="footer-text">
-    This is a Computer Generated Invoice
+  <div class="signature">
+    For OBLU HEALTHCARE LLP<br><br>
+    <b>Authorized Signatory</b>
   </div>
 
-  <div class="no-print" style="text-align:center;margin-top:15px;">
-    <button onclick="window.print()" style="padding:6px 12px;background:#333;color:#fff;border:none;cursor:pointer;">
-      Print / Save as PDF
-    </button>
-  </div>
+</div>
 
+<div class="footer-text">
+  This is a computer generated invoice
+</div>
+
+<div class="no-print" style="text-align:center;margin-top:12px;">
+  <button onclick="window.print()"
+    style="padding:8px 16px;background:#333;color:#fff;border:none;cursor:pointer;">
+    Print / Save as PDF
+  </button>
+</div>
+
+</div>
 </div>
 </body>
 </html>
