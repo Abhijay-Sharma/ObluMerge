@@ -201,6 +201,13 @@
     hr {
         border-color: #ccc;
     }
+    .followup-badge {
+    background: #ffc107;
+    color: #000;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
 </style>
 </head>
 
@@ -266,6 +273,15 @@
     <button class="remark-btn" onclick="openRemarkList('{{ customer.id }}')">
         View Remarks ({{ customer.remarks_list|length }})
     </button>
+    <!-- ✅ ADD FOLLOW-UP -->
+    <button class="remark-btn" onclick="openFollowup('{{ customer.id }}')">
+        Schedule Follow-Up
+    </button>
+
+    <!-- ✅ VIEW FOLLOW-UPS -->
+    <button class="remark-btn" onclick="openFollowupList('{{ customer.id }}')">
+        Follow-Ups ({{ customer.followups_list|length }})
+    </button>
 
     <!-- ✅ ADD REMARK MODAL -->
     <div class="remark-modal" id="remarkModal{{ customer.id }}">
@@ -280,6 +296,32 @@
             </form>
         </div>
     </div>
+    <!-- ✅ ADD FOLLOW-UP MODAL -->
+    <div class="remark-modal" id="followupModal{{ customer.id }}">
+        <div class="remark-box">
+            <h3>Schedule Follow-Up – {{ customer.name }}</h3>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="followup_customer_id" value="{{ customer.id }}">
+
+                <label>Follow-up Date</label>
+                <input type="date"
+                       name="followup_date"
+                       required
+                       style="width:100%; padding:8px; margin-bottom:10px;">
+
+                <label>Note</label>
+                <textarea name="followup_note"
+                          placeholder="Optional note..."></textarea>
+
+                <button type="submit" class="save-remark">
+                    Save Follow-Up
+                </button>
+            </form>
+        </div>
+    </div>
+
 
     <!-- ✅ VIEW REMARKS MODAL -->
     <div class="remark-modal" id="remarkList{{ customer.id }}">
@@ -305,6 +347,53 @@
             {% endfor %}
         </div>
     </div>
+
+    <!-- ✅ VIEW FOLLOW-UPS MODAL -->
+    <div class="remark-modal" id="followupList{{ customer.id }}">
+        <div class="remark-box">
+            <h3>Follow-Ups – {{ customer.name }}</h3>
+
+            {% for f in customer.followups_list %}
+                <p>
+                    📅 <strong>{{ f.followup_date }}</strong>
+                    {% if f.is_completed %}
+                        <span style="color:green;">(Completed)</span>
+                    {% endif %}
+                </p>
+
+                {% if f.note %}
+                    <p>{{ f.note }}</p>
+                {% endif %}
+
+                <!-- ✅ COMPLETE BUTTON -->
+                {% if not f.is_completed %}
+                <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="complete_followup_id" value="{{ f.id }}">
+                    <button type="submit"
+                            style="border:none;background:none;color:green;cursor:pointer;">
+                        ✔ Complete
+                    </button>
+                </form>
+                {% endif %}
+
+                <!-- ✅ DELETE BUTTON -->
+                <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="delete_followup_id" value="{{ f.id }}">
+                    <button type="submit"
+                            style="border:none;background:none;color:red;cursor:pointer;">
+                        🗑 Delete
+                    </button>
+                </form>
+
+                <hr>
+            {% empty %}
+                <p>No follow-ups scheduled.</p>
+            {% endfor %}
+        </div>
+    </div>
+
 
     <div class="history-data" id="history-{{ customer.id }}" style="display:none;">
         <ul>
@@ -347,7 +436,13 @@ function openRemark(id) {
 function openRemarkList(id) {
     document.getElementById("remarkList" + id).style.display = "flex";
 }
+function openFollowup(id) {
+    document.getElementById("followupModal" + id).style.display = "flex";
+}
 
+function openFollowupList(id) {
+    document.getElementById("followupList" + id).style.display = "flex";
+}
 document.querySelectorAll(".remark-modal").forEach(modal => {
     modal.addEventListener("click", e => {
         if (e.target === modal) modal.style.display = "none";

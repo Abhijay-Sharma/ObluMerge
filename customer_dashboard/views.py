@@ -1,7 +1,7 @@
 from django.views.generic import TemplateView, ListView
 from django.db.models import Count
 from django.shortcuts import render
-from .models import Customer, SalesPerson, CustomerVoucherStatus
+from .models import Customer, SalesPerson, CustomerVoucherStatus, CustomerFollowUp
 import json
 from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -21,6 +21,7 @@ from django.db.models.functions import Lower, Trim
 from django.db.models import Q
 from .forms import CustomerReassignForm
 from django.views import View
+from django.utils import timezone
 
 
 
@@ -475,34 +476,20 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             customer.remarks_list = customer.remarks.select_related(
                 "salesperson", "salesperson__user"
             )
+            customer.followups_list = customer.followups.filter(
+                salesperson=customer.salesperson
+            ).order_by("followup_date")
 
         return qs
 
-    # --------------------------------------------------
-    # POST: Save remark (MANAGER + SALESPERSON)
-    # --------------------------------------------------
-    def post(self, request, *args, **kwargs):
-        customer_id = request.POST.get("customer_id")
-        remark_text = request.POST.get("remark", "").strip()
 
-        if not remark_text:
-            return redirect(request.path)
+    def post(self, request):
 
         salesperson = request.user.salesperson_profile.first()
         if not salesperson:
             return redirect(request.path)
 
-        customer = get_object_or_404(Customer, id=customer_id)
-
-        CustomerRemark.objects.create(
-            customer=customer,
-            salesperson=salesperson,
-            remark=remark_text
-        )
-
-        return redirect(request.path)
-    def post(self, request):
-        # ✅ ADD THIS AT TOP (DELETE REMARK HANDLING)
+        #  (DELETE REMARK HANDLING)
         if request.POST.get("delete_remark_id"):
             remark_id = request.POST.get("delete_remark_id")
             remark = get_object_or_404(CustomerRemark, id=remark_id)
@@ -511,14 +498,68 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             if not salesperson:
                 return redirect(request.path)
 
-            # ✅ only owner can delete
+            #  only owner can delete
             if remark.salesperson != salesperson:
                 return HttpResponseForbidden("Not allowed")
 
             remark.delete()
-            return redirect(request.path)
+            return redirect(request.get_full_path())
 
-        # ✅ BELOW IS YOUR EXISTING SAVE-REMARK CODE (UNCHANGED)
+        # ADD FOLLOW-UP
+        # =========================
+        if request.POST.get("followup_customer_id"):
+            customer = get_object_or_404(
+                Customer,
+                id=request.POST.get("followup_customer_id")
+            )
+
+            #  ONLY owner salesperson (manager ya normal)
+            if customer.salesperson != salesperson:
+                return HttpResponseForbidden(
+                    "You can add follow-up only for your own customers"
+                )
+
+            CustomerFollowUp.objects.create(
+                customer=customer,
+                salesperson=salesperson,
+                followup_date=request.POST.get("followup_date"),
+                note=request.POST.get("followup_note", "")
+            )
+
+            return redirect(request.get_full_path())
+
+        # =========================
+        # MARK FOLLOW-UP COMPLETED
+        # =========================
+        if request.POST.get("complete_followup_id"):
+            followup = get_object_or_404(
+                CustomerFollowUp,
+                id=request.POST.get("complete_followup_id"),
+                salesperson=salesperson
+            )
+            followup.is_completed = True
+            followup.completed_at = timezone.now()
+            followup.save()
+            return redirect(request.get_full_path())
+
+        if request.POST.get("delete_followup_id"):
+            followup = get_object_or_404(
+                CustomerFollowUp,
+                id=request.POST.get("delete_followup_id")
+            )
+
+            # #  Manager cannot delete
+            # if salesperson.manager is None:
+            #     return HttpResponseForbidden("Manager cannot delete follow-ups")
+
+            # ✅ Only owner
+            if followup.salesperson != salesperson:
+                return HttpResponseForbidden("Not allowed")
+
+            followup.delete()
+            return redirect(request.get_full_path())
+
+        # BELOW IS YOUR EXISTING SAVE-REMARK CODE (UNCHANGED)
         customer_id = request.POST.get("customer_id")
         remark_text = request.POST.get("remark", "").strip()
 
@@ -537,8 +578,7 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             remark=remark_text
         )
 
-        return redirect(request.path)
-
+        return redirect(request.get_full_path())
 
     # --------------------------------------------------
     # Context data
