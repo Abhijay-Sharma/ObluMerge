@@ -1,3 +1,344 @@
+Abhijay
+abhijayy007
+Online
+
+Abhijay — 08-12-2025 15:32
+Forwarded
+Attachment file type: unknown
+db.sqlite3
+4.40 MB
+Kashish — 08-12-2025 17:52
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+Expand
+sales_comparison_dashboard_style.html
+9 KB
+Kashish — 09-12-2025 12:45
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<style>
+
+/* SEARCH BAR */
+Expand
+Inventory_dashboard_style.html
+11 KB
+Kashish — 09-12-2025 15:05
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<style>
+
+/* SEARCH BAR */
+Expand
+Inventory_dashboard_style.html
+11 KB
+Abhijay — 09-12-2025 17:45
+Bhavya_Bhardwaj
+vxkhsqjDN9P6TaY
+Attachment file type: unknown
+db.sqlite3
+4.41 MB
+Abhijay — 10-12-2025 12:31
+Attachment file type: unknown
+db.sqlite3
+4.41 MB
+Abhijay — 11-12-2025 10:40
+https://www.youtube.com/watch?v=LMGj7N2iW2A&pp=ygULc2hvcGlmeSBzZW8%3D
+YouTube
+Ed Codes - Shopify DIY Tutorials
+Shopify SEO Optimization for Beginners - Practical Walkthrough
+Image
+Abhijay — 11-12-2025 10:53
+https://www.youtube.com/watch?v=tlnZJj3Sm5U
+YouTube
+Mico Martinez
+Beginners Guide to Shopify SEO - Full Course (4+ Hour Masterclass)
+Image
+Abhijay — 11-12-2025 16:33
+Attachment file type: unknown
+db.sqlite3
+4.50 MB
+Kashish — 15-12-2025 15:14
+class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
+    template_name = "customers/admin_salesperson_customers.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+Expand
+admin_salesperson_view.txt
+4 KB
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Salesperson → Customer Overview</title>
+Expand
+admin_salesperson.html
+22 KB
+Kashish — 15-12-2025 16:35
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Salesperson → Customer Overview</title>
+Expand
+admin_salesperson.html
+22 KB
+Kashish — 17-12-2025 11:04
+Image
+Kashish — 23-12-2025 17:17
+Attachment file type: acrobat
+c5c3e97f-06aa-462c-8e4e-72226796e239_Try_AI_Meeting_Notes_Today_104_PM.pdf
+212.37 KB
+Kashish — 24-12-2025 17:02
+class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
+    template_name = "customers/admin_salesperson_customers.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+Expand
+admin_salesperson_view.txt
+4 KB
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Salesperson → Customer Overview</title>
+Expand
+admin_salesperson.html
+23 KB
+Abhijay — 25-12-2025 12:57
+kashish
+koushal ne sab bata dia?
+koi prob to nhi aayi?
+Kashish — 25-12-2025 12:58
+nhi bta toh nhi rha tha fir main ebol dia ki sir ne bola h jb btaya india mart ka
+puchra tha sir ne kyu bola h maine kha wo toh ni pta just puchre the ki kaushal ko shadow krre toh sb seekh lia ya nhi
+toh fir bolta h ki sir se baat krunga
+Abhijay — 25-12-2025 12:59
+par bataya nahi?
+abhi tak?
+Kashish — 25-12-2025 12:59
+bta dia india mart ka ab
+Abhijay — 25-12-2025 12:59
+id pass ya kaam bhi?
+Kashish — 25-12-2025 12:59
+dono chiz
+Abhijay — 25-12-2025 12:59
+okay dhang se seekh lo saara
+doint hesitate about anything
+Kashish — 25-12-2025 13:00
+okay
+Abhijay — 30-12-2025 16:03
+Attachment file type: unknown
+db.sqlite3
+4.59 MB
+Abhijay — 31-12-2025 16:29
+Attachment file type: spreadsheet
+ledgers_31-12-25.xlsx
+115.01 KB
+Abhijay — 02-01-2026 14:43
+Attachment file type: spreadsheet
+tally_connected_customers_upload.xlsx
+10.52 KB
+Kashish — 02-01-2026 15:38
+Attachment file type: spreadsheet
+tally_connected_customerss.xlsx
+16.78 KB
+Kashish — 03-01-2026 09:46
+Hie abhijay wo db scan krne ka reminder ke liye bola tha na aapne unicode wale issue ke liye wo kr lena
+Kashish — 03-01-2026 12:34
+import pyodbc
+import pandas as pd
+
+-------------------------------
+CONNECT TO TALLY ODBC
+-------------------------------
+try:
+    conn = pyodbc.connect("DSN=TallyODBC64_9000")
+    cursor = conn.cursor()
+    print("Connected to Tally ODBC")
+except:
+    conn = pyodbc.connect("DSN=TallyODBC_9000")
+    cursor = conn.cursor()
+    print("Connected to Tally ODBC (32 bit)")
+
+-------------------------------
+FETCH ALL LEDGER NAMES
+-------------------------------
+ledger_list = []
+
+ledger_query = "SELECT $Name FROM Ledger"
+
+cursor.execute(ledger_query)
+
+for row in cursor.fetchall():
+    ledger_list.append(row[0])
+
+print(f"Total Ledgers Found: {len(ledger_list)}")
+
+-------------------------------
+FETCH LEDGER DATA ONE BY ONE
+-------------------------------
+final_data = []
+
+for ledger in ledger_list:
+    print(f"Fetching Ledger: {ledger}")
+
+    voucher_query = f"""
+    SELECT
+        $Date,
+        $VoucherTypeName,
+        $VoucherNumber,
+        $PartyLedgerName,
+        $Amount
+    FROM Ledger
+    WHERE $Name = '{ledger}'
+    """
+
+    try:
+        cursor.execute(voucher_query)
+        rows = cursor.fetchall()
+
+        for r in rows:
+            final_data.append({
+                "Ledger Name": ledger,
+                "Date": r[0],
+                "Voucher Type": r[1],
+                "Voucher No": r[2],
+                "Party Name": r[3],
+                "Amount": r[4]
+            })
+
+    except Exception as e:
+        print(f"Error in {ledger}: {e}")
+
+-------------------------------
+EXPORT TO EXCEL
+-------------------------------
+df = pd.DataFrame(final_data)
+
+df.to_excel("ledgerscompiled.xlsx", index=False)
+
+print("================================================")
+print("EXPORT COMPLETED SUCCESSFULLY")
+print("File Name: ledgerscompiled.xlsx")
+print("================================================")
+
+conn.close()
+Kashish — 06-01-2026 10:24
+Attachment file type: acrobat
+626d9821-7a8f-4197-8aad-0a5bc6e4d189_AdminSalesPersonCustomersView_.pdf
+172.73 KB
+Abhijay — 06-01-2026 11:18
+Attachment file type: unknown
+db.sqlite3
+5.32 MB
+Kashish — 06-01-2026 14:56
+active = sum(1 for c in customers if not c.is_red_flag)
+        inactive = sum(1 for c in customers if c.is_red_flag)
+        outstanding_count = sum(
+            1 for c in customers if c.trial_balance and c.trial_balance > 0
+        )
+        total_outstanding_amount = sum(
+            c.trial_balance for c in customers if c.trial_balance and c.trial_balance > 0
+        )
+ctx["customers"] = customers
+        ctx["active_count"] = active
+        ctx["inactive_count"] = inactive
+        ctx["outstanding_count"] = outstanding_count
+        ctx["total_outstanding_amount"] = total_outstanding_amount
+<div class="col-md-4"><div class="stat-card"><h3>Outstanding Customers</h3><h2 class="text-warning">{{ outstanding_count }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Total Outstanding Amount</h3><h2 class="text-danger">₹ {{ total_outstanding_amount|floatformat:2 }}</h2></div></div>
+Kashish — 07-01-2026 14:40
+---- TOTAL CALCULATIONS (THIS IS THE NEW PART) ----
+        original_total = 0
+        discount_total = 0
+
+        for item in items_qs:
+            qty = item.quantity
+
+            # ✅ ALWAYS use GST INCLUDED price (matches table)
+            unit_price = item.gst_unit_price()
+
+            line_original = unit_price * qty
+            original_total += line_original
+
+            discount_total += item.discount or 0
+
+        context["original_total"] = original_total
+        context["discount_total"] = discount_total
+<div class="total">
+        {% if has_discount %}
+            <p>
+               <strong>Total (Before Discount): ₹{{ original_total }}</strong>
+            </p>
+
+            <p style="font-size:18px; color:green; margin-top:6px;">
+                <strong>Special Total (After Discount): ₹{{ quotation.total }}</strong>
+            </p>
+        {% else %}
+            <p style="font-size:18px;">
+                <strong>Grand Total: ₹{{ quotation.total }}</strong>
+            </p>
+        {% endif %}
+    </div>
+Abhijay — Yesterday at 11:56
+Attachment file type: unknown
+db.sqlite3
+6.85 MB
+Kashish — Yesterday at 13:02
+Attachment file type: spreadsheet
+ledgers_31-12-25.xlsx
+115.01 KB
+Kashish — Yesterday at 13:33
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Proforma Invoice</title>
+Expand
+proforma_detail.html
+8 KB
+Kashish — 14:42
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Proforma Invoice</title>
+Expand
+proforma_detail.html
+7 KB
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Welcome | Proforma Invoice</title>
+  <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
+Expand
+base.html
+5 KB
+<nav class="navbar navbar-expand-lg bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">Home</a>
+        <a class="navbar-brand" href="{% url 'home' %}">Proforma Invoice </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+Expand
+navigation.html
+2 KB
+﻿
+Kashish
+kashishh.07
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -16,12 +357,9 @@ body{
 }
 
 .wrapper{ width:100%; }
+.invoice-container{ padding:10px 14px; }
 
-.invoice-container{
-  padding: 10px 14px;
-}
-
-/* ---------- GLOBAL ---------- */
+/* GLOBAL */
 table{ width:100%; border-collapse:collapse; }
 td, th{ border:none; padding:6px; vertical-align:top; }
 
@@ -29,21 +367,19 @@ td, th{ border:none; padding:6px; vertical-align:top; }
 .center{ text-align:center; }
 .right{ text-align:right; }
 
-/* ---------- HEADER ---------- */
+/* HEADER */
 .header-top{
   display:flex;
   justify-content:space-between;
-  align-items:flex-start;
 }
 
 .company-info{ width:65%; line-height:1.4; }
-
 .logo{ width:140px; }
 
 hr{
   border:none;
   border-top:2px solid #0b78a8;
-  margin:10px 0 14px 0;
+  margin:10px 0 14px;
 }
 
 .header-title{
@@ -54,54 +390,35 @@ hr{
   margin-bottom:14px;
 }
 
-/* ---------- INFO GRID ---------- */
+/* INFO GRID */
 .info-grid{
   display:grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns:1fr 1fr 1fr;
   gap:30px;
   margin-bottom:18px;
 }
 .info-grid b{ display:block; margin-bottom:6px; }
 
-/* ---------- ITEM TABLE ---------- */
+/* ITEM TABLE */
 .item-table thead th{
   background:#0b78a8;
   color:#fff;
   font-weight:bold;
-  padding:7px;
   text-align:center;
 }
 
-.item-table thead th.item-name{
-  text-align:left;
-  padding-left:14px;
-}
-
-.item-table tbody td{
-  border-bottom:1px solid #999;
-}
-
-.item-table tbody td.item-name{
-  text-align:left;
-  padding-left:14px;
-}
-
 .item-table th.right,
-.item-table td.right{
-  text-align: right;
-  padding-right: 12px;
-}
+.item-table td.right{ text-align:right; padding-right:12px; }
 
 .item-table th.center,
-.item-table td.center{
-  text-align: center;
-}
+.item-table td.center{ text-align:center; }
 
+.item-table tbody td{ border-bottom:1px solid #999; }
 
-/* ---------- TOTALS ---------- */
+.item-name{ text-align:left; padding-left:14px; }
+
+/* TOTALS */
 .totals-wrapper{ margin-top:16px; }
-
-.totals-table td{ padding:6px 4px; }
 
 .totals-highlight{
   background:#0b78a8;
@@ -109,28 +426,14 @@ hr{
   font-weight:bold;
 }
 
-/* ---------- PAY TO ---------- */
-.pay-grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  margin-top:22px;
-}
-
-.signature{
-  text-align:center;
-  margin-top:30px;
-}
-
-/* ---------- FOOTER ---------- */
+/* FOOTER */
 .footer-text{
   text-align:center;
   font-size:11px;
   margin-top:30px;
 }
 
-@media print{
-  .no-print{ display:none; }
-}
+@media print{ .no-print{ display:none; } }
 </style>
 </head>
 
@@ -138,29 +441,28 @@ hr{
 <div class="invoice-container">
 <div class="wrapper">
 
-<!-- ================= HEADER ================= -->
+<!-- HEADER -->
 <div class="header-top">
   <div class="company-info">
     <b>OBLU HEALTHCARE LLP</b><br>
-    UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
-    ROAD NO.44, Pitampura, New Delhi – 110034<br>
-    Phone : 96504 47099<br>
-    Email : sales@obluhc.com<br>
-    GSTIN : 07AAIFO0279M1ZU<br>
-    State : 07-Delhi
+    <b>UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,</b><br>
+    <b>ROAD NO.44, Pitampura, New Delhi – 110034</b><br>
+    <b>Phone :</b> 96504 47099<br>
+    <b>Email :</b> sales@obluhc.com<br>
+    <b>GSTIN :</b> 07AAIFO0279M1ZU<br>
+    <b>PAN :</b> AAIFO0279M<br>
+    <b>State :</b> 07-Delhi
   </div>
 
-  <div>
-    <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.webp?v=1757743482"
-         class="logo" alt="OBLU Logo">
-  </div>
+  <img src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.webp?v=1757743482"
+       class="logo" alt="OBLU Logo">
 </div>
 
 <hr>
 
 <div class="header-title">Proforma Invoice</div>
 
-<!-- ================= ORDER / SHIP / DETAILS ================= -->
+<!-- INFO GRID -->
 <div class="info-grid">
 
   <div>
@@ -185,49 +487,54 @@ hr{
     <b>Order Details</b>
     Order No. : {{ invoice.id }}<br>
     Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
-    Place of supply : Delhi
+    Place of Supply : Delhi
   </div>
 
 </div>
 
-<!-- ================= ITEM TABLE ================= -->
+<!-- ITEM TABLE -->
 <table class="item-table">
 <thead>
 <tr>
-  <th style="width:5%;">#</th>
-  <th class="item-name" style="width:35%;">Item name</th>
-  <th style="width:10%;">HSN / SAC</th>
-  <th style="width:10%;">Qty</th>
-  <th class="right" style="width:15%;">Price / Unit</th>
-  <th class="center" style="width:10%;">GST</th>
-  <th class="right" style="width:15%;">Amount</th>
-
+  <th>#</th>
+  <th class="item-name">Item name</th>
+  <th>HSN</th>
+  <th>Qty</th>
+  <th class="right">Rate (Excl. Tax)</th>
+  <th class="right">Rate (Incl. Tax)</th>
+  <th class="right">Taxable Value</th>
+  <th class="center">GST</th>
+  <th class="right">Amount</th>
 </tr>
 </thead>
 
 <tbody>
 {% for item in items %}
+{% widthratio item.total_price 100 item.taxrate as item_gst %}
+{% widthratio item.unit_price 100 item.taxrate as unit_gst %}
+{% with item.unit_price|add:unit_gst as rate_incl_tax %}
 <tr>
   <td class="center">{{ forloop.counter }}</td>
   <td class="item-name">{{ item.product.name }}</td>
   <td class="center">{{ item.hsn }}</td>
   <td class="center">{{ item.quantity }}</td>
-  <td class="right" style="align-items:left; padding-right:10px;">₹ {{ item.unit_price|floatformat:2 }}</td>
+  <td class="right">₹ {{ item.unit_price|floatformat:2 }}</td>
+  <td class="right">₹ {{ rate_incl_tax|floatformat:2 }}</td>
+  <td class="right">₹ {{ item.total_price|floatformat:2 }}</td>
   <td class="center">{{ item.taxrate }}%</td>
-  <td class="right">
-      {% widthratio item.total_price 100 item.taxrate as item_gst %}
-      ₹ {{ item.total_price|add:item_gst|floatformat:2 }}
-  </td>
+  <td class="right">₹ {{ item.total_price|floatformat:2 }}</td>
 </tr>
+{% endwith %}
 {% endfor %}
 </tbody>
 </table>
 
-<!-- ================= TOTALS ================= -->
+<!-- TOTALS -->
 {% with items.0.taxrate as gst_rate %}
 {% widthratio invoice.items_total 100 gst_rate as igst_value %}
-{% with invoice.items_total|add:igst_value as subtotal_plus_igst %}
-{% with subtotal_plus_igst|add:invoice.courier_charge|add:invoice.courier_gst as display_total %}
+{% with invoice.courier_charge|default:0 as courier_charge %}
+{% with invoice.courier_gst|default:0 as courier_gst %}
+{% with invoice.items_total|add:igst_value|add:courier_charge|add:courier_gst as display_total %}
 
 <div class="totals-wrapper">
 <table>
@@ -235,36 +542,26 @@ hr{
   <td width="60%">
     <b>Order Amount In Words</b><br>
     INR {{ display_total|floatformat:0 }} Only
-
-    <br><br>
-
-    <b>Terms and Conditions</b><br>
-    1. 100% payment on order confirmation.<br>
-    2. Shipping charges will be added for Air shipment (if needed)
   </td>
 
   <td width="40%">
-    <table class="totals-table">
+    <table>
       <tr>
         <td class="right">Sub Total</td>
         <td class="right">₹ {{ invoice.items_total|floatformat:2 }}</td>
       </tr>
-
       <tr>
         <td class="right">IGST @ {{ gst_rate }}%</td>
         <td class="right">₹ {{ igst_value|floatformat:2 }}</td>
       </tr>
-
       <tr>
         <td class="right">Courier Charges</td>
-        <td class="right">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
+        <td class="right">₹ {{ courier_charge|floatformat:2 }}</td>
       </tr>
-
       <tr>
         <td class="right">Courier GST</td>
-        <td class="right">₹ {{ invoice.courier_gst|floatformat:2 }}</td>
+        <td class="right">₹ {{ courier_gst|floatformat:2 }}</td>
       </tr>
-
       <tr class="totals-highlight">
         <td class="right bold">Total</td>
         <td class="right bold">₹ {{ display_total|floatformat:2 }}</td>
@@ -278,26 +575,22 @@ hr{
 {% endwith %}
 {% endwith %}
 {% endwith %}
+{% endwith %}
 
-
-
-
-<!-- ================= PAY TO ================= -->
+<!-- PAY TO -->
 <div class="pay-grid">
-
   <div>
-    <b>Pay To:</b><br>
-    Bank Name : HDFC BANK, KATTUPAKKAM<br>
-    Bank Account No. : 50200061430046<br>
-    Bank IFSC Code : HDFC0009035<br>
-    Account Holder : OBLU HEALTHCARE LLP
+    <b>Company's Bank Details</b><br>
+    <b>A/c Holder's Name :</b> OBLU HEALTHCARE LLP<br>
+    <b>Bank Name :</b> ICICI BANK (CC)<br>
+    <b>A/c No. :</b> 629351001224<br>
+    <b>Branch & IFS Code :</b> Rajouri Garden & ICIC0006293
   </div>
 
   <div class="signature">
     For OBLU HEALTHCARE LLP<br><br>
     <b>Authorized Signatory</b>
   </div>
-
 </div>
 
 <div class="footer-text">
@@ -315,3 +608,5 @@ hr{
 </div>
 </body>
 </html>
+proforma_detail.html
+7 KB
