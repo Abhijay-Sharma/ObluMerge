@@ -140,3 +140,23 @@ class CustomerVoucherStatus(models.Model):
 
     def __str__(self):
         return f"{self.customer.name} | {self.voucher.voucher_number}"
+
+
+class CustomerFollowUp(models.Model):
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="followups"   # ✅ ONLY here
+    )
+    salesperson = models.ForeignKey(
+        SalesPerson,
+        on_delete=models.CASCADE,
+        related_name="followups")
+    note = models.TextField(blank=True)
+    followup_date = models.DateField()
+    is_completed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+
+    def str(self):
+        return f"{self.customer.name} - {self.followup_date}"
