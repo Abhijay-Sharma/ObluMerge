@@ -2,15 +2,101 @@
 {% block content %}
 
 <style>
-  select {
-    padding: 4px;
+/* ---------- COMMON ---------- */
+.click-row {
+  cursor: pointer;
+}
+.click-row:hover {
+  background: #f5f9fc;
+}
+
+.toggle-arrow {
+  font-size: 0.9rem;
+  color: #0b78a8;
+  font-weight: bold;
+}
+
+.details-row {
+  display: none;
+  background: #fafafa;
+}
+
+.details-box {
+  padding: 12px 16px;
+  font-size: 0.9rem;
+}
+
+.details-box h4 {
+  margin: 8px 0 4px;
+  font-size: 0.9rem;
+  color: #0b78a8;
+}
+
+select {
+  padding: 4px;
+  font-size: 0.85rem;
+}
+
+.terms {
+  max-width: 420px;
+  color: #444;
+}
+
+/* ---------- MOBILE HEADER ---------- */
+.mobile-header {
+  display: none;
+}
+
+/* ---------- MOBILE (≤768px) ---------- */
+@media (max-width: 768px) {
+
+  /* hide desktop columns */
+  .desktop-only,
+  .col-sno,
+  .col-stock,
+  .col-tax,
+  .col-dynamic {
+    display: none !important;
+  }
+
+  table thead {
+    display: none;
+  }
+
+  .mobile-header {
+    display: flex;
+    justify-content: space-between;
+    background: #000;
+    color: #fff;
+    padding: 10px 14px;
+    font-weight: bold;
     font-size: 0.9rem;
+    border-radius: 6px 6px 0 0;
+    margin-bottom: 6px;
   }
-  .terms {
-    max-width: 280px;
-    font-size: 0.85rem;
-    color: #444;
+
+  .mobile-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
+
+  .mobile-price {
+    font-weight: bold;
+    white-space: nowrap;
+    margin-left:20px;
+  }
+
+  .details-box .mobile-field {
+    margin-bottom: 6px;
+  }
+
+  .details-box .label {
+    font-weight: bold;
+    color: #333;
+  }
+}
 </style>
 
 <div class="container">
@@ -18,57 +104,83 @@
 
     <h1>Proforma Products</h1>
 
-    <div class="top-actions">
-      <a href="{% url 'home' %}" class="btn-secondary">Back to Home</a>
-      <a href="{% url 'admin:proforma_invoice_productprice_add' %}" class="btn-secondary">
-        + Add Product Price
-      </a>
+    <!-- MOBILE HEADER BAR -->
+    <div class="mobile-header">
+      <span>Products</span>
+      <span>Base Price</span>
     </div>
 
     <table>
       <thead>
         <tr>
-          <th>#</th>
+          <th></th>
+          <th class="col-sno">#</th>
           <th>Product</th>
-          <th>Stock Qty</th>
-          <th>Base Price</th>
-          <th>Tax %</th>
-          <th>Dynamic</th>
-          <th>Price Tiers</th>
-          <th>Terms</th>
+          <th class="col-stock">Stock Qty</th>
+          <th class="desktop-only">Base Price</th>
+          <th class="col-tax">Tax %</th>
+          <th class="col-dynamic">Dynamic</th>
         </tr>
       </thead>
 
       <tbody>
         {% for p in products %}
-          <tr>
-            <td>{{ forloop.counter }}</td>
 
-            <td>
+        <!-- MAIN ROW -->
+        <tr class="click-row" onclick="toggleRow({{ forloop.counter }})">
+          <td class="center">
+            <span class="toggle-arrow" id="arrow-{{ forloop.counter }}">▶</span>
+          </td>
+
+          <td class="col-sno">{{ forloop.counter }}</td>
+
+          <td>
+            <div class="mobile-main">
               <strong>{{ p.product.name }}</strong>
-            </td>
+              <span class="mobile-price">₹{{ p.price }}</span>
+            </div>
+          </td>
 
-            <td>
-              {{ p.product.quantity|default:"-" }}
-            </td>
+          <td class="col-stock">
+            {{ p.product.quantity|default:"-" }}
+          </td>
 
-            <td>
-              ₹{{ p.price }}
-            </td>
+          <!-- DESKTOP ONLY PRICE -->
+          <td class="right desktop-only">
+            ₹{{ p.price }}
+          </td>
 
-            <td>
-              {{ p.tax_rate }}%
-            </td>
+          <td class="col-tax">
+            {{ p.tax_rate }}%
+          </td>
 
-            <td>
-              {% if p.has_dynamic_price %}
-                ✅ Yes
-              {% else %}
-                —
-              {% endif %}
-            </td>
+          <td class="col-dynamic">
+            {% if p.has_dynamic_price %}✅ Yes{% else %}—{% endif %}
+          </td>
+        </tr>
 
-            <td>
+        <!-- DETAILS ROW -->
+        <tr class="details-row" id="details-{{ forloop.counter }}">
+          <td colspan="7">
+            <div class="details-box">
+
+              <!-- MOBILE META -->
+              <div class="mobile-field">
+                <span class="label">Stock Qty:</span>
+                {{ p.product.quantity|default:"-" }}
+              </div>
+
+              <div class="mobile-field">
+                <span class="label">Tax:</span>
+                {{ p.tax_rate }}%
+              </div>
+
+              <div class="mobile-field">
+                <span class="label">Dynamic Pricing:</span>
+                {% if p.has_dynamic_price %}Yes{% else %}No{% endif %}
+              </div>
+
+              <h4>Price Tiers</h4>
               {% if p.price_tiers.all %}
                 <select>
                   <option>Base → ₹{{ p.price }}</option>
@@ -81,24 +193,39 @@
               {% else %}
                 —
               {% endif %}
-            </td>
 
-            <td class="terms">
-              {{ p.terms_and_conditions|default:"—" }}
-            </td>
-          </tr>
+              <h4>Terms & Conditions</h4>
+              <div class="terms">
+                {{ p.terms_and_conditions|default:"—" }}
+              </div>
+
+            </div>
+          </td>
+        </tr>
 
         {% empty %}
-          <tr>
-            <td colspan="8" style="text-align:center; padding:20px;">
-              No products configured.
-            </td>
-          </tr>
+        <tr>
+          <td colspan="7" style="text-align:center; padding:20px;">
+            No products configured.
+          </td>
+        </tr>
+
         {% endfor %}
       </tbody>
     </table>
 
   </div>
 </div>
+
+<script>
+function toggleRow(index) {
+  const details = document.getElementById('details-' + index);
+  const arrow = document.getElementById('arrow-' + index);
+  const isOpen = details.style.display === 'table-row';
+
+  details.style.display = isOpen ? 'none' : 'table-row';
+  arrow.textContent = isOpen ? '▶' : '▼';
+}
+</script>
 
 {% endblock %}
