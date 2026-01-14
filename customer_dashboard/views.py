@@ -616,7 +616,8 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
 
             credit_profile = getattr(c, "credit_profile", None)
             if credit_profile:
-                outstanding_count += 1
+                if credit_profile.outstanding_balance != 0:
+                    outstanding_count += 1
                 total_outstanding_amount += credit_profile.outstanding_balance
 
         ctx.update({
