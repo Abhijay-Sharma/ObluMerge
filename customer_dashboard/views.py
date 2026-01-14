@@ -613,10 +613,11 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             else:
                 inactive_count += 1
 
-            # Outstanding
-            if hasattr(c, "trial_balance") and c.trial_balance and c.trial_balance > 0:
+
+            credit_profile = getattr(c, "credit_profile", None)
+            if credit_profile:
                 outstanding_count += 1
-                total_outstanding_amount += c.trial_balance
+                total_outstanding_amount += credit_profile.outstanding_balance
 
         ctx.update({
             "active_count": active_count,
