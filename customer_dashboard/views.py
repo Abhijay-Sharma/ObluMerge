@@ -594,6 +594,37 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
         if ctx["is_manager"]:
             ctx["team_members"] = salesperson.team_members.all()
 
+        # --------------------------------------------------
+        # STATS BASED ON FILTERED CUSTOMER LIST
+        # --------------------------------------------------
+
+        customers = ctx.get("object_list", [])
+        cutoff_date = date.today() - timedelta(days=90)
+
+        active_count = 0
+        inactive_count = 0
+        outstanding_count = 0
+        total_outstanding_amount = 0
+
+        for c in customers:
+            # Active / Inactive
+            if c.last_order_date and c.last_order_date >= cutoff_date:
+                active_count += 1
+            else:
+                inactive_count += 1
+
+            # Outstanding
+            if hasattr(c, "trial_balance") and c.trial_balance and c.trial_balance > 0:
+                outstanding_count += 1
+                total_outstanding_amount += c.trial_balance
+
+        ctx.update({
+            "active_count": active_count,
+            "inactive_count": inactive_count,
+            "outstanding_count": outstanding_count,
+            "total_outstanding_amount": total_outstanding_amount,
+        })
+
         return ctx
 
 class CustomerPaymentStatusView(TemplateView):
