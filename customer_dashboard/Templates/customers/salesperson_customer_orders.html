@@ -260,6 +260,10 @@
         View Item Purchases
     </a><br>
 
+    <a href="{% url 'customers:customerpaymentstatus' customer.id %}">
+        View Payment Status
+    </a><br>
+
     <button class="open-history" data-customer="{{ customer.id }}">
         View Order History
     </button>
