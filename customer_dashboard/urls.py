@@ -19,4 +19,6 @@ urlpatterns = [
     path("sales/request-voucher-claim/",views.RequestVoucherClaimView.as_view(),name="request_voucher_claim",),
     path("sales/approve-voucher-claims/",views.ApproveVoucherClaimsView.as_view(),name="approve_voucher_claims",),
     path("sales/customer-vouchers/",views.CustomerVouchersOverviewView.as_view(),name="customer_vouchers_overview",),
+    path("admin/voucher-claims/", views.AdminVoucherClaimManagementView.as_view(),name="admin_voucher_claim_management", ),
+
 ]

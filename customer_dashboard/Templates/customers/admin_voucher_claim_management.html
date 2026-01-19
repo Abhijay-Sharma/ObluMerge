@@ -1,0 +1,87 @@
+{% extends "customers/base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3>Admin Voucher Claim Management</h3>
+
+  <!-- ================= MONTH FILTER ================= -->
+  <form method="get" class="row g-3 mt-2 mb-4">
+    <div class="col-md-4">
+      <label class="form-label">Select Month</label>
+      <input
+        type="month"
+        name="month"
+        value="{{ selected_month }}"
+        class="form-control"
+        required
+      >
+    </div>
+    <div class="col-md-2 align-self-end">
+      <button class="btn btn-primary">Load</button>
+    </div>
+  </form>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ================= TABLE ================= -->
+  {% if vouchers %}
+  <table class="table table-bordered table-sm">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Voucher No</th>
+        <th>Customer Owner</th>
+        <th>Sold By (Incentive)</th>
+        <th>Update</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      {% for v in vouchers %}
+      <tr>
+        <td>{{ v.voucher_date }}</td>
+        <td>{{ v.customer.name }}</td>
+        <td>{{ v.voucher.voucher_number }}</td>
+        <td>{{ v.customer.salesperson.name }}</td>
+
+        <td>
+          <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="cvs_id" value="{{ v.id }}">
+
+            <select name="sold_by" class="form-select form-select-sm">
+              <option value="">-- None --</option>
+              {% for sp in salespersons %}
+                <option value="{{ sp.id }}"
+                  {% if v.sold_by_id == sp.id %}selected{% endif %}>
+                  {{ sp.name }}
+                </option>
+              {% endfor %}
+            </select>
+        </td>
+
+        <td>
+            <button class="btn btn-sm btn-success">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+
+    </tbody>
+  </table>
+
+  {% else %}
+    {% if selected_month %}
+      <div class="alert alert-info">No tax invoices found for this month.</div>
+    {% endif %}
+  {% endif %}
+
+</div>
+
+{% endblock %}
