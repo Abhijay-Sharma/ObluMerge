@@ -15,4 +15,8 @@ urlpatterns = [
     path("salesperson-customers/", views.AdminSalesPersonCustomersView.as_view(), name="salesperson_customers"),
     path("customers/<int:pk>/payment-status/",views.CustomerPaymentStatusView.as_view(),name="customerpaymentstatus"),
     path("customer/<int:pk>/edit/", views.CustomerEditView.as_view(), name="customer_edit"),
+    path("sales/claim-own-voucher/",views.ClaimOwnVoucherView.as_view(),name="claim_own_voucher"),
+    path("sales/request-voucher-claim/",views.RequestVoucherClaimView.as_view(),name="request_voucher_claim",),
+    path("sales/approve-voucher-claims/",views.ApproveVoucherClaimsView.as_view(),name="approve_voucher_claims",),
+    path("sales/customer-vouchers/",views.CustomerVouchersOverviewView.as_view(),name="customer_vouchers_overview",),
 ]
