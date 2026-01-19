@@ -929,6 +929,62 @@ class CustomerVouchersOverviewView(LoginRequiredMixin, View):
             "salesperson": sp,
         })
 
+class AdminVoucherClaimManagementView(AccountantRequiredMixin, View):
+    template_name = "customers/admin_voucher_claim_management.html"
+
+    def get(self, request):
+        month = request.GET.get("month")  # format: YYYY-MM
+
+        vouchers = []
+        if month:
+            year, mon = month.split("-")
+
+            vouchers = (
+                CustomerVoucherStatus.objects
+                .select_related("customer", "voucher", "sold_by", "customer__salesperson")
+                .filter(
+                    voucher_type__iexact="TAX INVOICE",
+                    voucher_date__year=int(year),
+                    voucher_date__month=int(mon),
+                )
+                .order_by("-voucher_date")
+            )
+
+        salespersons = SalesPerson.objects.all().order_by("name")
+
+        return render(request, self.template_name, {
+            "vouchers": vouchers,
+            "salespersons": salespersons,
+            "selected_month": month,
+        })
+
+    def post(self, request):
+        cvs_id = request.POST.get("cvs_id")
+        sold_by_id = request.POST.get("sold_by")
+
+        if not cvs_id:
+            return redirect("customers:admin_voucher_claim_management")
+
+        cvs = CustomerVoucherStatus.objects.filter(id=cvs_id).first()
+
+        if not cvs:
+            messages.error(request, "Voucher not found.")
+            return redirect(request.META.get("HTTP_REFERER"))
+
+        if sold_by_id == "":
+            cvs.sold_by = None
+            cvs.claim_status = "NONE"
+        else:
+            sp = SalesPerson.objects.filter(id=sold_by_id).first()
+            if sp:
+                cvs.sold_by = sp
+                cvs.claim_status = "APPROVED"
+
+        cvs.claim_requested_by = None  # admin override clears disputes
+        cvs.save()
+
+        messages.success(request, "Voucher claim updated.")
+        return redirect(request.META.get("HTTP_REFERER"))
 
 
 import json
