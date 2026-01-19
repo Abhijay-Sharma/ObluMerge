@@ -2,6 +2,71 @@
 {% block content %}
 
 <style>
+
+/* ---------- SEARCH ---------- */
+.search-wrapper {
+  max-width: 520px;
+  margin: 20px auto 26px auto; /* CENTER */
+  position: relative;
+}
+
+#productSearch {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 30px;
+  border: 1px solid #d0d7de;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.25s ease;
+  background: #fff;
+}
+
+#productSearch::placeholder {
+  color: #999;
+}
+
+#productSearch:focus {
+  border-color: #0b78a8;
+  box-shadow: 0 0 0 3px rgba(11,120,168,0.15);
+}
+
+/* Suggestions */
+.search-suggestions {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+  max-height: 260px;
+  overflow-y: auto;
+  display: none;
+  z-index: 100;
+}
+
+/* Suggestion item */
+.search-suggestions div {
+  padding: 12px 18px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.search-suggestions div:last-child {
+  border-bottom: none;
+}
+
+.search-suggestions div:hover {
+  background: #f2f9fd;
+}
+
+/* highlight selected row */
+.row-highlight {
+  background: #eaf4fb !important;
+}
+
+
 /* ---------- COMMON ---------- */
 .click-row {
   cursor: pointer;
@@ -47,7 +112,7 @@ select {
   display: none;
 }
 
-/* ---------- MOBILE (≤768px) ---------- */
+/* ---------- MOBILE RESPONSIVE ------*/
 @media (max-width: 768px) {
 
   /* hide desktop columns */
@@ -100,124 +165,197 @@ select {
 </style>
 
 <div class="container">
-  <div class="table-container">
+      <div class="table-container">
 
-    <h1>Proforma Products</h1>
+        <h1>Proforma Products</h1>
 
-    <!-- MOBILE HEADER BAR -->
-    <div class="mobile-header">
-      <span>Products</span>
-      <span>Base Price</span>
-    </div>
+        <!-- SEARCH BAR -->
+        <div class="search-wrapper">
+            <input
+              type="text"
+              id="productSearch"
+              placeholder="Search product..."
+            >
+            <div id="searchSuggestions" class="search-suggestions"></div>
+        </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th></th>
-          <th class="col-sno">#</th>
-          <th>Product</th>
-          <th class="col-stock">Stock Qty</th>
-          <th class="desktop-only">Base Price</th>
-          <th class="col-tax">Tax %</th>
-          <th class="col-dynamic">Dynamic</th>
-        </tr>
-      </thead>
+        <!-- MOBILE HEADER BAR -->
+        <div class="mobile-header">
+          <span>Products</span>
+          <span>Base Price</span>
+        </div>
 
-      <tbody>
-        {% for p in products %}
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th class="col-sno">#</th>
+              <th>Product</th>
+              <th class="col-stock">Stock Qty</th>
+              <th class="desktop-only">Base Price</th>
+              <th class="col-tax">Tax %</th>
+              <th class="col-dynamic">Dynamic</th>
+            </tr>
+          </thead>
 
-        <!-- MAIN ROW -->
-        <tr class="click-row" onclick="toggleRow({{ forloop.counter }})">
-          <td class="center">
-            <span class="toggle-arrow" id="arrow-{{ forloop.counter }}">▶</span>
-          </td>
+          <tbody>
+            {% for p in products %}
 
-          <td class="col-sno">{{ forloop.counter }}</td>
+            <!-- MAIN ROW -->
+            <tr
+              class="click-row"
+              data-product="{{ p.product.name|lower }}"
+              id="row-{{ forloop.counter }}"
+              onclick="toggleRow({{ forloop.counter }})"
+             >
+              <td class="center">
+                <span class="toggle-arrow" id="arrow-{{ forloop.counter }}">▶</span>
+              </td>
 
-          <td>
-            <div class="mobile-main">
-              <strong>{{ p.product.name }}</strong>
-              <span class="mobile-price">₹{{ p.price }}</span>
-            </div>
-          </td>
+              <td class="col-sno">{{ forloop.counter }}</td>
 
-          <td class="col-stock">
-            {{ p.product.quantity|default:"-" }}
-          </td>
+              <td>
+                <div class="mobile-main">
+                  <strong>{{ p.product.name }}</strong>
+                  <span class="mobile-price">₹{{ p.price }}</span>
+                </div>
+              </td>
 
-          <!-- DESKTOP ONLY PRICE -->
-          <td class="right desktop-only">
-            ₹{{ p.price }}
-          </td>
-
-          <td class="col-tax">
-            {{ p.tax_rate }}%
-          </td>
-
-          <td class="col-dynamic">
-            {% if p.has_dynamic_price %}✅ Yes{% else %}—{% endif %}
-          </td>
-        </tr>
-
-        <!-- DETAILS ROW -->
-        <tr class="details-row" id="details-{{ forloop.counter }}">
-          <td colspan="7">
-            <div class="details-box">
-
-              <!-- MOBILE META -->
-              <div class="mobile-field">
-                <span class="label">Stock Qty:</span>
+              <td class="col-stock">
                 {{ p.product.quantity|default:"-" }}
-              </div>
+              </td>
 
-              <div class="mobile-field">
-                <span class="label">Tax:</span>
+              <!-- DESKTOP ONLY PRICE -->
+              <td class="right desktop-only">
+                ₹{{ p.price }}
+              </td>
+
+              <td class="col-tax">
                 {{ p.tax_rate }}%
-              </div>
+              </td>
 
-              <div class="mobile-field">
-                <span class="label">Dynamic Pricing:</span>
-                {% if p.has_dynamic_price %}Yes{% else %}No{% endif %}
-              </div>
+              <td class="col-dynamic">
+                {% if p.has_dynamic_price %}✅ Yes{% else %}—{% endif %}
+              </td>
+            </tr>
 
-              <h4>Price Tiers</h4>
-              {% if p.price_tiers.all %}
-                <select>
-                  <option>Base → ₹{{ p.price }}</option>
-                  {% for tier in p.price_tiers.all %}
-                    <option>
-                      {{ tier.min_quantity }}+ → ₹{{ tier.unit_price }}
-                    </option>
-                  {% endfor %}
-                </select>
-              {% else %}
-                —
-              {% endif %}
+            <!-- DETAILS ROW -->
+            <tr class="details-row" id="details-{{ forloop.counter }}">
+              <td colspan="7">
+                <div class="details-box">
 
-              <h4>Terms & Conditions</h4>
-              <div class="terms">
-                {{ p.terms_and_conditions|default:"—" }}
-              </div>
+                  <!-- MOBILE META -->
+                  <div class="mobile-field">
+                    <span class="label">Stock Qty:</span>
+                    {{ p.product.quantity|default:"-" }}
+                  </div>
 
-            </div>
-          </td>
-        </tr>
+                  <div class="mobile-field">
+                    <span class="label">Tax:</span>
+                    {{ p.tax_rate }}%
+                  </div>
 
-        {% empty %}
-        <tr>
-          <td colspan="7" style="text-align:center; padding:20px;">
-            No products configured.
-          </td>
-        </tr>
+                  <div class="mobile-field">
+                    <span class="label">Dynamic Pricing:</span>
+                    {% if p.has_dynamic_price %}Yes{% else %}No{% endif %}
+                  </div>
 
-        {% endfor %}
-      </tbody>
-    </table>
+                  <h4>Price Tiers</h4>
+                  {% if p.price_tiers.all %}
+                    <select>
+                      <option>Base → ₹{{ p.price }}</option>
+                      {% for tier in p.price_tiers.all %}
+                        <option>
+                          {{ tier.min_quantity }}+ → ₹{{ tier.unit_price }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  {% else %}
+                    —
+                  {% endif %}
 
-  </div>
+                  <h4>Terms & Conditions</h4>
+                  <div class="terms">
+                    {{ p.terms_and_conditions|default:"—" }}
+                  </div>
+
+                </div>
+              </td>
+            </tr>
+
+            {% empty %}
+            <tr>
+              <td colspan="7" style="text-align:center; padding:20px;">
+                No products configured.
+              </td>
+            </tr>
+
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 </div>
 
 <script>
+
+const searchInput = document.getElementById("productSearch");
+const suggestionsBox = document.getElementById("searchSuggestions");
+const rows = document.querySelectorAll(".click-row");
+
+searchInput.addEventListener("input", () => {
+  const query = searchInput.value.trim().toLowerCase();
+  suggestionsBox.innerHTML = "";
+
+  if (!query) {
+    suggestionsBox.style.display = "none";
+    return;
+  }
+
+  let hasMatch = false;
+
+  rows.forEach(row => {
+    const name = row.dataset.product;
+
+    if (name.includes(query)) {
+      hasMatch = true;
+
+      const item = document.createElement("div");
+      item.textContent = row.querySelector("strong").innerText;
+
+      item.onclick = () => {
+        suggestionsBox.style.display = "none";
+        searchInput.value = item.textContent;
+
+        // scroll
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        // open toggle
+        const index = row.id.split("-")[1];
+        const details = document.getElementById("details-" + index);
+        const arrow = document.getElementById("arrow-" + index);
+
+        details.style.display = "table-row";
+        arrow.textContent = "▼";
+
+        // highlight row
+        row.classList.add("row-highlight");
+        setTimeout(() => row.classList.remove("row-highlight"), 1500);
+      };
+
+      suggestionsBox.appendChild(item);
+    }
+  });
+
+  suggestionsBox.style.display = hasMatch ? "block" : "none";
+});
+
+// close suggestions on outside click
+document.addEventListener("click", e => {
+  if (!e.target.closest(".search-wrapper")) {
+    suggestionsBox.style.display = "none";
+  }
+});
+
 function toggleRow(index) {
   const details = document.getElementById('details-' + index);
   const arrow = document.getElementById('arrow-' + index);
