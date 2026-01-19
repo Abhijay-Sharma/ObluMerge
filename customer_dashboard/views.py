@@ -722,6 +722,215 @@ class CustomerEditView(AccountantRequiredMixin, View):
         })
 
 
+def get_logged_in_salesperson(user):
+    return SalesPerson.objects.filter(user=user).first()
+
+class ClaimOwnVoucherView(LoginRequiredMixin, View):
+    template_name = "customers/claim_own_vouchers.html"
+
+    def get(self, request):
+        sp = get_logged_in_salesperson(request.user)
+
+        if not sp:
+            return render(request, self.template_name, {"vouchers": []})
+
+        vouchers = (
+            CustomerVoucherStatus.objects
+            .select_related("customer", "voucher")
+            .filter(
+                customer__salesperson=sp,
+                voucher_type__iexact="TAX INVOICE",
+                sold_by__isnull=True,                 # not yet claimed
+            )
+            .order_by("-voucher_date")
+        )
+
+        return render(request, self.template_name, {
+            "vouchers": vouchers,
+            "salesperson": sp,
+        })
+
+    def post(self, request):
+        sp = get_logged_in_salesperson(request.user)
+        voucher_id = request.POST.get("voucher_id")
+
+        if not sp or not voucher_id:
+            return redirect("customers:claim_own_voucher")
+
+        cvs = CustomerVoucherStatus.objects.select_related(
+            "customer", "customer__salesperson"
+        ).filter(
+            voucher_id=voucher_id,
+            voucher_type__iexact="TAX INVOICE"
+        ).first()
+
+        if not cvs:
+            return redirect("customers:claim_own_voucher")
+
+        # must be his own customer
+        if cvs.customer.salesperson_id != sp.id:
+            return redirect("customers:claim_own_voucher")
+
+        cvs.sold_by = sp
+        cvs.claim_status = "APPROVED"
+        cvs.claim_requested_by = None
+        cvs.save()
+
+        return redirect("customers:claim_own_voucher")
+
+class RequestVoucherClaimView(LoginRequiredMixin, View):
+    template_name = "customers/request_voucher_claim.html"
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        sp = get_logged_in_salesperson(request.user)
+        voucher_no = request.POST.get("voucher_number")
+
+        if not sp or not voucher_no:
+            messages.error(request, "Invalid request.")
+            return redirect("customers:request_voucher_claim")
+
+        voucher = Voucher.objects.filter(
+            voucher_number__iexact=voucher_no.strip(),
+            voucher_type__iexact="TAX INVOICE"
+        ).first()
+
+        if not voucher:
+            messages.error(request, "Voucher not found or not a TAX INVOICE.")
+            return redirect("customers:request_voucher_claim")
+
+        cvs = CustomerVoucherStatus.objects.select_related(
+            "customer", "customer__salesperson"
+        ).filter(voucher=voucher).first()
+
+        if not cvs:
+            messages.error(request, "Voucher exists but not linked to any customer.")
+            return redirect("customers:request_voucher_claim")
+
+        # if already sold_by someone
+        if cvs.sold_by:
+            messages.error(request, "This voucher is already claimed.")
+            return redirect("customers:request_voucher_claim")
+
+        # if own customer → should claim directly
+        if cvs.customer.salesperson_id == sp.id:
+            messages.info(request, "This is your customer. Please claim from your voucher list.")
+            return redirect("customers:claim_own_voucher")
+
+        # already requested?
+        if cvs.claim_status == "PENDING":
+            messages.warning(request, "Request already pending for this voucher.")
+            return redirect("customers:request_voucher_claim")
+
+        cvs.claim_requested_by = sp
+        cvs.claim_status = "PENDING"
+        cvs.save()
+
+        messages.success(
+            request,
+            f"Request sent to {cvs.customer.salesperson.name} for approval."
+        )
+        return redirect("customers:request_voucher_claim")
+
+class ApproveVoucherClaimsView(LoginRequiredMixin, View):
+    template_name = "customers/approve_voucher_claims.html"
+
+    def get(self, request):
+        sp = get_logged_in_salesperson(request.user)
+
+        if not sp:
+            return render(request, self.template_name, {"requests": []})
+
+        requests = (
+            CustomerVoucherStatus.objects
+            .select_related("customer", "voucher", "claim_requested_by")
+            .filter(
+                customer__salesperson=sp,
+                claim_status="PENDING"
+            )
+            .order_by("-voucher_date")
+        )
+
+        return render(request, self.template_name, {
+            "requests": requests,
+            "salesperson": sp,
+        })
+
+    def post(self, request):
+        sp = get_logged_in_salesperson(request.user)
+        cvs_id = request.POST.get("cvs_id")
+        action = request.POST.get("action")  # approve / reject
+
+        if not sp or not cvs_id:
+            return redirect("customers:approve_voucher_claims")
+
+        cvs = CustomerVoucherStatus.objects.select_related(
+            "customer"
+        ).filter(id=cvs_id).first()
+
+        # must be his customer
+        if not cvs or cvs.customer.salesperson_id != sp.id:
+            return redirect("customers:approve_voucher_claims")
+
+        if action == "approve":
+            cvs.sold_by = cvs.claim_requested_by
+            cvs.claim_status = "APPROVED"
+            messages.success(request, "Voucher claim approved.")
+
+        elif action == "reject":
+            cvs.claim_status = "REJECTED"
+            messages.info(request, "Voucher claim rejected.")
+
+        cvs.claim_requested_by = None
+        cvs.save()
+
+        return redirect("customers:approve_voucher_claims")
+
+class CustomerVouchersOverviewView(LoginRequiredMixin, View):
+    template_name = "customers/customer_vouchers_overview.html"
+
+    def get(self, request):
+        sp = get_logged_in_salesperson(request.user)
+
+        if not sp:
+            return render(request, self.template_name, {
+                "customer_vouchers": [],
+                "requested_vouchers": [],
+            })
+
+        # -----------------------------
+        # 1. Vouchers of my customers
+        # -----------------------------
+        customer_vouchers = (
+            CustomerVoucherStatus.objects
+            .select_related("customer", "voucher", "sold_by", "claim_requested_by")
+            .filter(customer__salesperson=sp)
+            .order_by("-voucher_date")
+        )
+
+        # -----------------------------
+        # 2. Vouchers I have requested
+        # -----------------------------
+        requested_vouchers = (
+            CustomerVoucherStatus.objects
+            .select_related("customer", "voucher", "sold_by")
+            .filter(
+                ~Q(customer__salesperson=sp),  # not my customer
+                Q(claim_requested_by=sp) | Q(sold_by=sp)
+            )
+            .order_by("-voucher_date")
+        )
+
+        return render(request, self.template_name, {
+            "customer_vouchers": customer_vouchers,
+            "requested_vouchers": requested_vouchers,
+            "salesperson": sp,
+        })
+
+
+
 import json
 from django.views.generic import TemplateView
 from django.db.models import Count
