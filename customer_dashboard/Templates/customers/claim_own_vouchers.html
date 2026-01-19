@@ -1,0 +1,52 @@
+{% extends "customers/base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3>Claim Vouchers – {{ salesperson.name }}</h3>
+  <p class="text-muted">Only TAX INVOICE vouchers of your customers are shown.</p>
+
+  {% if vouchers %}
+
+  <table class="table table-bordered table-sm mt-3">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Voucher No</th>
+        <th>Amount</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      {% for v in vouchers %}
+      <tr>
+        <td>{{ v.voucher_date }}</td>
+        <td>{{ v.customer.name }}</td>
+        <td>{{ v.voucher.voucher_number }}</td>
+        <td>₹ {{ v.voucher_amount|default:"-" }}</td>
+        <td>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="voucher_id" value="{{ v.voucher.id }}">
+            <button class="btn btn-sm btn-success">
+              Claim
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+
+    </tbody>
+  </table>
+
+  {% else %}
+    <div class="alert alert-info mt-4">
+      No unclaimed tax invoices found for your customers.
+    </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

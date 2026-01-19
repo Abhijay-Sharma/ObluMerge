@@ -1,0 +1,40 @@
+{% extends "customers/base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="container mt-5" style="max-width: 500px;">
+
+  <h4>Request Voucher Claim</h4>
+  <p class="text-muted">
+    Enter TAX INVOICE voucher number if you sold to another salesperson's customer.
+  </p>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" class="mt-3">
+    {% csrf_token %}
+
+    <div class="mb-3">
+      <label class="form-label">Voucher Number</label>
+      <input
+        type="text"
+        name="voucher_number"
+        class="form-control"
+        placeholder="Ex: TI-10245"
+        required
+      >
+    </div>
+
+    <button class="btn btn-primary">
+      Send Request
+    </button>
+
+  </form>
+
+</div>
+
+{% endblock %}

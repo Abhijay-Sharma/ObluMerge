@@ -1,0 +1,65 @@
+{% extends "customers/base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h4>Voucher Claim Requests – {{ salesperson.name }}</h4>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if requests %}
+
+  <table class="table table-bordered table-sm mt-3">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Voucher No</th>
+        <th>Requested By</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for r in requests %}
+      <tr>
+        <td>{{ r.voucher_date }}</td>
+        <td>{{ r.customer.name }}</td>
+        <td>{{ r.voucher.voucher_number }}</td>
+        <td>{{ r.claim_requested_by.name }}</td>
+        <td>
+
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="cvs_id" value="{{ r.id }}">
+            <input type="hidden" name="action" value="approve">
+            <button class="btn btn-sm btn-success">Approve</button>
+          </form>
+
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="cvs_id" value="{{ r.id }}">
+            <input type="hidden" name="action" value="reject">
+            <button class="btn btn-sm btn-danger">Reject</button>
+          </form>
+
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+
+  </table>
+
+  {% else %}
+    <div class="alert alert-info mt-4">
+      No pending voucher claim requests.
+    </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

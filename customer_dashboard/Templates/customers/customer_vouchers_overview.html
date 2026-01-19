@@ -1,0 +1,101 @@
+{% extends "customers/base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3>Customer Voucher Overview – {{ salesperson.name }}</h3>
+
+  <!-- ============================= -->
+  <!-- MY CUSTOMER VOUCHERS -->
+  <!-- ============================= -->
+  <h5 class="mt-4">My Customer Vouchers</h5>
+
+  {% if customer_vouchers %}
+  <table class="table table-bordered table-sm mt-2">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Voucher No</th>
+        <th>Sold By</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in customer_vouchers %}
+      <tr>
+        <td>{{ v.voucher_date }}</td>
+        <td>{{ v.customer.name }}</td>
+        <td>{{ v.voucher.voucher_number }}</td>
+        <td>
+          {% if v.sold_by %}
+            {{ v.sold_by.name }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if v.claim_status == "PENDING" %}
+            <span class="badge bg-warning text-dark">Pending</span>
+          {% elif v.claim_status == "APPROVED" %}
+            <span class="badge bg-success">Approved</span>
+          {% elif v.claim_status == "REJECTED" %}
+            <span class="badge bg-danger">Rejected</span>
+          {% else %}
+            <span class="badge bg-secondary">Not Claimed</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="alert alert-info">No vouchers found for your customers.</div>
+  {% endif %}
+
+
+  <!-- ============================= -->
+  <!-- VOUCHERS I REQUESTED -->
+  <!-- ============================= -->
+  <h5 class="mt-5">Vouchers I Requested From Others</h5>
+
+  {% if requested_vouchers %}
+  <table class="table table-bordered table-sm mt-2">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Voucher No</th>
+        <th>Customer's Salesperson</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in requested_vouchers %}
+      <tr>
+        <td>{{ v.voucher_date }}</td>
+        <td>{{ v.customer.name }}</td>
+        <td>{{ v.voucher.voucher_number }}</td>
+        <td>{{ v.customer.salesperson.name }}</td>
+        <td>
+          {% if v.claim_status == "PENDING" %}
+            <span class="badge bg-warning text-dark">Pending</span>
+          {% elif v.claim_status == "APPROVED" %}
+            <span class="badge bg-success">Approved</span>
+          {% elif v.claim_status == "REJECTED" %}
+            <span class="badge bg-danger">Rejected</span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="alert alert-info">You have not requested any vouchers.</div>
+  {% endif %}
+
+</div>
+
+{% endblock %}
