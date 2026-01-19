@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from django.views.generic import TemplateView
 from django.db.models import Prefetch
+from calendar import monthrange
 
 from customer_dashboard.models import SalesPerson, Customer, CustomerVoucherStatus
 from tally_voucher.models import Voucher, VoucherStockItem
@@ -1159,3 +1160,199 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
         ctx["total_sales"] = total_sales
 
         return ctx
+
+
+
+#claimed vouchers only monthly reports and dynamic prices correction
+class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
+    template_name = "incentive_calculator/asm_incentive_monthly.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # ---------------------------------
+        # BASIC FILTERS
+        # ---------------------------------
+        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
+
+        salesperson_id = self.request.GET.get("salesperson")
+        month_picker = self.request.GET.get("month_picker")
+
+
+        today = date.today()
+        if month_picker:
+            year, month = map(int, month_picker.split("-"))
+        else:
+            year, month = today.year, today.month
+
+        ctx["year"] = year
+        ctx["month"] = month
+
+        if not salesperson_id:
+            ctx.update({
+                "rows": [],
+                "product_totals": {},
+                "grand_total_incentive": Decimal("0.00"),
+                "selected_salesperson": None,
+                "dynamic_group_qty": Decimal("0.00"),
+                "dynamic_rate_used": None,
+            })
+            return ctx
+
+        year = ctx["year"]
+        month = ctx["month"]
+
+        start_date = date(year, month, 1)
+        end_date = date(year, month, monthrange(year, month)[1])
+
+        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
+        ctx["selected_salesperson"] = salesperson
+
+        if not salesperson:
+            return ctx
+
+        # ---------------------------------
+        # ALL TAX INVOICES (PAID + UNPAID)
+        # ---------------------------------
+        voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=salesperson,
+            voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[start_date, end_date],
+        )
+
+        vouchers = Voucher.objects.filter(
+            id__in=voucher_statuses.values_list("voucher_id", flat=True)
+        )
+
+        voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
+
+        # ---------------------------------
+        # STOCK ITEMS
+        # ---------------------------------
+        stock_items = (
+            VoucherStockItem.objects
+            .filter(voucher__in=vouchers)
+            .select_related("voucher", "item")
+            .order_by("voucher__date")
+        )
+
+        # ---------------------------------
+        # INCENTIVES
+        # ---------------------------------
+        incentives = {
+            pi.product_id: pi
+            for pi in ProductIncentive.objects.select_related("product")
+        }
+
+        rows = []
+
+        product_map = {}
+        paid_quantity_map = {}
+        dynamic_products = set()
+
+        total_sales = Decimal("0.00")
+
+        # ---------------------------------
+        # BUILD ROWS + MAPS
+        # ---------------------------------
+        for si in stock_items:
+            product = si.item
+            if not product:
+                continue
+
+            product_id = product.id
+            product_map[product_id] = product
+
+            incentive_obj = incentives.get(product_id)
+            has_incentive = product_id in incentives
+            has_dynamic = bool(incentive_obj and incentive_obj.has_dynamic_price)
+
+            if has_dynamic:
+                dynamic_products.add(product_id)
+
+            total_sales += Decimal(str(si.amount))
+
+            voucher_status = voucher_status_map.get(si.voucher_id)
+
+            is_fully_paid = bool(voucher_status and voucher_status.is_fully_paid)
+            is_partially_paid = bool(voucher_status and voucher_status.is_partially_paid)
+            is_unpaid = bool(voucher_status and voucher_status.is_unpaid)
+
+            # ---- PAID QTY ONLY FOR INCENTIVE ----
+            if is_fully_paid:
+                paid_quantity_map.setdefault(product_id, Decimal("0.00"))
+                paid_quantity_map[product_id] += si.quantity
+
+            rows.append({
+                "date": si.voucher.date,
+                "customer": si.voucher.party_name,
+                "customer_id": voucher_status.customer_id if voucher_status else None,
+                "voucher_id": si.voucher.id,
+                "voucher_no": si.voucher.voucher_number,
+                "product": product.name,
+                "quantity": si.quantity,
+                "amount": si.amount,
+                "has_incentive": has_incentive,   # ✅ for yellow/green
+                "is_fully_paid": is_fully_paid,
+                "is_partially_paid": is_partially_paid,
+                "is_unpaid": is_unpaid,
+            })
+
+        # ---------------------------------
+        # DYNAMIC GROUP QTY (PAID ONLY)
+        # ---------------------------------
+        dynamic_group_qty = sum(
+            paid_quantity_map.get(pid, Decimal("0.00"))
+            for pid in dynamic_products
+        )
+
+        if dynamic_group_qty < 500:
+            dynamic_rate_used = Decimal("0.00")
+        elif dynamic_group_qty >= 3000:
+            dynamic_rate_used = Decimal("4.00")
+        else:
+            dynamic_rate_used = None  # use base rates
+
+        # ---------------------------------
+        # PRODUCT TOTALS
+        # ---------------------------------
+        product_totals = {}
+        grand_total_incentive = Decimal("0.00")
+
+        for product_id, paid_qty in paid_quantity_map.items():
+            product = product_map[product_id]
+            incentive_obj = incentives.get(product_id)
+
+            if not incentive_obj:
+                continue
+
+            if incentive_obj.has_dynamic_price:
+                if dynamic_rate_used is not None:
+                    rate = dynamic_rate_used
+                else:
+                    rate = incentive_obj.ASM_incentive
+            else:
+                rate = incentive_obj.ASM_incentive
+
+            incentive_amount = paid_qty * rate
+            grand_total_incentive += incentive_amount
+
+            product_totals[product.name] = {
+                "paid_qty": paid_qty,
+                "rate": rate,
+                "incentive": incentive_amount,
+                "has_dynamic": incentive_obj.has_dynamic_price,
+            }
+
+        # ---------------------------------
+        # CONTEXT
+        # ---------------------------------
+        ctx["rows"] = rows
+        ctx["product_totals"] = product_totals
+        ctx["grand_total_incentive"] = grand_total_incentive
+        ctx["total_sales"] = total_sales
+        ctx["dynamic_group_qty"] = dynamic_group_qty
+        ctx["dynamic_rate_used"] = dynamic_rate_used
+
+        return ctx
+
