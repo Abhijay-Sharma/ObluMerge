@@ -134,6 +134,35 @@ class CustomerVoucherStatus(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # who actually sold this voucher (for incentive)
+    sold_by = models.ForeignKey(
+        SalesPerson,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="sold_vouchers"
+    )
+
+    # claim workflow
+    claim_requested_by = models.ForeignKey(
+        SalesPerson,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="claim_requests_made"
+    )
+
+    claim_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("NONE", "None"),
+            ("PENDING", "Pending"),
+            ("APPROVED", "Approved"),
+            ("REJECTED", "Rejected"),
+        ],
+        default="NONE"
+    )
+
     class Meta:
         unique_together = ("customer", "voucher")
         ordering = ["-voucher_date"]
