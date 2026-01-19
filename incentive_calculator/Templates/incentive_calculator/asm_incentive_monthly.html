@@ -1,323 +1,155 @@
-{% load static %}
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Proforma Invoice</title>
+<title>ASM Monthly Incentive Calculator</title>
 
 <style>
-@page { size: A4 portrait; margin: 14mm; }
+body { background:#000; color:white; font-family:Poppins,sans-serif; padding:25px; }
+.card { background:#111; border:1px solid #333; border-radius:12px; padding:20px; margin-bottom:20px; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:10px; border-bottom:1px solid #333; }
 
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 12px;
-  color:#000;
-  margin:0;
-}
+tr.unpaid { background:#2a0000; }
+tr.partial { background:#2a1a00; }
 
-.wrapper{ width:100%; }
-.invoice-container{ padding:10px 14px; }
+.product-green { color:#00ff99; font-weight:600; }
+.product-yellow { color:#ffd54d; font-weight:600; }
 
-/* GLOBAL */
-table{ width:100%; border-collapse:collapse; }
-td, th{ border:none; padding:6px; vertical-align:top; }
+.badge { font-size:11px; padding:4px 8px; border-radius:6px; margin-left:5px; }
+.badge.red { background:#ff4d4d; }
+.badge.orange { background:#ffb84d; color:black; }
 
-.bold{ font-weight:bold; }
-.center{ text-align:center; }
-.right{ text-align:right; }
-
-/* HEADER */
-.header-top{
-  display:flex;
-  justify-content:space-between;
-}
-
-.company-info{ width:65%; line-height:1.4; }
-.logo{ width:120px; height:80px; }
-
-hr{
-  border:none;
-  border-top:2px solid #0b78a8;
-  margin:10px 0 14px;
-}
-
-.header-title{
-  text-align:center;
-  font-size:18px;
-  font-weight:bold;
-  color:#0b78a8;
-  margin-bottom:14px;
-}
-
-/* INFO GRID */
-.info-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:30px;
-  margin-bottom:18px;
-}
-.info-grid b{ display:block; margin-bottom:6px; }
-
-/* ITEM TABLE */
-.item-table thead th{
-  background:#0b78a8;
-  color:#fff;
-  font-weight:bold;
-  text-align:center;
-  font-size:12px;
-}
-
-.item-table th.right,
-.item-table td.right{ text-align:right; padding-right:12px; font-size:12px; }
-
-.item-table th.center,
-.item-table td.center{ text-align:center; font-size:12px; }
-
-.item-table tbody td{ border-bottom:1px solid #999; font-size:12px;}
-
-.item-name{ text-align:left; padding-left:14px; font-size:12px; }
-
-/* TOTALS */
-.totals-wrapper{ margin-top:16px; font-size:12px; }
-
-.totals-highlight{
-  background:#0b78a8;
-  color:#fff;
-  font-weight:bold;
-  font-size:14px;
-}
-
-/* FOOTER */
-.footer-text{
-  text-align:center;
-  font-size:11px;
-  margin-top:30px;
-}
-
-.qr-box{ width:120px; height:70px;}
-
-/* ================= PRINT-ONLY REFINEMENT ================= */
-@media print{
-
-  body{ font-size:11px; }
-
-  .logo{ width:90px; height:60px;}
-
-  .no-print{ display:none; }
-
-  /* tighter rows */
-  .item-table thead th,
-  .item-table tbody td{
-    padding:4px 4px;
-    font-size:11px;
-  }
-
-  /* make headers feel like 2 rows */
-  .item-table thead th:nth-child(5)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-  .item-table thead th:nth-child(6)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-  .item-table thead th:nth-child(7)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-  .item-table thead th:nth-child(8)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-}
+a { color:#00ff99; }
 </style>
 </head>
 
 <body>
-<div class="invoice-container">
-<div class="wrapper">
 
-<!-- ================= HEADER ================= -->
-<div class="header-top">
+<h2>ASM Incentive Calculator — Monthly</h2>
 
-  <img
-    src="https://obluhc.com/cdn/shop/files/Oblu_Logo_black_2025_0_size.webp?v=1757743482"
-    class="logo"
-    alt="OBLU Logo"
-  >
+<!-- FILTER -->
+<div class="card">
+<form method="get">
 
-  <div class="company-info">
-    <b>OBLU HEALTHCARE LLP</b><br>
-    UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
-    ROAD NO.44, Pitampura, New Delhi – 110034<br>
-    Phone : 96504 47099<br>
-    Email : sales@obluhc.com<br>
-    GSTIN : 07AAIFO0279M1ZU<br>
-    PAN : AAIFO0279M<br>
-    State : 07-Delhi
-  </div>
+    <select name="salesperson" required>
+        <option value="">-- Select Salesperson --</option>
+        {% for sp in salespersons %}
+        <option value="{{ sp.id }}"
+            {% if selected_salesperson and sp.id == selected_salesperson.id %}selected{% endif %}>
+            {{ sp.name }}
+        </option>
+        {% endfor %}
+    </select>
 
-  <div class="qr-box">
-    <img
-      src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://www.instagram.com/oblu_healthcare/"
-      alt="Instagram QR"
-    >
-    <span>@oblu_healthcare</span>
-  </div>
+    <!-- ✅ MONTH CALENDAR PICKER -->
+    <input type="month" name="month_picker"
+           value="{{ year }}-{% if month < 10 %}0{{ month }}{% else %}{{ month }}{% endif %}"
+           required>
 
+    <button type="submit">Calculate</button>
+</form>
 </div>
 
-<hr>
 
-<div class="header-title">Proforma Invoice</div>
+{% if rows %}
+<div class="card">
+<h3>Sales Rows</h3>
 
-<!-- ================= INFO ================= -->
-<div class="info-grid">
-
-  <div>
-    <b>Order From</b>
-    {{ invoice.customer.name }}<br>
-    {{ invoice.customer.address }}<br>
-    {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-    {{ invoice.customer.state }}<br>
-    Contact : {{ invoice.customer.phone }}
-  </div>
-
-  <div>
-    <b>Ship To</b>
-    {{ invoice.customer.name }}<br>
-    {{ invoice.customer.address }}<br>
-    {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-    {{ invoice.customer.state }}<br>
-    Mob : {{ invoice.customer.phone }}
-  </div>
-
-  <div>
-    <b>Order Details</b>
-    Order No. : {{ invoice.id }}<br>
-    Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
-    Place of Supply : Delhi
-  </div>
-
-</div>
-
-<!-- ================= ITEM TABLE ================= -->
-<table class="item-table">
+<table>
 <thead>
 <tr>
-  <th>#</th>
-  <th class="item-name">Item name</th>
-  <th>HSN</th>
-  <th>Qty</th>
-  <th class="right">Rate<br>(Inc.)</th>
-  <th class="right">Rate<br>(Exc.)</th>
-  <th class="right">Taxable <br> Value</th>
-  <th class="center">GST%</th>
-  <th class="right">Amount</th>
+<th>Date</th><th>Customer</th><th>Voucher</th><th>Product</th><th>Qty</th><th>Amount</th>
 </tr>
-  <hr>
 </thead>
-
 <tbody>
-{% for item in items %}
-{% widthratio item.total_price 100 item.taxrate as item_gst %}
-{% widthratio item.unit_price 100 item.taxrate as unit_gst %}
-{% with item.unit_price|add:unit_gst as rate_incl_tax %}
-<tr>
-  <td class="center">{{ forloop.counter }}</td>
-  <td class="item-name">{{ item.product.name }}</td>
-  <td class="center">{{ item.hsn }}</td>
-  <td class="center">{{ item.quantity }}</td>
-  <td class="right">₹ {{ rate_incl_tax|floatformat:2 }}</td>
-  <td class="right">₹ {{ item.unit_price|floatformat:2 }}</td>
-  <td class="right">₹ {{ item.total_price|floatformat:2 }}</td>
-  <td class="center">{{ item.taxrate }}%</td>
-  <td class="right">₹ {{ item.total_price|add:item_gst|floatformat:2 }}</td>
+
+{% for r in rows %}
+<tr class="{% if r.is_unpaid %}unpaid{% elif r.is_partially_paid %}partial{% endif %}">
+<td>{{ r.date }}</td>
+
+<td>
+    {% if r.customer_id %}
+        <a href="{% url 'customers:customerpaymentstatus' r.customer_id %}">
+            {{ r.customer }}
+        </a>
+    {% else %}
+        {{ r.customer }}
+    {% endif %}
+
+    {% if r.is_unpaid %}
+        <span class="badge red">UNPAID</span>
+    {% elif r.is_partially_paid %}
+        <span class="badge orange">PARTIAL</span>
+    {% endif %}
+</td>
+
+<td>
+    <a href="{% url 'voucher_detail' r.voucher_id %}" target="_blank" style="color:#fff;text-decoration:underline;">
+        {{ r.voucher_no }}
+    </a>
+</td>
+
+<td>
+    <span class="{% if r.has_incentive %}product-green{% else %}product-yellow{% endif %}">
+        {{ r.product }}
+    </span>
+</td>
+
+<td>{{ r.quantity }}</td>
+<td>₹{{ r.amount }}</td>
 </tr>
-{% endwith %}
+{% endfor %}
+
+<tr style="font-weight:bold;border-top:2px solid #555;">
+<td colspan="5" style="text-align:right;">TOTAL</td>
+<td>₹{{ total_sales }}</td>
+</tr>
+
+</tbody>
+</table>
+</div>
+{% endif %}
+
+{% if product_totals %}
+<div class="card">
+<h3>Product-wise Incentive</h3>
+
+<p>
+Dynamic Group Paid Qty: <b>{{ dynamic_group_qty }}</b><br>
+Dynamic Rate Used:
+<b>
+{% if dynamic_rate_used is not None %}
+₹{{ dynamic_rate_used }}
+{% else %}
+Base Rates
+{% endif %}
+</b>
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Product</th><th>Paid Qty</th><th>Rate</th><th>Incentive</th>
+</tr>
+</thead>
+<tbody>
+{% for product, data in product_totals.items %}
+<tr>
+<td>{{ product }}</td>
+<td>{{ data.paid_qty }}</td>
+<td>₹{{ data.rate }}</td>
+<td>₹{{ data.incentive }}</td>
+</tr>
 {% endfor %}
 </tbody>
 </table>
 
-<!-- ================= TOTALS ================= -->
-{% with items.0.taxrate as gst_rate %}
-{% widthratio invoice.items_total 100 gst_rate as product_igst %}
-{% with invoice.courier_charge|default:0 as courier_charge %}
-{% with invoice.courier_gst|default:0 as courier_gst %}
-{% with product_igst|add:courier_gst as combined_igst %}
-{% with invoice.items_total|add:combined_igst|add:courier_charge as display_total %}
-
-<div class="totals-wrapper">
-<table>
-<tr>
-  <td width="60%" style="font-size:13px;">
-    <b >Order Amount In Words</b><br>
-    INR {{ display_total|floatformat:0 }} Only
-  </td>
-
-  <td width="40%">
-    <table>
-      <tr>
-        <td class="right bold" style="font-size:13px;">Sub Total</td>
-        <td class="right" style="font-size:13px;">₹ {{ invoice.items_total|floatformat:2 }}</td>
-      </tr>
-      <tr>
-        <td class="right bold" style="font-size:13px;">Courier Charges</td>
-        <td class="right" style="font-size:13px;">₹ {{ courier_charge|floatformat:2 }}</td>
-      </tr>
-      <tr>
-        <td class="right bold" style="font-size:13px;">IGST @ {{ gst_rate }}%</td>
-        <td class="right" style="font-size:13px;">₹ {{ combined_igst|floatformat:2 }}</td>
-      </tr>
-      <tr class="totals-highlight">
-        <td class="right">Total</td>
-        <td class="right" style="font-size:13px;">₹ {{ display_total|floatformat:2 }}</td>
-      </tr>
-    </table>
-  </td>
-</tr>
-</table>
+<h3 style="margin-top:15px;">
+Grand Total Incentive: ₹{{ grand_total_incentive }}
+</h3>
 </div>
+{% endif %}
 
-{% endwith %}
-{% endwith %}
-{% endwith %}
-{% endwith %}
-{% endwith %}
-
-<!-- ================= BANK ================= -->
-<div style="margin-top:18px;">
-  <b>Company's Bank Details</b><br>
-  A/c Holder : OBLU HEALTHCARE LLP<br>
-  Bank : ICICI BANK (CC)<br>
-  A/c No. : 629351001224<br>
-  Branch & IFSC : Rajouri Garden & ICIC0006293
-</div>
-
-<div style="text-align:right; margin-top:20px;">
-  For OBLU HEALTHCARE LLP<br><br>
-  <b>Authorized Signatory</b>
-</div>
-
-<div class="footer-text">
-  This is a computer generated invoice
-</div>
-
-<div class="no-print" style="text-align:center;margin-top:14px;">
-  <button onclick="window.print()"
-    style="padding:8px 16px;background:#333;color:#fff;border:none;cursor:pointer;">
-    Print / Save as PDF
-  </button>
-</div>
-
-</div>
-</div>
 </body>
 </html>
