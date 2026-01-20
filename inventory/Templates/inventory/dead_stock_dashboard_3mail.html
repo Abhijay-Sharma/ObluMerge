@@ -1,313 +1,319 @@
-<!-- dead_stock_dashboard.html
-this is dashboard that display the dead stock product (not sold in long time-->
-
 {% extends 'inventory/base.html' %}
-
 {% block content %}
 
 <style>
-
-     .date-filter-form {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
-          margin: 50px auto;
-        }
-
-        .date-filter-form label {
-          font-weight: 500;
-        }
-
-        .date-filter-form input[type="date"] {
-          padding: 5px 10px;
-          border: 1px solid #ccc;
-          border-radius: 6px;
-        }
-
-        .date-filter-form .btn {
-          padding: 6px 16px;
-          border-radius: 6px;
-        }
-
-        .summary-card {
-            flex: 0 0 85%;
-            max-width: 100%;
-            max-height: 100%;
-            padding: 5px 2px;
-            box-sizing: border-box;
-            text-align: center;
-
-          }
-
-          .summary-card h5 {
-            font-size: 1.2rem;
-          }
-
-          .summary-card h3 {
-            font-size: 2rem;
-          }
-
-        @media (max-width: 768px) {
-          .row.mb-4.justify-content-center {
-            display: flex;
-            flex-wrap: nowrap;
-            align-items: centre;
-            overflow-x: auto;
-            padding: 0 70px;
-            margin: 0;
-            scroll-behavior: smooth
-          }
-
-          .summary-card {
-            flex: 0 0 85%;
-            max-width: 90%;
-            max-height: 80%;
-            padding: 5px 2px;
-            box-sizing: border-box;
-            text-align: center;
-          }
-
-          .summary-card h5 {
-            font-size: 0.7rem;
-          }
-
-          .summary-card h3 {
-            font-size: 0.8rem;
-          }
-        }
-        /* ===== CATEGORY ACCORDION (SMOOTH + LINE BY LINE) ===== */
-
-    .accordion {
-        display: block;                 /* ✅ force new line */
-        width: 100%;
-        background-color: #1e1e1e;
-        color: white;
-        cursor: pointer;
-        padding: 14px 18px;
-        margin-top: 12px;
-        border: none;
-        text-align: left;
-        outline: none;
-        font-size: 16px;
-        border-radius: 10px;
-        transition: background 0.3s ease;
+    body {
+     background:#111;
+    }
+    .mobile-view {
+        display:none;
     }
 
+    .date-filter-form{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin:24px auto 16px;
+    }
+    .date-filter-form input{
+      padding:6px 10px;
+      border-radius:6px;
+    }
+
+    .insight-bar{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      background:#C7DAD1;
+      padding:14px 18px;
+      border-radius:20px;
+      margin-bottom:22px;
+    }
+    .insight-text,
+    .insight-total{
+      font-size:2.2rem;
+      color:#222;
+    }
+
+    .accordion{
+      width:100%;
+      background:#1e1e1e;
+      color:#fff;
+      padding:14px 18px;
+      margin-top:12px;
+      border:none;
+      border-radius:10px;
+      cursor:pointer;
+      text-align:left;
+    }
     .accordion:hover,
-    .accordion.active {
-        background-color: #333;
+    .accordion.active{background:#333;}
+
+    .panel{
+      display:none;
+      background:#2c2c2c;
+      border-radius:10px;
+      margin-bottom:16px;
+    }
+    .panel.open{
+      display:block;
+      padding:14px;
     }
 
-    /* Panel container */
-    .panel {
-        width: 100%;
-        overflow: hidden;
-        max-height: 0;                  /* ✅ collapsed by default */
-        transition: max-height 0.45s ease, padding 0.3s ease;
-        background-color: #2c2c2c;
-        border-radius: 10px;
-        margin-bottom: 12px;
-        padding: 0 16px;                /* no vertical padding when closed */
+    .customer-panel{
+      margin-top:8px;
+      background:#121212;
+      border-radius:14px;
+      padding:8px;
+    }
+    .customer-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px 12px;
+      margin-bottom:6px;
+      border-radius:10px;
+      background:linear-gradient(135deg,#1f1f1f,#181818);
+      border:1px solid #2c2c2c;
+    }
+    .customer-name{color:#fff;font-weight:600;font-size:14px;}
+    .customer-sales{color:#9aa0a6;font-size:12px;}
+    .mail-btn{font-size:12px;border-radius:20px;}
+
+    .mobile-category-toggle{
+      width:100%;
+      background:#222;
+      color:#fff;
+      padding:12px;
+      border:none;
+      border-radius:12px;
+      margin-bottom:8px;
+      font-weight:600;
+      text-align:left;
     }
 
+    .mobile-category-panel{
+      display:none;
+      margin-bottom:14px;
+    }
 
-        /* Open state */
-        .panel.open {
-            padding: 12px 16px;
-        }
+    .mobile-product-toggle{
+      width:100%;
+      background:#1b1b1b;
+      color:#4da3ff;
+      padding:10px;
+      border:none;
+      border-radius:10px;
+      margin:6px 0;
+      text-align:left;
+    }
 
+    .mobile-product-panel{
+      display:none;
+      padding:8px;
+    }
 
-        @media (max-width: 420px) {
-          .row.mb-4.justify-content-center {
-            display: flex;
-            flex-wrap: nowrap;
-            justify-content: flex-start;
-            align-items: stretch;
-            overflow-x: auto;
-            gap: 4px;
-            padding: 0 70px;
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            scroll-behavior: smooth;
-          }
+    .mobile-product-meta{
+      background:#151515;
+      padding:8px;
+      border-radius:10px;
+      font-size:13px;
+      color:#aaa;
+      margin-bottom:8px;
+    }
 
-          .summary-card {
-            max-width: 100%;
-            text-align: center;
-          }
+    .mobile-customer-toggle{
+      background:none;
+      border:none;
+      color:#4da3ff;
+      font-weight:600;
+      margin-bottom:8px;
+    }
 
-          .summary-card h5 {
-            font-size: 0.7rem;
-          }
+    .mobile-customer-panel{
+      display:none;
+    }
 
-          .summary-card h3 {
-            font-size: 1.2rem;
-          }
-        }
+    .mobile-customer-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background:rgba(255,255,255,.05);
+      padding:8px;
+      border-radius:10px;
+      margin-bottom:6px;
+    }
 
-        @media (max-width: 360px) {
-
-          h2{
-            font-size: 1rem;
-          }
-          .row.mb-4.justify-content-center {
-
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            overflow-x: hidden;
-            padding: 0;
-            margin: 0;
-          }
-
-          .summary-card {
-            max-width: 100%;
-            text-align: center;
-          }
-
-          .summary-card h5 {
-            font-size: 0.85rem;
-          }
-
-          .summary-card h3 {
-            font-size: 1rem;
-          }
-        }
-
-
+    @media (max-width:768px){
+      .desktop-view{display:none;}
+      .mobile-view{display:block;}
+    }
 </style>
 
-
 <div class="container mt-4">
-  <h2 style="color:white;">🧊 Dead Stock – Category Wise</h2>
 
-<form method="get" class="date-filter-form">
-  <label>From:</label>
-  <input type="date" name="from" value="{{ from_date|date:'Y-m-d' }}">
-  <label>To:</label>
-  <input type="date" name="to" value="{{ to_date|date:'Y-m-d' }}">
-  <button class="btn btn-primary">Apply</button>
-</form>
-      <div class="row mb-4 justify-content-center">
-      <div class="col-md-3 col-6">
-        <div class="card summary-card bg-warning text-dark shadow-sm">
-          <div class="card-body text-center">
-            <h5>Total Dead Stock</h5>
-            <h3>{{ dead_stock |length }}</h3>
-          </div>
+    <h2 style="color:white;">🧊 Dead Stock – Category Wise</h2>
+
+    <form method="get" class="date-filter-form">
+      <label>From:</label>
+      <input type="date" name="from" value="{{ from_date|date:'Y-m-d' }}">
+      <label>To:</label>
+      <input type="date" name="to" value="{{ to_date|date:'Y-m-d' }}">
+      <button class="btn btn-primary btn-sm">Apply</button>
+    </form>
+
+    <div class="insight-bar">
+      <span class="insight-text">🧊 Dead Stock</span>
+      <span class="insight-total">
+        Total Items: <strong>{{ dead_stock|length }}</strong>
+      </span>
+    </div>
+
+    <!-- ================= DESKTOP VIEW ================= -->
+    <div class="desktop-view">
+        {% for category, items in category_data.items %}
+        <button class="accordion">{{ category }}</button>
+
+        <div class="panel">
+            <table class="table table-dark align-middle">
+                <thead>
+                    <tr><th>Item</th><th>Customers</th></tr>
+                </thead>
+                    <tbody>
+
+                        {% for item in items %}
+                        <tr>
+                            <td style="vertical-align:top;width:260px;">
+                              <div style="background:#181818;border:1px solid #333;border-radius:12px;padding:12px;position:sticky;top:10px;">
+                                <div style="color:#fff;font-weight:600;">{{ item.name }}</div>
+                                <div style="font-size:12px;color:#aaa;">Qty: {{ item.quantity }}</div>
+                                <div style="font-size:12px;color:#aaa;">Last Sold: {{ item.last_sold|default:"Never" }}</div>
+                              </div>
+                            </td>
+
+                            <td>
+                            <div class="customer-panel">
+                            {% for c in item.customers %}
+                            <div class="customer-row">
+                              <div>
+                                <div class="customer-name">
+                                  {% if c.link %}
+                                    <a href="{{ c.link }}" target="_blank" style="color:#4da3ff;">
+                                      {{ c.name }}
+                                    </a>
+                                  {% else %}
+                                    {{ c.name }}
+                                  {% endif %}
+                                </div>
+
+                                <div class="customer-sales">{{ c.salesperson|default:"Unassigned" }}</div>
+                              </div>
+                              {% if c.mail_link %}
+                              <a href="{{ c.mail_link }}" class="btn btn-outline-success btn-sm mail-btn">📧 Mail</a>
+                              {% endif %}
+                            </div>
+                            {% endfor %}
+                            </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+            </table>
         </div>
-      </div>
-  </div>
-
-
-{% for category, items in category_data.items %}
-  <button class="accordion">{{ category }}</button>
-
-  <div class="panel">
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Quantity</th>
-          <th>Last Sold</th>
-          <th>Customers / Salesperson</th>
-          <th>Action</th>
-
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in items %}
-          <tr>
-            <td>{{ item.name }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>
-              {% if item.last_sold %}
-                {{ item.last_sold }}
-              {% else %}
-                <i>Never Sold</i>
-              {% endif %}
-            </td>
-            <td>
-              {% if item.customers %}
-                <ul style="padding-left: 16px; margin: 0;">
-                  {% for c in item.customers %}
-                    <li>
-                      {% if c.link %}
-                        <a href="{{ c.link }}" target="_blank">
-                          {{ c.name }}
-                        </a>
-                      {% else %}
-                        {{ c.name }}
-                      {% endif %}
-
-                      {% if c.salesperson %}
-                        <small style="color:#aaa;">
-                          — {{ c.salesperson }}
-                        </small>
-                      {% else %}
-                        <small style="color:#666;">
-                          — Unassigned
-                        </small>
-                      {% endif %}
-                    </li>
-
-                  {% endfor %}
-                </ul>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% if item.customers %}
-                <ul style="padding-left: 0; margin: 0; list-style: none;">
-                  {% for c in item.customers %}
-                    <li>
-                      {% if c.mail_link %}
-                        <a href="{{ c.mail_link }}" class="btn btn-sm btn-outline-primary">
-                          📧 Mail
-                        </a>
-                      {% else %}
-                        <span style="color:#777;">—</span>
-                      {% endif %}
-                    </li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-
-          </tr>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
-{% empty %}
-  <p class="text-center text-muted">✅ No Dead Stock Found</p>
-{% endfor %}
+    </div>
 
-</div>
+    <!-- ================= MOBILE VIEW ================= -->
+    <div class="mobile-view">
+
+        {% for category, items in category_data.items %}
+            <button class="mobile-category-toggle">{{ category }}</button>
+
+            <div class="mobile-category-panel">
+
+                {% for item in items %}
+                    <button class="mobile-product-toggle">{{ item.name }}</button>
+
+                    <div class="mobile-product-panel">
+                        <div class="mobile-product-meta">
+                        Qty: {{ item.quantity }}<br>
+                        Last Sold: {{ item.last_sold|default:"Never" }}
+                        </div>
+
+                        <button class="mobile-customer-toggle">
+                        👥 View Customers ({{ item.customers|length }})
+                        </button>
+
+                        <div class="mobile-customer-panel">
+                            {% for c in item.customers %}
+                                <div class="mobile-customer-row">
+                                  <div>
+                                    {% if c.link %}
+                                      <a href="{{ c.link }}" target="_blank" style="color:#4da3ff;font-weight:600;">
+                                        {{ c.name }}
+                                      </a><br>
+                                    {% else %}
+                                      <strong>{{ c.name }}</strong><br>
+                                    {% endif %}
+
+                                    <small>{{ c.salesperson|default:"Unassigned" }}</small>
+                                  </div>
+                                  {% if c.mail_link %}
+                                     <a href="{{ c.mail_link }}" class="btn btn-outline-success btn-sm">📧 Mail</a>
+                                  {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        </div>
+
+    </div>
 
 <script>
-  const accordions = document.querySelectorAll(".accordion");
+/* ===== DESKTOP ===== */
+document.querySelectorAll(".accordion").forEach(acc=>{
+  acc.onclick=()=>{
+    acc.classList.toggle("active");
+    acc.nextElementSibling.classList.toggle("open");
+  };
+});
 
-  accordions.forEach(acc => {
-    acc.addEventListener("click", function () {
-      this.classList.toggle("active");
+/* ===== MOBILE ===== */
+document.querySelectorAll(".mobile-category-toggle").forEach(btn=>{
+  btn.onclick=()=> {
+    const p=btn.nextElementSibling;
+    p.style.display=p.style.display==="block"?"none":"block";
+  };
+});
 
-      const panel = this.nextElementSibling;
+document.querySelectorAll(".mobile-product-toggle").forEach(btn=>{
+  btn.onclick=()=>{
+    const panel=btn.nextElementSibling;
+    const cat=btn.closest(".mobile-category-panel");
 
-      if (panel.style.maxHeight) {
-        panel.style.maxHeight = null;
-        panel.classList.remove("open");
-      } else {
-        panel.style.maxHeight = panel.scrollHeight + "px";
-        panel.classList.add("open");
-      }
+    cat.querySelectorAll(".mobile-product-panel").forEach(p=>{
+      if(p!==panel) p.style.display="none";
     });
-  });
+    cat.querySelectorAll(".mobile-customer-panel").forEach(p=>{
+      p.style.display="none";
+    });
+
+    panel.style.display=panel.style.display==="block"?"none":"block";
+  };
+});
+
+document.querySelectorAll(".mobile-customer-toggle").forEach(btn=>{
+  btn.onclick=()=>{
+    const p=btn.nextElementSibling;
+    p.style.display=p.style.display==="block"?"none":"block";
+  };
+});
 </script>
 
 
