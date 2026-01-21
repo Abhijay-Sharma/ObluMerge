@@ -15,5 +15,10 @@ urlpatterns = [
         "asm/paid-only/",
         views.ASMIncentiveCalculatorPaidOnlyView.as_view(),
         name="asm_incentive_paid_only",
-    )
+    ),
+    path(
+        "product-incentives/",
+        views.ProductIncentiveListView.as_view(),
+        name="product_incentive_list",
+    ),
 ]

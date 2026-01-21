@@ -1356,3 +1356,19 @@ class ASMIncentiveCalculatorPaidOnlyView(TemplateView):
 
         return ctx
 
+
+class ProductIncentiveListView(TemplateView):
+    template_name = "incentive_calculator/product_incentive_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        ctx["products"] = (
+            ProductIncentive.objects
+            .select_related("product")
+            .order_by("product__name")
+        )
+
+        return ctx
+
+

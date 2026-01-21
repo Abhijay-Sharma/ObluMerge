@@ -1,0 +1,45 @@
+
+{% block content %}
+<div class="container mt-4">
+
+  <h3 class="mb-3">Product Incentive Master</h3>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th>ASM Incentive</th>
+          <th>RSM Incentive</th>
+          <th>Dynamic Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ p.product.name }}</td>
+          <td>₹ {{ p.ASM_incentive }}</td>
+          <td>₹ {{ p.RSM_incentive }}</td>
+          <td>
+            {% if p.has_dynamic_price %}
+              <span class="badge bg-success">Yes</span>
+            {% else %}
+              <span class="badge bg-secondary">No</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted">
+            No product incentives found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}
