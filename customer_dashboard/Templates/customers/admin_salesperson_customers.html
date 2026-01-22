@@ -395,17 +395,19 @@ table tbody td {
 <!-- REMARK MODALS -->
 {% for c in customers %}
 
-<!-- VIEW REMARKS MODAL -->
+<!-- VIEW REMARKS + FOLLOWUPS MODAL -->
 <div class="remark-modal" id="modal{{ c.id }}">
   <div class="remark-box">
     <div class="d-flex justify-content-between mb-2">
-      <h5>Remarks — {{ c.name }}</h5>
+      <h5>Remarks & Follow-ups — {{ c.name }}</h5>
       <button class="btn btn-sm btn-light"
               onclick="closeModal('{{ c.id }}')">
         Close
       </button>
     </div>
 
+    <!-- REMARKS -->
+    <h6 class="mt-2">Remarks</h6>
     {% for r in c.remarks_list %}
       <div class="remark-item">
         <p>{{ r.remark }}</p>
@@ -414,11 +416,33 @@ table tbody td {
         </small>
       </div>
     {% empty %}
-      <p>No remarks.</p>
+      <p class="text-muted">No remarks.</p>
+    {% endfor %}
+
+    <hr>
+
+    <!-- FOLLOW UPS -->
+    <h6>Follow-ups</h6>
+    {% for f in c.followups_list %}
+      <div class="remark-item">
+        <p>
+          {{ f.note|default:"(No note)" }}
+        </p>
+        <small>
+          {{ f.salesperson }} ·
+          {{ f.followup_date|date:"d M Y" }}
+          {% if f.is_completed %}
+            <span class="badge bg-success">Completed</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Pending</span>
+          {% endif %}
+        </small>
+      </div>
+    {% empty %}
+      <p class="text-muted">No follow-ups.</p>
     {% endfor %}
   </div>
 </div>
-
 
 <!-- ADD REMARK MODAL  -->
 <div class="remark-modal" id="addRemark{{ c.id }}">

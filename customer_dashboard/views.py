@@ -56,6 +56,13 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
                 "salesperson", "salesperson__user"
             ).order_by("-created_at")
             # ---- REMARK LOGIC ENDS HERE ----
+
+            # ---- FOLLOW UPS    ----
+            customer.followups_list = customer.followups.select_related(
+                "salesperson", "salesperson__user"
+            ).order_by("-followup_date")
+            # ---- FOLLOW UPS END ----
+
             # ---- CREDIT PROFILE LOGIC (NEW) ----
             credit_profile = getattr(customer, "credit_profile", None)
 
