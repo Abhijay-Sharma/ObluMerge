@@ -64,9 +64,8 @@ class Command(BaseCommand):
             subject = "🔔 Customer Follow-up Reminder"
 
             from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
-            # to_emails = [sp.user.email]
-            to_emails = ["madderladder68@gmail.com"]
-            cc_emails = ["kashish.obluhc@gmail.com"]
+            to_emails = [sp.user.email]
+            cc_emails = ["swasti.obluhc@gmail.com","nitin.a@obluhc.com"]
 
 
             msg = EmailMultiAlternatives(subject, "", from_email, to_emails,cc=cc_emails)
