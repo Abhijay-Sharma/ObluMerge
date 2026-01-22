@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SalesPerson, Customer, CustomerCreditProfile
+from .models import SalesPerson, Customer, CustomerCreditProfile, CustomerFollowUp
 
 
 
@@ -22,3 +22,6 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(CustomerCreditProfile)
 class CustomerCreditProfileAdmin(admin.ModelAdmin):
     list_display = ("customer","outstanding_balance","credit_period_days")
+
+
+admin.site.register(CustomerFollowUp)
