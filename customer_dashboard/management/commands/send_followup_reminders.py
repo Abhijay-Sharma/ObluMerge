@@ -66,9 +66,10 @@ class Command(BaseCommand):
             from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
             # to_emails = [sp.user.email]
             to_emails = ["madderladder68@gmail.com"]
+            cc_emails = ["kashish.obluhc@gmail.com"]
 
 
-            msg = EmailMultiAlternatives(subject, "", from_email, to_emails)
+            msg = EmailMultiAlternatives(subject, "", from_email, to_emails,cc=cc_emails)
             msg.attach_alternative(html_content, "text/html")
             msg.send()
 
