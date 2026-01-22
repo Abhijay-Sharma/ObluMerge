@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Follow-up Reminder</title>
+</head>
+<body style="font-family: Arial, sans-serif;">
+
+<p>Hi {{ salesperson.name }},</p>
+
+{% if overdue_followups %}
+    <h3 style="color: #c0392b;">❗ Overdue Follow-ups (Not Completed)</h3>
+    <p style="color:#c0392b;">
+        You created these follow-ups earlier but have not marked them completed:
+    </p>
+
+    <ul>
+        {% for f in overdue_followups %}
+            <li>
+                <strong>{{ f.customer.name }}</strong> —
+                Follow-up date: {{ f.followup_date }}<br>
+                Note: {{ f.note|default:"—" }}
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+
+{% if today_followups %}
+    <h3 style="color:#f39c12;">📞 Follow-ups Due Today</h3>
+    <p>
+        Please call these customers today and remember to mark the follow-up as
+        completed in the dashboard and add call remarks.
+    </p>
+
+    <ul>
+        {% for f in today_followups %}
+            <li>
+                <strong>{{ f.customer.name }}</strong><br>
+                Note: {{ f.note|default:"—" }}
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+
+<p style="margin-top:20px;">
+    After completing calls, please update the follow-up status and add remarks in the dashboard.
+</p>
+
+<p>Thanks,<br>Oblu Tools System</p>
+
+</body>
+</html>
