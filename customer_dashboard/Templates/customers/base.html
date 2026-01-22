@@ -6,8 +6,11 @@
   <link rel="icon" type="image/png" href="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Minty Bootswatch Theme -->
-  <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
+  <!-- Minty Bootswatch Theme (Bootstrap 5) -->
+  <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet">
+
+  <!-- Bootstrap JS (REQUIRED for hamburger) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Plotly & Leaflet -->
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
@@ -15,11 +18,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -30,104 +29,46 @@
       flex-direction: column;
     }
 
+    /* NAVBAR */
     .navbar {
       background-color: #0e0e0e;
-      padding: 0.8rem 1rem;
     }
 
-    .navbar a.navbar-brand {
+    .navbar-brand {
       color: #fff !important;
       font-weight: bold;
       font-size: 1.4rem;
     }
 
-    .navbar .nav-link {
+    .nav-link {
       color: #ddd !important;
-      margin-left: 15px;
       font-weight: 500;
     }
 
-    .navbar .nav-link:hover {
+    .nav-link:hover {
       color: #fff !important;
+    }
+
+    /* Force hamburger below 500px */
+    @media (max-width: 500px) {
+      .navbar-expand-lg {
+        flex-wrap: wrap;
+      }
     }
 
     .container {
       flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
       padding: 30px 20px;
     }
 
-    .card, .form-container, .table-container {
+    .card {
       background: #fff;
       color: #000;
       padding: 30px;
       border-radius: 16px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.25);
-      animation: fadeIn 0.8s ease-out;
-      width: 100%;
       max-width: 1000px;
-      overflow-x: auto;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 20px;
-      text-align: center;
-      background: #222;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    button, .btn {
-      background: linear-gradient(135deg, #0e0e0e, #656565);
-      color: #fff;
-      font-weight: bold;
-      border: none;
-      border-radius: 30px;
-      padding: 10px 22px;
-      margin-top: 10px;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    .table thead th {
-      background-color: #353535; !important;
-      color: #fff !important;
-      box-shadow: none !important;
-    }
-    .pagination .page-link {
-  background-color: #fff !important;
-  color: #000 !important;
-  border: none !important;
-  border-radius: 30px !important;
-  margin: 0 4px !important;
-  padding: 8px 16px !important;
-  font-weight: bold !important;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
-  transition: all 0.3s ease !important;
-}
-
-.pagination .page-link:hover {
-  background-color: #000 !important;
-  color: #fff !important;
-  transform: scale(1.05);
-}
-
-.pagination .page-item.active .page-link {
-  background-color: #000 !important;
-  color: #fff !important;
-  font-weight: bold !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
-}
-
-
-    button:hover, .btn:hover {
-      background: #fff;
-      color: #222;
-      transform: scale(1.05);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      margin: auto;
     }
 
     .footer {
@@ -137,24 +78,29 @@
       color: #fff;
       font-size: 0.9rem;
     }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 600px) {
-      h1 { font-size: 1.6rem; }
-      button, .btn { font-size: 0.9rem; padding: 8px 16px; }
-    }
   </style>
 </head>
 
 <body>
-  <nav class="navbar navbar-expand-lg">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="{% url 'customers:data' %}">📊 Customer Dashboard</a>
-      <div class="d-flex">
+
+<nav class="navbar navbar-expand-lg">
+  <div class="container-fluid">
+
+    <a class="navbar-brand" href="{% url 'customers:data' %}">
+      📊 Customer Dashboard
+    </a>
+
+    <!-- HAMBURGER -->
+    <button class="navbar-toggler text-white border-0"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- COLLAPSIBLE MENU -->
+    <div class="collapse navbar-collapse" id="navbarMenu">
+      <div class="navbar-nav ms-auto">
         <a href="{% url 'customers:data' %}" class="nav-link">Data</a>
         <a href="{% url 'customers:charts' %}" class="nav-link">Charts</a>
         <a href="{% url 'customers:unassigned' %}" class="nav-link">Unassigned</a>
@@ -162,18 +108,19 @@
         <a href="{% url 'customers:salesperson_customers' %}" class="nav-link">Salesperson-Customer</a>
       </div>
     </div>
-  </nav>
 
-  <div class="container">
-    <div class="card">
-      {% block content %}
-      <!-- Your content goes here -->
-      {% endblock %}
-    </div>
   </div>
+</nav>
 
-  <div class="footer">
-    &copy; 2025 Customer Dashboard. All rights reserved.
+<div class="container">
+  <div class="card">
+    {% block content %}{% endblock %}
   </div>
+</div>
+
+<div class="footer">
+  &copy; 2025 Customer Dashboard. All rights reserved.
+</div>
+
 </body>
 </html>
