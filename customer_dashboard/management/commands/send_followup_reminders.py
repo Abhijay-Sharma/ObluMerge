@@ -70,11 +70,12 @@ class Command(BaseCommand):
 
             msg = EmailMultiAlternatives(subject, "", from_email, to_emails,cc=cc_emails)
             msg.attach_alternative(html_content, "text/html")
-            msg.send()
+            if "rushi" in sp.user.email:
+                msg.send()
 
-            self.stdout.write(self.style.SUCCESS(
-                f"✅ Follow-up mail sent to {sp.name} ({sp.user.email})"
-            ))
+                self.stdout.write(self.style.SUCCESS(
+                    f"✅ Follow-up mail sent to {sp.name} ({sp.user.email})"
+                ))
 
         # ----------------------------
         # MISSING EMAIL REPORT
