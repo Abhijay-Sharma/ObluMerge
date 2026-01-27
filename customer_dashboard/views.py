@@ -640,6 +640,41 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             "total_outstanding_amount": total_outstanding_amount,
         })
 
+        selected_member = ctx["selected_member"]
+        today = timezone.now().date()
+
+        target_salesperson = None
+
+        if salesperson:
+            if salesperson.manager is None:
+                # MANAGER
+                if selected_member == "me":
+                    target_salesperson = salesperson
+                elif selected_member != "all":
+                    target_salesperson = SalesPerson.objects.filter(
+                        id=selected_member
+                    ).first()
+            else:
+                # NORMAL SALESPERSON
+                target_salesperson = salesperson
+
+        if target_salesperson:
+            followups = CustomerFollowUp.objects.filter(
+                salesperson=target_salesperson
+            ).select_related("customer").order_by("followup_date")
+
+            ctx["sp_followups_previous"] = followups.filter(followup_date__lt=today)
+            ctx["sp_followups_today"] = followups.filter(followup_date=today)
+            ctx["sp_followups_upcoming"] = followups.filter(followup_date__gt=today)
+
+            ctx["selected_salesperson"] = target_salesperson
+            ctx["selected_salesperson_name"] = (
+                "My" if target_salesperson == salesperson else target_salesperson.name
+            )
+        else:
+            ctx["sp_followups_previous"] = []
+            ctx["sp_followups_today"] = []
+            ctx["sp_followups_upcoming"] = []
         return ctx
 
 class CustomerPaymentStatusView(TemplateView):
