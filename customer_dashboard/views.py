@@ -56,13 +56,6 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
                 "salesperson", "salesperson__user"
             ).order_by("-created_at")
             # ---- REMARK LOGIC ENDS HERE ----
-
-            # ---- FOLLOW UPS    ----
-            customer.followups_list = customer.followups.select_related(
-                "salesperson", "salesperson__user"
-            ).order_by("-followup_date")
-            # ---- FOLLOW UPS END ----
-
             # ---- CREDIT PROFILE LOGIC (NEW) ----
             credit_profile = getattr(customer, "credit_profile", None)
 
@@ -111,6 +104,19 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         total_outstanding_amount = sum(
             c.trial_balance for c in customers if c.trial_balance and c.trial_balance > 0
         )
+
+        today = date.today()
+
+        # SALESPERSON FOLLOW-UPS (NEW FEATURE)
+        all_followups = CustomerFollowUp.objects.filter(
+            salesperson=salesperson
+        ).select_related(
+            "customer"
+        ).order_by("followup_date")
+
+        ctx["followups_previous"] = all_followups.filter(followup_date__lt=today)
+        ctx["followups_today"] = all_followups.filter(followup_date=today)
+        ctx["followups_future"] = all_followups.filter(followup_date__gt=today)
 
         ctx["customers"] = customers
         ctx["active_count"] = active
