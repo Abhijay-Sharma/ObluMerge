@@ -10,6 +10,7 @@ from quotations.models import Customer
 from inventory.models import InventoryItem
 from django.urls import reverse
 from decimal import Decimal
+from num2words import num2words
 
 # 🧾 1. Product Pricing
 class ProductPrice(models.Model):
@@ -227,6 +228,21 @@ class ProformaInvoice(models.Model):
         """Products incl GST + Courier incl GST"""
         # return self.items_total() + self.courier_charge() + self.courier_gst()
         return self.items_total() + self.courier_charge() + self.courier_gst()
+
+    def grand_total_in_words(self):
+        amount = Decimal(self.grand_total() or 0).quantize(Decimal("1.00"))
+
+        # Split into rupees and paise
+        rupees = int(amount)
+        paise = int((amount - rupees) * 100)
+
+        words = num2words(rupees, lang='en_IN').replace(",", "").title() + " Rupees"
+
+        if paise > 0:
+            words += " " + num2words(paise, lang='en_IN').replace(",", "").title() + " Paise"
+
+        words += " Only"
+        return words
 
     def __str__(self):
         return f"Proforma #{self.id} - {self.customer.name}"
