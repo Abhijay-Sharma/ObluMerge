@@ -981,74 +981,58 @@ class AdminVoucherClaimManagementView(AccountantRequiredMixin, View):
     template_name = "customers/admin_voucher_claim_management.html"
 
     def get(self, request):
-        # -----------------------------
-        # 1️⃣ Read filters from URL
-        # -----------------------------
-        month = request.GET.get("month")                 # YYYY-MM
-        voucher_number = request.GET.get("voucher_number")
-        owner_id = request.GET.get("owner")
+        month = request.GET.get("month")  # format: YYYY-MM
 
-        # -----------------------------
-        # 2️⃣ Default empty queryset
-        # -----------------------------
-        vouchers = CustomerVoucherStatus.objects.none()
-
-        # -----------------------------
-        # 3️⃣ Apply MONTH filter (base filter)
-        # -----------------------------
+        vouchers = []
         if month:
             year, mon = month.split("-")
 
             vouchers = (
                 CustomerVoucherStatus.objects
-                .select_related(
-                    "customer",
-                    "voucher",
-                    "sold_by",
-                    "customer__salesperson"
-                )
+                .select_related("customer", "voucher", "sold_by", "customer__salesperson")
                 .filter(
                     voucher_type__iexact="TAX INVOICE",
                     voucher_date__year=int(year),
                     voucher_date__month=int(mon),
                 )
+                .order_by("-voucher_date")
             )
 
-            # -----------------------------
-            # 4️⃣ Voucher number search
-            # -----------------------------
-            if voucher_number:
-                vouchers = vouchers.filter(
-                    voucher__voucher_number__icontains=voucher_number.strip()
-                )
-
-            # -----------------------------
-            # 5️⃣ Customer owner filter
-            # -----------------------------
-            if owner_id:
-                vouchers = vouchers.filter(
-                    customer__salesperson_id=owner_id
-                )
-
-            # -----------------------------
-            # 6️⃣ Sorting
-            # -----------------------------
-            vouchers = vouchers.order_by("-voucher_date")
-
-        # -----------------------------
-        # 7️⃣ Salespersons for dropdown
-        # -----------------------------
         salespersons = SalesPerson.objects.all().order_by("name")
 
-        # -----------------------------
-        # 8️⃣ Send data to template
-        # -----------------------------
         return render(request, self.template_name, {
             "vouchers": vouchers,
             "salespersons": salespersons,
             "selected_month": month,
-            "filters": request.GET,   # keeps filter values in form
         })
+
+    def post(self, request):
+        cvs_id = request.POST.get("cvs_id")
+        sold_by_id = request.POST.get("sold_by")
+
+        if not cvs_id:
+            return redirect("customers:admin_voucher_claim_management")
+
+        cvs = CustomerVoucherStatus.objects.filter(id=cvs_id).first()
+
+        if not cvs:
+            messages.error(request, "Voucher not found.")
+            return redirect(request.META.get("HTTP_REFERER"))
+
+        if sold_by_id == "":
+            cvs.sold_by = None
+            cvs.claim_status = "NONE"
+        else:
+            sp = SalesPerson.objects.filter(id=sold_by_id).first()
+            if sp:
+                cvs.sold_by = sp
+                cvs.claim_status = "APPROVED"
+
+        cvs.claim_requested_by = None  # admin override clears disputes
+        cvs.save()
+
+        messages.success(request, "Voucher claim updated.")
+        return redirect(request.META.get("HTTP_REFERER"))
 
 import json
 from django.views.generic import TemplateView
