@@ -1,298 +1,61 @@
 {% extends "customers/base.html" %}
 {% block content %}
 
-<style>
-/* ================= SAFETY ================= */
-html, body {
-  min-width: 320px;
-  overflow-x: hidden;
-}
+<div class="container mt-4">
 
-/* ================= ADMIN WRAPPER ================= */
-.admin-wrapper {
-  max-width: 1200px;
-  margin: auto;
-}
+  <h3>Admin Voucher Claim Management</h3>
 
-/* ================= HEADER ================= */
-.admin-header {
-  margin-bottom: 18px;
-}
-.admin-header h2 {
-  font-size: 1.8rem;
-  font-weight: 700;
-}
-.admin-sub {
-  color: #ccc;
-  font-size: 0.95rem;
-}
-
-/* ================= FILTER PANEL ================= */
-.filter-panel {
-  background: #111;
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 24px;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  align-items: end;
-}
-
-.filter-panel label {
-  font-size: 0.8rem;
-  color: #aaa;
-  margin-bottom: 4px;
-  display: block;
-}
-
-.filter-panel input,
-.filter-panel select,
-.filter-panel button,
-.filter-panel a {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: none;
-  font-size: 0.9rem;
-}
-
-.filter-panel input,
-.filter-panel select {
-  background: #f4f4f4;
-}
-
-.filter-panel button {
-  background: linear-gradient(135deg, #000, #444);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.reset-link {
-  display: block;
-  text-align: center;
-  margin-top: 8px;
-  background: #333;
-  color: #fff;
-  text-decoration: none;
-}
-
-/* ===== Tablet ===== */
-@media (max-width: 992px) {
-  .filter-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* ===== Mobile ===== */
-@media (max-width: 576px) {
-  .filter-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ================= TABLE ================= */
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  color: #000;
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.admin-table th {
-  background: #1a1a1a;
-  color: #fff;
-  padding: 14px;
-  font-size: 0.85rem;
-  text-align: left;
-}
-
-.admin-table td {
-  padding: 12px 14px;
-  border-bottom: 1px solid #eee;
-}
-
-.admin-table tr:last-child td {
-  border-bottom: none;
-}
-
-.owner {
-  font-size: 0.8rem;
-  color: #555;
-}
-
-/* ================= ACTION FORM ================= */
-.inline-form {
-  display: flex;
-  gap: 8px;
-}
-
-.inline-form select {
-  padding: 8px;
-  border-radius: 6px;
-}
-
-.inline-form button {
-  padding: 8px 14px;
-  border-radius: 6px;
-  background: #000;
-  color: #fff;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-}
-
-/* ================= CARD MODE (< 992px) ================= */
-@media (max-width: 992px) {
-
-  .admin-table thead {
-    display: none;
-  }
-
-  .admin-table,
-  .admin-table tbody,
-  .admin-table tr,
-  .admin-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .admin-table tr {
-    margin-bottom: 18px;
-    border: 1px solid #ddd;
-    border-radius: 14px;
-    padding: 14px;
-    background: #fff;
-  }
-
-  .admin-table td {
-    border: none;
-    padding: 6px 0;
-  }
-
-  .admin-table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    display: block;
-    font-size: 0.75rem;
-    color: #555;
-    margin-bottom: 2px;
-  }
-
-  .inline-form {
-    flex-direction: column;
-  }
-
-  .inline-form select,
-  .inline-form button {
-    width: 100%;
-  }
-}
-</style>
-
-<div class="admin-wrapper">
-
-  <!-- ================= HEADER ================= -->
-  <div class="admin-header">
-    <h2>Admin Voucher Claim Management</h2>
-    <div class="admin-sub">
-      Manage incentive ownership & voucher assignments
+  <!-- ================= MONTH FILTER ================= -->
+  <form method="get" class="row g-3 mt-2 mb-4">
+    <div class="col-md-4">
+      <label class="form-label">Select Month</label>
+      <input
+        type="month"
+        name="month"
+        value="{{ selected_month }}"
+        class="form-control"
+        required
+      >
     </div>
-  </div>
+    <div class="col-md-2 align-self-end">
+      <button class="btn btn-primary">Load</button>
+    </div>
+  </form>
 
-  <!-- ================= FILTER PANEL ================= -->
-  <div class="filter-panel">
-    <form method="get">
-      <div class="filter-grid">
-
-        <div>
-          <label>Select Month</label>
-          <input
-            type="month"
-            name="month"
-            value="{{ selected_month }}"
-            class="form-control"
-            required
-          >
-        </div>
-
-        <div>
-          <label>Voucher Number</label>
-          <input
-            type="text"
-            name="voucher_number"
-            placeholder="Search voucher…"
-            value="{{ filters.voucher_number }}"
-          >
-        </div>
-
-        <div>
-          <label>Customer Owner</label>
-          <select name="owner">
-            <option value="">All Owners</option>
-            {% for sp in salespersons %}
-              <option value="{{ sp.id }}"
-                {% if filters.owner == sp.id|stringformat:"s" %}selected{% endif %}>
-                {{ sp.name }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <button type="submit">Apply Filters</button>
-          <a href="{% url 'customers:admin_voucher_claim_management' %}"
-             class="reset-link">
-            Reset Filters
-          </a>
-        </div>
-
-      </div>
-    </form>
-  </div>
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
 
   <!-- ================= TABLE ================= -->
   {% if vouchers %}
-  <table class="admin-table">
-    <thead>
+  <table class="table table-bordered table-sm">
+    <thead class="table-dark">
       <tr>
         <th>Date</th>
         <th>Customer</th>
         <th>Voucher No</th>
         <th>Customer Owner</th>
         <th>Sold By (Incentive)</th>
+        <th>Update</th>
       </tr>
     </thead>
     <tbody>
 
       {% for v in vouchers %}
       <tr>
-        <td data-label="Date">{{ v.voucher_date }}</td>
+        <td>{{ v.voucher_date }}</td>
+        <td>{{ v.customer.name }}</td>
+        <td>{{ v.voucher.voucher_number }}</td>
+        <td>{{ v.customer.salesperson.name }}</td>
 
-        <td data-label="Customer">
-          <strong>{{ v.customer.name }}</strong>
-        </td>
-
-        <td data-label="Voucher No">
-          <a href="{% url 'voucher_detail' v.voucher_id %}" target="_blank" style="color:#000000; text-decoration:underline;">{{ v.voucher.voucher_number }}</a>
-        </td>
-
-        <td data-label="Customer Owner">
-          <span class="owner">{{ v.customer.salesperson.name }}</span>
-        </td>
-
-        <td data-label="Update">
-          <form method="post" class="inline-form">
+        <td>
+          <form method="post" class="d-flex gap-2">
             {% csrf_token %}
             <input type="hidden" name="cvs_id" value="{{ v.id }}">
 
-            <select name="sold_by">
+            <select name="sold_by" class="form-select form-select-sm">
               <option value="">-- None --</option>
               {% for sp in salespersons %}
                 <option value="{{ sp.id }}"
@@ -301,8 +64,10 @@ html, body {
                 </option>
               {% endfor %}
             </select>
+        </td>
 
-            <button>Save</button>
+        <td>
+            <button class="btn btn-sm btn-success">Save</button>
           </form>
         </td>
       </tr>
@@ -310,8 +75,11 @@ html, body {
 
     </tbody>
   </table>
+
   {% else %}
-    <div style="color:#ccc">No vouchers found.</div>
+    {% if selected_month %}
+      <div class="alert alert-info">No tax invoices found for this month.</div>
+    {% endif %}
   {% endif %}
 
 </div>
