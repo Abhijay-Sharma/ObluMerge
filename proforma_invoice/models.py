@@ -264,6 +264,27 @@ class ProformaInvoiceItem(models.Model):
 
         return unit_price * self.quantity
 
+    def unit_price(self):
+        price_obj = getattr(self.product, "proforma_price", None)
+        if not price_obj:
+            return 0
+
+        # price already includes GST
+        return price_obj.price
+
+    def unit_price_excl_tax(self):
+        price_obj = getattr(self.product, "proforma_price", None)
+        if not price_obj:
+            return 0
+
+        price = price_obj.price  # GST included
+        tax_rate = price_obj.tax_rate or 0  # safety
+
+        return price / (1 + (tax_rate / 100))
+
+    def total_price_excl_tax(self):
+        return self.unit_price_excl_tax() * self.quantity
+
     def hsn(self):
         price_obj = getattr(self.product, "proforma_price", None)
         if not price_obj:
@@ -277,23 +298,6 @@ class ProformaInvoiceItem(models.Model):
             return 0
         else:
             return price_obj.tax_rate
-
-    def unit_price(self):
-        price_obj = getattr(self.product, "proforma_price", None)
-        if not price_obj:
-            return 0
-        else:
-            return price_obj.price
-
-    def unit_price_excl_tax(self):
-        price_obj = getattr(self.product, "proforma_price", None)
-        if not price_obj:
-            return 0
-        else:
-            price = price_obj.price
-            taxrate=price_obj.tax_rate
-            return price / (1+(taxrate/100))
-
 
 
     def clean(self):
