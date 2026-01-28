@@ -240,11 +240,12 @@ hr{
   <td class="item-name">{{ item.product.name }}</td>
   <td class="center">{{ item.hsn }}</td>
   <td class="center">{{ item.quantity }}</td>
-  <td class="right">₹ {{ rate_incl_tax|floatformat:2 }}</td>
   <td class="right">₹ {{ item.unit_price|floatformat:2 }}</td>
-  <td class="right">₹ {{ item.total_price|floatformat:2 }}</td>
+  <td class="right">₹ {{ item.unit_price_excl_tax|floatformat:2 }}</td>
+  <td class="right">₹ {{ item.total_price_excl_tax|floatformat:2 }}</td>
   <td class="center">{{ item.taxrate }}%</td>
-  <td class="right">₹ {{ item.total_price|add:item_gst|floatformat:2 }}</td>
+  <td class="right">₹ {{ item.total_price|floatformat:2 }}</td>
+
 </tr>
 {% endwith %}
 {% endfor %}
