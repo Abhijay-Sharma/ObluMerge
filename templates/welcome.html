@@ -200,6 +200,7 @@
       {% if request.user.is_accountant %}
         <button class="btn" onclick="redirectTo('inventory')">Inventory Management</button>
         <button class="btn" onclick="redirectTo('customer_data')">Customer Management System</button>
+        <button class="btn" onclick="location.href='/proforma/'">Proforma Invoice Maker</button>
       {% endif %}
       <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
       {% if request.user.is_accountant %}
