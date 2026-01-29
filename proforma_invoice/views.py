@@ -12,7 +12,8 @@ from django.views.generic import ListView
 from django.contrib.auth import get_user_model
 from .models import ProductPrice, ProductPriceTier
 from django.db.models import Prefetch
-
+from django.conf import settings
+import os
 
 
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
@@ -77,6 +78,15 @@ class ProformaInvoiceDetailView(View):
     def get(self, request, pk):
         invoice = get_object_or_404(ProformaInvoice, pk=pk)
         items = invoice.items.select_related("product")
+        # ---- load signature base64 from file ----
+        signature_path = os.path.join(
+            settings.BASE_DIR,
+            "proforma_invoice",
+            "assets",
+            "sujal_signature_base64.txt",
+        )
+        with open(signature_path, "r") as f:
+            signature_base64 = f.read().strip()
         return render(request, "proforma_invoice/proforma_detail.html", {
             "invoice": invoice,
             "items": items,
