@@ -90,6 +90,7 @@ class ProformaInvoiceDetailView(View):
         return render(request, "proforma_invoice/proforma_detail.html", {
             "invoice": invoice,
             "items": items,
+            "signature_base64": signature_base64,
         })
 
 def get_inventory_by_category(request):
