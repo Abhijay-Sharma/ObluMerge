@@ -142,6 +142,24 @@ hr{
   }
 
 }
+
+.qr-box{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.qr-row{
+  display: flex;
+  gap: 8px;
+}
+
+.qr-img{
+  width:60px;
+  height:60px;
+}
+
 </style>
 </head>
 
@@ -170,12 +188,21 @@ hr{
   </div>
 
   <div class="qr-box">
-    <img
-      src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png "
-      class="Insta-QR"
-      alt="Instagram QR"
-    >
+    <div class="qr-row">
+      <img
+        src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png"
+        class="qr-img"
+        alt="Instagram QR"
+      >
+
+      <img
+        src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png"
+        class="qr-img"
+        alt="Facebook QR"
+      >
+    </div>
   </div>
+
 
 </div>
 
