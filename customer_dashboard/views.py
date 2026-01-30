@@ -239,7 +239,7 @@ class CustomerListViewLegacy(AccountantRequiredMixin, ListView):
 
 class CustomerListView(AccountantRequiredMixin, ListView):
     model = Customer
-    template_name = "customers/data_Legacy.html"
+    template_name = "customers/data.html"
     context_object_name = "customers"
     paginate_by = 50
 
