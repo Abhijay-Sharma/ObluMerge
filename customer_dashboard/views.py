@@ -148,9 +148,9 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         return redirect(f"{request.path}?salesperson={salesperson_id}")
 
-class CustomerListView(AccountantRequiredMixin, ListView):
+class CustomerListViewLegacy(AccountantRequiredMixin, ListView):
     model = Customer
-    template_name = "customers/data.html"
+    template_name = "customers/data_Legacy.html"
     context_object_name = "customers"
     paginate_by = 50
 
@@ -234,6 +234,76 @@ class CustomerListView(AccountantRequiredMixin, ListView):
             .order_by("-c")
             .first()
         )
+
+        return ctx
+
+class CustomerListView(AccountantRequiredMixin, ListView):
+    model = Customer
+    template_name = "customers/data_Legacy.html"
+    context_object_name = "customers"
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = Customer.objects.select_related("salesperson")
+
+        salesperson = self.request.GET.get("salesperson")
+        state = self.request.GET.get("state")
+        search = self.request.GET.get("search", "")
+        district = self.request.GET.get("district")
+
+        if salesperson:
+            qs = qs.filter(salesperson__name=salesperson)
+
+        if state:
+            qs = qs.filter(state=state)
+
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        if district:
+            qs = qs.filter(district__icontains=district)
+
+        # ✅ Latest voucher per customer (TAX INVOICE)
+        latest_voucher = (
+            Voucher.objects
+            .annotate(party_clean=Lower(Trim("party_name")))
+            .filter(
+                party_clean=Lower(Trim(OuterRef("name"))),
+                voucher_type="TAX INVOICE"
+            )
+            .order_by("-date")
+        )
+
+        qs = qs.annotate(
+            last_purchase_date=Subquery(latest_voucher.values("date")[:1]),
+            last_voucher_id=Subquery(latest_voucher.values("id")[:1]),
+        )
+
+        # ✅ Product name from latest voucher
+        last_product = (
+            VoucherStockItem.objects
+            .filter(voucher_id=OuterRef("last_voucher_id"))
+            .values("item__name")
+        )
+
+        qs = qs.annotate(
+            last_product_name=Subquery(last_product[:1])
+        )
+
+        return qs.order_by("name")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        ctx["salespersons"] = SalesPerson.objects.values_list("name", flat=True).distinct()
+        ctx["states"] = Customer.objects.values_list("state", flat=True).distinct()
+
+        #  keep filters on pagination
+        querystring = self.request.GET.copy()
+        if "page" in querystring:
+            querystring.pop("page")
+        ctx["querystring"] = querystring.urlencode()
+        ctx["querystring"] = querystring.urlencode()
 
         return ctx
 

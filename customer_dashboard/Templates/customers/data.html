@@ -3,188 +3,412 @@
 {% block content %}
 
 <style>
+*{ box-sizing:border-box; }
+body{ overflow-x:hidden; }
 
-/* ================= FILTER ================= */
-.filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 10px;
-    margin-bottom: 18px;
+.page-wrap{
+  max-width: 1200px;
+  margin: auto;
+  padding: 14px;
 }
-.filters input, .filters select, .filters button {
-    padding: 10px;
-    font-size: 14px;
+.page-wrap *{ min-width: 0; }
 
+.page-title{
+  font-size:20px;
+  font-weight:800;
+  margin:0 0 4px;
+  text-align:center;
 }
-
-/* ================= CUSTOMER CARD ================= */
-.customer-card {
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    background: #fff;
-    overflow: hidden;
-}
-
-.customer-header {
-    padding: 14px;
-    cursor: pointer;
-    background: #f3f4f6;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.page-sub{
+  font-size:13px;
+  color:#777;
+  margin-bottom:14px;
+  text-align:center;
 }
 
-.customer-header:hover {
-    background: #e5e7eb;
+.filter-bar{
+  width:100%;
+  background:#fff;
+  border:1px solid #e6e6e6;
+  border-radius:14px;
+  padding:14px;
+  margin: 0 auto 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
 }
 
-.customer-name {
-    font-weight: 600;
+.filters{
+  display:grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap:12px;
+  align-items:end;
 }
 
-.customer-sales {
-    font-size: 13px;
-    color: #555;
+.filters input,
+.filters select,
+.filters button{
+  width:100%;
+  padding:11px 12px;
+  font-size:14px;
+  border-radius:12px;
 }
 
-.toggle-icon {
-    transition: transform .3s ease;
+.filters input,
+.filters select{
+  border:1px solid #ddd;
+  background:#fff;
+  outline:none;
 }
 
-.customer-card.active .toggle-icon {
-    transform: rotate(180deg);
+.filters input:focus,
+.filters select:focus{
+  border-color:#111;
 }
 
-.customer-body {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height .35s ease;
+.district-wrap{
+  display:none;
+}
+.district-wrap.show{
+  display:block;
 }
 
-.customer-card.active .customer-body {
-    max-height: 800px;
+.filters button{
+  grid-column:1 / -1;
+  border:0;
+  background:#111;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+  padding:12px;
+}
+.filters button:hover{
+  opacity:0.92;
 }
 
-.customer-body-inner {
-    padding: 14px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
+.count-line{
+  display:flex;
+  justify-content:flex-end;
+  font-size:12px;
+  color:#666;
+  margin:6px 0 14px;
 }
 
-.label {
-    font-size: 13px;
-    color: #666;
+.customer-card{
+  width:100%;
+  border:1px solid #e6e6e6;
+  border-radius:14px;
+  margin-bottom:14px;
+  background:#fff;
+  overflow:hidden;
 }
 
-.value {
-    font-weight: 500;
+.customer-header{
+  padding:14px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  background:#f7f7f9;
+  cursor:pointer;
 }
 
-.actions {
-    grid-column: 1 / -1;
-    text-align: right;
+.customer-name{
+  font-size:14px;
+  font-weight:800;
+  word-break:break-word;
+}
+
+.customer-sales{
+  font-size:12px;
+  color:#666;
+  margin-top:2px;
+}
+
+.toggle-icon{
+  font-size:18px;
+  flex-shrink:0;
+  transition:.2s;
+}
+
+.customer-card.active .toggle-icon{
+  transform:rotate(180deg);
+}
+
+.customer-body{
+  max-height:0;
+  overflow:hidden;
+  transition:max-height .3s ease;
+}
+
+.customer-card.active .customer-body{
+  max-height:1400px;
+}
+
+.customer-body-inner{
+  padding:14px;
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:12px;
+}
+
+.label{
+  font-size:11px;
+  color:#777;
+}
+.value{
+  font-size:13px;
+  font-weight:600;
+  word-break:break-word;
+}
+
+.actions{
+  grid-column:1 / -1;
+  text-align:right;
+}
+
+.actions a{
+  font-size:13px;
+  color:#0d6efd;
+  text-decoration:none;
+}
+
+.pagination-wrap{
+  display:flex;
+  justify-content:center;
+  margin-top:16px;
+  padding-bottom:12px;
+}
+
+.pagination{
+  display:flex;
+  gap:6px;
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+
+.page-link{
+  padding:8px 12px;
+  font-size:12px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  text-decoration:none;
+  color:#111 !important;
+  background:#fff;
+  white-space:nowrap;
+}
+
+.page-link:hover{
+  background-color:#222 ;
+  color:#fff !important;
+  border-color:#111;
+}
+
+.page-item.disabled .page-link{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+@media(max-width: 900px){
+  .filters{ grid-template-columns: 1fr 1fr; }
+  .filters button{ grid-column:1 / -1; }
+}
+
+@media(max-width: 576px){
+  .filters{ grid-template-columns: 1fr; }
+}
+
+@media(max-width:360px){
+  .page-wrap{ padding:10px; }
+  .page-title{ font-size:18px; }
+  .filters input,
+  .filters select,
+  .filters button{
+    font-size:13px;
+    padding:10px;
+  }
+  .page-link{
+    font-size:11px;
+    padding:7px 10px;
+    min-width:42px;
+    text-align:center;
+  }
 }
 </style>
 
-<h2>📋 Customers</h2>
+<div class="page-wrap">
 
-<form method="get" class="filters">
-    <input type="text" name="search" value="{{ request.GET.search }}" placeholder="Search name">
+  <h2 class="page-title">📋 Customers</h2>
+  <p class="page-sub">Search, filter and manage customers</p>
 
-    <select name="salesperson">
+  <div class="filter-bar">
+    <form method="get" class="filters" id="customerFilterForm">
+
+      <input type="text"
+             name="search"
+             value="{{ request.GET.search }}"
+             placeholder="Search customer">
+
+      <select name="salesperson">
         <option value="">All Salespersons</option>
         {% for s in salespersons %}
-            <option value="{{ s }}" {% if request.GET.salesperson == s %}selected{% endif %}>{{ s }}</option>
+          <option value="{{ s }}" {% if request.GET.salesperson == s %}selected{% endif %}>{{ s }}</option>
         {% endfor %}
-    </select>
+      </select>
 
-    <select name="state">
+      <select name="state" id="stateSelect">
         <option value="">All States</option>
         {% for st in states %}
-            <option value="{{ st }}" {% if request.GET.state == st %}selected{% endif %}>{{ st }}</option>
+          <option value="{{ st }}" {% if request.GET.state == st %}selected{% endif %}>{{ st }}</option>
         {% endfor %}
-    </select>
+      </select>
 
-    <button>Filter</button>
-</form>
+      <div class="district-wrap" id="districtWrap" style="grid-column: 1 / -1;">
+        <input type="text"
+               name="district"
+               id="districtInput"
+               value="{{ request.GET.district }}"
+               placeholder="Filter by District">
+      </div>
 
-{% for c in customers %}
-<div class="customer-card">
+      <button type="submit">Apply Filters</button>
+    </form>
+  </div>
 
+  {% if is_paginated %}
+  <div class="count-line">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}
+  </div>
+  {% endif %}
+
+  {% for c in customers %}
+  <div class="customer-card">
     <div class="customer-header">
-        <div>
-            <div class="customer-name">{{ c.name }}</div>
-            <div class="customer-sales">
-                Salesperson: {{ c.salesperson.name|default:"Unassigned" }}
-            </div>
+      <div>
+        <div class="customer-name">{{ c.name }}</div>
+        <div class="customer-sales">
+          Salesperson: {{ c.salesperson.name|default:"Unassigned" }}
         </div>
-        <div class="toggle-icon">⌄</div>
+      </div>
+      <div class="toggle-icon">⌄</div>
     </div>
 
     <div class="customer-body">
-        <div class="customer-body-inner">
+      <div class="customer-body-inner">
 
-            <div>
-                <div class="label">Email</div>
-                <div class="value">{{ c.email|default:"—" }}</div>
-            </div>
-
-            <div>
-                <div class="label">Phone</div>
-                <div class="value">{{ c.phone|default:"—" }}</div>
-            </div>
-
-            <div>
-                <div class="label">State</div>
-                <div class="value">{{ c.state|default:"—" }}</div>
-            </div>
-
-            <div>
-                <div class="label">District</div>
-                <div class="value">{{ c.district|default:"—" }}</div>
-            </div>
-
-            <div>
-                <div class="label">Address</div>
-                <div class="value">{{ c.address|default:"—" }}</div>
-            </div>
-
-            <div>
-                <div class="label">Last Purchase</div>
-                <div class="value">
-                    {% if c.last_purchase_date %}
-                        {{ c.last_purchase_date|date:"d M Y" }}
-                        {% if c.last_product_name %}
-                            <br>{{ c.last_product_name }}
-                        {% endif %}
-                    {% else %}
-                        No Purchase
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="actions">
-                <a href="{% url 'customers:customer_edit' c.id %}">Edit Salesperson</a>
-            </div>
-
+        <div>
+          <div class="label">Email</div>
+          <div class="value">{{ c.email|default:"—"|cut:"nan" }}</div>
         </div>
+
+        <div>
+          <div class="label">Phone</div>
+          <div class="value">{{ c.phone|default:"—"|cut:"nan" }}</div>
+        </div>
+
+        <div>
+          <div class="label">State</div>
+          <div class="value">{{ c.state|default:"—" }}</div>
+        </div>
+
+        <div>
+          <div class="label">District</div>
+          <div class="value">{{ c.district|default:"—" }}</div>
+        </div>
+
+        <div style="grid-column:1 / -1">
+          <div class="label">Address</div>
+          <div class="value">{{ c.address|default:"—" }}</div>
+        </div>
+
+        <div>
+          <div class="label">Last Purchase</div>
+          <div class="value">
+            {% if c.last_purchase_date %}
+              {{ c.last_purchase_date|date:"d M Y" }}
+            {% else %}
+              No Purchase
+            {% endif %}
+          </div>
+        </div>
+
+        <div>
+          <div class="label">Last Product</div>
+          <div class="value">{{ c.last_product_name|default:"—" }}</div>
+        </div>
+
+        <div class="actions">
+          <a href="/customers/customer/{{ c.id }}/edit/">Edit Salesperson</a>
+        </div>
+
+      </div>
     </div>
+  </div>
+  {% empty %}
+    <p>No customers found.</p>
+  {% endfor %}
+
+  {% if is_paginated %}
+  <div class="pagination-wrap">
+    <ul class="pagination">
+
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">
+            Prev
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link" style="color:black; background-color:#fff; border:black 1px solid;">Prev</span>
+        </li>
+      {% endif %}
+
+      <li class="page-item disabled">
+        <span class="page-link">{{ page_obj.number }}/{{ paginator.num_pages }}</span>
+      </li>
+
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?page={{ page_obj.next_page_number }}&{{ querystring }}">
+            Next
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">Next</span>
+        </li>
+      {% endif %}
+
+    </ul>
+  </div>
+  {% endif %}
 
 </div>
-{% empty %}
-<p>No customers found.</p>
-{% endfor %}
 
 <script>
-/* Customer toggle */
-document.querySelectorAll('.customer-header').forEach(header => {
-    header.addEventListener('click', () => {
-        header.parentElement.classList.toggle('active');
-    });
+document.querySelectorAll('.customer-header').forEach(h=>{
+  h.addEventListener('click',()=>{
+    h.parentElement.classList.toggle('active');
+  });
 });
 
+const stateSelect = document.getElementById("stateSelect");
+const districtWrap = document.getElementById("districtWrap");
+const districtInput = document.getElementById("districtInput");
+
+function syncDistrictVisibility(){
+  const stateVal = (stateSelect.value || "").trim();
+  if(stateVal){
+    districtWrap.classList.add("show");
+  }else{
+    districtWrap.classList.remove("show");
+    districtInput.value = "";
+  }
+}
+
+syncDistrictVisibility();
+stateSelect.addEventListener("change", syncDistrictVisibility);
 </script>
 
 {% endblock %}

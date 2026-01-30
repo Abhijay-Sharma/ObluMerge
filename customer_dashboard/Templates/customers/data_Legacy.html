@@ -1,0 +1,190 @@
+{% extends 'customers/base.html' %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+
+<style>
+
+/* ================= FILTER ================= */
+.filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.filters input, .filters select, .filters button {
+    padding: 10px;
+    font-size: 14px;
+
+}
+
+/* ================= CUSTOMER CARD ================= */
+.customer-card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.customer-header {
+    padding: 14px;
+    cursor: pointer;
+    background: #f3f4f6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.customer-header:hover {
+    background: #e5e7eb;
+}
+
+.customer-name {
+    font-weight: 600;
+}
+
+.customer-sales {
+    font-size: 13px;
+    color: #555;
+}
+
+.toggle-icon {
+    transition: transform .3s ease;
+}
+
+.customer-card.active .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.customer-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .35s ease;
+}
+
+.customer-card.active .customer-body {
+    max-height: 800px;
+}
+
+.customer-body-inner {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.label {
+    font-size: 13px;
+    color: #666;
+}
+
+.value {
+    font-weight: 500;
+}
+
+.actions {
+    grid-column: 1 / -1;
+    text-align: right;
+}
+</style>
+
+<h2>📋 Customers</h2>
+
+<form method="get" class="filters">
+    <input type="text" name="search" value="{{ request.GET.search }}" placeholder="Search name">
+
+    <select name="salesperson">
+        <option value="">All Salespersons</option>
+        {% for s in salespersons %}
+            <option value="{{ s }}" {% if request.GET.salesperson == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="state">
+        <option value="">All States</option>
+        {% for st in states %}
+            <option value="{{ st }}" {% if request.GET.state == st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+    </select>
+
+    <button>Filter</button>
+</form>
+
+{% for c in customers %}
+<div class="customer-card">
+
+    <div class="customer-header">
+        <div>
+            <div class="customer-name">{{ c.name }}</div>
+            <div class="customer-sales">
+                Salesperson: {{ c.salesperson.name|default:"Unassigned" }}
+            </div>
+        </div>
+        <div class="toggle-icon">⌄</div>
+    </div>
+
+    <div class="customer-body">
+        <div class="customer-body-inner">
+
+            <div>
+                <div class="label">Email</div>
+                <div class="value">{{ c.email|default:"—" }}</div>
+            </div>
+
+            <div>
+                <div class="label">Phone</div>
+                <div class="value">{{ c.phone|default:"—" }}</div>
+            </div>
+
+            <div>
+                <div class="label">State</div>
+                <div class="value">{{ c.state|default:"—" }}</div>
+            </div>
+
+            <div>
+                <div class="label">District</div>
+                <div class="value">{{ c.district|default:"—" }}</div>
+            </div>
+
+            <div>
+                <div class="label">Address</div>
+                <div class="value">{{ c.address|default:"—" }}</div>
+            </div>
+
+            <div>
+                <div class="label">Last Purchase</div>
+                <div class="value">
+                    {% if c.last_purchase_date %}
+                        {{ c.last_purchase_date|date:"d M Y" }}
+                        {% if c.last_product_name %}
+                            <br>{{ c.last_product_name }}
+                        {% endif %}
+                    {% else %}
+                        No Purchase
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="actions">
+                <a href="{% url 'customers:customer_edit' c.id %}">Edit Salesperson</a>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% empty %}
+<p>No customers found.</p>
+{% endfor %}
+
+<script>
+/* Customer toggle */
+document.querySelectorAll('.customer-header').forEach(header => {
+    header.addEventListener('click', () => {
+        header.parentElement.classList.toggle('active');
+    });
+});
+
+</script>
+
+{% endblock %}
