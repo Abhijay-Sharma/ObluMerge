@@ -7,6 +7,11 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
+
+    html, body{
+      overflow-x: hidden;
+    }
+
     body {
         background: #000;
         color: #fff;
@@ -67,9 +72,12 @@
         cursor: pointer;
     }
 
-    .mobile-list {
-        width: 90vw;
-        margin: 0 auto;
+    .mobile-list{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .accordion {
@@ -137,26 +145,96 @@
         text-align:center;
     }
 
+   .btn-grid{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, auto);
+      grid-auto-flow: column;
+      gap: 14px;
+      width: 100%;
+   }
 
+   .btn-grid > *{
+      width: 100% !important;
+      margin: 0 !important;
+   }
 
+   .btn-grid .btn a{
+      width: 100%;
+      height: 100%;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+   }
+
+    .btn-grid .btn,
+    .btn-grid .open-history,
+    .btn-grid .remark-btn{
+      height: 44px;
+    }
+
+    .btn,
     .open-history,
-    .remark-btn {
-        width: 160px;
-        height: 40px;
-        margin-top: 10px;
-        border-radius: 20px;
-        border: none;
-        color: #fff;
-        cursor: pointer;
+    .remark-btn{
+      width: auto !important;
+      min-width: 170px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(to right, #007bff, #0044aa);
+      color: #fff;
+      cursor: pointer;
+      padding: 0 16px;
+      margin-top: 10px;
+
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.2px;
+
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+      transition: 0.25s ease;
     }
 
-    .open-history {
-        background: linear-gradient(to right, transparent, #222, transparent);
+    /* Hover */
+    .btn:hover,
+    .open-history:hover,
+    .remark-btn:hover{
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.6);
     }
 
-    .remark-btn {
-        background: linear-gradient(to right, #007bff, #0044aa);
+    .btn:active,
+    .open-history:active,
+    .remark-btn:active{
+      transform: translateY(0px);
+      filter: brightness(0.95);
     }
+
+    .btn a{
+      color: #fff !important;
+      text-decoration: none !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .panel{
+      position: relative;
+    }
+
+    .panel .btn,
+    .panel .open-history,
+    .panel .remark-btn{
+      margin-right: 10px;
+    }
+
 
     .remark-modal {
         position: fixed;
@@ -219,6 +297,13 @@
 /* ------------------------------------------------------
      STATS CARDS (EXACT SAME)
 ------------------------------------------------------ */
+
+.stats-wrap{
+  max-width: 1200px;
+  margin: 0 auto 20px;
+  padding: 0 16px;
+}
+
 .stat-card {
   background: #111;
   color: white;
@@ -240,8 +325,59 @@
   font-weight: 700;
   margin: 0;
 }
-</style>
-</head>
+
+    @media (max-width: 860px){
+
+      .stat-card{
+        padding: 16px;
+      }
+      .stat-card h2{
+        font-size: 22px;
+      }
+      .btn-grid{
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, auto);
+        grid-auto-flow: column;
+      }
+    }
+
+    @media (max-width: 520px){
+
+      .btn-grid{
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: auto;
+        grid-auto-flow: row;
+        gap: 10px;
+      }
+
+      .btn-grid .btn,
+      .btn-grid .open-history,
+      .btn-grid .remark-btn{
+        height: 38px;
+        min-width: unset !important;
+        padding: 0 10px;
+        border-radius: 14px;
+        font-size: 12px;
+      }
+
+      .btn-grid .btn a{
+        font-size: 12px;
+        padding: 0 6px;
+        text-align: center;
+        white-space: normal;
+        line-height: 1.1;
+      }
+
+      .btn-grid .open-history,
+      .btn-grid .remark-btn{
+        white-space: normal;
+        line-height: 1.1;
+        text-align: center;
+        word-break: break-word;
+      }
+    }
+
+</style></head>
 
 <body>
 
@@ -269,14 +405,15 @@
 </div>
 
 <!-- STATS -->
-<div class="row g-4 mb-4">
-  <div class="col-md-4"><div class="stat-card"><h3>Total Customers</h3><h2>{{ customers|length }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Active</h3><h2 class="text-success">{{ active_count }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Inactive</h3><h2 class="text-danger">{{ inactive_count }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Outstanding Customers</h3><h2 class="text-warning">{{ outstanding_count }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Total Outstanding Amount</h3><h2 class="text-danger">₹ {{ total_outstanding_amount|floatformat:2 }}</h2></div></div>
+<div class="stats-wrap">
+    <div class="row g-4 mb-4">
+      <div class="col-md-4"><div class="stat-card"><h3>Total Customers</h3><h2>{{ customers|length }}</h2></div></div>
+      <div class="col-md-4"><div class="stat-card"><h3>Active</h3><h2 class="text-success">{{ active_count }}</h2></div></div>
+      <div class="col-md-4"><div class="stat-card"><h3>Inactive</h3><h2 class="text-danger">{{ inactive_count }}</h2></div></div>
+      <div class="col-md-4"><div class="stat-card"><h3>Outstanding Customers</h3><h2 class="text-warning">{{ outstanding_count }}</h2></div></div>
+      <div class="col-md-4"><div class="stat-card"><h3>Total Outstanding Amount</h3><h2 class="text-danger">₹ {{ total_outstanding_amount|floatformat:2 }}</h2></div></div>
+    </div>
 </div>
-
 {% if not is_manager %}
 <div class="text-center mb-3">
     <button class="btn btn-danger"
@@ -313,38 +450,40 @@
         <strong>Last Order:</strong>
         {{ customer.last_order_date|default:"No orders yet" }}
     </p>
+    <div class="btn-grid">
+        <button class="btn">
+            <a href="{% url 'customer_item_purchases' customer.id %}">
+                View Item Purchases
+            </a>
+        </button>
+        <button class="btn">
+            <a href="{% url 'customers:customerpaymentstatus' customer.id %}">
+                View Payment Status
+            </a>
+        </button>
+        <button class="open-history" data-customer="{{ customer.id }}">
+            View Order History
+        </button>
 
-    <a href="{% url 'customer_item_purchases' customer.id %}">
-        View Item Purchases
-    </a><br>
+        <!-- ✅ ADD REMARK -->
+        <button class="remark-btn" onclick="openRemark('{{ customer.id }}')">
+            Add Remark
+        </button>
 
-    <a href="{% url 'customers:customerpaymentstatus' customer.id %}">
-        View Payment Status
-    </a><br>
+        <!-- ✅ VIEW REMARKS -->
+        <button class="remark-btn" onclick="openRemarkList('{{ customer.id }}')">
+            View Remarks ({{ customer.remarks_list|length }})
+        </button>
+        <!-- ✅ ADD FOLLOW-UP -->
+        <button class="remark-btn" onclick="openFollowup('{{ customer.id }}')">
+            Schedule Follow-Up
+        </button>
 
-    <button class="open-history" data-customer="{{ customer.id }}">
-        View Order History
-    </button>
-
-    <!-- ✅ ADD REMARK -->
-    <button class="remark-btn" onclick="openRemark('{{ customer.id }}')">
-        Add Remark
-    </button>
-
-    <!-- ✅ VIEW REMARKS -->
-    <button class="remark-btn" onclick="openRemarkList('{{ customer.id }}')">
-        View Remarks ({{ customer.remarks_list|length }})
-    </button>
-    <!-- ✅ ADD FOLLOW-UP -->
-    <button class="remark-btn" onclick="openFollowup('{{ customer.id }}')">
-        Schedule Follow-Up
-    </button>
-
-    <!-- ✅ VIEW FOLLOW-UPS -->
-    <button class="remark-btn" onclick="openFollowupList('{{ customer.id }}')">
-        Follow-Ups ({{ customer.followups_list|length }})
-    </button>
-
+        <!-- ✅ VIEW FOLLOW-UPS -->
+        <button class="remark-btn" onclick="openFollowupList('{{ customer.id }}')">
+            Follow-Ups ({{ customer.followups_list|length }})
+        </button>
+    </div>
     <!-- ✅ ADD REMARK MODAL -->
     <div class="remark-modal" id="remarkModal{{ customer.id }}">
         <div class="remark-box">
