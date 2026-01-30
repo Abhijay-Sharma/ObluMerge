@@ -85,7 +85,7 @@ class ProformaInvoice(models.Model):
         default=CourierMode.SURFACE)
 
     def taxable_total(self):
-        return sum(item.amount_excl_tax() for item in self.items.all())
+        return sum(item.total_price_excl_tax() for item in self.items.all())
 
     def total(self):
         return sum(item.total_price() for item in self.items.all())
@@ -243,6 +243,13 @@ class ProformaInvoice(models.Model):
 
         words += " Only"
         return words
+
+    def igst_total(self):
+        """
+        Total IGST = Product GST + Courier GST
+        """
+        product_gst = self.items_total() - self.taxable_total()
+        return product_gst + self.courier_gst()
 
     def __str__(self):
         return f"Proforma #{self.id} - {self.customer.name}"
