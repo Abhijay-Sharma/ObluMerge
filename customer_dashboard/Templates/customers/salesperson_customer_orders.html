@@ -466,17 +466,19 @@
             {% endfor %}
         </ul>
     </div>
-        <!-- MODAL -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-box">
-            <h2>Order History</h2>
-            <div id="modalContent"></div>
-        </div>
-    </div>
+
 
 
 </div>
 {% endfor %}
+
+    <!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+        <h2>Order History</h2>
+        <div id="modalContent"></div>
+    </div>
+</div>
 
 {% if not is_manager or selected_member != "all" %}
 <div class="remark-modal" id="salespersonFollowupsModal">
