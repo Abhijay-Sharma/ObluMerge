@@ -279,13 +279,7 @@ hr{
 </tbody>
 </table>
 
-<!-- ================= TOTALS ================= -->
-{% with items.0.taxrate as gst_rate %}
-{% widthratio invoice.items_total 100 gst_rate as product_igst %}
-{% with invoice.courier_charge|default:0 as courier_charge %}
-{% with invoice.courier_gst|default:0 as courier_gst %}
-{% with product_igst|add:courier_gst as combined_igst %}
-{% with invoice.items_total|add:combined_igst|add:courier_charge as display_total %}
+
 
 <div class="totals-wrapper">
 <table>
@@ -299,19 +293,22 @@ hr{
     <table>
       <tr>
         <td class="right bold" style="font-size:13px;">Sub Total</td>
-        <td class="right" style="font-size:13px;">₹ {{ invoice.items_total|floatformat:2 }}</td>
+        <td class="right" style="font-size:13px;">₹ {{ invoice.taxable_total|floatformat:2 }}</td>
       </tr>
       <tr>
         <td class="right bold" style="font-size:13px;">Courier Charges</td>
-        <td class="right" style="font-size:13px;">₹ {{ courier_charge|floatformat:2 }}</td>
+        <td class="right" style="font-size:13px;">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
       </tr>
       <tr>
         <td class="right bold" style="font-size:13px;">IGST @ {{ gst_rate }}%</td>
-        <td class="right" style="font-size:13px;">₹ {{ combined_igst|floatformat:2 }}</td>
+          <td class="right" style="font-size:13px;">
+          ₹ {{ invoice.igst_total |floatformat:2 }}
+        </td>
+
       </tr>
       <tr class="totals-highlight">
         <td class="right">Total</td>
-        <td class="right" style="font-size:13px;">₹ {{ display_total|floatformat:2 }}</td>
+        <td class="right" style="font-size:13px;">₹ {{ invoice.grand_total|floatformat:2 }}</td>
       </tr>
     </table>
   </td>
@@ -319,11 +316,6 @@ hr{
 </table>
 </div>
 
-{% endwith %}
-{% endwith %}
-{% endwith %}
-{% endwith %}
-{% endwith %}
 
 <!-- ================= BANK ================= -->
 <div style="margin-top:18px;">
