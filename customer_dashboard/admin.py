@@ -24,4 +24,6 @@ class CustomerCreditProfileAdmin(admin.ModelAdmin):
     list_display = ("customer","outstanding_balance","credit_period_days")
 
 
-admin.site.register(CustomerFollowUp)
+@admin.register(CustomerFollowUp)
+class CustomerFollowUpAdmin(admin.ModelAdmin):
+    list_display = ("salesperson","customer")
