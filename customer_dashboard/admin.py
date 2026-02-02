@@ -26,4 +26,4 @@ class CustomerCreditProfileAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerFollowUp)
 class CustomerFollowUpAdmin(admin.ModelAdmin):
-    list_display = ("salesperson","customer","followup")
+    list_display = ("salesperson","customer","followup_date")
