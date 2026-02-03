@@ -107,36 +107,49 @@ class ProformaInvoice(models.Model):
     def courier_charge(self):
         total_courier = Decimal("0.00")
 
+        # category -> {"qty": int, "product": InventoryItem}
+        category_data = {}
+
         print("\n========== COURIER CHARGE DEBUG ==========")
         print("INVOICE:", self.id)
         print("MODE:", self.courier_mode)
 
+        # 🔹 Group quantities by category
         for item in self.items.all():
-            qty = item.quantity
-            product = item.product
+            category = item.product.category
 
-            print("\nPRODUCT:", product.name)
-            print("QTY:", qty)
+            if category not in category_data:
+                category_data[category] = {
+                    "qty": 0,
+                    "product": item.product,  # 👈 store product here
+                }
 
-            sheet = product.courier_sheets.filter(mode=self.courier_mode).first()
+            category_data[category]["qty"] += item.quantity
+
+        # 🔹 Apply courier slab ONCE per category
+        for category, data in category_data.items():
+            total_qty = data["qty"]
+            product = data["product"]
+
+            print(f"\nCATEGORY: {category.name}")
+            print("TOTAL QTY:", total_qty)
+
+            sheet = product.courier_sheets.filter(
+                mode=self.courier_mode
+            ).first()
 
             if not sheet:
                 print("❌ NO COURIER SHEET FOUND")
                 continue
 
-            print("✔ SHEET FOUND:", sheet.mode)
-
-            tiers = sheet.tiers.all()
-            print("ALL TIERS:", list(tiers))
-
             tier = (
-                tiers
-                .filter(min_quantity__lte=qty)
+                sheet.tiers
+                .filter(min_quantity__lte=total_qty)
                 .filter(
-                    models.Q(max_quantity__gte=qty) |
+                    models.Q(max_quantity__gte=total_qty) |
                     models.Q(max_quantity__isnull=True)
                 )
-                .order_by("-min_quantity")  # ✅ FIX
+                .order_by("-min_quantity")
                 .first()
             )
 
@@ -145,10 +158,8 @@ class ProformaInvoice(models.Model):
             if tier:
                 total_courier += tier.charge
                 print("ADDED CHARGE:", tier.charge)
-            else:
-                print("❌ NO MATCHING TIER")
 
-        print("TOTAL COURIER CHARGE:", total_courier)
+        print("\nTOTAL COURIER CHARGE:", total_courier)
         print("========================================\n")
 
         return total_courier
