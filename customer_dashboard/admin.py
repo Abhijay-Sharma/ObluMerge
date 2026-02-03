@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SalesPerson, Customer, CustomerCreditProfile, CustomerFollowUp
+from .models import SalesPerson, Customer, CustomerCreditProfile, CustomerFollowUp, CustomerRemark
 
 
 
@@ -27,3 +27,7 @@ class CustomerCreditProfileAdmin(admin.ModelAdmin):
 @admin.register(CustomerFollowUp)
 class CustomerFollowUpAdmin(admin.ModelAdmin):
     list_display = ("salesperson","customer","followup_date","is_completed")
+
+@admin.register(CustomerRemark)
+class CustomerRemarkAdmin(admin.ModelAdmin):
+    list_display = ("salesperson","customer","created_at")
