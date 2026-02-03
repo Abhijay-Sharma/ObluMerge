@@ -208,7 +208,52 @@ table tbody td {
   border-bottom:1px solid #333;
   padding:8px 0;
 }
+  /* ---------------- FILTER DROPDOWN ---------------- */
 
+.filter-th {
+  position: absolute;
+  cursor: pointer;
+  user-select: none;
+  transform: translateX(-25px);
+}
+
+.filter-toggle {
+  font-size: 12px;
+  margin-left: 6px;
+  opacity: 0.7;
+  transform: translateX(-25px);
+
+}
+
+.filter-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 180px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 10px;
+  box-shadow: 0 0 18px rgba(255,0,0,0.25);
+  z-index: 2000;
+  display: none;
+  padding: 6px 0;
+}
+
+.filter-menu div {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: white;
+  cursor: pointer;
+}
+
+.filter-menu div:hover {
+  background: #222;
+}
+
+.filter-menu div.active {
+  background: #3a0b0b;
+  font-weight: 600;
+}
 </style>
 </head>
 
@@ -297,17 +342,36 @@ table tbody td {
       <th>State</th>
       <th>Orders</th>
       <th>Total</th>
-      <th>Outstanding</th>
+        <th class="filter-th">
+          Outstanding
+          <span class="filter-toggle">▼</span>
+
+          <div class="filter-menu" data-filter="outstanding">
+            <div data-value="all">All</div>
+            <div data-value="due">With Outstanding</div>
+            <div data-value="clear">No Outstanding</div>
+      </div>
+</th>
       <th>Last</th>
-      <th>Status</th>
+        <th class="filter-th">
+          Status
+          <span class="filter-toggle">▼</span>
+
+          <div class="filter-menu" data-filter="status">
+            <div data-value="all">All</div>
+            <div data-value="active">Active</div>
+            <div data-value="inactive">Inactive</div>
+          </div>
+        </th>
       <th>Actions</th>
     </tr>
   </thead>
 
   <tbody>
     {% for c in customers %}
-    <tr class="{% if c.is_red_flag %}red-flag{% endif %}"
-        data-customer-id="{{ c.id }}" data-customer-name="{{ c.name }}">
+<tr
+  data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}"
+  data-outstanding="{% if c.trial_balance and c.trial_balance > 0 %}due{% else %}clear{% endif %}">
 
       <td>{{ forloop.counter }}</td>
       <td class="cust-name">{{ c.name }}</td>
@@ -352,7 +416,6 @@ table tbody td {
     {% endfor %}
   </tbody>
 </table>
-
   </div>
 </div>
 
@@ -797,6 +860,65 @@ function closeSalespersonFollowups() {
   m.classList.remove("show");
   setTimeout(() => (m.style.display = "none"), 200);
 }
+
+ <!--filteration-->
+
+document.addEventListener('DOMContentLoaded', () => {
+  let filters = {
+    status: 'all',
+    outstanding: 'all'
+  };
+
+  const rows = document.querySelectorAll('#customerTable tbody tr');
+
+  function applyFilters() {
+    rows.forEach(row => {
+      const statusOk =
+        filters.status === 'all' ||
+        row.dataset.status === filters.status;
+
+      const outstandingOk =
+        filters.outstanding === 'all' ||
+        row.dataset.outstanding === filters.outstanding;
+
+      row.style.display = (statusOk && outstandingOk) ? '' : 'none';
+    });
+  }
+
+  // Toggle dropdown
+  document.querySelectorAll('.filter-th').forEach(th => {
+    th.addEventListener('click', e => {
+      e.stopPropagation();
+      document.querySelectorAll('.filter-menu').forEach(m => m.style.display = 'none');
+      const menu = th.querySelector('.filter-menu');
+      if (menu) menu.style.display = 'block';
+    });
+  });
+
+  // Select option
+  document.querySelectorAll('.filter-menu div').forEach(opt => {
+    opt.addEventListener('click', e => {
+      e.stopPropagation();
+      const menu = opt.closest('.filter-menu');
+      const type = menu.dataset.filter;
+      const value = opt.dataset.value;
+
+      filters[type] = value;
+
+      // active state
+      menu.querySelectorAll('div').forEach(d => d.classList.remove('active'));
+      opt.classList.add('active');
+
+      menu.style.display = 'none';
+      applyFilters();
+    });
+  });
+
+  // Close on outside click
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.filter-menu').forEach(m => m.style.display = 'none');
+  });
+});
 </script>
 
 </body>
