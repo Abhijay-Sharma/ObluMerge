@@ -278,84 +278,112 @@ class ProformaInvoiceItem(models.Model):
     product = models.ForeignKey(InventoryItem, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
 
-    def total_price(self):
+    # =====================================================
+    # 🔥 SINGLE SOURCE OF TRUTH FOR UNIT PRICE (INC GST)
+    # =====================================================
+    def get_unit_price_incl_tax(self):
         """
-        Calculate price dynamically, considering price tiers.
+        Returns correct unit price INCLUDING GST
+        - Applies dynamic tier pricing if enabled
+        - Falls back to base price
         """
         price_obj = getattr(self.product, "proforma_price", None)
         if not price_obj:
-            return 0
+            return Decimal("0.00")
 
-        unit_price = price_obj.price
+        unit_price = price_obj.price  # base price (inc GST)
+
+        # 🔥 CHANGED: dynamic tier logic centralized here
         if price_obj.has_dynamic_price:
             tier = (
-                price_obj.price_tiers.filter(min_quantity__lte=self.quantity)
+                price_obj.price_tiers
+                .filter(min_quantity__lte=self.quantity)
                 .order_by("-min_quantity")
                 .first()
             )
             if tier:
                 unit_price = tier.unit_price
 
-        return unit_price * self.quantity
+        return unit_price
 
+    # =====================================================
+    # TOTAL PRICE (INC GST)
+    # =====================================================
+    def total_price(self):
+        """
+        Total price INCLUDING GST
+        """
+        # 🔥 CHANGED: now uses centralized pricing logic
+        return self.get_unit_price_incl_tax() * self.quantity
+
+    # =====================================================
+    # UNIT PRICE (INC GST)
+    # =====================================================
     def unit_price(self):
-        price_obj = getattr(self.product, "proforma_price", None)
-        if not price_obj:
-            return 0
+        """
+        Unit price INCLUDING GST
+        """
+        # 🔥 CHANGED: earlier always returned base price
+        return self.get_unit_price_incl_tax()
 
-        # price already includes GST
-        return price_obj.price
-
+    # =====================================================
+    # UNIT PRICE (EXCLUDING GST)
+    # =====================================================
     def unit_price_excl_tax(self):
-        price_obj = getattr(self.product, "proforma_price", None)
-        if not price_obj:
-            return 0
+        """
+        Unit price EXCLUDING GST
+        """
+        unit_price = self.get_unit_price_incl_tax()  # 🔥 CHANGED
+        tax_rate = self.taxrate() or 0
 
-        price = price_obj.price  # GST included
-        tax_rate = price_obj.tax_rate or 0  # safety
+        return unit_price / (1 + (tax_rate / 100))
 
-        return price / (1 + (tax_rate / 100))
-
+    # =====================================================
+    # TOTAL PRICE (EXCLUDING GST)
+    # =====================================================
     def total_price_excl_tax(self):
         return self.unit_price_excl_tax() * self.quantity
 
-    def hsn(self):
-        price_obj = getattr(self.product, "proforma_price", None)
-        if not price_obj:
-            return 0
-        else:
-            return price_obj.hsn
-
+    # =====================================================
+    # TAX / HSN HELPERS
+    # =====================================================
     def taxrate(self):
         price_obj = getattr(self.product, "proforma_price", None)
-        if not price_obj:
-            return 0
-        else:
-            return price_obj.tax_rate
+        return price_obj.tax_rate if price_obj else 0
 
+    def hsn(self):
+        price_obj = getattr(self.product, "proforma_price", None)
+        return price_obj.hsn if price_obj else None
 
+    # =====================================================
+    # VALIDATION
+    # =====================================================
     def clean(self):
         """
         Validation before saving:
         - ensure price exists
-        - ensure stock available
-        - ensure min requirement met
+        - ensure minimum order quantity
+        - ensure stock availability
         """
         price_obj = getattr(self.product, "proforma_price", None)
         if not price_obj:
-            raise ValidationError(f"No price defined for {self.product.name}.")
-
-        # ✅ Check minimum requirement
-        if self.quantity < price_obj.min_requirement:
             raise ValidationError(
-                f"Minimum order for {self.product.name} is {price_obj.min_requirement} units."
+                f"No price defined for {self.product.name}."
             )
 
-        # ✅ Check stock
+        # Minimum order check
+        if self.quantity < price_obj.min_requirement:
+            raise ValidationError(
+                f"Minimum order for {self.product.name} is "
+                f"{price_obj.min_requirement} units."
+            )
+
+        # Stock check
         available_qty = getattr(self.product, "quantity", 0)
         if self.quantity > available_qty:
             raise ValidationError(
-                f"Only {available_qty} units available in stock for {self.product.name}."
+                f"Only {available_qty} units available in stock "
+                f"for {self.product.name}."
             )
 
     def __str__(self):
