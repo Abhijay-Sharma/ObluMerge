@@ -1,0 +1,75 @@
+<h2>Hello {{ salesperson.name }},</h2>
+
+<p>
+Below is the list of customers who have been inactive for the last 3 months.
+Please review and take necessary follow-ups.
+</p>
+
+<table border="1" cellpadding="8" cellspacing="0" width="100%">
+  <thead>
+    <tr>
+      <th>Customer</th>
+      <th>Inactive Since</th>
+      <th>Latest Remark</th>
+      <th>Remark Date</th>
+      <th>Latest Follow-up</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td>{{ row.customer.name }}</td>
+
+      <td>
+        {% if row.inactive_since %}
+          {{ row.inactive_since }}
+        {% else %}
+          Never Ordered
+        {% endif %}
+      </td>
+
+      <td>
+        {% if row.remark %}
+          {{ row.remark.remark }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+
+      <td>
+        {% if row.remark %}
+          {{ row.remark.created_at|date:"d M Y" }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+
+      <td>
+        {% if row.followup %}
+          {{ row.followup.followup_date }}
+        {% else %}
+          No follow-up set
+        {% endif %}
+      </td>
+
+      <td>
+        {% if row.followup_status == "completed" %}
+          <span style="color: green; font-weight: bold;">Completed</span>
+        {% elif row.followup_status == "overdue" %}
+          <span style="color: red; font-weight: bold;">Overdue</span>
+        {% elif row.followup_status == "upcoming" %}
+          Upcoming
+        {% else %}
+          —
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="margin-top:20px;">
+This is an automated reminder from the CRM.
+</p>
