@@ -117,15 +117,14 @@ class Command(BaseCommand):
                 subject=subject,
                 body="",
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                # to=[sp.user.email],
-                to = ["madderladder68@gmail.com","swasti.obluhc@gmail.com"]
-                # cc=[
-                #     "swasti.obluhc@gmail.com",
-                #     "nitin.a@obluhc.com",
-                #     "raman.obluhc@gmail.com",
-                #     "akshay.obluhc@gmail.com",
-                #     "bhavya.obluhc@gmail.com",
-                # ],
+                to=[sp.user.email],
+                cc=[
+                    "swasti.obluhc@gmail.com",
+                    "nitin.a@obluhc.com",
+                    "raman.obluhc@gmail.com",
+                    "akshay.obluhc@gmail.com",
+                    "bhavya.obluhc@gmail.com",
+                ],
             )
             msg.attach_alternative(html_content, "text/html")
             msg.send()
