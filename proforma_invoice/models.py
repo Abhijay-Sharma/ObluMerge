@@ -428,33 +428,6 @@ class CourierChargeTier(models.Model):
     class Meta:
         ordering = ["min_quantity"]
 
-    def clean(self):
-        """
-        Prevent overlapping quantity slabs for same product + mode
-        """
-        qs = CourierChargeTier.objects.filter(sheet=self.sheet)
-
-        # exclude self while editing
-        if self.pk:
-            qs = qs.exclude(pk=self.pk)
-
-        for tier in qs:
-            tier_min = tier.min_quantity
-            tier_max = tier.max_quantity
-
-            # treat NULL max as infinity
-            current_max = self.max_quantity or float("inf")
-            existing_max = tier_max or float("inf")
-
-            # overlap condition
-            if (
-                self.min_quantity <= existing_max
-                and tier_min <= current_max
-            ):
-                raise ValidationError(
-                    f"Overlapping slab detected: "
-                    f"{tier_min}-{tier_max or '∞'} already exists."
-                )
 
     def __str__(self):
         if self.max_quantity:
