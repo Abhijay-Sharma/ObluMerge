@@ -65,7 +65,7 @@ class Command(BaseCommand):
 
             from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
             to_emails = [sp.user.email]
-            cc_emails = ["swasti.obluhc@gmail.com","nitin.a@obluhc.com","raman.obluhc@gmail.com","akshay.obluhc@gmail.com","bhavya.obluhc@gmail.com"]
+            cc_emails = ["swasti.obluhc@gmail.com","nitin.a@obluhc.com","raman.obluhc@gmail.com","akshay@obluhc.com","bhavya.obluhc@gmail.com","vibhuti.obluhc@gmail.com"]
 
 
             msg = EmailMultiAlternatives(subject, "", from_email, to_emails,cc=cc_emails)
