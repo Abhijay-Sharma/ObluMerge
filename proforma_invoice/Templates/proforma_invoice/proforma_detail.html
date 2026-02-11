@@ -1,43 +1,48 @@
 {% load static %}
 <html lang="en">
 <head>
+
+<link rel="stylesheet"
+ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <meta charset="UTF-8">
 <title>Proforma Invoice</title>
 
 <style>
-@page { size: A4 portrait; margin: 14mm; }
+@page { size:A4 portrait; margin:14mm; }
 
 body{
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 12px;
+  font-size:12px;
   color:#000;
   margin:0;
-}
-
-.Insta-QR{
-  width:120px;
-  height:120px;
 }
 
 .wrapper{ width:100%; }
 .invoice-container{ padding:10px 14px; }
 
-/* GLOBAL */
+/* ================= GLOBAL ================= */
 table{ width:100%; border-collapse:collapse; }
-td, th{ border:none; padding:6px; vertical-align:top; }
+td, th{ padding:6px; vertical-align:top; }
 
 .bold{ font-weight:bold; }
 .center{ text-align:center; }
 .right{ text-align:right; }
 
-/* HEADER */
+/* ================= HEADER ================= */
 .header-top{
-  display:flex;
-  justify-content:space-between;
+  display:grid;
+  grid-template-columns:120px 1fr auto;
+  column-gap:14px;
 }
 
-.company-info{ width:65%; line-height:1.4; margin-right:80px; }
-.logo{ width:120px; height:100px; }
+.company-info{ line-height:1.4; }
+
+.logo{
+  width:120px;
+  height:100px;
+  object-fit:contain;
+}
 
 hr{
   border:none;
@@ -53,7 +58,7 @@ hr{
   margin-bottom:14px;
 }
 
-/* INFO GRID */
+/* ================= INFO GRID ================= */
 .info-grid{
   display:grid;
   grid-template-columns:1fr 1fr 1fr;
@@ -62,104 +67,159 @@ hr{
 }
 .info-grid b{ display:block; margin-bottom:6px; }
 
-/* ITEM TABLE */
+/* ================= ITEM TABLE ================= */
+.item-table{
+  border:2px solid #000;
+}
+
+.item-table th,
+.item-table td{
+  border-left:1px solid #000;
+}
+
 .item-table thead th{
   background:#0b78a8;
   color:#fff;
-  font-weight:bold;
   text-align:center;
-  font-size:12px;
+  border-bottom:2px solid #000;
 }
 
-.item-table th.right,
-.item-table td.right{ text-align:right; padding-right:12px; font-size:12px; }
+.item-table tbody td{
+  border-bottom:1px solid #999;
+}
 
-.item-table th.center,
-.item-table td.center{ text-align:center; font-size:12px; }
+.item-table tbody tr:last-child td{
+  border-bottom:none;
+}
 
-.item-table tbody td{ border-bottom:1px solid #999; font-size:12px;}
+.item-name{
+  text-align:left;
+  padding-left:12px;
+}
 
-.item-name{ text-align:left; padding-left:14px; font-size:12px; }
+/* ================= TOTALS ================= */
+.totals-wrapper table{
+  margin-top:-3px;
+  border-bottom:2px solid #000;
+}
 
-/* TOTALS */
-.totals-wrapper{ margin-top:16px; font-size:12px; }
+.totals-wrapper td{
+  border-bottom:1px solid #999;
+}
+
+.totals-wrapper td:last-child{
+  border-left:2px solid #000;
+  border-right:2px solid #000;
+  text-align:right;
+  width:123px;
+}
+
+.totals-wrapper tr:last-child td{
+  border-bottom:none;
+  font-weight:bold;
+}
 
 .totals-highlight{
   background:#0b78a8;
   color:#fff;
-  font-weight:bold;
-  font-size:14px;
 }
 
-/* FOOTER */
+/* ================= QR ================= */
+.qr-box{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.qr-row{
+  display:flex;
+  gap:10px;
+}
+
+.qr-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  width:110px;
+}
+
+.qr-img{
+  width:90px;
+  height:90px;
+  object-fit:contain;
+}
+
+.qr-text{
+  font-size:10px;
+  font-weight:bold;
+  color:#0b78a8;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+/* ================= PRINT ================= */
+@media print{
+
+  *{
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body{ font-size:11px; color:#000 !important; }
+  .logo{ width:90px; height:60px; }
+  .no-print{ display:none; }
+
+  .item-table th,
+  .item-table td{
+    padding:4px;
+    font-size:11px;
+    color:#000 !important;
+  }
+
+  /* HEADER BLUE IN PRINT */
+  .item-table thead th{
+    background:#0b78a8 !important;
+    color:#fff !important;
+  }
+
+  /* TOTAL ROW BLUE IN PRINT */
+  .totals-highlight td{
+    background:#0b78a8 !important;
+    color:#fff !important;
+  }
+
+  .totals-wrapper td:last-child{
+    width:160px;
+  }
+
+  /* QR print layout */
+  .qr-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px 10px;
+    justify-items:center;
+  }
+
+  .qr-item.yt{
+    grid-column:1 / -1;
+  }
+
+  .qr-img{
+    width:85px;
+    height:85px;
+  }
+
+  .qr-text{
+    font-size:9px;
+  }
+}
+
 .footer-text{
   text-align:center;
   font-size:11px;
   margin-top:30px;
 }
-
-.qr-box{ width:120px; height:70px;}
-
-/* ================= PRINT-ONLY REFINEMENT ================= */
-@media print{
-
-  body{ font-size:11px; }
-
-  .logo{ width:90px; height:60px;}
-
-  .no-print{ display:none; }
-
-  /* tighter rows */
-  .item-table thead th,
-  .item-table tbody td{
-    padding:4px 4px;
-    font-size:11px;
-  }
-
-  /* make headers feel like 2 rows */
-  .item-table thead th:nth-child(5)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-  .item-table thead th:nth-child(6)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-  .item-table thead th:nth-child(7)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-  .item-table thead th:nth-child(8)::after{
-    display:block;
-    font-size:9px;
-    font-weight:normal;
-  }
-
-}
-
-.qr-box{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.qr-row{
-  display: flex;
-  gap: 8px;
-}
-
-.qr-img{
-  width:60px;
-  height:60px;
-}
-
 </style>
 </head>
 
@@ -167,75 +227,87 @@ hr{
 <div class="invoice-container">
 <div class="wrapper">
 
-<!-- ================= HEADER ================= -->
+<!-- HEADER -->
 <div class="header-top">
 
-  <img
-    src=" https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
-    class="logo"
-    alt="OBLU Logo"
-  >
+<img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
+     class="logo">
 
-  <div class="company-info">
-    <b>OBLU HEALTHCARE LLP</b><br>
-    UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
-    ROAD NO.44, Pitampura, New Delhi – 110034<br>
-    Phone : 96504 47099<br>
-    Email : sales@obluhc.com<br>
-    GSTIN : 07AAIFO0279M1ZU<br>
-    PAN : AAIFO0279M<br>
-    State : 07-Delhi
-  </div>
+<div class="company-info">
+<b>OBLU HEALTHCARE LLP</b><br>
+UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
+ROAD NO.44, Pitampura, New Delhi – 110034<br>
+Phone : 96504 47099<br>
+Email : sales@obluhc.com<br>
+GSTIN : 07AAIFO0279M1ZU<br>
+PAN : AAIFO0279M<br>
+State : 07-Delhi
+</div>
 
-  <div class="qr-box">
-    <div class="qr-row">
-      <img
-        src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png"
-        class="qr-img"
-        alt="Instagram QR"
-      >
+<div class="qr-box">
+  <div class="qr-row">
 
-      <img
-        src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png"
-        class="qr-img"
-        alt="Facebook QR"
-      >
+    <div class="qr-item ig">
+      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png"
+           class="qr-img">
+      <div class="qr-text">
+        <i class="fa-brands fa-instagram"></i>
+        OBLU_HEALTHCARE
+      </div>
     </div>
-  </div>
 
+    <div class="qr-item fb">
+      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png"
+           class="qr-img">
+      <div class="qr-text">
+        <i class="fa-brands fa-facebook" style="color:#4670b9;"></i>
+        Oblu Healthcare
+      </div>
+    </div>
+
+    <div class="qr-item yt">
+      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png"
+           class="qr-img">
+      <div class="qr-text">
+        <i class="fa-brands fa-youtube" style="color:#c41717;"></i>
+        Oblu Healthcare
+      </div>
+    </div>
+
+  </div>
+</div>
 
 </div>
 
 <hr>
-
 <div class="header-title">Proforma Invoice</div>
 
 <!-- ================= INFO ================= -->
 <div class="info-grid">
 
   <div>
-    <b>Order From</b>
+    <b>Order From
     {{ invoice.customer.name }}<br>
     {{ invoice.customer.address }}<br>
     {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
     {{ invoice.customer.state }}<br>
-    Contact : {{ invoice.customer.phone }}
+    Contact : {{ invoice.customer.phone }} </b>
   </div>
 
   <div>
-    <b>Ship To</b>
+    <b>Ship To
     {{ invoice.customer.name }}<br>
     {{ invoice.customer.address }}<br>
     {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
     {{ invoice.customer.state }}<br>
-    Mob : {{ invoice.customer.phone }}
+    Mob : {{ invoice.customer.phone }}</b>
   </div>
 
   <div>
-    <b>Order Details</b>
+    <b>Order Details
     Order No. : {{ invoice.id }}<br>
     Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
-    Place of Supply : Delhi
+    Place of Supply : Delhi</b>
   </div>
 
 </div>
@@ -293,22 +365,22 @@ hr{
     <table>
       <tr>
         <td class="right bold" style="font-size:13px;">Sub Total</td>
-        <td class="right" style="font-size:13px;">₹ {{ invoice.taxable_total|floatformat:2 }}</td>
+        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.taxable_total|floatformat:2 }}</td>
       </tr>
       <tr>
         <td class="right bold" style="font-size:13px;">Courier Charges</td>
-        <td class="right" style="font-size:13px;">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
+        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
       </tr>
       <tr>
         <td class="right bold" style="font-size:13px;">IGST @ {{ gst_rate }}%</td>
-          <td class="right" style="font-size:13px;">
+          <td class="right" style="font-size:13px; border-right:none;">
           ₹ {{ invoice.igst_total |floatformat:2 }}
         </td>
 
       </tr>
       <tr class="totals-highlight">
         <td class="right">Total</td>
-        <td class="right" style="font-size:13px;">₹ {{ invoice.grand_total|floatformat:2 }}</td>
+        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.grand_total|floatformat:2 }}</td>
       </tr>
     </table>
   </td>
@@ -319,11 +391,11 @@ hr{
 
 <!-- ================= BANK ================= -->
 <div style="margin-top:18px;">
-  <b>Company's Bank Details</b><br>
-  A/c Holder : OBLU HEALTHCARE LLP<br>
-  Bank : ICICI BANK (CC)<br>
-  A/c No. : 629351001224<br>
-  Branch & IFSC : Rajouri Garden & ICIC0006293
+  <b>Company's Bank Details:<br><br>
+  A/c Holder : OBLU HEALTHCARE LLP<br><br>
+  Bank : ICICI BANK (CC)<br><br>
+  A/c No. : 629351001224<br><br>
+  Branch & IFSC : Rajouri Garden & ICIC0006293</b>
 </div>
 
 <div style="text-align:right; margin-top:20px;">
