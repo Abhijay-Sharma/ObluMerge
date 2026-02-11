@@ -122,7 +122,7 @@ class Command(BaseCommand):
                     "swasti.obluhc@gmail.com",
                     "nitin.a@obluhc.com",
                     "raman.obluhc@gmail.com",
-                    "akshay.obluhc@gmail.com",
+                    "akshay@obluhc.com",
                     "bhavya.obluhc@gmail.com",
                 ],
             )
