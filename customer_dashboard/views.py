@@ -133,6 +133,14 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         remark_text = request.POST.get("remark", "").strip()
         salesperson_id = request.GET.get("salesperson")  # keep page state
 
+        # delete logic
+        delete_id = request.POST.get("delete_remark_id")
+        if delete_id and request.user.is_superuser:
+            remark = get_object_or_404(CustomerRemark, id=delete_id)
+            remark.delete()
+            messages.success(request, "Remark deleted successfully 🗑️")
+            return redirect(f"{request.path}?salesperson={salesperson_id}")
+
         salesperson = request.user.salesperson_profile.first()
         if not salesperson:
             return redirect(request.path)

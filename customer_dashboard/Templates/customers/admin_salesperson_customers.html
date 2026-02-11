@@ -259,6 +259,21 @@ table tbody td {
   font-weight: 600;
 }
 
+.delete-icon-btn {
+  background: transparent;
+  border: none;
+  color: #ff4d4d;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px;
+  transition: 0.2s ease;
+}
+
+.delete-icon-btn:hover {
+  transform: scale(1.2);
+  color: #ff0000;
+}
+
 
 </style>
 </head>
@@ -484,7 +499,6 @@ table tbody td {
 
 
 <!-- REMARK MODALS -->
-{% for c in customers %}
 
 <!-- VIEW REMARKS MODAL -->
 <!--<div class="remark-modal" id="modal{{ c.id }}">-->
@@ -497,7 +511,9 @@ table tbody td {
 <!--      </button>-->
 <!--    </div>-->
 
-    <!-- VIEW REMARKS + FOLLOWUPS MODAL -->
+<!--    view & dlt remarks-->
+{% for c in customers %}
+
 <div class="remark-modal" id="modal{{ c.id }}">
   <div class="remark-box">
     <div class="d-flex justify-content-between mb-2">
@@ -508,20 +524,40 @@ table tbody td {
       </button>
     </div>
 
-            <!-- REMARKS -->
+    <!-- REMARKS -->
     <h6 class="mt-2">Remarks</h6>
 
-
     {% for r in c.remarks_list %}
-      <div class="remark-item">
-        <p>{{ r.remark }}</p>
-        <small>
-          {{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}
-        </small>
+      <div class="remark-item d-flex justify-content-between align-items-start">
+
+        <div>
+          <p class="mb-1">{{ r.remark }}</p>
+          <small>
+            {{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}
+          </small>
+        </div>
+
+        {% if request.user.is_accountant %}
+        <form method="post"
+              action="?salesperson={{ selected_salesperson.id }}"
+              class="ms-2">
+          {% csrf_token %}
+          <input type="hidden" name="delete_remark_id" value="{{ r.id }}">
+          <button type="submit"
+                  class="delete-icon-btn"
+                  title="Delete Remark"
+                  onclick="return confirm('Delete this remark?')">
+            🗑️
+          </button>
+        </form>
+        {% endif %}
+
       </div>
+
     {% empty %}
       <p>No remarks.</p>
     {% endfor %}
+
   </div>
 </div>
 
@@ -554,9 +590,6 @@ table tbody td {
           Save Remark
       </button>
     </form>
-
-
-
 
   </div>
 </div>
