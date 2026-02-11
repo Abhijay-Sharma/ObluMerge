@@ -155,6 +155,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             salesperson=salesperson,
             remark=remark_text
         )
+        messages.success(request, "Remark created successfully ✅")
 
         return redirect(f"{request.path}?salesperson={salesperson_id}")
 
