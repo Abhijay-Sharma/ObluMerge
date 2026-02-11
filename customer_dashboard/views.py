@@ -32,7 +32,9 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
-        ctx["salespersons"] = SalesPerson.objects.all()
+        excluded_names=["abhijay"]
+
+        ctx["salespersons"] = (SalesPerson.objects.all().exclude(name__in=excluded_names).order_by(Lower("name")))
         selected_id = self.request.GET.get("salesperson")
 
         if not selected_id:
