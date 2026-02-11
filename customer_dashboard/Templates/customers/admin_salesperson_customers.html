@@ -1,422 +1,958 @@
-{% load static %}
+<!DOCTYPE html>
 <html lang="en">
 <head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Salesperson → Customer Overview</title>
 
-<link rel="stylesheet"
- href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-<meta charset="UTF-8">
-<title>Proforma Invoice</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
-@page { size:A4 portrait; margin:14mm; }
 
+/* ------------------------------------------------------
+    THEME COLORS
+------------------------------------------------------ */
+:root{
+  --page-bg: #000;
+  --card-bg: #111;
+  --table-cell: #1A1A1A;
+  --table-red: #3a0b0b;
+  --border-color: #333;
+  --accent: #b30000;
+  --inactive-bg: #3a0b0b;
+  --text-light: #ffffff;
+}
+
+/* ------------------------------------------------------
+    GLOBAL
+------------------------------------------------------ */
 body{
-  font-family: Arial, Helvetica, sans-serif;
-  font-size:12px;
-  color:#000;
-  margin:0;
+  background: var(--page-bg);
+  font-family: "Poppins", sans-serif;
+  color: var(--text-light);
 }
 
-.wrapper{ width:100%; }
-.invoice-container{ padding:10px 14px; }
+.btn {
+  color:#fff;
+  background:#111;
+  border: #fff 2px solid;
+  border-radius: 20px !important;
+}
+/* ------------------------------------------------------
+    SEARCH + SUGGESTIONS
+------------------------------------------------------ */
+.search-wrapper { position: relative; }
 
-/* ================= GLOBAL ================= */
-table{ width:100%; border-collapse:collapse; }
-td, th{ padding:6px; vertical-align:top; }
-
-.bold{ font-weight:bold; }
-.center{ text-align:center; }
-.right{ text-align:right; }
-
-/* ================= HEADER ================= */
-.header-top{
-  display:grid;
-  grid-template-columns:120px 1fr auto;
-  column-gap:14px;
+#customerSearch {
+  border-radius: 25px;
+  border: 1px solid #444;
+  height: 44px;
+  color: white;
+  background-color: #000;
 }
 
-.company-info{ line-height:1.4; }
-
-.logo{
-  width:120px;
-  height:100px;
-  object-fit:contain;
+.suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #111;
+  border-radius: 12px;
+  border: 1px solid #333;
+  box-shadow: 0 0 18px rgba(255,0,0,0.15);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
 }
 
-hr{
-  border:none;
-  border-top:2px solid #0b78a8;
-  margin:10px 0 14px;
+.suggestions .item {
+  padding: 12px 16px;
+  cursor: pointer;
+  color: white;
+  border-bottom: 1px solid #2a2a2a;
+}
+.suggestions .item:hover {
+  background: #222;
 }
 
-.header-title{
-  text-align:center;
+/* ------------------------------------------------------
+     STATS CARDS
+------------------------------------------------------ */
+.stat-card {
+  background: #111;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 14px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------
+    CARD
+------------------------------------------------------ */
+.center-card {
+  max-width: 640px;
+  margin: 72px auto;
+  padding: 30px;
+  border-radius: 16px;
+  background: var(--card-bg);
+  box-shadow: 0 0 25px rgba(255,0,0,0.15);
+}
+
+/* ------------------------------------------------------
+    TABLE (CLEAN STYLING)
+------------------------------------------------------ */
+
+.table thead th {
+  background: #000;
+  color: white;
+  border-color: var(--border-color);
+<!--  position: fixed;-->
+
+}
+
+/* NORMAL CUSTOMER ROW */
+table tbody td {
+  background: var(--table-cell) !important;
+  color: white !important;
+  border-color: var(--border-color) !important;
+}
+
+/* RED FLAG CUSTOMER ROW */
+.red-flag td {
+  background: var(--table-red) !important;
+  color: white !important;
+}
+
+/* ------------------------------------------------------
+    MOBILE ACCORDION
+------------------------------------------------------ */
+.accordion-btn {
+  width: 100%;
+  background:#111;
+  border:1px solid #333;
+  border-radius: 12px;
+  padding: 16px;
+  color:white;
+  font-weight:600;
+  margin-bottom: 12px;
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  cursor:pointer;
+}
+
+/* Red-flag accordion header */
+.accordion-btn.inactive {
+  background: var(--inactive-bg) !important;
+}
+
+/* White dot for remarks */
+.remark-dot-white {
+  width: 9px;
+  height: 9px;
+  background: white;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.accordion-btn .arrow {
   font-size:18px;
-  font-weight:bold;
-  color:#0b78a8;
-  margin-bottom:14px;
+  transition:0.25s;
+}
+.accordion-btn.active .arrow { transform: rotate(180deg); }
+
+.accordion-panel {
+  display:none;
+  background:#111;
+  border:1px solid #333;
+  padding:14px;
+  border-radius:10px;
+  margin-top:-8px;
+  margin-bottom:12px;
 }
 
-/* ================= INFO GRID ================= */
-.info-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:30px;
-  margin-bottom:18px;
-}
-.info-grid b{ display:block; margin-bottom:6px; }
+/* RESPONSIVE */
+@media (max-width: 767px) { .desktop-table { display:none !important; } }
+@media (min-width: 768px) { .mobile-accordion { display:none !important; } }
 
-/* ================= ITEM TABLE ================= */
-.item-table{
-  border:2px solid #000;
-}
-
-.item-table th,
-.item-table td{
-  border-left:1px solid #000;
-}
-
-.item-table thead th{
-  background:#0b78a8;
-  color:#fff;
-  text-align:center;
-  border-bottom:2px solid #000;
-}
-
-.item-table tbody td{
-  border-bottom:1px solid #999;
-}
-
-.item-table tbody tr:last-child td{
-  border-bottom:none;
-}
-
-.item-name{
-  text-align:left;
-  padding-left:12px;
-}
-
-/* ================= TOTALS ================= */
-.totals-wrapper table{
-  margin-top:-3px;
-  border-bottom:2px solid #000;
-}
-
-.totals-wrapper td{
-  border-bottom:1px solid #999;
-}
-
-.totals-wrapper td:last-child{
-  border-left:2px solid #000;
-  border-right:2px solid #000;
-  text-align:right;
-  width:123px;
-}
-
-.totals-wrapper tr:last-child td{
-  border-bottom:none;
-  font-weight:bold;
-}
-
-.totals-highlight{
-  background:#0b78a8;
-  color:#fff;
-}
-
-/* ================= QR ================= */
-.qr-box{
-  display:flex;
-  justify-content:flex-end;
-}
-
-.qr-row{
-  display:flex;
-  gap:10px;
-}
-
-.qr-item{
-  display:flex;
-  flex-direction:column;
+/* ------------------------------------------------------
+    REMARK MODAL
+------------------------------------------------------ */
+.remark-modal {
+  position:fixed;
+  inset:0;
+  display:none;
+  justify-content:center;
   align-items:center;
-  gap:6px;
-  width:110px;
+  background:rgba(0,0,0,0.6);
+  z-index:9999;
 }
 
-.qr-img{
-  width:90px;
-  height:90px;
-  object-fit:contain;
+.remark-box {
+  width:420px;
+  background:#111;
+  border:1px solid #333;
+  padding:20px;
+  border-radius:12px;
+  color:white;
+  transform:scale(0.8);
+  opacity:0;
+  transition:0.2s ease;
 }
 
-.qr-text{
-  font-size:10px;
-  font-weight:bold;
-  color:#0b78a8;
-  display:flex;
-  align-items:center;
-  gap:6px;
+.remark-modal.show .remark-box {
+  transform:scale(1);
+  opacity:1;
 }
 
-/* ================= PRINT ================= */
-@media print{
-
-  *{
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body{ font-size:11px; color:#000 !important; }
-  .logo{ width:90px; height:60px; }
-  .no-print{ display:none; }
-
-  .item-table th,
-  .item-table td{
-    padding:4px;
-    font-size:11px;
-    color:#000 !important;
-  }
-
-  /* HEADER BLUE IN PRINT */
-  .item-table thead th{
-    background:#0b78a8 !important;
-    color:#fff !important;
-  }
-
-  /* TOTAL ROW BLUE IN PRINT */
-  .totals-highlight td{
-    background:#0b78a8 !important;
-    color:#fff !important;
-  }
-
-  .totals-wrapper td:last-child{
-    width:160px;
-  }
-
-  /* QR print layout */
-  .qr-row{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:6px 10px;
-    justify-items:center;
-  }
-
-  .qr-item.yt{
-    grid-column:1 / -1;
-  }
-
-  .qr-img{
-    width:85px;
-    height:85px;
-  }
-
-  .qr-text{
-    font-size:9px;
-  }
+.remark-item {
+  border-bottom:1px solid #333;
+  padding:8px 0;
 }
 
-.footer-text{
-  text-align:center;
-  font-size:11px;
-  margin-top:30px;
+    /* ---------------- FILTER DROPDOWN ---------------- */
+
+.filter-th {
+  position: absolute;
+  cursor: pointer;
+  user-select: none;
+  transform: translateX(-25px);
 }
+
+.filter-toggle {
+  font-size: 12px;
+  margin-left: 6px;
+  opacity: 0.7;
+  transform: translateX(-25px);
+
+}
+
+.filter-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 180px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 10px;
+  box-shadow: 0 0 18px rgba(255,0,0,0.25);
+  z-index: 2000;
+  display: none;
+  padding: 6px 0;
+}
+
+.filter-menu div {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: white;
+  cursor: pointer;
+}
+
+.filter-menu div:hover {
+  background: #222;
+}
+
+.filter-menu div.active {
+  background: #3a0b0b;
+  font-weight: 600;
+}
+
+
 </style>
 </head>
 
 <body>
-<div class="invoice-container">
-<div class="wrapper">
 
-<!-- HEADER -->
-<div class="header-top">
 
-<img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
-     class="logo">
+<div class="container mt-5 mb-5">
 
-<div class="company-info">
-<b>OBLU HEALTHCARE LLP</b><br>
-UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
-ROAD NO.44, Pitampura, New Delhi – 110034<br>
-Phone : 96504 47099<br>
-Email : sales@obluhc.com<br>
-GSTIN : 07AAIFO0279M1ZU<br>
-PAN : AAIFO0279M<br>
-State : 07-Delhi
+{% if not selected_salesperson %}
+<!-- FIRST SCREEN -->
+<div class="center-card text-center">
+  <h3 class="fw-bold mb-3">Admin: Salesperson → Customer Overview</h3>
+
+  <form method="GET">
+    <label class="form-label">Select Salesperson</label>
+    <select name="salesperson" class="form-select mb-3" required>
+      <option value="">-- Select --</option>
+      {% for s in salespersons %}
+      <option value="{{ s.id }}">{{ s.name }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn-danger w-100">Continue →</button>
+  </form>
 </div>
 
-<div class="qr-box">
-  <div class="qr-row">
+{% else %}
 
-    <div class="qr-item ig">
-      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png"
-           class="qr-img">
-      <div class="qr-text">
-        <i class="fa-brands fa-instagram"></i>
-        OBLU_HEALTHCARE
-      </div>
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+
+<h2 class="fw-bold mb-4">Customers handled by: {{ selected_salesperson.name }}</h2>
+
+<!-- FILTER -->
+<div class="card p-4 mb-4" style="background:#111; border:1px solid #333;">
+  <form method="GET" class="row g-3 align-items-end">
+
+    <div class="col-md-4">
+      <label class="form-label" style="color:white;">Select Salesperson</label>
+      <select name="salesperson"
+              class="form-select"
+              onchange="this.form.submit()">
+        {% for s in salespersons %}
+        <option value="{{ s.id }}"
+          {% if selected_salesperson.id == s.id %}selected{% endif %}>
+          {{ s.name }}
+        </option>
+        {% endfor %}
+      </select>
     </div>
 
-    <div class="qr-item fb">
-      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png"
-           class="qr-img">
-      <div class="qr-text">
-        <i class="fa-brands fa-facebook" style="color:#4670b9;"></i>
-        Oblu Healthcare
-      </div>
+    <div class="col-md-5 search-wrapper">
+      <label class="form-label" style="color:white;">Search Customer</label>
+      <input id="customerSearch" class="form-control" autocomplete="off">
+      <div id="searchSuggestions" class="suggestions"></div>
     </div>
 
-    <div class="qr-item yt">
-      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png"
-           class="qr-img">
-      <div class="qr-text">
-        <i class="fa-brands fa-youtube" style="color:#c41717;"></i>
-        Oblu Healthcare
-      </div>
-    </div>
-
-  </div>
+  </form>
 </div>
 
+<!-- STATS -->
+<div class="row g-4 mb-4">
+  <div class="col-md-4"><div class="stat-card"><h3>Total Customers</h3><h2>{{ customers|length }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Active</h3><h2 class="text-success">{{ active_count }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Inactive</h3><h2 class="text-danger">{{ inactive_count }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Outstanding Customers</h3><h2 class="text-warning">{{ outstanding_count }}</h2></div></div>
+  <div class="col-md-4"><div class="stat-card"><h3>Total Outstanding Amount</h3><h2 class="text-danger">₹ {{ total_outstanding_amount|floatformat:2 }}</h2></div></div>
 </div>
 
-<hr>
-<div class="header-title">Proforma Invoice</div>
-
-<!-- ================= INFO ================= -->
-<div class="info-grid">
-
-  <div>
-    <b>Order From
-    {{ invoice.customer.name }}<br>
-    {{ invoice.customer.address }}<br>
-    {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-    {{ invoice.customer.state }}<br>
-    Contact : {{ invoice.customer.phone }} </b>
-  </div>
-
-  <div>
-    <b>Ship To
-    {{ invoice.customer.name }}<br>
-    {{ invoice.customer.address }}<br>
-    {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-    {{ invoice.customer.state }}<br>
-    Mob : {{ invoice.customer.phone }}</b>
-  </div>
-
-  <div>
-    <b>Order Details
-    Order No. : {{ invoice.id }}<br>
-    Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
-    Place of Supply : Delhi</b>
-  </div>
-
-</div>
-
-<!-- ================= ITEM TABLE ================= -->
-<table class="item-table">
-<thead>
-<tr>
-  <th>#</th>
-  <th class="item-name">Item name</th>
-  <th>HSN</th>
-  <th>Qty</th>
-  <th class="right">Rate<br>(Inc.)</th>
-  <th class="right">Rate<br>(Exc.)</th>
-  <th class="right">Taxable <br> Value</th>
-  <th class="center">GST%</th>
-  <th class="right">Amount</th>
-</tr>
-  <hr>
-</thead>
-
-<tbody>
-{% for item in items %}
-{% widthratio item.total_price 100 item.taxrate as item_gst %}
-{% widthratio item.unit_price 100 item.taxrate as unit_gst %}
-{% with item.unit_price|add:unit_gst as rate_incl_tax %}
-<tr>
-  <td class="center">{{ forloop.counter }}</td>
-  <td class="item-name">{{ item.product.name }}</td>
-  <td class="center">{{ item.hsn }}</td>
-  <td class="center">{{ item.quantity }}</td>
-  <td class="right">₹ {{ item.unit_price|floatformat:2 }}</td>
-  <td class="right">₹ {{ item.unit_price_excl_tax|floatformat:2 }}</td>
-  <td class="right">₹ {{ item.total_price_excl_tax|floatformat:2 }}</td>
-  <td class="center">{{ item.taxrate }}%</td>
-  <td class="right">₹ {{ item.total_price|floatformat:2 }}</td>
-
-</tr>
-{% endwith %}
-{% endfor %}
-</tbody>
-</table>
-
-
-
-<div class="totals-wrapper">
-<table>
-<tr>
-<!--  <td width="60%" style="font-size:13px;">-->
-<!--    <b >Order Amount In Words</b><br>-->
-<!--    INR {{  invoice.grand_total_in_words }}-->
-<!--  </td>-->
-
-  <td width="40%">
-    <table>
-      <tr>
-        <td class="right bold" style="font-size:13px;">Sub Total</td>
-        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.taxable_total|floatformat:2 }}</td>
-      </tr>
-      <tr>
-        <td class="right bold" style="font-size:13px;">Courier Charges</td>
-        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
-      </tr>
-      <tr>
-        <td class="right bold" style="font-size:13px;">IGST @ {{ gst_rate }}%</td>
-          <td class="right" style="font-size:13px; border-right:none;">
-          ₹ {{ invoice.igst_total |floatformat:2 }}
-        </td>
-
-      </tr>
-      <tr class="totals-highlight">
-        <td class="right">Total</td>
-        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.grand_total|floatformat:2 }}</td>
-      </tr>
-    </table>
-  </td>
-</tr>
-</table>
-</div>
-
-
-<!-- ================= BANK ================= -->
-<div style="margin-top:18px;">
-  <b>Company's Bank Details:<br><br>
-  A/c Holder : OBLU HEALTHCARE LLP<br><br>
-  Bank : ICICI BANK (CC)<br><br>
-  A/c No. : 629351001224<br><br>
-  Branch & IFSC : Rajouri Garden & ICIC0006293</b>
-</div>
-
-<div style="text-align:right; margin-top:20px;">
-  For OBLU HEALTHCARE LLP<br><br>
-  <img src="{{ signature_base64 }}"
-       style="width:140px; height:auto;" alt="Signature"><br>
-  <b>Authorized Signatory</b>
-</div>
-
-<div class="footer-text">
-  This is a computer generated invoice
-</div>
-
-<div class="no-print" style="text-align:center;margin-top:14px;">
-  <button onclick="window.print()"
-    style="padding:8px 16px;background:#333;color:#fff;border:none;cursor:pointer;">
-    Print / Save as PDF
+<!-- -view all followups-->
+<div class="col-md-3 d-flex align-items-end">
+  <button type="button"
+          class="btn btn-danger w-100"
+          onclick="openSalespersonFollowups()">
+    View All Follow-ups
   </button>
 </div>
 
+
+<!-- DESKTOP TABLE -->
+<div class="card shadow-sm" style="background:#111; border:1px solid #333;">
+  <div class="card-body p-0">
+
+<table id="customerTable" class="table table-hover mb-0 desktop-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Customer</th>
+      <th>State</th>
+      <th>Orders</th>
+      <th>Total</th>
+        <th class="filter-th">
+          Outstanding
+          <span class="filter-toggle">▼</span>
+
+          <div class="filter-menu" data-filter="outstanding">
+            <div data-value="all">All</div>
+            <div data-value="due">With Outstanding</div>
+            <div data-value="clear">No Outstanding</div>
+      </div>
+</th>
+      <th>Last</th>
+        <th class="filter-th">
+          Status
+          <span class="filter-toggle">▼</span>
+
+          <div class="filter-menu" data-filter="status">
+            <div data-value="all">All</div>
+            <div data-value="active">Active</div>
+            <div data-value="inactive">Inactive</div>
+          </div>
+        </th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for c in customers %}
+<tr
+  data-customer-id="{{ c.id }}"
+  data-customer-name="{{ c.name }}"
+  data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}"
+  data-outstanding="{% if c.trial_balance and c.trial_balance > 0 %}due{% else %}clear{% endif %}">
+
+      <td>{{ forloop.counter }}</td>
+      <td class="cust-name">{{ c.name }}</td>
+      <td>{{ c.state }}</td>
+      <td>{{ c.total_orders }}</td>
+      <td>₹ {{ c.total_order_value|floatformat:2 }}</td>
+      <td>
+        {% if c.trial_balance is not None %}
+          ₹ {{ c.trial_balance|floatformat:2 }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>{{ c.last_order_date|default:"None" }}</td>
+
+      <td>
+        {% if c.is_red_flag %}
+          <span class="text-danger">Inactive</span>
+        {% else %}
+          <span class="text-success">Active</span>
+        {% endif %}
+      </td>
+
+      <td>
+        <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Item Purchases</a>
+
+        <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Payment Status</a>
+
+        <button class="btn btn-danger btn-sm open-history mb-1" data-customer="{{ c.id }}">View Order History</button>
+
+        <button class="btn btn-danger btn-sm" onclick="openModal('{{ c.id }}')">
+          View Remarks ({{ c.remarks_list|length }})
+        </button>
+
+        <button class="btn btn-danger btn-sm" onclick="openAddRemark('{{ c.id }}')">
+            Add Remark
+        </button>
+
+      </td>
+
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+  </div>
 </div>
+
+
+<!-- MOBILE ACCORDION -->
+<div class="mobile-accordion">
+{% for c in customers %}
+  <button class="accordion-btn {% if c.is_red_flag %}inactive{% endif %}"
+          data-customer-id="{{ c.id }}" data-customer-name="{{ c.name }}">
+
+    <div>
+      <strong>{{ c.name }}</strong>
+      {% if c.remarks_list|length > 0 %}
+        <span class="remark-dot-white"></span>
+      {% endif %}
+    </div>
+
+    <span class="arrow">▼</span>
+  </button>
+
+  <div class="accordion-panel">
+    <p><strong>State:</strong> {{ c.state }}</p>
+    <p><strong>Orders:</strong> {{ c.total_orders }}</p>
+    <p><strong>Total:</strong> ₹ {{ c.total_order_value|floatformat:2 }}</p>
+    <p><strong>Last:</strong> {{ c.last_order_date|default:"None" }}</p>
+
+    <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-danger btn-sm">View Item Purchases</a>
+    <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Payment Status</a>
+    <button class="btn btn-danger btn-sm open-history" data-customer="{{ c.id }}">View Order History</button>
+    <button class="btn btn-danger btn-sm" onclick="openModal('{{ c.id }}')">View Remarks ({{ c.remarks_list|length }})</button>
+    <button class="btn btn-danger btn-sm" onclick="openAddRemark('{{ c.id }}')">Add Remark</button>
+
+    <div id="history-data-{{ c.id }}" style="display:none;">
+      <ul>
+        {% for v in c.vouchers_list %}
+          <li><strong>{{ v.date }}</strong> — {{ v.voucher_type }} <a href="{% url 'voucher_detail' v.id %}" style="color:#fff; text-decoration:underline;" target="_blank"> {{ v.voucher_number }}</a></li>
+        {% empty %}
+          <li>No vouchers</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+  </div>
+
+{% endfor %}
 </div>
+
+
+<!-- REMARK MODALS -->
+{% for c in customers %}
+
+<!-- VIEW REMARKS MODAL -->
+<!--<div class="remark-modal" id="modal{{ c.id }}">-->
+<!--  <div class="remark-box">-->
+<!--    <div class="d-flex justify-content-between mb-2">-->
+<!--      <h5>Remarks — {{ c.name }}</h5>-->
+<!--      <button class="btn btn-sm btn-light"-->
+<!--              onclick="closeModal('{{ c.id }}')">-->
+<!--        Close-->
+<!--      </button>-->
+<!--    </div>-->
+
+    <!-- VIEW REMARKS + FOLLOWUPS MODAL -->
+<div class="remark-modal" id="modal{{ c.id }}">
+  <div class="remark-box">
+    <div class="d-flex justify-content-between mb-2">
+      <h5>Remarks & Follow-ups — {{ c.name }}</h5>
+      <button class="btn btn-sm btn-light"
+              onclick="closeModal('{{ c.id }}')">
+        Close
+      </button>
+    </div>
+
+            <!-- REMARKS -->
+    <h6 class="mt-2">Remarks</h6>
+
+
+    {% for r in c.remarks_list %}
+      <div class="remark-item">
+        <p>{{ r.remark }}</p>
+        <small>
+          {{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}
+        </small>
+      </div>
+    {% empty %}
+      <p>No remarks.</p>
+    {% endfor %}
+  </div>
+</div>
+
+
+<!-- ADD REMARK MODAL  -->
+<div class="remark-modal" id="addRemark{{ c.id }}">
+  <div class="remark-box">
+    <div class="d-flex justify-content-between mb-2">
+      <h5>Add Remark — {{ c.name }}</h5>
+      <button class="btn btn-sm btn-light"
+              onclick="closeAddRemark('{{ c.id }}')">
+        Close
+      </button>
+    </div>
+
+    <form method="post"
+      action="?salesperson={{ selected_salesperson.id }}">
+
+      {% csrf_token %}
+
+      <input type="hidden" name="customer_id" value="{{ c.id }}">
+      <input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}">
+
+      <textarea name="remark"
+                placeholder="Write admin remark..."
+                required
+                style="width:100%; height:80px; border-radius:8px; padding:10px;"></textarea>
+
+      <button type="submit" class="btn btn-danger mt-2">
+          Save Remark
+      </button>
+    </form>
+
+
+
+
+  </div>
+</div>
+
+{% endfor %}
+
+
+<!-- ORDER HISTORY MODAL -->
+<div class="modal fade" id="historyModal">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header">
+        <h5 class="modal-title">Order History</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="historyModalBody"></div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+</div>
+
+<div class="remark-modal" id="salespersonFollowupsModal">
+  <div class="remark-box" style="width:520px; max-height:80vh; overflow-y:auto;">
+    <div class="d-flex justify-content-between mb-2">
+      <h5>Follow-ups — {{ selected_salesperson.name }}</h5>
+      <button class="btn btn-sm btn-light" onclick="closeSalespersonFollowups()">Close</button>
+    </div>
+
+
+
+    <!-- TODAY -->
+    <h6>Today’s Follow-ups</h6>
+    {% for f in followups_today %}
+      <div class="remark-item">
+        <p>
+          {% if f.is_completed %}✅{% else %}❌{% endif %}
+          {{ f.note|default:"(No note)" }}
+        </p>
+        <small>{{ f.customer.name }}</small>
+      </div>
+    {% empty %}
+      <p class="text-muted">No follow-ups today.</p>
+    {% endfor %}
+
+    <hr>
+
+
+
+    <!-- FUTURE -->
+    <h6>Upcoming Follow-ups</h6>
+    {% for f in followups_future %}
+      <div class="remark-item">
+        <p>• {{ f.note|default:"(No note)" }}</p>
+        <small>{{ f.customer.name }} · {{ f.followup_date|date:"d M Y" }}</small>
+      </div>
+    {% empty %}
+      <p class="text-muted">No future follow-ups.</p>
+    {% endfor %}
+    <hr>
+            <!-- PREVIOUS -->
+    <h6 class="mt-3">Previous Follow-ups</h6>
+    {% for f in followups_previous %}
+      <div class="remark-item">
+        <p>
+          {% if f.is_completed %}✅{% else %}❌{% endif %}
+          {{ f.note|default:"(No note)" }}
+        </p>
+        <small>{{ f.customer.name }} · {{ f.followup_date|date:"d M Y" }}</small>
+      </div>
+    {% empty %}
+      <p class="text-muted">No previous follow-ups.</p>
+    {% endfor %}
+
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+ <script>
+    // wait for DOM
+    document.addEventListener('DOMContentLoaded', () => {
+      const searchInput = document.getElementById('customerSearch');
+      const suggestionsBox = document.getElementById('searchSuggestions');
+      const table = document.getElementById('customerTable');
+      const rows = table ? Array.from(table.querySelectorAll('tbody tr')) : [];
+      const accordButtons = Array.from(document.querySelectorAll('.accordion-btn'));
+      const historyModalEl = document.getElementById('historyModal');
+      const historyModal = historyModalEl ? new bootstrap.Modal(historyModalEl) : null;
+      const historyModalBody = document.getElementById('historyModalBody');
+
+      // build customersIndex using data attributes (more robust)
+      const customersIndex = [];
+
+      // From desktop rows
+      rows.forEach(r => {
+        const id = r.dataset.customerId || r.getAttribute('data-customer-id');
+        const name = r.dataset.customerName || (r.querySelector('.cust-name') ? r.querySelector('.cust-name').innerText.trim() : '');
+        if (id && name) customersIndex.push({ id: String(id), name: name.trim(), rowEl: r, accBtnEl: null });
+      });
+
+      // From mobile accordion buttons
+      accordButtons.forEach(btn => {
+        const id = btn.dataset.customerId || btn.getAttribute('data-customer-id');
+        // prefer the explicit dataset name if present
+        const name = btn.dataset.customerName || btn.textContent.replace('▼','').trim();
+        // try to find existing by id
+        let existing = null;
+        if (id) existing = customersIndex.find(c => c.id === String(id));
+        if (!existing) existing = customersIndex.find(c => c.name.toLowerCase() === name.toLowerCase());
+
+        if (existing) {
+          existing.accBtnEl = btn;
+        } else {
+          customersIndex.push({ id: id ? String(id) : null, name: name.trim(), rowEl: null, accBtnEl: btn });
+        }
+      });
+
+      // Helper: render suggestions
+      function showSuggestions(list) {
+        suggestionsBox.innerHTML = '';
+        if (!list || !list.length) { suggestionsBox.style.display = 'none'; suggestionsBox.setAttribute('aria-hidden','true'); return; }
+
+        list.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.textContent = item.name;
+          div.dataset.cid = item.id;
+          div.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            selectSuggestion(item);
+          });
+          suggestionsBox.appendChild(div);
+        });
+
+        suggestionsBox.style.display = 'block';
+        suggestionsBox.setAttribute('aria-hidden','false');
+      }
+
+      function openAddRemark(id) {
+        document.getElementById("addRemark" + id).style.display = "flex";
+    }
+
+
+      // flash highlight (desktop)
+      function flashHighlight(el){
+        if (!el) return;
+        el.classList.add('cust-highlight');
+        setTimeout(()=> el.classList.remove('cust-highlight'), 1700);
+      }
+
+      // open accordion helper
+      function openAccordion(btn) {
+        if (!btn) return;
+        const panel = btn.nextElementSibling;
+        // close others
+        document.querySelectorAll('.accordion-btn').forEach(other => {
+          if (other !== btn) {
+            other.classList.remove('active');
+            const p = other.nextElementSibling;
+            if (p) p.style.display = 'none';
+          }
+        });
+        // open this
+        btn.classList.add('active');
+        if (panel) panel.style.display = 'block';
+      }
+
+      // scroll & open logic for selected suggestion
+      function selectSuggestion(item) {
+        suggestionsBox.style.display = 'none';
+        searchInput.value = item.name;
+
+        // Desktop row exists -> scroll to it and highlight
+        if (item.rowEl) {
+          // If the table is inside an overflowed container (card-table), scroll that container first:
+          const scrollContainer = item.rowEl.closest('.card-table') || document.scrollingElement || document.documentElement;
+          // scroll row into view (works across browsers)
+          item.rowEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+          flashHighlight(item.rowEl);
+          // If mobile accordion exists too, open it on small screens
+          if (item.accBtnEl && window.innerWidth <= 767) {
+            openAccordion(item.accBtnEl);
+            // also ensure visible in viewport
+            item.accBtnEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return;
+        }
+
+        // If only accordion exists (mobile)
+        if (item.accBtnEl) {
+          // open and scroll
+          openAccordion(item.accBtnEl);
+          item.accBtnEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+
+        // fallback: nothing found visually
+        console.warn('selected item has no visual element', item);
+      }
+
+      // Search input handlers
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const q = e.target.value.trim().toLowerCase();
+          if (!q) { showSuggestions([]); return; }
+
+          // find matches from index
+          const matches = customersIndex.filter(c => c.name.toLowerCase().includes(q));
+          showSuggestions(matches.slice(0, 50)); // limit to 50 for performance
+        });
+
+        // Enter = if exact or first partial match, select it
+        searchInput.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            const q = searchInput.value.trim().toLowerCase();
+            if (!q) { showSuggestions([]); return; }
+            const exact = customersIndex.find(c => c.name.toLowerCase() === q);
+            const partial = customersIndex.find(c => c.name.toLowerCase().includes(q));
+            const pick = exact || partial;
+            if (pick) selectSuggestion(pick);
+          } else if (ev.key === 'ArrowDown') {
+            // optional: focus first suggestion
+            const first = suggestionsBox.querySelector('.item');
+            if (first) first.focus();
+          }
+        });
+
+        // hide suggestions when clicking outside the search wrapper
+        document.addEventListener('click', (ev) => {
+          if (!ev.target.closest('.search-wrapper')) {
+            suggestionsBox.style.display = 'none';
+          }
+        });
+      }
+
+      // clicking desktop rows highlights them
+      rows.forEach(r => {
+        r.addEventListener('click', () => flashHighlight(r));
+      });
+
+      // Mobile accordion behavior
+      document.querySelectorAll('.accordion-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          // ignore clicks on the history button inside the panel (stopPropagation used there)
+          if (e.target.classList.contains('open-history')) return;
+          const panel = btn.nextElementSibling;
+          const isOpen = btn.classList.contains('active');
+
+          // close others (optional)
+          document.querySelectorAll('.accordion-btn').forEach(other => {
+            if (other !== btn) {
+              other.classList.remove('active');
+              const p = other.nextElementSibling;
+              if (p) p.style.display = 'none';
+            }
+          });
+
+          if (isOpen) {
+            btn.classList.remove('active');
+            if (panel) panel.style.display = 'none';
+          } else {
+            btn.classList.add('active');
+            if (panel) panel.style.display = 'block';
+          }
+        });
+      });
+
+      // history modal wiring (works for both desktop and mobile)
+      document.querySelectorAll('.open-history').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation(); // prevent accordion toggle
+          const cid = btn.dataset.customer;
+          const template = document.getElementById('history-data-' + cid);
+          if (!template) {
+            historyModalBody.innerHTML = '<p>No history found.</p>';
+          } else {
+            historyModalBody.innerHTML = template.innerHTML;
+          }
+          if (historyModal) historyModal.show();
+        });
+      });
+
+      // Accessibility: hide suggestions on escape
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') {
+          suggestionsBox.style.display = 'none';
+        }
+      });
+
+    }); // DOMContentLoaded
+
+
+/* ------------------ REMARK MODAL ------------------ */
+function openModal(id) {
+  const m = document.getElementById("modal" + id);
+  m.style.display = "flex";
+  setTimeout(() => m.classList.add("show"), 10);
+}
+function closeModal(id) {
+  const m = document.getElementById("modal" + id);
+  m.classList.remove("show");
+  setTimeout(() => (m.style.display = "none"), 200);
+}
+
+function openAddRemark(id) {
+    const modal = document.getElementById("addRemark" + id);
+    if (!modal) return;
+    modal.style.display = "flex";
+    setTimeout(() => modal.classList.add("show"), 10);
+}
+
+function closeAddRemark(id) {
+    const modal = document.getElementById("addRemark" + id);
+    if (!modal) return;
+    modal.classList.remove("show");
+    setTimeout(() => modal.style.display = "none", 200);
+}
+
+/* ------------------ ALL FOLLWUP MODAL ------------------ */
+
+function openSalespersonFollowups() {
+  const m = document.getElementById("salespersonFollowupsModal");
+  if (!m) return;
+  m.style.display = "flex";
+  setTimeout(() => m.classList.add("show"), 10);
+}
+
+function closeSalespersonFollowups() {
+  const m = document.getElementById("salespersonFollowupsModal");
+  if (!m) return;
+  m.classList.remove("show");
+  setTimeout(() => (m.style.display = "none"), 200);
+}
+
+ <!--filteration-->
+
+document.addEventListener('DOMContentLoaded', () => {
+  let filters = {
+    status: 'all',
+    outstanding: 'all'
+  };
+
+  const rows = document.querySelectorAll('#customerTable tbody tr');
+
+  function applyFilters() {
+    rows.forEach(row => {
+      const statusOk =
+        filters.status === 'all' ||
+        row.dataset.status === filters.status;
+
+      const outstandingOk =
+        filters.outstanding === 'all' ||
+        row.dataset.outstanding === filters.outstanding;
+
+      row.style.display = (statusOk && outstandingOk) ? '' : 'none';
+    });
+  }
+
+  // Toggle dropdown
+  document.querySelectorAll('.filter-th').forEach(th => {
+    th.addEventListener('click', e => {
+      e.stopPropagation();
+      document.querySelectorAll('.filter-menu').forEach(m => m.style.display = 'none');
+      const menu = th.querySelector('.filter-menu');
+      if (menu) menu.style.display = 'block';
+    });
+  });
+
+  // Select option
+  document.querySelectorAll('.filter-menu div').forEach(opt => {
+    opt.addEventListener('click', e => {
+      e.stopPropagation();
+      const menu = opt.closest('.filter-menu');
+      const type = menu.dataset.filter;
+      const value = opt.dataset.value;
+
+      filters[type] = value;
+
+      // active state
+      menu.querySelectorAll('div').forEach(d => d.classList.remove('active'));
+      opt.classList.add('active');
+
+      menu.style.display = 'none';
+      applyFilters();
+    });
+  });
+
+  // Close on outside click
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.filter-menu').forEach(m => m.style.display = 'none');
+  });
+});
+</script>
+
 </body>
 </html>
