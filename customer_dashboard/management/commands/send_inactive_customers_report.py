@@ -116,9 +116,10 @@ class Command(BaseCommand):
             msg = EmailMultiAlternatives(
                 subject=subject,
                 body="",
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email="crm@oblutools.com",
                 to=[sp.user.email],
                 cc=[
+                    "abhijay.obluhc@gmail.com",
                     "swasti.obluhc@gmail.com",
                     "nitin.a@obluhc.com",
                     "raman.obluhc@gmail.com",
