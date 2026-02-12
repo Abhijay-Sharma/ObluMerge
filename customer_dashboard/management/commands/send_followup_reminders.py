@@ -63,7 +63,7 @@ class Command(BaseCommand):
 
             subject = "🔔 Customer Follow-up Reminder"
 
-            from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
+            from_email = "crm@oblutools.com"
             to_emails = [sp.user.email]
             cc_emails = ["swasti.obluhc@gmail.com","nitin.a@obluhc.com","raman.obluhc@gmail.com","akshay@obluhc.com","bhavya.obluhc@gmail.com","vibhuti.obluhc@gmail.com"]
 
