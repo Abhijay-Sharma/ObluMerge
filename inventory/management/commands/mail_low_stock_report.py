@@ -5,6 +5,8 @@ from django.conf import settings
 from django.db import models
 from inventory.models import Category, InventoryItem
 from django.db.models import Prefetch
+from django.db.models import Q
+
 
 class Command(BaseCommand):
     help = "Sends full inventory report email with low-stock highlights"
@@ -464,13 +466,18 @@ class Command(BaseCommand):
             "jamghe resin beige",
             "Pacdent N2 Free Palette Naturalization Kit"
         ]
+        EXCLUDED_PRODUCT_IDS = [
+            3150,
+            3295
+        ]
 
         # 🧾 Get all categories with related inventory items
         categories = Category.objects.prefetch_related(
             Prefetch(
                 'inventoryitem_set',
                 queryset=InventoryItem.objects.exclude(
-                    name__in=EXCLUDED_PRODUCT_NAMES
+                    Q(id__in=EXCLUDED_PRODUCT_IDS) |
+                    Q(name__in=EXCLUDED_PRODUCT_NAMES)
                 )
             )
         ).all()
@@ -481,7 +488,8 @@ class Command(BaseCommand):
 
         # 🧮 Identify low stock items
         low_stock_items = InventoryItem.objects.exclude(
-            name__in=EXCLUDED_PRODUCT_NAMES
+            Q(id__in=EXCLUDED_PRODUCT_IDS) |
+            Q(name__in=EXCLUDED_PRODUCT_NAMES)
         ).filter(
             quantity__lt=models.F('min_quantity_outwards')
         )
