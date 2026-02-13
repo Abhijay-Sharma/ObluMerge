@@ -286,7 +286,7 @@ State : 07-Delhi
 <div class="info-grid">
 
   <div>
-    <b>Order From
+    <b>Order From<br><br>
     {{ invoice.customer.name }}<br>
     {{ invoice.customer.address }}<br>
     {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
@@ -295,7 +295,7 @@ State : 07-Delhi
   </div>
 
   <div>
-    <b>Ship To
+    <b>Ship To<br><br>
     {{ invoice.customer.name }}<br>
     {{ invoice.customer.address }}<br>
     {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
@@ -304,7 +304,7 @@ State : 07-Delhi
   </div>
 
   <div>
-    <b>Order Details
+    <b>Order Details<br><br>
     Order No. : {{ invoice.id }}<br>
     Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
     Place of Supply : Delhi</b>
