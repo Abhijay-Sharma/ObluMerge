@@ -26,9 +26,16 @@ class Command(BaseCommand):
 
         salespersons = SalesPerson.objects.all().select_related("user")
 
+        TEST_USERNAMES = {"test1", "raman_sharma", "Nimit_Sharma"}
+
         for sp in salespersons:
             if not sp.user or not sp.user.email:
                 missing_email_salespersons.append(sp.name)
+                continue
+            # ----------------------------
+            # SKIP TEST ACCOUNTS
+            # ----------------------------
+            if not sp.user or sp.user.username in TEST_USERNAMES:
                 continue
 
             inactive_rows = []
@@ -117,15 +124,16 @@ class Command(BaseCommand):
                 subject=subject,
                 body="",
                 from_email="crm@oblutools.com",
-                to=[sp.user.email],
-                cc=[
-                    "abhijay.obluhc@gmail.com",
-                    "swasti.obluhc@gmail.com",
-                    "nitin.a@obluhc.com",
-                    "raman.obluhc@gmail.com",
-                    "akshay@obluhc.com",
-                    "bhavya.obluhc@gmail.com",
-                ],
+                # to=[sp.user.email],
+                to=["madderladder68@gmail.com"]
+                # cc=[
+                #     "abhijay.obluhc@gmail.com",
+                #     "swasti.obluhc@gmail.com",
+                #     "nitin.a@obluhc.com",
+                #     "raman.obluhc@gmail.com",
+                #     "akshay@obluhc.com",
+                #     "bhavya.obluhc@gmail.com",
+                # ],
             )
             msg.attach_alternative(html_content, "text/html")
             msg.send()
