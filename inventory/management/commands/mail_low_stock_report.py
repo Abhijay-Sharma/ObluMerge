@@ -511,8 +511,8 @@ class Command(BaseCommand):
         # ✉️ Prepare email
         subject = "📊 Daily Inventory Report (Low Stock Alerts Included)"
         from_email = "inventory@oblutools.com"
-        # to_emails = ["nitin.a@obluhc.com","swasti.obluhc@gmail.com","accounts@obluhc.com","sanyam.obluhc@gmail.com","sujal.obluhc@gmail.com","raman.obluhc@gmail.com","vibhuti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]  # 👈 your target email
-        to_emails=["madderladder68@gmail.com","swasti.obluhc@gmail.com","kashish.obluhc@gmail.com"]
+        to_emails = ["nitin.a@obluhc.com","swasti.obluhc@gmail.com","accounts@obluhc.com","sanyam.obluhc@gmail.com","sujal.obluhc@gmail.com","raman.obluhc@gmail.com","vibhuti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]  # 👈 your target email
+        # to_emails=["madderladder68@gmail.com","swasti.obluhc@gmail.com","kashish.obluhc@gmail.com"]
         msg = EmailMultiAlternatives(subject, "", from_email, to_emails)
         msg.attach_alternative(html_content, "text/html")
         msg.send()
