@@ -135,7 +135,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         # delete logic
         delete_id = request.POST.get("delete_remark_id")
-        if delete_id and request.user.is_superuser:
+        if delete_id and request.user.is_accountant:
             remark = get_object_or_404(CustomerRemark, id=delete_id)
             remark.delete()
             messages.success(request, "Remark deleted successfully 🗑️")
