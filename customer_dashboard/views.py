@@ -1,7 +1,7 @@
-from django.views.generic import TemplateView, ListView
+from django.views.generic import TemplateView, ListView, UpdateView
 from django.db.models import Count
 from django.shortcuts import render
-from .models import Customer, SalesPerson, CustomerVoucherStatus, CustomerFollowUp
+from .models import Customer, SalesPerson, CustomerVoucherStatus, CustomerFollowUp, CustomerCreditProfile
 import json
 from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -19,9 +19,10 @@ from django.db.models import Count, OuterRef, Subquery
 from django.views.generic import ListView
 from django.db.models.functions import Lower, Trim
 from django.db.models import Q
-from .forms import CustomerReassignForm
+from .forms import CustomerReassignForm, CustomerCreditForm
 from django.views import View
 from django.utils import timezone
+from django.urls import reverse_lazy
 
 
 
@@ -368,6 +369,22 @@ class CustomerListView(AccountantRequiredMixin, ListView):
         ctx["querystring"] = querystring.urlencode()
 
         return ctx
+
+#new view- for credit period
+class EditCreditPeriodView(AccountantRequiredMixin,UpdateView):
+    model = CustomerCreditProfile
+    form_class = CustomerCreditForm
+    template_name = "customers/edit_credit_period.html"
+
+    def get_object(self):
+        customer = get_object_or_404(Customer, pk=self.kwargs["pk"])
+        profile, created = CustomerCreditProfile.objects.get_or_create(
+            customer=customer
+        )
+        return profile
+
+    def get_success_url(self):
+        return reverse_lazy("customers:data")
 
 
 class ChartsView(AccountantRequiredMixin, TemplateView):

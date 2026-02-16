@@ -1,0 +1,32 @@
+{% extends "customers/base.html" %}
+
+{% block content %}
+
+<div style="max-width:500px; margin:50px auto;">
+
+    <h3 style="margin-bottom:20px;">
+        Edit Credit Period – {{ form.instance.customer.name }}
+    </h3>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div style="margin-bottom:15px;">
+            <label>Credit Period (Days)</label>
+            {{ form.credit_period_days }}
+        </div>
+
+        <button type="submit"
+                style="background:#111; color:#fff; padding:10px 18px; border:0; border-radius:8px;">
+            Save
+        </button>
+
+        <a href="javascript:history.back()"
+           style="margin-left:10px; text-decoration:none;">
+            Cancel
+        </a>
+    </form>
+
+</div>
+
+{% endblock %}

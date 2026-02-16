@@ -1,5 +1,5 @@
 from django import forms
-from .models import Customer
+from .models import Customer, CustomerCreditProfile
 
 class CustomerReassignForm(forms.ModelForm):
     class Meta:
@@ -18,4 +18,17 @@ class CustomerReassignForm(forms.ModelForm):
             "salesperson": forms.Select(attrs={
                 "class": "form-control"
             }),
+        }
+
+class CustomerCreditForm(forms.ModelForm):
+    class Meta:
+        model = CustomerCreditProfile
+        fields = ["credit_period_days"]
+        widgets = {
+            "credit_period_days": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Enter credit period in days"
+                }
+            )
         }
