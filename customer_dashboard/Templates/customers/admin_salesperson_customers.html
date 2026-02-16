@@ -339,6 +339,37 @@ table tbody td {
       <div id="searchSuggestions" class="suggestions"></div>
     </div>
 
+   <div class="col-md-3">
+      <label class="form-label text-white">Status</label>
+      <select name="status" class="form-select" onchange="this.form.submit()">
+        <option value="all">All</option>
+        <option value="active"
+          {% if status_filter == "active" %}selected{% endif %}>
+          Active
+        </option>
+        <option value="inactive"
+          {% if status_filter == "inactive" %}selected{% endif %}>
+          Inactive
+        </option>
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label text-white">Outstanding</label>
+      <select name="outstanding" class="form-select" onchange="this.form.submit()">
+        <option value="all">All</option>
+        <option value="due"
+          {% if outstanding_filter == "due" %}selected{% endif %}>
+          With Outstanding
+        </option>
+        <option value="clear"
+          {% if outstanding_filter == "clear" %}selected{% endif %}>
+          No Outstanding
+        </option>
+      </select>
+    </div>
+
+
   </form>
 </div>
 
@@ -373,27 +404,12 @@ table tbody td {
       <th>State</th>
       <th>Orders</th>
       <th>Total</th>
-        <th class="filter-th">
-          Outstanding
-          <span class="filter-toggle">▼</span>
+      <th>Outstanding</th>
 
-          <div class="filter-menu" data-filter="outstanding">
-            <div data-value="all">All</div>
-            <div data-value="due">With Outstanding</div>
-            <div data-value="clear">No Outstanding</div>
-      </div>
-</th>
+
       <th>Last</th>
-        <th class="filter-th">
-          Status
-          <span class="filter-toggle">▼</span>
+      <th>Status</th>
 
-          <div class="filter-menu" data-filter="status">
-            <div data-value="all">All</div>
-            <div data-value="active">Active</div>
-            <div data-value="inactive">Inactive</div>
-          </div>
-        </th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -539,7 +555,7 @@ table tbody td {
 
         {% if request.user.is_accountant %}
         <form method="post"
-              action="?salesperson={{ selected_salesperson.id }}"
+        action="{{ request.get_full_path }}"
               class="ms-2">
           {% csrf_token %}
           <input type="hidden" name="delete_remark_id" value="{{ r.id }}">
@@ -573,22 +589,20 @@ table tbody td {
       </button>
     </div>
 
-    <form method="post"
-      action="?salesperson={{ selected_salesperson.id }}">
+    <form method="post" action="{{ request.get_full_path }}" class="ms-2">
+        {% csrf_token %}
 
-      {% csrf_token %}
+        <input type="hidden" name="customer_id" value="{{ c.id }}">
 
-      <input type="hidden" name="customer_id" value="{{ c.id }}">
-      <input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}">
+        <textarea name="remark"
+                  placeholder="Write admin remark..."
+                  required
+                  style="width:100%; height:80px; border-radius:8px; padding:10px;">
+        </textarea>
 
-      <textarea name="remark"
-                placeholder="Write admin remark..."
-                required
-                style="width:100%; height:80px; border-radius:8px; padding:10px;"></textarea>
-
-      <button type="submit" class="btn btn-danger mt-2">
-          Save Remark
-      </button>
+        <button type="submit" class="btn btn-danger mt-2">
+            Save Remark
+        </button>
     </form>
 
   </div>

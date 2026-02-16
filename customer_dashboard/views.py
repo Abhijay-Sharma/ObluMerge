@@ -32,10 +32,21 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
-        excluded_names=["Abhijay"]
+        excluded_names = ["Abhijay"]
 
-        ctx["salespersons"] = (SalesPerson.objects.all().exclude(name__in=excluded_names).order_by(Lower("name")))
+        ctx["salespersons"] = (
+            SalesPerson.objects
+            .all()
+            .exclude(name__in=excluded_names)
+            .order_by(Lower("name"))
+        )
+
         selected_id = self.request.GET.get("salesperson")
+        status_filter = self.request.GET.get("status", "all")
+        outstanding_filter = self.request.GET.get("outstanding", "all")
+
+        ctx["status_filter"] = status_filter
+        ctx["outstanding_filter"] = outstanding_filter
 
         if not selected_id:
             ctx["customers"] = []
@@ -49,39 +60,63 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             ctx["customers"] = []
             return ctx
 
-        customers = Customer.objects.filter(salesperson=salesperson)
+        # ---------------- BASE QUERY ----------------
+        customers = Customer.objects.filter(
+            salesperson=salesperson
+        ).select_related("credit_profile")
+
+        # ---------------- OUTSTANDING FILTER (DB LEVEL) ----------------
+        if outstanding_filter == "due":
+            customers = customers.filter(
+                credit_profile__outstanding_balance__gt=0
+            )
+
+        elif outstanding_filter == "clear":
+            customers = customers.filter(
+                Q(credit_profile__outstanding_balance__lte=0) |
+                Q(credit_profile__isnull=True)
+            )
+
         cutoff_date = date.today() - timedelta(days=90)
 
+        # ---------------- CUSTOMER LOOP ----------------
+        customers = list(customers)
+
         for customer in customers:
-            # ---- REMARK LOGIC STARTS HERE ----
+
             customer.remarks_list = customer.remarks.select_related(
                 "salesperson", "salesperson__user"
             ).order_by("-created_at")
-            # ---- REMARK LOGIC ENDS HERE ----
-            # ---- CREDIT PROFILE LOGIC (NEW) ----
-            credit_profile = getattr(customer, "credit_profile", None)
 
-            if credit_profile:
-                customer.trial_balance = credit_profile.outstanding_balance
-            else:
-                customer.trial_balance = None
-            # ---- CREDIT PROFILE LOGIC ENDS (NEW) ----
+            customer.followups_list = customer.followups.select_related(
+                "salesperson", "salesperson__user"
+            ).order_by("-followup_date")
+
+            credit_profile = getattr(customer, "credit_profile", None)
+            customer.trial_balance = (
+                credit_profile.outstanding_balance if credit_profile else None
+            )
 
             vouchers = Voucher.objects.filter(
                 party_name__iexact=customer.name
             ).order_by("-date")
 
             customer.vouchers_list = vouchers
-            tax_invoice_vouchers = vouchers.filter(voucher_type='TAX INVOICE')
-            customer.last_order_date = tax_invoice_vouchers.first().date if tax_invoice_vouchers.exists() else None
 
-            tax_vouchers = vouchers.filter(
-                voucher_type__iexact="TAX INVOICE"
+            tax_invoice_vouchers = vouchers.filter(
+                voucher_type="TAX INVOICE"
             )
-            customer.total_orders = tax_vouchers.count()
+
+            customer.last_order_date = (
+                tax_invoice_vouchers.first().date
+                if tax_invoice_vouchers.exists()
+                else None
+            )
+
+            customer.total_orders = tax_invoice_vouchers.count()
 
             total_value = 0
-            for v in tax_vouchers:
+            for v in tax_invoice_vouchers:
                 total_row = v.rows.filter(
                     ledger__iexact=v.party_name
                 ).first()
@@ -91,35 +126,49 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             customer.total_order_value = total_value
 
             customer.is_red_flag = (
-                customer.last_order_date is None or
-                customer.last_order_date < cutoff_date
+                    customer.last_order_date is None
+                    or customer.last_order_date < cutoff_date
             )
 
-        # ---- NEW CODE HERE ----
-        customers = list(customers)
+        # ---------------- STATUS FILTER (PYTHON LEVEL) ----------------
+        if status_filter == "active":
+            customers = [c for c in customers if not c.is_red_flag]
 
+        elif status_filter == "inactive":
+            customers = [c for c in customers if c.is_red_flag]
+
+        # ---------------- STATS ----------------
         active = sum(1 for c in customers if not c.is_red_flag)
         inactive = sum(1 for c in customers if c.is_red_flag)
+
         outstanding_count = sum(
-            1 for c in customers if c.trial_balance and c.trial_balance > 0
-        )
-        total_outstanding_amount = sum(
-            c.trial_balance for c in customers if c.trial_balance and c.trial_balance > 0
+            1 for c in customers
+            if c.trial_balance and c.trial_balance > 0
         )
 
+        total_outstanding_amount = sum(
+            c.trial_balance for c in customers
+            if c.trial_balance and c.trial_balance > 0
+        )
+
+        # ---------------- FOLLOWUPS ----------------
         today = date.today()
 
-        # SALESPERSON FOLLOW-UPS (NEW FEATURE)
         all_followups = CustomerFollowUp.objects.filter(
             salesperson=salesperson
-        ).select_related(
-            "customer"
-        ).order_by("followup_date")
+        ).select_related("customer").order_by("followup_date")
 
-        ctx["followups_previous"] = all_followups.filter(followup_date__lt=today)
-        ctx["followups_today"] = all_followups.filter(followup_date=today)
-        ctx["followups_future"] = all_followups.filter(followup_date__gt=today)
+        ctx["followups_previous"] = all_followups.filter(
+            followup_date__lt=today
+        )
+        ctx["followups_today"] = all_followups.filter(
+            followup_date=today
+        )
+        ctx["followups_future"] = all_followups.filter(
+            followup_date__gt=today
+        )
 
+        # ---------------- CONTEXT ----------------
         ctx["customers"] = customers
         ctx["active_count"] = active
         ctx["inactive_count"] = inactive
@@ -129,35 +178,37 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         return ctx
 
     def post(self, request, *args, **kwargs):
-        customer_id = request.POST.get("customer_id")
-        remark_text = request.POST.get("remark", "").strip()
-        salesperson_id = request.GET.get("salesperson")  # keep page state
 
-        # delete logic
+        # Preserve existing filters automatically
+        redirect_url = request.get_full_path()
+
+        # DELETE REMARK
         delete_id = request.POST.get("delete_remark_id")
         if delete_id and request.user.is_accountant:
+
             remark = get_object_or_404(CustomerRemark, id=delete_id)
             remark.delete()
             messages.success(request, "Remark deleted successfully 🗑️")
-            return redirect(f"{request.path}?salesperson={salesperson_id}")
+            return redirect(redirect_url)
 
-        salesperson = request.user.salesperson_profile.first()
-        if not salesperson:
-            return redirect(request.path)
+        # ADD REMARK
+        remark_text = request.POST.get("remark", "").strip()
+        customer_id = request.POST.get("customer_id")
 
         if not customer_id or not remark_text:
-            return redirect(f"{request.path}?salesperson={salesperson_id}")
+            return redirect(redirect_url)
 
         customer = get_object_or_404(Customer, id=customer_id)
+        salesperson = request.user.salesperson_profile.first()
 
         CustomerRemark.objects.create(
             customer=customer,
             salesperson=salesperson,
             remark=remark_text
         )
-        messages.success(request, "Remark created successfully ✅")
 
-        return redirect(f"{request.path}?salesperson={salesperson_id}")
+        messages.success(request, "Remark added successfully ✅")
+        return redirect(redirect_url)
 
 class CustomerListViewLegacy(AccountantRequiredMixin, ListView):
     model = Customer
