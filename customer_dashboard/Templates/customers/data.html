@@ -334,11 +334,21 @@ body{ overflow-x:hidden; }
           <div class="label">Last Product</div>
           <div class="value">{{ c.last_product_name|default:"—" }}</div>
         </div>
-
-        <div class="actions">
-          <a href="/customers/customer/{{ c.id }}/edit/">Edit Salesperson</a>
+       <div>
+          <div class="label">Credit Period</div>
+          <div class="value">
+            {% if c.credit_profile %}
+              {{ c.credit_profile.credit_period_days }} Days
+            {% else %}
+              0 Days
+            {% endif %}
+          </div>
         </div>
 
+       <div class="actions">
+      <button> <a href="/customers/credit-period/{{ c.id }}/edit_credit/">Edit Credit period </a></button>
+
+    <button> <a href="/customers/customer/{{ c.id }}/edit/">Edit Salesperson</a></button>
       </div>
     </div>
   </div>
