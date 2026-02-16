@@ -474,6 +474,8 @@ class Command(BaseCommand):
             3280,
             3261,
             3284,
+            3079,
+            2877
         ]
 
         # 🧾 Get all categories with related inventory items
