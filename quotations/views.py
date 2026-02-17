@@ -369,7 +369,7 @@ class PriceChangeRequestCreateView(LoginRequiredMixin, FormView):
 
         # --- SEND EMAIL TO ADMINS ---
         to_emails = [
-            "madderladder68@gmail.com",
+            "abhijay.obluhc@gmail.com",
             "swasti.obluhc@gmail.com",
             "nitin.a@obluhc.com"
         ]
@@ -379,9 +379,7 @@ class PriceChangeRequestCreateView(LoginRequiredMixin, FormView):
             "quotation": self.quotation,
             "requested_by": self.request.user,
             "requested_prices": requested_prices,
-            "review_url": self.request.build_absolute_uri(
-                reverse("price_change_requests")
-            ),
+            "review_url": "https://oblutools.com/quotations/price-change-requests/"
         }
 
         html_content = render_to_string(
@@ -390,7 +388,7 @@ class PriceChangeRequestCreateView(LoginRequiredMixin, FormView):
         )
 
         subject = f"🔔 Price Change Request Submitted (Quotation #{self.quotation.id})"
-        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
+        from_email = "quotations@oblutools.com"
 
         msg = EmailMultiAlternatives(subject, "", from_email, to_emails)
         msg.attach_alternative(html_content, "text/html")
