@@ -436,6 +436,7 @@ table tbody td {
   <tbody>
     {% for c in customers %}
 <tr
+  id="customer-{{ c.id }}"
   data-customer-id="{{ c.id }}"
   data-customer-name="{{ c.name }}"
   data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}"
