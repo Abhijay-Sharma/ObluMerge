@@ -273,7 +273,26 @@ table tbody td {
   transform: scale(1.2);
   color: #ff0000;
 }
+//* ===== Highlight border around customer row ===== */
 
+.customer-highlight td {
+  border-top: 2px solid #ff3b3b !important;
+  border-bottom: 2px solid #ff3b3b !important;
+}
+
+/* left side border */
+.customer-highlight td:first-child {
+  border-left: 2px solid #ff3b3b !important;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+/* right side border */
+.customer-highlight td:last-child {
+  border-right: 2px solid #ff3b3b !important;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
 
 </style>
 </head>
@@ -559,6 +578,7 @@ table tbody td {
               class="ms-2">
           {% csrf_token %}
           <input type="hidden" name="delete_remark_id" value="{{ r.id }}">
+          <input type="hidden" name="scroll_to" value="customer-{{ c.id }}">
           <button type="submit"
                   class="delete-icon-btn"
                   title="Delete Remark"
@@ -593,6 +613,7 @@ table tbody td {
         {% csrf_token %}
 
         <input type="hidden" name="customer_id" value="{{ c.id }}">
+        <input type="hidden" name="scroll_to" value="customer-{{ c.id }}">
 
         <textarea name="remark"
                   placeholder="Write admin remark..."
@@ -895,6 +916,32 @@ table tbody td {
           suggestionsBox.style.display = 'none';
         }
       });
+      /* ===== highlight customer after remark save ===== */
+        if (window.location.hash) {
+
+            const target = document.querySelector(window.location.hash);
+
+            if (target) {
+
+                setTimeout(() => {
+
+                    target.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center"
+                    });
+
+                    target.classList.add("customer-highlight");
+
+                    setTimeout(() => {
+                        target.classList.remove("customer-highlight");
+                        history.replaceState(null, null, window.location.pathname + window.location.search);
+
+                    }, 5000);
+
+
+                }, 100);
+            }
+        }
 
     }); // DOMContentLoaded
 

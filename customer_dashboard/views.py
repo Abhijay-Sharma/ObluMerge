@@ -182,6 +182,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         # Preserve existing filters automatically
         redirect_url = request.get_full_path()
+        scroll_to = request.POST.get("scroll_to")  # reads a value sent from the form
 
         # DELETE REMARK
         delete_id = request.POST.get("delete_remark_id")
@@ -190,14 +191,14 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             remark = get_object_or_404(CustomerRemark, id=delete_id)
             remark.delete()
             messages.success(request, "Remark deleted successfully 🗑️")
-            return redirect(redirect_url)
+            return redirect(f"{redirect_url}#{scroll_to}")
 
         # ADD REMARK
         remark_text = request.POST.get("remark", "").strip()
         customer_id = request.POST.get("customer_id")
 
         if not customer_id or not remark_text:
-            return redirect(redirect_url)
+            return redirect(f"{redirect_url}#{scroll_to}")
 
         customer = get_object_or_404(Customer, id=customer_id)
         salesperson = request.user.salesperson_profile.first()
@@ -209,7 +210,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         )
 
         messages.success(request, "Remark added successfully ✅")
-        return redirect(redirect_url)
+        return redirect(f"{redirect_url}#{scroll_to}")
 
 class CustomerListViewLegacy(AccountantRequiredMixin, ListView):
     model = Customer
