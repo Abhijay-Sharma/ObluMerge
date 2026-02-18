@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -5,7 +6,7 @@ from customer_dashboard.models import Customer, CustomerCreditProfile
 
 
 class Command(BaseCommand):
-    help = "Update customer credit periods from Excel by matching customer name"
+    help = "Update customer credit periods from Excel (customer, period)"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -21,27 +22,23 @@ class Command(BaseCommand):
         try:
             df = pd.read_excel(excel_path)
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f"Failed to read Excel file: {e}"))
+            self.stdout.write(self.style.ERROR(f"Error reading file: {e}"))
             return
 
-        updated_count = 0
+        updated = 0
         created_profiles = 0
         not_found = []
 
         for _, row in df.iterrows():
-            customer_name = str(row.get("Customer Name", "")).strip()
-            credit_days = row.get("Credit Period")
+            customer_name = str(row.get("customer", "")).strip()
+            period_value = str(row.get("period", "")).strip()
 
             if not customer_name:
                 continue
 
-            if pd.isna(credit_days):
-                credit_days = 0
-
-            try:
-                credit_days = int(credit_days)
-            except ValueError:
-                credit_days = 0
+            # Extract number from "30 days"
+            match = re.search(r"\d+", period_value)
+            credit_days = int(match.group()) if match else 0
 
             customer = Customer.objects.filter(
                 name__iexact=customer_name
@@ -61,10 +58,10 @@ class Command(BaseCommand):
             profile.credit_period_days = credit_days
             profile.save()
 
-            updated_count += 1
+            updated += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f"\nUpdated {updated_count} customers."
+            f"\nUpdated {updated} customers."
         ))
 
         self.stdout.write(self.style.SUCCESS(
