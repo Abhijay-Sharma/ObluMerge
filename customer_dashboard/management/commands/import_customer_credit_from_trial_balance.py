@@ -66,7 +66,7 @@ class Command(BaseCommand):
                 customer=customer,
                 defaults={
                     "outstanding_balance": outstanding_balance,
-                    "credit_period_days": 0,  # editable later
+                    # "credit_period_days": 0,  # editable later
                 }
             )
 
