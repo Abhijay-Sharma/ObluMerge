@@ -1,0 +1,349 @@
+{% load static %}
+{% load quotation_extras %}
+
+<html lang="en">
+<head>
+
+<link rel="stylesheet"
+ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<meta charset="UTF-8">
+<title>Proforma Invoice</title>
+
+<style>
+@page { size:A4 portrait; margin:14mm; }
+
+body{
+  font-family: Arial, Helvetica, sans-serif;
+  font-size:12px;
+  color:#000;
+  margin:0;
+}
+
+.wrapper{ width:100%; }
+.invoice-container{ padding:10px 14px; }
+
+table{ width:100%; border-collapse:collapse; }
+td, th{ padding:6px; vertical-align:top; }
+
+.bold{ font-weight:bold; }
+.center{ text-align:center; }
+.right{ text-align:right; }
+
+/* ================= HEADER ================= */
+.header-top{
+  display:grid;
+  grid-template-columns:120px 1fr auto;
+  column-gap:14px;
+}
+
+.company-info{ line-height:1.4; }
+
+.logo{
+  width:120px;
+  height:100px;
+  object-fit:contain;
+}
+
+hr{
+  border:none;
+  border-top:2px solid #0b78a8;
+  margin:10px 0 14px;
+}
+
+.header-title{
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+  color:#0b78a8;
+  margin-bottom:14px;
+}
+
+/* ================= INFO GRID ================= */
+.info-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:30px;
+  margin-bottom:18px;
+}
+.info-grid b{ display:block; margin-bottom:6px; }
+
+/* ================= ITEM TABLE ================= */
+.item-table{
+  border:2px solid #000;
+}
+
+.item-table th,
+.item-table td{
+  border-left:1px solid #000;
+}
+
+.item-table thead th{
+  background:#0b78a8;
+  color:#fff;
+  text-align:center;
+  border-bottom:2px solid #000;
+}
+
+.item-table tbody td{
+  border-bottom:1px solid #999;
+}
+
+.item-table tbody tr:last-child td{
+  border-bottom:none;
+}
+
+.item-name{
+  text-align:left;
+  padding-left:12px;
+}
+
+/* ================= TOTALS ================= */
+.totals-wrapper table{
+  margin-top:-3px;
+  border-bottom:2px solid #000;
+}
+
+.totals-wrapper td{
+  border-bottom:1px solid #999;
+}
+
+.totals-wrapper td:last-child{
+  border-left:2px solid #000;
+  border-right:2px solid #000;
+  text-align:right;
+  width:123px;
+}
+
+.totals-wrapper tr:last-child td{
+  border-bottom:none;
+  font-weight:bold;
+}
+
+.totals-highlight{
+  background:#0b78a8;
+  color:#fff;
+}
+
+/* ================= PRINT ================= */
+@media print{
+  *{
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body{ font-size:11px; color:#000 !important; }
+  .logo{ width:90px; height:60px; }
+  .no-print{ display:none; }
+
+  .item-table th,
+  .item-table td{
+    padding:4px;
+    font-size:11px;
+    color:#000 !important;
+  }
+
+  .item-table thead th{
+    background:#0b78a8 !important;
+    color:#fff !important;
+  }
+
+  .totals-highlight td{
+    background:#0b78a8 !important;
+    color:#fff !important;
+  }
+
+  .totals-wrapper td:last-child{
+    width:160px;
+  }
+}
+
+.footer-text{
+  text-align:center;
+  font-size:11px;
+  margin-top:30px;
+}
+</style>
+</head>
+
+<body>
+<div class="invoice-container">
+<div class="wrapper">
+
+<!-- HEADER -->
+<div class="header-top">
+
+<img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
+     class="logo">
+
+<div class="company-info">
+<b>OBLU HEALTHCARE LLP</b><br>
+UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
+ROAD NO.44, Pitampura, New Delhi – 110034<br>
+Phone : 96504 47099<br>
+Email : sales@obluhc.com<br>
+GSTIN : 07AAIFO0279M1ZU<br>
+PAN : AAIFO0279M<br>
+State : 07-Delhi
+</div>
+
+</div>
+
+<hr>
+<div class="header-title">Proforma Invoice</div>
+
+<!-- INFO GRID -->
+<div class="info-grid">
+
+<div>
+<b>Billing Address<br><br>
+{{ invoice.customer.name }}<br>
+{{ invoice.customer.address }}<br>
+{{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
+{{ invoice.customer.state }}<br>
+Contact : {{ invoice.customer.phone }}
+</b>
+</div>
+
+<div>
+<b>Shipping Address<br><br>
+{% if invoice.customer.shipping_address %}
+{{ invoice.customer.name }}<br>
+{{ invoice.customer.shipping_address }}<br>
+{{ invoice.customer.city }} - {{ invoice.customer.pin_code }}<br>
+{{ invoice.customer.state }}<br>
+Contact : {{ invoice.customer.phone }}
+{% else %}
+{{ invoice.customer.name }}<br>
+{{ invoice.customer.address }}<br>
+{{ invoice.customer.city }} - {{ invoice.customer.pin_code }}<br>
+{{ invoice.customer.state }}<br>
+Contact : {{ invoice.customer.phone }}
+{% endif %}
+</b>
+</div>
+
+<div>
+<b>Proforma Invoice Details<br><br>
+Proforma Invoice No. : {{ invoice.id }}<br>
+Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
+Place of Supply : Delhi-34
+</b>
+</div>
+
+</div>
+
+<!-- ================= ITEM TABLE ================= -->
+<table class="item-table">
+<thead>
+<tr>
+  <th>#</th>
+  <th class="item-name">Item name</th>
+  <th>HSN</th>
+  <th>Qty</th>
+  <th class="right">Rate<br>(Inc.)</th>
+  <th class="right">Rate<br>(Exc.)</th>
+  <th class="right">Taxable <br> Value</th>
+  <th class="center">GST%</th>
+  <th class="right">Amount</th>
+</tr>
+</thead>
+
+<tbody>
+{% for row in recalculated_items %}
+{% with item=row.item %}
+<tr>
+  <td class="center">{{ forloop.counter }}</td>
+  <td class="item-name">{{ item.product.name }}</td>
+  <td class="center">{{ item.hsn }}</td>
+  <td class="center">{{ item.quantity }}</td>
+
+  <td class="right">₹ {{ row.unit_price_incl|floatformat:2 }}</td>
+  <td class="right">₹ {{ row.unit_price_excl|floatformat:2 }}</td>
+  <td class="right">₹ {{ row.taxable_value|floatformat:2 }}</td>
+  <td class="center">{{ row.gst_rate }}%</td>
+  <td class="right">₹ {{ row.amount_incl|floatformat:2 }}</td>
+</tr>
+{% endwith %}
+{% endfor %}
+</tbody>
+</table>
+
+{% with courier_charge=approved_request.requested_courier_charge|default:invoice.courier_charge %}
+
+<div class="totals-wrapper">
+<table>
+<tr>
+<td width="40%">
+<table>
+<tr>
+<td class="right bold" style="font-size:13px;">Sub Total</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ recalculated_subtotal|floatformat:2 }}
+</td>
+</tr>
+
+<tr>
+<td class="right bold" style="font-size:13px;">Courier Charges</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ courier_charge|floatformat:2 }}
+</td>
+</tr>
+
+<tr>
+<td class="right bold" style="font-size:13px;">IGST</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ recalculated_igst|floatformat:2 }}
+</td>
+</tr>
+
+<tr class="totals-highlight">
+<td class="right">Total</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ recalculated_grand_total|floatformat:2 }}
+</td>
+</tr>
+
+</table>
+</td>
+</tr>
+</table>
+</div>
+
+{% endwith %}
+
+<div style="margin-top:10px;">
+<b>Amount in Words:</b><br><br>
+INR {{ amount_in_words }}
+</div>
+
+<div style="margin-top:18px;">
+<b>Company's Bank Details:<br><br>
+A/c Holder : OBLU HEALTHCARE LLP<br><br>
+Bank : ICICI BANK (CC)<br><br>
+A/c No. : 629351001224<br><br>
+Branch & IFSC : Rajouri Garden & ICIC0006293</b>
+</div>
+
+<div style="text-align:right; margin-top:0px;">
+For OBLU HEALTHCARE LLP<br><br>
+<img src="{{ signature_base64 }}"
+       style="width:140px; height:auto;" alt="Signature"><br>
+<b>Authorized Signatory</b>
+</div>
+
+<div class="footer-text">
+This is a computer generated invoice
+</div>
+
+<div class="no-print" style="text-align:center;margin-top:14px;">
+<button onclick="window.print()"
+style="padding:8px 16px;background:#333;color:#fff;border:none;cursor:pointer;">
+Print / Save as PDF
+</button>
+</div>
+
+</div>
+</div>
+</body>
+</html>
