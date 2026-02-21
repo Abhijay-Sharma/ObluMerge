@@ -282,11 +282,7 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
             "requested_by": self.request.user,
             "requested_product_prices": requested_product_prices,
             "requested_courier_charge": requested_courier_charge,
-            "review_url": self.request.build_absolute_uri(
-                reverse(
-                    "proforma_price_change_request_create",
-                    kwargs={"invoice_id": self.invoice.id})
-        ),
+            "review_url":"https://oblutools.com/proforma/price-change-requests/"
         }
 
         html_content = render_to_string(
