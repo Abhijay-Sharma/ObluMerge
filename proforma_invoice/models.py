@@ -81,6 +81,9 @@ class ProformaInvoice(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     validity = models.DateTimeField(default=validity_default)
     created_by = models.CharField(max_length=255, default="Oblu")
+
+    is_price_altered = models.BooleanField(default=False)
+
     courier_mode = models.CharField(
         max_length=10,
         choices=CourierMode.choices,
