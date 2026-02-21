@@ -11,6 +11,8 @@ from inventory.models import InventoryItem
 from django.urls import reverse
 from decimal import Decimal
 from num2words import num2words
+from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 
 # 🧾 1. Product Pricing
 class ProductPrice(models.Model):
@@ -433,4 +435,68 @@ class CourierChargeTier(models.Model):
         if self.max_quantity:
             return f"{self.courier_product}+→{self.min_quantity}-{self.max_quantity} → ₹{self.charge}"
         return f"{self.courier_product}+→{self.min_quantity}+ → ₹{self.charge}"
+
+
+class ProformaPriceChangeRequest(models.Model):
+    """
+    Stores a request to change product prices and/or courier charge
+    in a Proforma Invoice.
+    """
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    invoice = models.ForeignKey(
+        ProformaInvoice,
+        on_delete=models.CASCADE,
+        related_name="price_requests"
+    )
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="proforma_price_requests_made"
+    )
+
+    # 🔥 Product price overrides
+    # { "invoice_item_id": "new_unit_price_incl_gst" }
+    requested_product_prices = models.JSONField(
+        encoder=DjangoJSONEncoder,
+        blank=True,
+        null=True
+    )
+
+    # 🔥 Courier charge override
+    requested_courier_charge = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    reason = models.TextField(blank=True, null=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending"
+    )
+
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="proforma_price_requests_reviewed"
+    )
+
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"ProformaPriceChangeRequest #{self.id} - Invoice #{self.invoice.id} ({self.status})"
 
