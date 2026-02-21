@@ -20,4 +20,16 @@ urlpatterns = [
     path("products/", views.ProformaProductListView.as_view(), name="proforma_product_list"),
 
     path("<int:invoice_id>/request-price-change/",views.ProformaPriceChangeRequestCreateView.as_view(),name='proforma_price_change_request_create'),
+
+    path(
+            "price-change-requests/",views.ProformaPriceChangeRequestListView.as_view(),
+            name="proforma_price_change_requests"
+        ),
+
+
+    path("proforma/price-request/<int:pk>/approve/",views.ProformaPriceChangeRequestApproveView.as_view(),
+         name="proforma_price_change_approve"),
+
+    path("proforma/price-request/<int:pk>/reject/",views.ProformaPriceChangeRequestRejectView.as_view(),
+         name="proforma_price_change_reject"),
 ]

@@ -19,6 +19,8 @@ from django.contrib import messages
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
+from inventory.mixins import AccountantRequiredMixin
+from django.utils import timezone
 
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
@@ -302,3 +304,89 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
 
         messages.success(self.request, "Your price change request has been submitted for review.")
         return redirect("proforma_detail", pk=self.invoice.id)
+
+
+# View for accountants to list all Proforma price change requests
+# ----------------------------------------------------------
+
+class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
+    model = ProformaPriceChangeRequest
+    template_name = "proforma_invoice/price_change_request_list.html"
+    context_object_name = "requests"
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """
+        Show all proforma price change requests with related
+        invoice and user information.
+        """
+        return ProformaPriceChangeRequest.objects.select_related(
+            "invoice",        # FK to ProformaInvoice
+            "requested_by",
+            "reviewed_by"
+        ).prefetch_related(
+            "invoice__items__product"
+        )
+
+
+class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(
+            ProformaPriceChangeRequest,
+            id=kwargs["pk"],
+            status="pending"
+        )
+
+        invoice = price_request.invoice
+
+        # 🔥 Update product prices
+        if price_request.requested_product_prices:
+            for item_id, new_price in price_request.requested_product_prices.items():
+                try:
+                    item = invoice.items.get(id=item_id)
+                    item.custom_price = float(new_price)  # assuming you use custom_price
+                    item.save()
+                except:
+                    continue
+
+        # 🔥 Update courier charge
+        if price_request.requested_courier_charge is not None:
+            invoice.courier_charge = price_request.requested_courier_charge
+            invoice.save()
+
+        # ✅ Mark request approved
+        price_request.status = "approved"
+        price_request.reviewed_by = request.user
+        price_request.reviewed_at = timezone.now()
+        price_request.save()
+
+        # Optional flag if you have it
+        invoice.is_price_altered = True
+        invoice.save()
+
+        # messages.success(
+        #     request,
+        #     f"Proforma Invoice #{invoice.id} prices updated successfully."
+        # )
+
+        return redirect("proforma_price_change_requests")
+
+class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(
+            ProformaPriceChangeRequest,
+            id=kwargs["pk"],
+            status="pending"
+        )
+
+        price_request.status = "rejected"
+        price_request.reviewed_by = request.user
+        price_request.reviewed_at = timezone.now()
+        price_request.save()
+
+        messages.info(
+            request,
+            f"Request #{price_request.id} has been rejected."
+        )
+
+        return redirect("proforma_price_change_requests")

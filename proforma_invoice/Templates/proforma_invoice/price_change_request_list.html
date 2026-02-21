@@ -1,0 +1,167 @@
+{% extends 'quotations/base.html' %}
+{% load quotation_extras %}
+{% block content %}
+
+<style>
+    h2{ color:white; font-size: 2rem; margin-top:20px; margin-left:40px;}
+
+    .table-container {
+      width: 95%;
+      margin: 0 auto;
+      overflow-x: auto;
+      border-radius:10px;
+    }
+
+    table{
+      width: 95%;
+      margin: 0 auto;
+    }
+
+    .btn-outline-secondary:hover {
+       color: #222 !important;
+    }
+
+    @media (max-width: 768px) {
+      td, th {
+        padding: 8px;
+        text-align: left;
+      }
+      .btn {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 500px) {
+      h2 { font-size: 18px; }
+      table { display: block; overflow-x: auto; }
+      table th, table td { font-size: 12px; }
+    }
+</style>
+
+<h2>All Proforma Price Change Requests</h2>
+
+<table>
+  <thead class="table-dark">
+    <tr>
+      <th>ID</th>
+      <th>Proforma Invoice</th>
+      <th>Requested By</th>
+      <th>Status</th>
+      <th>Reason</th>
+      <th>Requested At</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for req in requests %}
+    <tr style="background-color: #595555 !important;">
+      <td>{{ req.id }}</td>
+      <td>#{{ req.invoice.id }}</td>
+      <td>{{ req.requested_by.username }}</td>
+
+      <td>
+        {% if req.status == 'pending' %}
+          <span class="badge bg-warning text-dark">Pending</span>
+        {% elif req.status == 'approved' %}
+          <span class="badge bg-success">Approved</span>
+        {% else %}
+          <span class="badge bg-danger">Rejected</span>
+        {% endif %}
+      </td>
+
+      <td>{{ req.reason|default:"-"|truncatechars:40 }}</td>
+      <td>{{ req.created_at|date:"d M Y, H:i" }}</td>
+
+      <td>
+        {% if req.status == "pending" %}
+          <form action="{% url 'proforma_price_change_approve' req.id %}"
+                method="post" style="display:inline;">
+            {% csrf_token %}
+            <button class="btn btn-success btn-sm">Approve</button>
+          </form>
+
+          <form action="{% url 'proforma_price_change_reject' req.id %}"
+                method="post" style="display:inline;">
+            {% csrf_token %}
+            <button class="btn btn-danger btn-sm">Reject</button>
+          </form>
+        {% else %}
+          Reviewed by <b>{{ req.reviewed_by.username }}</b><br>
+          <small>{{ req.reviewed_at|date:"d M Y, H:i" }}</small>
+        {% endif %}
+      </td>
+    </tr>
+
+    <!-- Expandable Row -->
+    <tr class="table-light">
+      <td colspan="7">
+        <button class="btn btn-sm btn-outline-secondary mb-2"
+                type="button"
+                style="background-color: #fff !important;"
+                data-bs-toggle="collapse"
+                data-bs-target="#details-{{ req.id }}">
+          View Requested Changes
+        </button>
+
+        <div class="collapse" id="details-{{ req.id }}">
+          <table class="table table-sm table-bordered mt-2">
+            <thead>
+              <tr>
+                <th style="background-color: #595555 !important">Item ID</th>
+                <th style="background-color: #595555 !important">Product</th>
+                <th style="background-color: #595555 !important">Old Price (₹)</th>
+                <th style="background-color: #595555 !important">Requested Price (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              {% for item in req.invoice.items.all %}
+                {% with new_price=req.requested_product_prices|get_item:item.id|stringformat:"s" %}
+                  {% if new_price %}
+                    <tr>
+                      <td>{{ item.id }}</td>
+                      <td>{{ item.product.name }}</td>
+                      <td>
+                          ₹{{ item.unit_price|floatformat:2 }}
+                      </td>
+                      <td>
+                        <strong class="text-primary">
+                          {{ new_price|floatformat:2 }}
+                        </strong>
+                      </td>
+                    </tr>
+                  {% endif %}
+                {% endwith %}
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="text-muted">
+                    No items found for this invoice.
+                  </td>
+                </tr>
+              {% endfor %}
+
+              <!-- Courier Section -->
+              {% if req.requested_courier_charge %}
+              <tr>
+                <td colspan="2"><strong>Courier Charge</strong></td>
+                <td>₹{{ req.invoice.courier_charge|floatformat:2 }}</td>
+                <td>
+                  <strong class="text-primary">
+                    ₹{{ req.requested_courier_charge|floatformat:2 }}
+                  </strong>
+                </td>
+              </tr>
+              {% endif %}
+
+            </tbody>
+          </table>
+        </div>
+      </td>
+    </tr>
+
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
