@@ -18,4 +18,6 @@ urlpatterns = [
     path("proformas/", views.ProformaInvoiceListView.as_view(), name="proforma_list"),
 
     path("products/", views.ProformaProductListView.as_view(), name="proforma_product_list"),
+
+    path("<int:invoice_id>/request-price-change/",views.ProformaPriceChangeRequestCreateView.as_view(),name='proforma_price_change_request_create'),
 ]

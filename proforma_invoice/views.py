@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import ProformaInvoice, ProformaInvoiceItem
-from .forms import ProformaInvoiceForm, ProformaItemFormSet
+from .models import ProformaInvoice, ProformaInvoiceItem , ProformaPriceChangeRequest
+from .forms import ProformaInvoiceForm, ProformaItemFormSet, ProformaPriceChangeRequestForm
 from quotations.models import Customer
 from inventory.models import Category, InventoryItem
 from django.shortcuts import render, get_object_or_404
@@ -14,7 +14,11 @@ from .models import ProductPrice, ProductPriceTier
 from django.db.models import Prefetch
 from django.conf import settings
 import os
-
+from django.views.generic import FormView
+from django.contrib import messages
+from django.urls import reverse
+from django.template.loader import render_to_string
+from django.core.mail import EmailMultiAlternatives
 
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
@@ -204,3 +208,97 @@ class ProformaProductListView(LoginRequiredMixin, ListView):
         )
 
         return qs
+
+class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
+    template_name = "proforma_invoice/request_price_change.html"
+    form_class = ProformaPriceChangeRequestForm
+
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Only allow non-accountants to request price changes.
+        """
+        invoice_id = self.kwargs["invoice_id"]
+        self.invoice = get_object_or_404(ProformaInvoice, id=invoice_id)
+
+        if request.user.is_accountant:
+            messages.error(request, "Accountants cannot request price changes.")
+            return redirect("proforma_detail", pk=self.invoice.id)
+
+        if ProformaPriceChangeRequest.objects.filter(
+            invoice=self.invoice,
+            status="pending"
+        ).exists():
+            messages.warning(request, "There is already a pending request for this Proforma Invoice.")
+            return redirect("proforma_detail", pk=self.invoice.id)
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        """
+        Add invoice items to template context.
+        """
+        context = super().get_context_data(**kwargs)
+        context["invoice"] = self.invoice
+        context["items"] = self.invoice.items.select_related("product")
+        return context
+
+    def form_valid(self, form):
+        """
+        Save the request with new product prices + courier charge.
+        """
+        items = self.invoice.items.select_related("product")
+
+        # 🔥 Collect requested product prices
+        requested_product_prices = {
+            str(item.id): self.request.POST.get(f"new_price_{item.id}")
+            for item in items
+            if self.request.POST.get(f"new_price_{item.id}")
+        }
+
+        # 🔥 Courier charge override
+        requested_courier_charge = self.request.POST.get("new_courier_charge")
+
+        price_request = form.save(commit=False)
+        price_request.invoice = self.invoice
+        price_request.requested_by = self.request.user
+        price_request.requested_product_prices = requested_product_prices
+
+        if requested_courier_charge:
+            price_request.requested_courier_charge = requested_courier_charge
+
+        price_request.save()
+
+        # ---------------- EMAIL NOTIFICATION ----------------
+        to_emails = [
+            "madderladder68@gmail.com",
+            "swasti.obluhc@gmail.com",
+        ]
+
+        email_context = {
+            "request_obj": price_request,
+            "invoice": self.invoice,
+            "requested_by": self.request.user,
+            "requested_product_prices": requested_product_prices,
+            "requested_courier_charge": requested_courier_charge,
+            "review_url": self.request.build_absolute_uri(
+                reverse(
+                    "proforma_price_change_request_create",
+                    kwargs={"invoice_id": self.invoice.id})
+        ),
+        }
+
+        html_content = render_to_string(
+            "proforma_invoice/price_change_request_email.html",
+            email_context
+        )
+
+        subject = f"🔔 Price Change Request Submitted (Proforma #{self.invoice.id})"
+        from_email = "proforma@oblutools.com"
+
+        msg = EmailMultiAlternatives(subject, "", from_email, to_emails)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+        # ----------------------------------------------------
+
+        messages.success(self.request, "Your price change request has been submitted for review.")
+        return redirect("proforma_detail", pk=self.invoice.id)

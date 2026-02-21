@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import modelformset_factory, BaseModelFormSet
-from .models import ProformaInvoice, ProformaInvoiceItem
+from .models import ProformaInvoice, ProformaInvoiceItem, ProformaPriceChangeRequest
 from quotations.models import Customer
 from inventory.models import InventoryItem
 
@@ -71,3 +71,28 @@ ProformaItemFormSet = modelformset_factory(
     extra=1,
     can_delete=True
 )
+
+class ProformaPriceChangeRequestForm(forms.ModelForm):
+    """
+    Used by normal users to request a price change
+    for a Proforma Invoice.
+    """
+
+    class Meta:
+        model = ProformaPriceChangeRequest
+        fields = ["reason"]   # product + courier handled manually in view
+        widgets = {
+            "reason": forms.Textarea(attrs={
+                "rows": 3,
+                "class": "form-control",
+                "placeholder": "Explain why price or courier charge change is needed..."
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.invoice = kwargs.pop("invoice", None)
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Optional: make reason required
+        self.fields["reason"].required = True

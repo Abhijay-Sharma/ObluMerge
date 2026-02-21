@@ -88,6 +88,12 @@
               <a href="{{ inv.get_absolute_url }}" class="btn-secondary" target="_blank">
                 View
               </a>
+               {% if request.user.is_viewer %}
+                    <a href="{% url 'proforma_price_change_request_create' inv.id %}"
+                       class="btn-secondary">
+                       Request Price Change
+                    </a>
+                {% endif %}
             </td>
           </tr>
         {% empty %}

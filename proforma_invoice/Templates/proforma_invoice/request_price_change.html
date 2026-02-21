@@ -1,0 +1,121 @@
+{% extends 'quotations/base.html' %}
+{% block content %}
+
+<style>
+  h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: white;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+  }
+
+  .table-wrapper {
+    width: 90%;
+    max-width: 900px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    color: white;
+  }
+
+  th, td {
+    padding: 10px;
+    text-align: center;
+  }
+
+  th {
+    background-color: #595555;
+  }
+
+  td {
+    background-color: #595555;
+  }
+
+  input, textarea {
+    width: 100%;
+    padding: 6px;
+    border-radius: 5px;
+    border: none;
+  }
+
+  .courier-section {
+    width: 90%;
+    max-width: 600px;
+    color: white;
+  }
+
+  button {
+    padding: 8px 20px;
+  }
+
+  @media (max-width: 768px) {
+    table {
+      font-size: 0.9rem;
+    }
+  }
+</style>
+
+<h2>Request Price Change for Proforma Invoice #{{ invoice.id }}</h2>
+
+<form method="post">
+  {% csrf_token %}
+
+  <!-- PRODUCT TABLE -->
+  <div class="table-wrapper">
+    <table>
+      <tr>
+        <th>Product</th>
+        <th>Current Price</th>
+        <th>Requested New Price</th>
+      </tr>
+
+      {% for item in items %}
+      <tr>
+        <td>{{ item.product.name }}</td>
+        <td>₹{{ item.unit_price|floatformat:2 }}</td>
+
+        <td>
+          <input type="number"
+                 step="0.01"
+                 name="new_price_{{ item.id }}"
+                 placeholder="Enter new price">
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <!-- COURIER SECTION -->
+  <div class="courier-section">
+    <label><strong>Current Courier Charge:</strong></label>
+    <p>₹{{ invoice.courier_charge }}</p>
+
+    <label><strong>Requested New Courier Charge:</strong></label>
+    <input type="number"
+           step="0.01"
+           name="new_courier_charge"
+           placeholder="Enter new courier charge">
+  </div>
+
+  <!-- REASON -->
+  <div class="courier-section">
+    <label><strong>Reason:</strong></label>
+    {{ form.reason }}
+  </div>
+
+  <button type="submit" class="btn btn-primary">
+    Submit Request
+  </button>
+</form>
+
+{% endblock %}
