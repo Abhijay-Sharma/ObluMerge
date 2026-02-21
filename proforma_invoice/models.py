@@ -246,16 +246,26 @@ class ProformaInvoice(models.Model):
         return self.items_total() + self.courier_charge() + self.courier_gst()
 
     def grand_total_in_words(self):
-        amount = Decimal(self.grand_total() or 0).quantize(Decimal("1.00"))
+        amount = self.grand_total().quantize(Decimal("0.01"))
 
-        # Split into rupees and paise
         rupees = int(amount)
-        paise = int((amount - rupees) * 100)
+        paise = int((amount - Decimal(rupees)) * 100)
 
-        words = num2words(rupees, lang='en_IN').replace(",", "").title() + " Rupees"
+        words = (
+                num2words(rupees, lang="en_IN")
+                .replace(",", "")
+                .title()
+                + " Rupees"
+        )
 
         if paise > 0:
-            words += " " + num2words(paise, lang='en_IN').replace(",", "").title() + " Paise"
+            words += (
+                    " "
+                    + num2words(paise, lang="en_IN")
+                    .replace(",", "")
+                    .title()
+                    + " Paise"
+            )
 
         words += " Only"
         return words
