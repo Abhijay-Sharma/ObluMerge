@@ -105,8 +105,7 @@
                         <td><a href="{% url 'predict_min_stock' item.id %}" class="btn btn-secondary">View</a></td>
                         <td><a href="{% url 'stock_chart_2' item.id %}" class="btn btn-outline-secondary">Graphs</a></td>
                         <td><a href="{% url 'history' item.id %}" class="btn btn-secondary">Data</a></td>
-                        <td><a href="{% url 'edit-item' item.id %}" class="btn btn-outline-secondary">Edit</a></td>
-                        <td><a href="{% url 'delete-item' item.id%}" class="btn btn-secondary">Delete </a></td>
+
                     </tr>
                     {% endfor %}
                 </tbody>
