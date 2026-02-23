@@ -111,6 +111,17 @@ class ProformaInvoiceDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         invoice = self.object
+        # ---- load signature base64 from file ----
+        signature_path = os.path.join(
+            settings.BASE_DIR,
+            "proforma_invoice",
+            "assets",
+            "sujal_signature_base64.txt",
+        )
+        with open(signature_path, "r") as f:
+            signature_base64 = f.read().strip()
+
+        context["signature_base64"] = signature_base64
 
         items_qs = invoice.items.select_related("product")
         context["items"] = items_qs
