@@ -125,6 +125,43 @@ hr{
   color:#fff;
 }
 
+/* ================= QR ================= */
+.qr-box{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.qr-row{
+  display:flex;
+  gap:10px;
+}
+
+.qr-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  width:110px;
+}
+
+.qr-img{
+  width:90px;
+  height:90px;
+  object-fit:contain;
+}
+
+.qr-text{
+  font-size:10px;
+  font-weight:bold;
+  color:#0b78a8;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+
+
+
 /* ================= PRINT ================= */
 @media print{
   *{
@@ -185,6 +222,38 @@ Email : sales@obluhc.com<br>
 GSTIN : 07AAIFO0279M1ZU<br>
 PAN : AAIFO0279M<br>
 State : 07-Delhi
+</div>
+<div class="qr-box">
+  <div class="qr-row">
+
+    <div class="qr-item ig">
+      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png"
+           class="qr-img">
+      <div class="qr-text">
+        <i class="fa-brands fa-instagram"></i>
+        OBLU_HEALTHCARE
+      </div>
+    </div>
+
+    <div class="qr-item fb">
+      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png"
+           class="qr-img">
+      <div class="qr-text">
+        <i class="fa-brands fa-facebook" style="color:#4670b9;"></i>
+        Oblu Healthcare
+      </div>
+    </div>
+
+    <div class="qr-item yt">
+      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png"
+           class="qr-img">
+      <div class="qr-text">
+        <i class="fa-brands fa-youtube" style="color:#c41717;"></i>
+        Oblu Healthcare
+      </div>
+    </div>
+
+  </div>
 </div>
 
 </div>
@@ -317,13 +386,35 @@ Place of Supply : Delhi-34
 INR {{ amount_in_words }}
 </div>
 
-<div style="margin-top:18px;">
-<b>Company's Bank Details:<br><br>
-A/c Holder : OBLU HEALTHCARE LLP<br><br>
-Bank : ICICI BANK (CC)<br><br>
-A/c No. : 629351001224<br><br>
-Branch & IFSC : Rajouri Garden & ICIC0006293</b>
+<!--<div style="margin-top:18px;">-->
+<!--<b>Company's Bank Details:<br><br>-->
+<!--A/c Holder : OBLU HEALTHCARE LLP<br><br>-->
+<!--Bank : ICICI BANK (CC)<br><br>-->
+<!--A/c No. : 629351001224<br><br>-->
+<!--Branch & IFSC : Rajouri Garden & ICIC0006293</b>-->
+<!--</div>-->
+<div style="margin-top:18px; display:flex; align-items:flex-start; gap:60px;">
+
+    <div style="flex:0 0 auto;">
+    <b>Company's Bank Details:<br><br>
+    A/c Holder : OBLU HEALTHCARE LLP<br><br>
+    Bank : ICICI BANK (CC)<br><br>
+    A/c No. : 629351001224<br><br>
+    Branch & IFSC : Rajouri Garden & ICIC0006293</b>
+  </div>
+
+  <div style="text-align:center;">
+    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/Oblu_Qr_Pay.jpg"
+         style="width:110px; height:auto;">
+    <div style="margin-top:6px; font-weight:bold; color:#0b78a8;">
+      BANK QR
+    </div>
+  </div>
 </div>
+
+
+
+
 
 <div style="text-align:right; margin-top:0px;">
 For OBLU HEALTHCARE LLP<br><br>
@@ -341,7 +432,8 @@ This is a computer generated invoice
 style="padding:8px 16px;background:#333;color:#fff;border:none;cursor:pointer;">
 Print / Save as PDF
 </button>
-</div>
+is_accountant
+<!--is_superuser-->
 
 </div>
 </div>
