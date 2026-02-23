@@ -350,8 +350,8 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
         invoice_id = self.kwargs["invoice_id"]
         self.invoice = get_object_or_404(ProformaInvoice, id=invoice_id)
 
-        if request.user.is_accountant:
-            messages.error(request, "Accountants cannot request price changes.")
+        if request.user.is_superuser:
+            messages.error(request, "Super users cannot request price changes.")
             return redirect("proforma_detail", pk=self.invoice.id)
 
         if ProformaPriceChangeRequest.objects.filter(
