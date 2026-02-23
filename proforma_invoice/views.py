@@ -400,8 +400,9 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
 
         # ---------------- EMAIL NOTIFICATION ----------------
         to_emails = [
-            "madderladder68@gmail.com",
+            "abhijay.obluhc@gmail.com",
             "swasti.obluhc@gmail.com",
+            "nitin.a@obluhc.com"
         ]
 
         email_context = {
