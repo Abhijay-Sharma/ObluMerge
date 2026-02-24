@@ -238,6 +238,7 @@
         <th>Unpaid</th>
         <th>Status</th>
         <th>Credit Days</th>
+        <th>Sold by</th>
       </tr>
     </thead>
 
@@ -273,6 +274,7 @@
             {{ v.credit_days_elapsed|default:"-" }}
           {% endif %}
         </td>
+        <td>-</td>
 
       </tr>
       {% empty %}
