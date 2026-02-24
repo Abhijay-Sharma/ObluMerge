@@ -274,7 +274,13 @@
             {{ v.credit_days_elapsed|default:"-" }}
           {% endif %}
         </td>
-        <td>-</td>
+        <td>
+          {% if v.sold_by %}
+            {{v.sold_by.name}}
+          {% else %}
+            -
+          {% endif %}
+        </td>
 
       </tr>
       {% empty %}
