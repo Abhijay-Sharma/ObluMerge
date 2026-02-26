@@ -23,7 +23,8 @@ from .forms import CustomerReassignForm, CustomerCreditForm
 from django.views import View
 from django.utils import timezone
 from django.urls import reverse_lazy
-
+from django.urls import reverse
+from urllib.parse import urlencode
 
 
 
@@ -911,7 +912,15 @@ class CustomerEditView(AccountantRequiredMixin, View):
         if form.is_valid():
             form.save()
             messages.success(request, "Customer updated successfully.")
-            return redirect("customers:data")
+            # Preserve filters
+            # remove these preserve filters
+            query_string = request.GET.urlencode()
+            url = reverse("customers:data")
+
+            if query_string:
+                url = f"{url}?{query_string}"
+
+            return redirect(url)
 
         messages.error(request, "Please fix the errors below.")
         return render(request, self.template_name, {

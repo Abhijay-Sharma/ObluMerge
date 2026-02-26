@@ -349,7 +349,8 @@ body{ overflow-x:hidden; }
        <div class="actions">
       <button> <a href="/customers/credit-period/{{ c.id }}/edit_credit/">Edit Credit period </a></button>
 
-    <button> <a href="/customers/customer/{{ c.id }}/edit/">Edit Salesperson</a></button>
+<!--    <button> <a href="/customers/customer/{{ c.id }}/edit/">Edit Salesperson</a></button>-->
+         <button> <a href="{% url 'customers:customer_edit' c.id %}?{{ request.GET.urlencode }}">Edit Salesperson</a></button>
       </div>
     </div>
   </div>
