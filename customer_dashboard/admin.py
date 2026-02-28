@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SalesPerson, Customer, CustomerCreditProfile, CustomerFollowUp, CustomerRemark, PaymentDiscussionThread
+from .models import SalesPerson, Customer, CustomerCreditProfile, CustomerFollowUp, CustomerRemark, PaymentDiscussionThread, CustomerVoucherStatus
 
 
 
@@ -35,3 +35,8 @@ class CustomerRemarkAdmin(admin.ModelAdmin):
 @admin.register(PaymentDiscussionThread)
 class PaymentDiscussionThreadAdmin(admin.ModelAdmin):
     list_display = ("voucher_status","ticket_status","raised_by","raised_at")
+
+
+@admin.register(CustomerVoucherStatus)
+class CustomerVoucherStatusAdmin(admin.ModelAdmin):
+    list_display = ("customer","voucher","voucher_type","voucher_category","voucher_date","voucher_amount","unpaid_amount")
