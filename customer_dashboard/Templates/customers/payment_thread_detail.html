@@ -1,0 +1,104 @@
+{% extends "customers/base.html" %}
+{% block content %}
+
+<div style="max-width:1000px;margin:auto;">
+
+  <h2>
+    Voucher: {{ voucher_status.voucher.voucher_number }}
+  </h2>
+
+  <p>
+    Customer: {{ voucher_status.customer.name }} <br>
+    Amount: {{ voucher_status.voucher_amount }} <br>
+    Unpaid: {{ voucher_status.unpaid_amount }}
+  </p>
+
+  <hr>
+
+  <!-- TICKET STATUS -->
+  <h3>Ticket Status: {{ thread.ticket_status }}</h3>
+
+  {% if thread.ticket_status == "RAISED" %}
+    <p style="color:red;">
+      Raised by {{ thread.raised_by }} at {{ thread.raised_at }}
+    </p>
+  {% elif thread.ticket_status == "SOLVED" %}
+    <p style="color:green;">
+      Solved by {{ thread.solved_by }} at {{ thread.solved_at }}
+    </p>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    {% if thread.ticket_status != "RAISED" %}
+      <button name="action" value="raise_ticket">Raise Ticket</button>
+    {% elif thread.ticket_status == "RAISED" %}
+      <button name="action" value="solve_ticket">Mark as Solved</button>
+    {% endif %}
+  </form>
+
+  <hr>
+  <h3>Ticket History</h3>
+
+  {% for event in ticket_events %}
+    <div style="background:#fff3cd;padding:8px;margin-bottom:6px;">
+      <strong>{{ event.event_type }}</strong>
+      by {{ event.performed_by }}
+      at {{ event.performed_at }}
+    </div>
+  {% empty %}
+    <p>No ticket history yet.</p>
+  {% endfor %}
+
+  <!-- REMARKS -->
+  <h3>Remarks</h3>
+
+  {% for r in remarks %}
+    <div style="background:#f2f2f2;padding:10px;margin-bottom:8px;">
+      <strong>{{ r.created_by }}</strong>
+      <small>{{ r.created_at }}</small>
+      <p>{{ r.remark }}</p>
+    </div>
+  {% empty %}
+    <p>No remarks yet.</p>
+  {% endfor %}
+
+  <form method="post">
+    {% csrf_token %}
+    {{ remark_form.as_p }}
+    <button name="action" value="add_remark">Add Remark</button>
+  </form>
+
+  <hr>
+
+  <!-- EXPECTED DATE HISTORY -->
+  <h3>Expected Payment Dates</h3>
+
+  {% for e in expected_dates %}
+    <div style="background:#e9f5ff;padding:8px;margin-bottom:6px;">
+      <strong>{{ e.expected_date }}</strong>
+      <small>
+        set by {{ e.set_by }} at {{ e.created_at }}
+      </small>
+    </div>
+  {% empty %}
+    <p>No expected dates set.</p>
+  {% endfor %}
+
+  <form method="post">
+    {% csrf_token %}
+    {{ expected_date_form.as_p }}
+    <button name="action" value="add_expected_date">
+      Add Expected Date
+    </button>
+  </form>
+
+  <hr>
+
+  <a href="{% url 'customers:customerpaymentstatus' voucher_status.customer.id %}">
+    ← Back to Payment Status
+  </a>
+
+</div>
+
+{% endblock %}

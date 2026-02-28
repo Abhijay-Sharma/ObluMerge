@@ -21,5 +21,10 @@ urlpatterns = [
     path("sales/customer-vouchers/",views.CustomerVouchersOverviewView.as_view(),name="customer_vouchers_overview",),
     path("admin/voucher-claims/", views.AdminVoucherClaimManagementView.as_view(),name="admin_voucher_claim_management", ),
     path("credit-period/<int:pk>/edit_credit/",views.EditCreditPeriodView.as_view(),name="edit-credit-period"),
+    path(
+        "payment-thread/<int:voucher_status_id>/",
+        views.PaymentThreadDetailView.as_view(),
+        name="payment_thread_detail",
+    ),
 
 ]

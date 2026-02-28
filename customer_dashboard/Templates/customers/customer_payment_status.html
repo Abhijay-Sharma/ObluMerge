@@ -239,6 +239,7 @@
         <th>Status</th>
         <th>Credit Days</th>
         <th>Sold by</th>
+        <th>Payment Discussion</th>
       </tr>
     </thead>
 
@@ -281,6 +282,17 @@
             -
           {% endif %}
         </td>
+        <td>
+        <a href="{% url 'customers:payment_thread_detail' v.id %}">
+          View / Add Remarks
+        </a>
+
+        {% if v.payment_thread.ticket_status == "RAISED" %}
+            <span style="color:red;">● Ticket Raised</span>
+        {% elif v.payment_thread.ticket_status == "SOLVED" %}
+            <span style="color:green;">✔ Solved</span>
+        {% endif %}
+      </td>
 
       </tr>
       {% empty %}
