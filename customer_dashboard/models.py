@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from decimal import Decimal
+from django.conf import settings
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -189,3 +191,135 @@ class CustomerFollowUp(models.Model):
 
     def str(self):
         return f"{self.customer.name} - {self.followup_date}"
+
+
+class PaymentDiscussionThread(models.Model):
+    voucher_status = models.OneToOneField(
+        "CustomerVoucherStatus",
+        on_delete=models.CASCADE,
+        related_name="payment_thread"
+    )
+
+    # Ticket Workflow
+    ticket_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("NONE", "None"),
+            ("RAISED", "Raised"),
+            ("SOLVED", "Solved"),
+        ],
+        default="NONE"
+    )
+
+    raised_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="raised_payment_tickets"
+    )
+
+    raised_at = models.DateTimeField(null=True, blank=True)
+
+    solved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="solved_payment_tickets"
+    )
+
+    solved_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def raise_ticket(self, user):
+        self.ticket_status = "RAISED"
+        self.raised_by = user
+        self.raised_at = timezone.now()
+        self.save()
+
+    def solve_ticket(self, user):
+        self.ticket_status = "SOLVED"
+        self.solved_by = user
+        self.solved_at = timezone.now()
+        self.save()
+
+    def __str__(self):
+        return f"Payment Thread - {self.voucher_status.voucher.voucher_number}"
+
+
+
+class PaymentRemark(models.Model):
+    thread = models.ForeignKey(
+        PaymentDiscussionThread,
+        on_delete=models.CASCADE,
+        related_name="remarks"
+    )
+
+    remark = models.TextField()
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Remark by {self.created_by} on {self.created_at}"
+
+
+class PaymentExpectedDateHistory(models.Model):
+    thread = models.ForeignKey(
+        PaymentDiscussionThread,
+        on_delete=models.CASCADE,
+        related_name="expected_date_history"
+    )
+
+    expected_date = models.DateField()
+
+    set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.expected_date} set by {self.set_by}"
+
+
+class PaymentTicketEvent(models.Model):
+    thread = models.ForeignKey(
+        PaymentDiscussionThread,
+        on_delete=models.CASCADE,
+        related_name="ticket_events"
+    )
+
+    event_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("RAISED", "Raised"),
+            ("SOLVED", "Solved"),
+        ]
+    )
+
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    performed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["performed_at"]
+
+    def __str__(self):
+        return f"{self.event_type} by {self.performed_by} at {self.performed_at}"
