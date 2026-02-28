@@ -1,5 +1,6 @@
 from django import forms
 from .models import Customer, CustomerCreditProfile
+from .models import PaymentRemark, PaymentExpectedDateHistory
 
 class CustomerReassignForm(forms.ModelForm):
     class Meta:
@@ -31,4 +32,24 @@ class CustomerCreditForm(forms.ModelForm):
                     "placeholder": "Enter credit period in days"
                 }
             )
+        }
+
+
+
+
+class PaymentRemarkForm(forms.ModelForm):
+    class Meta:
+        model = PaymentRemark
+        fields = ["remark"]
+        widgets = {
+            "remark": forms.Textarea(attrs={"rows": 3})
+        }
+
+
+class ExpectedDateForm(forms.ModelForm):
+    class Meta:
+        model = PaymentExpectedDateHistory
+        fields = ["expected_date"]
+        widgets = {
+            "expected_date": forms.DateInput(attrs={"type": "date"})
         }

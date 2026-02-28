@@ -25,7 +25,12 @@ from django.utils import timezone
 from django.urls import reverse_lazy
 from django.urls import reverse
 from urllib.parse import urlencode
-
+from .models import (
+    CustomerVoucherStatus,
+    PaymentDiscussionThread,
+PaymentTicketEvent
+)
+from .forms import PaymentRemarkForm, ExpectedDateForm
 
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
@@ -890,6 +895,104 @@ class CustomerPaymentStatusView(TemplateView):
         )
 
         ctx["filters"] = self.request.GET
+        return ctx
+
+class PaymentThreadDetailView(TemplateView):
+    template_name = "customers/payment_thread_detail.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.voucher_status = get_object_or_404(
+            CustomerVoucherStatus,
+            pk=kwargs["voucher_status_id"]
+        )
+
+        # Auto-create thread
+        self.thread, created = PaymentDiscussionThread.objects.get_or_create(
+            voucher_status=self.voucher_status
+        )
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+
+        action = request.POST.get("action")
+
+        # ----------------------
+        # Add Remark
+        # ----------------------
+        if action == "add_remark":
+            form = PaymentRemarkForm(request.POST)
+            if form.is_valid():
+                remark = form.save(commit=False)
+                remark.thread = self.thread
+                remark.created_by = request.user
+                remark.save()
+                messages.success(request, "Remark added.")
+
+        # ----------------------
+        # Add Expected Date
+        # ----------------------
+        elif action == "add_expected_date":
+            form = ExpectedDateForm(request.POST)
+            if form.is_valid():
+                expected = form.save(commit=False)
+                expected.thread = self.thread
+                expected.set_by = request.user
+                expected.save()
+                messages.success(request, "Expected date added.")
+
+        # ----------------------
+        # Raise Ticket
+        # ----------------------
+        elif action == "raise_ticket":
+            self.thread.ticket_status = "RAISED"
+            self.thread.raised_by = request.user
+            self.thread.raised_at = timezone.now()
+            self.thread.save()
+
+            PaymentTicketEvent.objects.create(
+                thread=self.thread,
+                event_type="RAISED",
+                performed_by=request.user
+            )
+
+            messages.success(request, "Ticket raised.")
+
+        # ----------------------
+        # Solve Ticket
+        # ----------------------
+        elif action == "solve_ticket":
+            self.thread.ticket_status = "SOLVED"
+            self.thread.solved_by = request.user
+            self.thread.solved_at = timezone.now()
+            self.thread.save()
+
+            PaymentTicketEvent.objects.create(
+                thread=self.thread,
+                event_type="SOLVED",
+                performed_by=request.user
+            )
+
+            messages.success(request, "Ticket solved.")
+
+        return redirect(
+            "customers:payment_thread_detail",
+            voucher_status_id=self.voucher_status.id
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        ctx["voucher_status"] = self.voucher_status
+        ctx["thread"] = self.thread
+
+        ctx["remarks"] = self.thread.remarks.all()
+        ctx["expected_dates"] = self.thread.expected_date_history.all()
+
+        ctx["remark_form"] = PaymentRemarkForm()
+        ctx["expected_date_form"] = ExpectedDateForm()
+        ctx["ticket_events"] = self.thread.ticket_events.all()
+
         return ctx
 
 
