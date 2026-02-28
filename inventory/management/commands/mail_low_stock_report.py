@@ -475,7 +475,18 @@ class Command(BaseCommand):
             3261,
             3284,
             3079,
-            2877
+            2877,
+            3300,
+            3301,
+            3299,
+            2954,
+            3296,
+            2726,
+            3298,
+            3297,
+            3289,
+            2735,
+            3275,
         ]
 
         # 🧾 Get all categories with related inventory items
