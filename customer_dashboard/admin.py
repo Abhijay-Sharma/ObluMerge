@@ -40,4 +40,3 @@ class PaymentDiscussionThreadAdmin(admin.ModelAdmin):
 @admin.register(CustomerVoucherStatus)
 class CustomerVoucherStatusAdmin(admin.ModelAdmin):
     list_display = ("id","customer","voucher")
-    search_fields = ("id")
