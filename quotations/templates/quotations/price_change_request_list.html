@@ -26,6 +26,38 @@
        width: 100%;
        border-radius:10px;
     }
+    .reason-cell {
+        max-width: 250px;
+        vertical-align: top;
+    }
+
+    .reason-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .text-content {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .text-content.expanded {
+        -webkit-line-clamp: unset;
+    }
+
+    .read-more-text {
+        font-size: 11px;
+        color: #bbb;
+        margin-top: 4px;
+        cursor: pointer;
+    }
+
+    .d-none {
+        display: none;
+    }
 
     .btn-outline-secondary:hover {
        color: #222 !important;
@@ -50,6 +82,14 @@
          border-color: #595555;
          width: 100%;
 
+      }
+
+      .reason-cell {
+        width: 450px;
+      }
+
+      .text-content{
+        width:150px;
       }
 
       .btn {
@@ -77,6 +117,10 @@
       .table-secondary{
          border-color: #595555;
          max-width:90%;
+      }
+
+      .reason-cell {
+        max-width: 450px;
       }
 
       .btn{ width: 50%;}
@@ -114,7 +158,14 @@
           <span class="badge bg-danger">{{ req.status|capfirst }}</span>
         {% endif %}
       </td>
-      <td>{{ req.reason|default:"-"|truncatechars:40 }}</td>
+      <td class="reason-cell">
+        <span class="text-content">
+            {{ req.reason|default:"-" }}
+        </span>
+        {% if req.reason and req.reason|length > 40 %}
+            <span class="read-more-text">read more</span>
+        {% endif %}
+      </td>
       <td>{{ req.created_at|date:"d M Y, H:i" }}</td>
       <td>
         {% if req.status == "pending" %}
@@ -175,4 +226,35 @@
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    document.querySelectorAll(".reason-cell").forEach(function(cell) {
+
+        let text = cell.querySelector(".text-content");
+        let readMore = cell.querySelector(".read-more-text");
+
+        function toggleText() {
+            text.classList.toggle("expanded");
+
+            if (readMore) {
+                if (text.classList.contains("expanded")) {
+                    readMore.textContent = "read less";
+                } else {
+                    readMore.textContent = "read more";
+                }
+            }
+        }
+
+        text.addEventListener("click", toggleText);
+
+        if (readMore) {
+            readMore.addEventListener("click", toggleText);
+        }
+
+    });
+
+});
+</script>
 {% endblock %}
