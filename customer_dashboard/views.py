@@ -995,6 +995,74 @@ class PaymentThreadDetailView(TemplateView):
 
         return ctx
 
+class CustomerPaymentThreadsView(TemplateView):
+    template_name = "customers/customer_payment_threads.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.customer = get_object_or_404(Customer, pk=kwargs["customer_id"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        voucher_statuses = (
+            CustomerVoucherStatus.objects
+            .filter(customer=self.customer)
+            .select_related("voucher")
+            .order_by("-voucher_date")
+        )
+
+        invoice_threads = []
+
+        for vs in voucher_statuses:
+
+            thread, created = PaymentDiscussionThread.objects.get_or_create(
+                voucher_status=vs
+            )
+
+            events = []
+
+            # remarks
+            for r in thread.remarks.all():
+                events.append({
+                    "type": "Remark",
+                    "text": r.remark,
+                    "user": r.created_by,
+                    "time": r.created_at,
+                })
+
+            # expected dates
+            for e in thread.expected_date_history.all():
+                events.append({
+                    "type": "Expected Date",
+                    "text": f"Expected payment on {e.expected_date}",
+                    "user": e.set_by,
+                    "time": e.created_at,
+                })
+
+            # ticket events
+            for t in thread.ticket_events.all():
+                events.append({
+                    "type": f"Ticket {t.event_type}",
+                    "text": f"Ticket {t.event_type.lower()}",
+                    "user": t.performed_by,
+                    "time": t.performed_at,
+                })
+
+            # sort timeline
+            events = sorted(events, key=lambda x: x["time"], reverse=True)
+
+            invoice_threads.append({
+                "voucher_status": vs,
+                "thread": thread,
+                "events": events,
+            })
+
+        ctx["customer"] = self.customer
+        ctx["invoice_threads"] = invoice_threads
+
+        return ctx
+
 
 class CustomerEditView(AccountantRequiredMixin, View):
     template_name = "customers/edit_customer.html"

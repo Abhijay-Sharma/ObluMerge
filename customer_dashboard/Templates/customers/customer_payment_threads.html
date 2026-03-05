@@ -1,0 +1,72 @@
+{% extends "customers/base.html" %}
+{% block content %}
+
+<h2>Payment Threads — {{ customer.name }}</h2>
+
+{% for invoice in invoice_threads %}
+
+<div style="margin-bottom:40px; border:1px solid #ddd; padding:20px;">
+
+    <h4>
+        Invoice: {{ invoice.voucher_status.voucher.voucher_number }}
+        | Date: {{ invoice.voucher_status.voucher_date }}
+        | Amount: {{ invoice.voucher_status.voucher_amount }}
+        | Unpaid: {{ invoice.voucher_status.unpaid_amount }}
+    </h4>
+
+    <a href="{% url 'customers:payment_thread_detail' invoice.voucher_status.id %}">
+        ➜ Open Thread
+    </a>
+
+    <table class="table table-bordered mt-3">
+
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Activity</th>
+                <th>Details</th>
+                <th>By</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for event in invoice.events %}
+
+            <tr>
+
+                <td>
+                    {{ event.time }}
+                </td>
+
+                <td>
+                    {{ event.type }}
+                </td>
+
+                <td>
+                    {{ event.text }}
+                </td>
+
+                <td>
+                    {{ event.user }}
+                </td>
+
+            </tr>
+
+            {% empty %}
+
+            <tr>
+                <td colspan="4">No activity yet</td>
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endfor %}
+
+{% endblock %}

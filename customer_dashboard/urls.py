@@ -26,5 +26,10 @@ urlpatterns = [
         views.PaymentThreadDetailView.as_view(),
         name="payment_thread_detail",
     ),
+    path(
+        "customer/<int:customer_id>/payment-threads/",
+        views.CustomerPaymentThreadsView.as_view(),
+        name="customer_payment_threads",
+    ),
 
 ]
