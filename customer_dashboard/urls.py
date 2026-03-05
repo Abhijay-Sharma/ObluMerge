@@ -32,5 +32,5 @@ urlpatterns = [
         name="customer_payment_threads",
     ),
     path("sales-report/",views.SalesReportView.as_view(),name="sales_report",),
-    path("monthly-sales-report", views.MonthlySalesReportView.as_view(),name="monthly_sales_report")
+    path("monthly-sales-report/", views.MonthlySalesReportView.as_view(),name="monthly_sales_report")
 ]
