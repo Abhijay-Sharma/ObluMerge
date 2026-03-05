@@ -205,7 +205,7 @@
       <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
       {% if request.user.is_accountant %}
         <button class="btn" onclick="location.href='/customers/salesperson-customers/'">Salesperson-Customers</button>
-        <button class="btn" onclick="location.href='/customers/sales-reports/'">Sales-Report</button>
+        <button class="btn" onclick="location.href='/customers/sales-report/'">Sales-Report</button>
       {% else %}
         <button class="btn" onclick="location.href='/customers/sales-dashboard/'">Customers Status</button>
         <button class="btn" onclick="location.href='/customers/monthly-sales-report/'">My Sales-Report</button>
