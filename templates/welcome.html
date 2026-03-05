@@ -205,10 +205,10 @@
       <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
       {% if request.user.is_accountant %}
         <button class="btn" onclick="location.href='/customers/salesperson-customers/'">Salesperson-Customers</button>
-        <button class="btn" onclick="location.href='oblutools.com/customers/sales-reports/'">Sales-Report</button>
+        <button class="btn" onclick="location.href='/customers/sales-reports/'">Sales-Report</button>
       {% else %}
         <button class="btn" onclick="location.href='/customers/sales-dashboard/'">Customers Status</button>
-        <button class="btn" onclick="location.href='oblutools.com/customers/monthly-sales-report/'">My Sales-Report</button>
+        <button class="btn" onclick="location.href='/customers/monthly-sales-report/'">My Sales-Report</button>
       {% endif %}
     </div>
   </div>
