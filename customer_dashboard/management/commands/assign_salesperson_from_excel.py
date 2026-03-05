@@ -29,7 +29,7 @@ class Command(BaseCommand):
 
         for index, row in df.iterrows():
 
-            invoice = str(row.get("Invoice No", "")).strip()
+            invoice = str(row.get("Invoice No.", "")).strip()
             salesperson_name = str(row.get("Sales Person", "")).strip()
 
             # Skip child rows where invoice is blank
