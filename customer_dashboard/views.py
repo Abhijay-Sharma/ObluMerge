@@ -31,7 +31,8 @@ from .models import (
 PaymentTicketEvent
 )
 from .forms import PaymentRemarkForm, ExpectedDateForm
-
+from calendar import monthrange
+from decimal import Decimal
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -1363,6 +1364,117 @@ class AdminVoucherClaimManagementView(AccountantRequiredMixin, View):
 
         messages.success(request, "Voucher claim updated.")
         return redirect(request.META.get("HTTP_REFERER"))
+
+class SalesReportView(AccountantRequiredMixin,TemplateView):
+    template_name = "customers/sales_report.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # ---------------------------------
+        # BASIC FILTERS
+        # ---------------------------------
+        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
+
+        salesperson_id = self.request.GET.get("salesperson")
+        month_picker = self.request.GET.get("month_picker")
+
+        today = date.today()
+        if month_picker:
+            year, month = map(int, month_picker.split("-"))
+        else:
+            year, month = today.year, today.month
+
+        ctx["year"] = year
+        ctx["month"] = month
+
+        if not salesperson_id:
+            ctx.update({
+                "rows": [],
+                "selected_salesperson": None,
+            })
+            return ctx
+
+        year = ctx["year"]
+        month = ctx["month"]
+
+        start_date = date(year, month, 1)
+        end_date = date(year, month, monthrange(year, month)[1])
+
+        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
+        ctx["selected_salesperson"] = salesperson
+
+        if not salesperson:
+            return ctx
+
+        # ---------------------------------
+        # ALL TAX INVOICES (PAID + UNPAID)
+        # ---------------------------------
+        voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=salesperson,
+            voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[start_date, end_date],
+        )
+
+        vouchers = Voucher.objects.filter(
+            id__in=voucher_statuses.values_list("voucher_id", flat=True)
+        )
+
+        voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
+
+        # ---------------------------------
+        # STOCK ITEMS
+        # ---------------------------------
+        stock_items = (
+            VoucherStockItem.objects
+            .filter(voucher__in=vouchers)
+            .select_related("voucher", "item")
+            .order_by("voucher__date")
+        )
+
+        rows = []
+
+        total_sales = Decimal("0.00")
+
+        # ---------------------------------
+        # BUILD ROWS + MAPS
+        # ---------------------------------
+        for si in stock_items:
+            product = si.item
+            if not product:
+                continue
+
+
+            total_sales += Decimal(str(si.amount))
+
+            voucher_status = voucher_status_map.get(si.voucher_id)
+
+            is_fully_paid = bool(voucher_status and voucher_status.is_fully_paid)
+            is_partially_paid = bool(voucher_status and voucher_status.is_partially_paid)
+            is_unpaid = bool(voucher_status and voucher_status.is_unpaid)
+
+
+            rows.append({
+                "date": si.voucher.date,
+                "customer": si.voucher.party_name,
+                "customer_id": voucher_status.customer_id if voucher_status else None,
+                "voucher_id": si.voucher.id,
+                "voucher_no": si.voucher.voucher_number,
+                "product": product.name,
+                "quantity": si.quantity,
+                "amount": si.amount,
+                "is_fully_paid": is_fully_paid,
+                "is_partially_paid": is_partially_paid,
+                "is_unpaid": is_unpaid,
+            })
+
+        # ---------------------------------
+        # CONTEXT
+        # ---------------------------------
+        ctx["rows"] = rows
+        ctx["total_sales"] = total_sales
+
+        return ctx
 
 import json
 from django.views.generic import TemplateView

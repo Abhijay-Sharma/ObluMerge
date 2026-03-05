@@ -31,5 +31,5 @@ urlpatterns = [
         views.CustomerPaymentThreadsView.as_view(),
         name="customer_payment_threads",
     ),
-
+    path("sales-report/",views.SalesReportView.as_view(),name="sales_report",),
 ]
