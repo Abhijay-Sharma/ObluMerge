@@ -127,7 +127,7 @@ class Command(BaseCommand):
                 "salesperson": sp,
                 "rows": rows,
                 "today": today,
-                "domain": "https://crm.oblutools.com"
+                "domain": "https://oblutools.com"
             }
 
             html_content = render_to_string(
