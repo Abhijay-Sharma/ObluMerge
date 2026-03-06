@@ -1544,6 +1544,7 @@ class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
         rows = []
 
         total_sales = Decimal("0.00")
+        processed_vouchers = set()
 
         # ---------------------------------
         # BUILD ROWS + MAPS
@@ -1553,8 +1554,16 @@ class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
             if not product:
                 continue
 
+            if si.voucher_id not in processed_vouchers:
 
-            total_sales += Decimal(str(si.amount))
+                processed_vouchers.add(si.voucher_id)
+
+                party_row = si.voucher.rows.filter(
+                    ledger__iexact=si.voucher.party_name
+                ).first()
+
+                if party_row:
+                    total_sales += Decimal(str(party_row.amount))
 
             voucher_status = voucher_status_map.get(si.voucher_id)
 
