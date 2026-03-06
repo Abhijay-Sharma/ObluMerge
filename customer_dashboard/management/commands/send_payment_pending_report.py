@@ -141,16 +141,17 @@ class Command(BaseCommand):
                 subject=subject,
                 body="",
                 from_email="crm@oblutools.com",
-                # to=[sp.user.email],
-                to=["madderladder68@gmail.com"],
-                # cc=[
-                #     "abhijay.obluhc@gmail.com",
-                #     "swasti.obluhc@gmail.com",
-                #     "nitin.a@obluhc.com",
-                #     "raman.obluhc@gmail.com",
-                #     "akshay@obluhc.com",
-                #     "bhavya.obluhc@gmail.com",
-                # ],
+                to=[sp.user.email],
+                # to=["madderladder68@gmail.com"],
+                cc=[
+                    "abhijay.obluhc@gmail.com",
+                    "swasti.obluhc@gmail.com",
+                    "nitin.a@obluhc.com",
+                    "raman.obluhc@gmail.com",
+                    "akshay@obluhc.com",
+                    "bhavya.obluhc@gmail.com",
+                    "vibhuti.obluhc@gmail.com"
+                ],
             )
 
             msg.attach_alternative(html_content, "text/html")
