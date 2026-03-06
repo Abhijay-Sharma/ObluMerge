@@ -1,0 +1,87 @@
+<h2>Pending Payment Report</h2>
+
+<p>
+Hello <strong>{{ salesperson.name }}</strong>,
+</p>
+
+<p>
+The following invoices are still <b>Unpaid / Partially Paid</b>.
+Please follow up with the customers.
+</p>
+
+<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;">
+<thead style="background:#f5f5f5;">
+<tr>
+<th>Customer</th>
+<th>Invoice</th>
+<th>Pending Amount</th>
+<th>Credit Status</th>
+<th>Latest Remark</th>
+<th>Expected Payment Date</th>
+<th>Thread</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in rows %}
+
+<tr>
+
+<td>{{ r.customer }}</td>
+
+<td>
+<a href="{{ domain }}{{ r.voucher_link }}">
+{{ r.invoice_number }}
+</a>
+</td>
+
+<td>
+₹{{ r.pending_amount }}
+</td>
+
+<td>
+
+{% if r.credit_status == "crossed" %}
+<span style="color:red;font-weight:bold;">
+Crossed by {{ r.credit_days }} days
+</span>
+{% else %}
+<span style="color:green;">
+{{ r.credit_days }} days remaining
+</span>
+{% endif %}
+
+</td>
+
+<td>
+{{ r.remark|default:"—" }}
+</td>
+
+<td>
+{{ r.expected_date|default:"—" }}
+</td>
+
+<td>
+<a href="{{ domain }}{{ r.thread_link }}">
+Open Thread
+</a>
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+</table>
+
+<br>
+
+<p>
+Please update the payment thread after speaking with the customer.
+</p>
+
+<p>
+Regards,<br>
+CRM System
+</p>
