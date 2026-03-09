@@ -79,6 +79,29 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
         })
 
 
+class ProformaInvoiceDetailView(View):
+    """
+    Shows the details of a created Proforma Invoice,
+    including customer, items, and total.
+    """
+    def get(self, request, pk):
+        invoice = get_object_or_404(ProformaInvoice, pk=pk)
+        items = invoice.items.select_related("product")
+        # ---- load signature base64 from file ----
+        signature_path = os.path.join(
+            settings.BASE_DIR,
+            "proforma_invoice",
+            "assets",
+            "sujal_signature_base64.txt",
+        )
+        with open(signature_path, "r") as f:
+            signature_base64 = f.read().strip()
+        return render(request, "proforma_invoice/proforma_detail.html", {
+            "invoice": invoice,
+            "items": items,
+            "signature_base64": signature_base64,
+        })
+
 class ProformaInvoiceDetailView(DetailView):
     model = ProformaInvoice
     template_name = "proforma_invoice/proforma_detail.html"
@@ -238,141 +261,7 @@ class ProformaInvoiceDetailView(DetailView):
         })
 
         return context
-class ProformaInvoiceDetailView(DetailView):
-    model = ProformaInvoice
-    template_name = "proforma_invoice/proforma_detail.html"
-    context_object_name = "invoice"
 
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        invoice = self.object
-        # ---- load signature base64 from file ----
-        signature_path = os.path.join(
-            settings.BASE_DIR,
-            "proforma_invoice",
-            "assets",
-            "sujal_signature_base64.txt",
-        )
-        with open(signature_path, "r") as f:
-            signature_base64 = f.read().strip()
-
-        context["signature_base64"] = signature_base64
-
-        items_qs = invoice.items.select_related("product")
-        context["items"] = items_qs
-
-        altered_prices = {}
-        approved_request = None
-
-        if invoice.is_price_altered:
-            approved_request = (
-                ProformaPriceChangeRequest.objects
-                .filter(invoice=invoice, status="approved")
-                .order_by("-id")
-                .first()
-            )
-
-            if approved_request:
-                altered_prices = approved_request.requested_product_prices or {}
-
-        context["altered_prices"] = altered_prices
-
-        if altered_prices:
-            self.template_name = "proforma_invoice/proforma_detail_altered.html"
-
-        # =========================
-        # 🔥 RECALCULATION LOGIC
-        # =========================
-        # =========================
-        # 🔥 RECALCULATION LOGIC
-        # =========================
-
-        recalculated_items = []
-
-        subtotal_excl = Decimal("0.00")
-        subtotal_incl = Decimal("0.00")
-        total_product_gst = Decimal("0.00")
-
-        for item in items_qs:
-            qty = Decimal(str(item.quantity or 0))
-            gst_rate = Decimal(str(item.taxrate() or 0))
-
-            if str(item.id) in altered_prices:
-                unit_price_incl = Decimal(str(altered_prices[str(item.id)]))
-            else:
-                unit_price_incl = Decimal(str(item.unit_price()))
-
-            if gst_rate > 0:
-                divisor = Decimal("1.00") + (gst_rate / Decimal("100"))
-                unit_price_excl = (unit_price_incl / divisor).quantize(
-                    Decimal("0.01"), rounding=ROUND_HALF_UP
-                )
-            else:
-                unit_price_excl = unit_price_incl
-
-            taxable_value = (unit_price_excl * qty).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-
-            amount_incl = (unit_price_incl * qty).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-
-            product_gst = (amount_incl - taxable_value).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-
-            # 🔥 ADD TOTALS HERE
-            subtotal_excl += taxable_value
-            subtotal_incl += amount_incl
-            total_product_gst += product_gst
-
-            recalculated_items.append({
-                "item": item,
-                "unit_price_incl": unit_price_incl,
-                "unit_price_excl": unit_price_excl,
-                "taxable_value": taxable_value,
-                "amount_incl": amount_incl,
-                "gst_amount": product_gst,
-                "gst_rate": gst_rate,
-            })
-
-        # =========================
-        # 🔥 Courier Calculation (Dynamic GST)
-        # =========================
-
-        if approved_request and approved_request.requested_courier_charge:
-            courier_charge = Decimal(str(approved_request.requested_courier_charge))
-        else:
-            courier_charge = Decimal(str(invoice.courier_charge() or 0))
-
-        courier_gst_rate = Decimal("18")
-
-        courier_gst = (courier_charge * courier_gst_rate / Decimal("100")).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-
-        total_igst = total_product_gst + courier_gst
-
-        grand_total = (subtotal_excl + courier_charge + total_igst).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-
-        amount_in_words = (
-                num2words(grand_total, lang="en_IN").title() + " Rupees"
-        )
-        context["recalculated_items"] = recalculated_items
-
-        context.update({
-            "recalculated_subtotal": subtotal_excl,
-            "recalculated_igst": total_igst,
-            "recalculated_grand_total": grand_total,
-            "approved_request": approved_request,
-            "amount_in_words": amount_in_words,
-        })
-
-        return context
 
 def get_inventory_by_category(request):
     category_id = request.GET.get("category_id")
