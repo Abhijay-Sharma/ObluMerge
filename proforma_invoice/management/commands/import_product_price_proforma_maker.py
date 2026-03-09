@@ -11,7 +11,6 @@ class Command(BaseCommand):
     help = "Import Product Prices from Excel with intelligent name matching"
 
     FILE_PATH = r"C:\Users\Administrator\Desktop\HSN+tally SUMMARY (9).xlsx"
-
     # ---------------- CLEANERS ---------------- #
 
     def clean_decimal(self, value):
@@ -48,19 +47,21 @@ class Command(BaseCommand):
             return None
 
     def clean_tax_rate(self, value):
-        """
-        Ensure GST is stored as percentage:
-        0.18 -> 18
-        18   -> 18
-        """
+
+        if pd.isna(value):
+            return Decimal("0")
+
+        value = str(value).replace("%", "")
+
         rate = self.clean_decimal(value)
+
         if rate is None:
             return Decimal("0")
 
         if rate <= 1:
-            return rate * 100  # 0.18 → 18
-        return rate  # already percentage
+            return rate * 100
 
+        return rate
     def clean_bool(self, value):
         return str(value).strip().lower() in ["yes", "y", "true", "1"]
 
@@ -121,9 +122,20 @@ class Command(BaseCommand):
                 continue
 
             tax_rate = self.clean_tax_rate(row.get("Tax_Rate"))
-            hsn = row.get("HSN NO.")
+            hsn_raw = row.get("HSN NO.")
+
+            if pd.isna(hsn_raw):
+                hsn = None
+            else:
+                hsn = str(int(hsn_raw))
 
             min_qty_raw = row.get("Min_Qty")
+
+            if pd.isna(min_qty_raw):
+                min_qty = 1
+            else:
+                min_qty = int(min_qty_raw)
+
             try:
                 min_qty = int(float(min_qty_raw)) if not pd.isna(min_qty_raw) else 1
             except Exception:
