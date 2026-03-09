@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SalesPerson, Customer, CustomerCreditProfile, CustomerFollowUp, CustomerRemark, PaymentDiscussionThread, CustomerVoucherStatus, PaymentRemark
+from .models import SalesPerson, Customer, CustomerCreditProfile, CustomerFollowUp, CustomerRemark, PaymentDiscussionThread, CustomerVoucherStatus, PaymentRemark, PaymentExpectedDateHistory, PaymentTicketEvent
 
 
 
@@ -44,3 +44,11 @@ class CustomerVoucherStatusAdmin(admin.ModelAdmin):
 @admin.register(PaymentRemark)
 class PaymentRemarkAdmin(admin.ModelAdmin):
     list_display = ("thread","created_by","created_at")
+
+@admin.register(PaymentExpectedDateHistory)
+class PaymentExpectedDateHistoryAdmin(admin.ModelAdmin):
+    list_display = ("thread","expected_date","set_by","created_at")
+
+@admin.register(PaymentTicketEvent)
+class PaymentTicketEventAdmin(admin.ModelAdmin):
+    list_display = ("thread","event_type","performed_by")
