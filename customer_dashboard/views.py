@@ -834,7 +834,7 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             ctx["sp_followups_upcoming"] = []
         return ctx
 
-class CustomerPaymentStatusView(TemplateView):
+class CustomerPaymentStatusView(LoginRequiredMixin, TemplateView):
     template_name = "customers/customer_payment_status.html"
 
     def get_context_data(self, **kwargs):
@@ -898,7 +898,7 @@ class CustomerPaymentStatusView(TemplateView):
         ctx["filters"] = self.request.GET
         return ctx
 
-class PaymentThreadDetailView(TemplateView):
+class PaymentThreadDetailView(LoginRequiredMixin,TemplateView):
     template_name = "customers/payment_thread_detail.html"
 
     def dispatch(self, request, *args, **kwargs):
@@ -996,7 +996,7 @@ class PaymentThreadDetailView(TemplateView):
 
         return ctx
 
-class CustomerPaymentThreadsView(TemplateView):
+class CustomerPaymentThreadsView(LoginRequiredMixin, TemplateView):
     template_name = "customers/customer_payment_threads.html"
 
     def dispatch(self, request, *args, **kwargs):
