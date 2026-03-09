@@ -10,7 +10,7 @@ from decimal import Decimal
 class Command(BaseCommand):
     help = "Import Product Prices from Excel with intelligent name matching"
 
-    FILE_PATH = r"C:\Users\Administrator\Desktop\HSN+tally SUMMARY (8).xlsx"
+    FILE_PATH = r"C:\Users\Administrator\Desktop\HSN+tally SUMMARY (9).xlsx"
 
     # ---------------- CLEANERS ---------------- #
 
