@@ -107,17 +107,11 @@ class ProformaInvoiceDetailView(DetailView):
     template_name = "proforma_invoice/proforma_detail.html"
     context_object_name = "invoice"
 
-    from decimal import Decimal, ROUND_HALF_UP
-
-    from decimal import Decimal, ROUND_HALF_UP
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         invoice = self.object
-
-        # =========================
-        # 🔹 Load Signature
-        # =========================
+        # ---- load signature base64 from file ----
         signature_path = os.path.join(
             settings.BASE_DIR,
             "proforma_invoice",
@@ -125,16 +119,16 @@ class ProformaInvoiceDetailView(DetailView):
             "sujal_signature_base64.txt",
         )
         with open(signature_path, "r") as f:
-            context["signature_base64"] = f.read().strip()
+            signature_base64 = f.read().strip()
+
+        context["signature_base64"] = signature_base64
 
         items_qs = invoice.items.select_related("product")
         context["items"] = items_qs
 
-        # =========================
-        # 🔹 Price Alteration
-        # =========================
         altered_prices = {}
         approved_request = None
+
         if invoice.is_price_altered:
             approved_request = (
                 ProformaPriceChangeRequest.objects
@@ -142,43 +136,60 @@ class ProformaInvoiceDetailView(DetailView):
                 .order_by("-id")
                 .first()
             )
+
             if approved_request:
                 altered_prices = approved_request.requested_product_prices or {}
+
         context["altered_prices"] = altered_prices
+
         if altered_prices:
             self.template_name = "proforma_invoice/proforma_detail_altered.html"
 
         # =========================
-        # 🔹 Product Calculation
+        # 🔥 RECALCULATION LOGIC
         # =========================
+        # =========================
+        # 🔥 RECALCULATION LOGIC
+        # =========================
+
         recalculated_items = []
+
         subtotal_excl = Decimal("0.00")
+        subtotal_incl = Decimal("0.00")
         total_product_gst = Decimal("0.00")
 
         for item in items_qs:
             qty = Decimal(str(item.quantity or 0))
             gst_rate = Decimal(str(item.taxrate() or 0))
 
-            # Price altered or normal
             if str(item.id) in altered_prices:
                 unit_price_incl = Decimal(str(altered_prices[str(item.id)]))
             else:
                 unit_price_incl = Decimal(str(item.unit_price()))
 
-            # Rate excl rounded 2 decimals
-            divisor = Decimal("1.00") + (gst_rate / Decimal("100"))
-            unit_price_excl = (unit_price_incl / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if gst_rate > 0:
+                divisor = Decimal("1.00") + (gst_rate / Decimal("100"))
+                unit_price_excl = (unit_price_incl / divisor).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            else:
+                unit_price_excl = unit_price_incl
 
-            # Taxable value
-            taxable_value = (unit_price_excl * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            taxable_value = (unit_price_excl * qty).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
 
-            # GST per product (rounded 2 decimals)
-            product_gst = (taxable_value * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            amount_incl = (unit_price_incl * qty).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
 
-            # Amount incl = taxable + gst
-            amount_incl = (taxable_value + product_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            product_gst = (amount_incl - taxable_value).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
 
+            # 🔥 ADD TOTALS HERE
             subtotal_excl += taxable_value
+            subtotal_incl += amount_incl
             total_product_gst += product_gst
 
             recalculated_items.append({
@@ -192,76 +203,40 @@ class ProformaInvoiceDetailView(DetailView):
             })
 
         # =========================
-        # 🔹 Courier Charges + GST (Tally-style)
+        # 🔥 Courier Calculation (Dynamic GST)
         # =========================
-        # if approved_request and approved_request.requested_courier_charge:
-        if approved_request and approved_request.requested_courier_charge is not None:
+
+        if approved_request and approved_request.requested_courier_charge:
             courier_charge = Decimal(str(approved_request.requested_courier_charge))
         else:
             courier_charge = Decimal(str(invoice.courier_charge() or 0))
 
-        # Combined GST % (Tally-style)
-        if subtotal_excl > 0:
-            combined_gst_rate = (total_product_gst / subtotal_excl * Decimal("100")).quantize(Decimal("0.01"),
-                                                                                              rounding=ROUND_HALF_UP)
-        else:
-            combined_gst_rate = Decimal("0.00")
+        courier_gst_rate = Decimal("18")
 
-        # Courier GST using combined rate
-        courier_gst = (courier_charge * combined_gst_rate / Decimal("100")).quantize(Decimal("0.01"),
-                                                                                     rounding=ROUND_HALF_UP)
+        courier_gst = (courier_charge * courier_gst_rate / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
 
-        total_gst = (total_product_gst + courier_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        total_igst = total_product_gst + courier_gst
 
-        # =========================
-        # 🔹 Grand Total
-        # =========================
-        gross_total = (subtotal_excl + courier_charge + total_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        grand_total = (subtotal_excl + courier_charge + total_igst).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
 
-        # Tally-style rounding to nearest ₹1
-        rounded_total = gross_total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-        round_off = (rounded_total - gross_total).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        final_total = rounded_total
+        amount_in_words = (
+                num2words(grand_total, lang="en_IN").title() + " Rupees"
+        )
+        context["recalculated_items"] = recalculated_items
 
-        # =========================
-        # 🔹 GST Split
-        # =========================
-        if invoice.is_intra_state():
-            cgst = (total_gst / 2).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            utgst = total_gst - cgst
-            igst = Decimal("0.00")
-        else:
-            igst = total_gst
-            cgst = Decimal("0.00")
-            utgst = Decimal("0.00")
-
-        # Amount in words
-            final_total = rounded_total
-        amount_in_words = num2words(final_total , lang="en_IN").title() + " Rupees Only"
-        # amount_in_words = num2words(final_total, lang="en_IN").title() + " Rupees Only"
-
-        # =========================
-        # 🔹 Context Update
-        # =========================
         context.update({
-            "recalculated_items": recalculated_items,
             "recalculated_subtotal": subtotal_excl,
-            "courier_charge": courier_charge,
-            "combined_gst_rate": combined_gst_rate,
-            "igst": igst,
-            "cgst": cgst,
-            "utgst": utgst,
-            "total_gst": total_gst,
-            "gross_total": gross_total,
-            "round_off": round_off,
-            "recalculated_grand_total": final_total,
+            "recalculated_igst": total_igst,
+            "recalculated_grand_total": grand_total,
+            "approved_request": approved_request,
             "amount_in_words": amount_in_words,
-            "gst_type": invoice.gst_type(),
-            "approved_request" : approved_request,
         })
 
         return context
-
 
 def get_inventory_by_category(request):
     category_id = request.GET.get("category_id")
