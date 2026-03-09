@@ -159,6 +159,34 @@ hr{
   gap:6px;
 }
 
+/* ================= BANK + QR ================= */
+
+.bank-section{
+  margin-top:18px;
+  display:flex;
+  align-items:flex-start;
+  gap:40px;
+}
+
+.bank-qr{
+  text-align:center;
+  flex:0 0 auto;
+}
+
+.bank-details{
+  flex:1;
+}
+
+.bank-qr img{
+  width:110px;
+  height:auto;
+}
+
+.bank-qr-title{
+  margin-top:6px;
+  font-weight:bold;
+  color:#0b78a8;
+}
 
 
 
@@ -338,7 +366,8 @@ Place of Supply : Delhi-34
 </tbody>
 </table>
 
-{% with courier_charge=approved_request.requested_courier_charge|default:invoice.courier_charge %}
+{% with courier_charge=approved_request.requested_courier_charge|default_if_none:courier_charge %}
+
 
 <div class="totals-wrapper">
 <table>
@@ -359,12 +388,46 @@ Place of Supply : Delhi-34
 </td>
 </tr>
 
+<!--<tr>-->
+<!--<td class="right bold" style="font-size:13px;">IGST</td>-->
+<!--<td class="right" style="font-size:13px; border-right:none;">-->
+<!--&lt;!&ndash;₹ {{ recalculated_igst|floatformat:2 }}&ndash;&gt;-->
+<!--    ₹ {{ igst|floatformat:2 }}-->
+<!--</td>-->
+<!--</tr>-->
+
+<!-- INTRA STATE (Delhi) -->
+{% if gst_type == "INTRA" %}
 <tr>
-<td class="right bold" style="font-size:13px;">IGST</td>
+<td class="right bold" style="font-size:13px;">
+CGST @ {{ half_gst_rate }}%
+</td>
 <td class="right" style="font-size:13px; border-right:none;">
-₹ {{ recalculated_igst|floatformat:2 }}
+₹ {{ cgst|floatformat:2 }}
 </td>
 </tr>
+
+<tr>
+<td class="right bold" style="font-size:13px;">
+SGST @ {{ half_gst_rate }}%
+</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ utgst|floatformat:2 }}
+</td>
+</tr>
+{% endif %}
+
+<!-- INTER STATE -->
+{% if gst_type == "INTER" %}
+<tr>
+<td class="right bold" style="font-size:13px;">
+IGST @ {{ effective_gst_rate|floatformat:2 }}%
+</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ igst|floatformat:2 }}
+</td>
+</tr>
+{% endif %}
 
 <tr class="totals-highlight">
 <td class="right">Total</td>
@@ -380,22 +443,30 @@ Place of Supply : Delhi-34
 </div>
 
 {% endwith %}
-
+<!-- ;chnges -->
 <div style="margin-top:10px;">
-<b>Amount in Words:</b><br><br>
+<b>Amount in Words:</b><br>
 INR {{ amount_in_words }}
 </div>
+<!--____Terms n condition __-->
+<!--<div style="margin-top:15px; border:1px solid #000; padding:8px;">-->
+ <br> <b>Terms and Conditions:</b><br><br>
+  1. 100% payment to be made at the time of order confirmation.<br>
+  2. Shipping Charges will be added for Air Shipment (If needed).<br>
 
-<!--<div style="margin-top:18px;">-->
-<!--<b>Company's Bank Details:<br><br>-->
-<!--A/c Holder : OBLU HEALTHCARE LLP<br><br>-->
-<!--Bank : ICICI BANK (CC)<br><br>-->
-<!--A/c No. : 629351001224<br><br>-->
-<!--Branch & IFSC : Rajouri Garden & ICIC0006293</b>-->
-<!--</div>-->
-<div style="margin-top:18px; display:flex; align-items:flex-start; gap:60px;">
 
-    <div style="flex:0 0 auto;">
+    <div class="bank-section">
+
+  <!-- QR LEFT -->
+  <div class="bank-qr">
+    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/Oblu_Qr_Pay.jpg">
+    <div class="bank-qr-title">
+      BANK QR
+    </div>
+  </div>
+
+  <!-- BANK DETAILS RIGHT -->
+  <div class="bank-details">
     <b>Company's Bank Details:<br><br>
     A/c Holder : OBLU HEALTHCARE LLP<br><br>
     Bank : ICICI BANK (CC)<br><br>
@@ -403,20 +474,13 @@ INR {{ amount_in_words }}
     Branch & IFSC : Rajouri Garden & ICIC0006293</b>
   </div>
 
-  <div style="text-align:center;">
-    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/Oblu_Qr_Pay.jpg"
-         style="width:110px; height:auto;">
-    <div style="margin-top:6px; font-weight:bold; color:#0b78a8;">
-      BANK QR
-    </div>
-  </div>
 </div>
 
 
 
 
 
-<div style="text-align:right; margin-top:0px;">
+<div style="text-align:right; margin-top:-200px;">
 For OBLU HEALTHCARE LLP<br><br>
 <img src="{{ signature_base64 }}"
        style="width:140px; height:auto;" alt="Signature"><br>
@@ -432,6 +496,8 @@ This is a computer generated invoice
 style="padding:8px 16px;background:#333;color:#fff;border:none;cursor:pointer;">
 Print / Save as PDF
 </button>
+<!--is_accountant-->
+<!--is_superuser-->
 
 </div>
 </div>
