@@ -33,6 +33,7 @@ PaymentTicketEvent
 from .forms import PaymentRemarkForm, ExpectedDateForm
 from calendar import monthrange
 from decimal import Decimal
+from django.core.mail import EmailMultiAlternatives
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -956,6 +957,49 @@ class PaymentThreadDetailView(LoginRequiredMixin,TemplateView):
                 event_type="RAISED",
                 performed_by=request.user
             )
+            # ---------------------------
+            # SEND EMAIL
+            # ---------------------------
+
+            salesperson = self.voucher_status.customer.salesperson
+            salesperson_email = None
+
+            if salesperson and salesperson.user:
+                salesperson_email = salesperson.user.email
+
+            page_link = request.build_absolute_uri(
+                reverse(
+                    "customers:payment_thread_detail",
+                    args=[self.voucher_status.id]
+                )
+            )
+
+            subject = "🚨 Payment Ticket Raised"
+
+            body = f"""
+            The user {request.user.username} has raised a payment ticket.
+
+            Customer: {self.voucher_status.customer.name}
+            Invoice: {self.voucher_status.voucher.voucher_number}
+
+            Please review the issue.
+
+            Open Ticket:
+            {page_link}
+            """
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=body,
+                from_email="crm@oblutools.com",
+                to=[salesperson_email] if salesperson_email else [],
+                cc=[
+                    "abhijay.obluhc@gmail.com",
+                    request.user.email
+                ]
+            )
+
+            msg.send()
 
             messages.success(request, "Ticket raised.")
 
