@@ -97,18 +97,19 @@ class ProformaInvoice(models.Model):
         default=CourierMode.SURFACE)
 
     def is_intra_state(self):
-        billing_state = self.customer.state
+        """
+        True  -> CGST + SGST
+        False -> IGST
+        """
+
+        seller_state = "Delhi"
 
         if self.shipping_customer:
-            shipping_state = self.shipping_customer.state
+            supply_state = self.shipping_customer.state
         else:
-            shipping_state = self.customer.state
+            supply_state = self.customer.state
 
-        return billing_state == shipping_state
-
-        # ===============================
-        # GST TYPE
-        # ===============================
+        return supply_state == seller_state
 
     def gst_type(self):
         """
