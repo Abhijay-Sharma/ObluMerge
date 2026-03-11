@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <title>Create Proforma Invoice</title>
   <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
@@ -172,6 +175,7 @@
         <h3>Customer</h3>
         <button type="button" id="select-customer-btn">Select Customer</button>
         <a href="{% url 'create_customer' %}" class="btn-outline-primary">Create</a>
+
         <p><strong>Selected:</strong>
           <span id="selected-customer-name">
             {% if selected_customer %}
@@ -192,7 +196,53 @@
         <input type="hidden" name="customer_email" id="id_customer_email">
       </div>
 
+       <div id="shippingModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+
+        <h3>Select Shipping Address </h3>
+
+        <select id="modal-shipping-select">
+          <option value="">-- Select Shipping Address --</option>
+
+          {% for customer in customers %}
+          <option value="{{ customer.id }}"
+                  data-name="{{ customer.name }}"
+                  data-address="{{ customer.address }}"
+                  data-city="{{ customer.city }}"
+                  data-state="{{ customer.state }}"
+                  data-pincode="{{ customer.pincode }}"
+                  data-phone="{{ customer.phone }}">
+            {{ customer.name }} - {{ customer.city }}
+          </option>
+          {% endfor %}
+
+        </select>
+
+        <br><br>
+
+    <button type="button" id="confirm-shipping">Confirm</button>      </div>
+    </div>
+
+
+
       <!-- ================= ITEMS SECTION ================= -->
+        <div class="form-section">
+          <h3>Shipping Address (Optional)</h3>
+
+          <button type="button" id="select-shipping-btn">
+              Select Shipping Address
+          </button>
+
+          <p>
+            <strong>Selected Shipping:</strong>
+            <span id="selected-shipping-name">None</span>
+          </p>
+
+          <input type="hidden" name="shipping_customer" id="id_shipping_customer">
+        </div>
+
+
       <div class="form-section">
         <h3>Proforma Items</h3>
 
@@ -260,17 +310,18 @@
 
   <button type="button"
           class="courier-btn active"
-          data-mode="surface"
+          data-mode="surface">
 <!--          id="btn-surface">-->
     🚚 Surface
   </button>
 
   <button type="button"
           class="courier-btn"
-          data-mode="air"
+          data-mode="air">
 <!--          id="btn-air">-->
     ✈️ Air
   </button>
+
 </div>
 
         </div>
@@ -436,8 +487,37 @@ $(".courier-btn").click(function () {
   console.log("Courier mode set to:", mode); // DEBUG
 });
 
+<!-- -----------  ;js for shipping modal--->
 
+/* ================= SHIPPING MODAL ================= */
 
+var shippingModal = $("#shippingModal");
+
+$("#select-shipping-btn").click(function(){
+    shippingModal.show();
+});
+
+$("#shippingModal .close").click(function(){
+    shippingModal.hide();
+});
+
+$("#confirm-shipping").click(function () {
+
+    let option = $("#modal-shipping-select option:selected");
+
+    let id = option.val();
+    let name = option.data("name");
+
+    if (!id) {
+        alert("Please select shipping address");
+        return;
+    }
+
+    $("#id_shipping_customer").val(id);
+    $("#selected-shipping-name").text(name);
+
+    $("#shippingModal").hide();
+});
 </script>
 
 </body>
