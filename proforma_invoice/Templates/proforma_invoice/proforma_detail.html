@@ -395,34 +395,64 @@ State : 07-Delhi
 <div class="totals-wrapper">
 <table>
 <tr>
-<!--  <td width="60%" style="font-size:13px;">-->
-<!--    <b >Order Amount In Words</b><br>-->
-<!--    INR {{  invoice.grand_total_in_words }}-->
-<!--  </td>-->
+<td width="40%">
+<table>
+<tr>
+<td class="right bold" style="font-size:13px;">Sub Total</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ recalculated_subtotal|floatformat:2 }}
+</td>
+</tr>
 
-  <td width="40%">
-    <table>
-      <tr>
-        <td class="right bold" style="font-size:13px;">Sub Total</td>
-        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.taxable_total|floatformat:2 }}</td>
-      </tr>
-      <tr>
-        <td class="right bold" style="font-size:13px;">Courier Charges</td>
-        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.courier_charge|floatformat:2 }}</td>
-      </tr>
-      <tr>
-        <td class="right bold" style="font-size:13px;">IGST @ {{ gst_rate }}%</td>
-          <td class="right" style="font-size:13px; border-right:none;">
-          ₹ {{ invoice.igst_total |floatformat:2 }}
-        </td>
+<tr>
+<td class="right bold" style="font-size:13px;">Courier Charges</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ courier_charge|floatformat:2 }}
+</td>
+</tr>
 
-      </tr>
-      <tr class="totals-highlight">
-        <td class="right">Total</td>
-        <td class="right" style="font-size:13px; border-right:none;">₹ {{ invoice.grand_total|floatformat:2 }}</td>
-      </tr>
-    </table>
-  </td>
+<!--<tr>-->
+<!--<td class="right bold" style="font-size:13px;">IGST</td>-->
+<!--<td class="right" style="font-size:13px; border-right:none;">-->
+<!--₹ {{ recalculated_igst|floatformat:2 }}-->
+<!--</td>-->
+<!--</tr>-->
+{% if invoice.is_intra_state %}
+
+<tr>
+<td class="right bold" style="font-size:13px;">CGST</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ cgst|floatformat:2 }}
+</td>
+</tr>
+
+<tr>
+<td class="right bold" style="font-size:13px;">SGST</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ utgst|floatformat:2 }}
+</td>
+</tr>
+
+{% else %}
+
+<tr>
+<td class="right bold" style="font-size:13px;">IGST</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ igst|floatformat:2 }}
+</td>
+</tr>
+
+{% endif %}
+
+<tr class="totals-highlight">
+<td class="right">Total</td>
+<td class="right" style="font-size:13px; border-right:none;">
+₹ {{ recalculated_grand_total|floatformat:2 }}
+</td>
+</tr>
+
+</table>
+</td>
 </tr>
 </table>
 </div>
@@ -437,7 +467,7 @@ State : 07-Delhi
 
   <!-- QR LEFT -->
   <div class="bank-qr">
-    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/Oblu_Qr_Pay.jpg">
+    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/Oblu_QR_Pay2.jpg">
     <div class="bank-qr-title">
       BANK QR
     </div>
@@ -447,8 +477,8 @@ State : 07-Delhi
   <div class="bank-details">
     <b>Company's Bank Details:<br><br>
     A/c Holder : OBLU HEALTHCARE LLP<br><br>
-    Bank : ICICI BANK (CC)<br><br>
-    A/c No. : 629351001224<br><br>
+    Bank : ICICI BANK <br><br>
+    A/c No. : 629305041976<br><br>
     Branch & IFSC : Rajouri Garden & ICIC0006293</b>
   </div>
 
