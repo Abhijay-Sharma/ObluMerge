@@ -5,6 +5,7 @@
 <link rel="stylesheet"
  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+
 <meta charset="UTF-8">
 <title>Proforma Invoice</title>
 
@@ -296,13 +297,23 @@ State : 07-Delhi
 
   <div>
     <b>Ship To<br><br>
-    {{ invoice.customer.name }}<br>
-    {{ invoice.customer.address }}<br>
-    {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-    {{ invoice.customer.state }}<br>
-    Mob : {{ invoice.customer.phone }}</b>
-  </div>
 
+    {% if invoice.shipping_customer %}
+        {{ invoice.shipping_customer.name }}<br>
+        {{ invoice.shipping_customer.address }}<br>
+        {{ invoice.shipping_customer.city }} - {{ invoice.shipping_customer.pincode }}<br>
+        {{ invoice.shipping_customer.state }}<br>
+        Mob : {{ invoice.shipping_customer.phone }}
+    {% else %}
+        {{ invoice.customer.name }}<br>
+        {{ invoice.customer.address }}<br>
+        {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
+        {{ invoice.customer.state }}<br>
+        Mob : {{ invoice.customer.phone }}
+    {% endif %}
+
+    </b>
+    </div>
   <div>
     <b>Order Details<br><br>
     Order No. : {{ invoice.id }}<br>
@@ -401,7 +412,7 @@ State : 07-Delhi
   Branch & IFSC : Rajouri Garden & ICIC0006293</b>
 </div>
 
-<div style="text-align:right; margin-top:20px;">
+<div style="text-align:right; margin-top:-180px;">
   For OBLU HEALTHCARE LLP<br><br>
   <img src="{{ signature_base64 }}"
        style="width:140px; height:auto;" alt="Signature"><br>
