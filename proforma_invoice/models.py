@@ -6,7 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 # Import existing models
-from quotations.models import Customer
+from customer_dashboard.models import Customer
 from inventory.models import InventoryItem
 from django.urls import reverse
 from decimal import Decimal
@@ -78,6 +78,13 @@ class ProformaInvoice(models.Model):
     The main proforma invoice model — similar to a quotation but restricted to items in stock.
     """
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    shipping_customer = models.ForeignKey(
+        Customer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shipping_invoices"
+    )
     date_created = models.DateTimeField(auto_now_add=True)
     validity = models.DateTimeField(default=validity_default)
     created_by = models.CharField(max_length=255, default="Oblu")
@@ -88,6 +95,32 @@ class ProformaInvoice(models.Model):
         max_length=10,
         choices=CourierMode.choices,
         default=CourierMode.SURFACE)
+
+    def is_intra_state(self):
+        billing_state = self.customer.state
+
+        if self.shipping_customer:
+            shipping_state = self.shipping_customer.state
+        else:
+            shipping_state = self.customer.state
+
+        return billing_state == shipping_state
+
+        # ===============================
+        # GST TYPE
+        # ===============================
+
+    def gst_type(self):
+        """
+        Returns the GST type label used in templates.
+        """
+
+        if self.is_intra_state():
+            return "CGST + SGST"
+        return "IGST"
+
+    def ship_to(self):
+        return self.shipping_customer if self.shipping_customer else self.customer
 
     def taxable_total(self):
         return sum(item.total_price_excl_tax() for item in self.items.all())
