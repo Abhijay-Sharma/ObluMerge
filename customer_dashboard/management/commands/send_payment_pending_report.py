@@ -61,14 +61,18 @@ class Command(BaseCommand):
                 # ---------------------------
 
                 credit_crossed = vs.is_credit_period_crossed
-                credit_days = vs.credit_days_elapsed or 0
+                days_elapsed = vs.credit_days_elapsed or 0
+
+                credit_period = 0
+                if hasattr(vs.customer, "credit_profile"):
+                    credit_period = vs.customer.credit_profile.credit_period_days
 
                 if credit_crossed:
                     credit_status = "crossed"
-                    credit_display = credit_days
+                    credit_display = days_elapsed
                 else:
                     credit_status = "remaining"
-                    credit_display = credit_days
+                    credit_display = max(credit_period - days_elapsed, 0)
 
                 # ---------------------------
                 # THREAD
@@ -141,17 +145,17 @@ class Command(BaseCommand):
                 subject=subject,
                 body="",
                 from_email="crm@oblutools.com",
-                to=[sp.user.email],
-                # to=["madderladder68@gmail.com"],
-                cc=[
-                    "abhijay.obluhc@gmail.com",
-                    "swasti.obluhc@gmail.com",
-                    "nitin.a@obluhc.com",
-                    "raman.obluhc@gmail.com",
-                    "akshay@obluhc.com",
-                    "bhavya.obluhc@gmail.com",
-                    "vibhuti.obluhc@gmail.com"
-                ],
+                # to=[sp.user.email],
+                to=["madderladder68@gmail.com"],
+                # cc=[
+                #     "abhijay.obluhc@gmail.com",
+                #     "swasti.obluhc@gmail.com",
+                #     "nitin.a@obluhc.com",
+                #     "raman.obluhc@gmail.com",
+                #     "akshay@obluhc.com",
+                #     "bhavya.obluhc@gmail.com",
+                #     "vibhuti.obluhc@gmail.com"
+                # ],
             )
 
             msg.attach_alternative(html_content, "text/html")
