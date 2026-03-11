@@ -967,11 +967,9 @@ class PaymentThreadDetailView(LoginRequiredMixin,TemplateView):
             if salesperson and salesperson.user:
                 salesperson_email = salesperson.user.email
 
-            page_link = request.build_absolute_uri(
-                reverse(
-                    "customers:payment_thread_detail",
-                    args=[self.voucher_status.id]
-                )
+            page_link = "https://oblutools.com" + reverse(
+                "customers:payment_thread_detail",
+                args=[self.voucher_status.id]
             )
 
             subject = "🚨 Payment Ticket Raised"
