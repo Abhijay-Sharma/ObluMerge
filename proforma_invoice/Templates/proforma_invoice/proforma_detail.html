@@ -125,7 +125,7 @@ hr{
   color:#fff;
 }
 
-/* ================= QR ================= */
+/* ================= QR ================= /
 .qr-box{
   display:flex;
   justify-content:flex-end;
@@ -157,6 +157,36 @@ hr{
   display:flex;
   align-items:center;
   gap:6px;
+}
+
+
+/ ================= BANK + QR ================= */
+
+.bank-section{
+  margin-top:18px;
+  display:flex;
+  align-items:flex-start;
+  gap:40px;
+}
+
+.bank-qr{
+  text-align:center;
+  flex:0 0 auto;
+}
+
+.bank-details{
+  flex:1;
+}
+
+.bank-qr img{
+  width:110px;
+  height:auto;
+}
+
+.bank-qr-title{
+  margin-top:6px;
+  font-weight:bold;
+  color:#0b78a8;
 }
 
 /* ================= PRINT ================= */
@@ -404,12 +434,25 @@ State : 07-Delhi
   INR {{ invoice.grand_total_in_words }}
 </div>
 <!-- ================= BANK ================= -->
-<div style="margin-top:18px;">
-  <b>Company's Bank Details:<br><br>
-  A/c Holder : OBLU HEALTHCARE LLP<br><br>
-  Bank : ICICI BANK (CC)<br><br>
-  A/c No. : 629351001224<br><br>
-  Branch & IFSC : Rajouri Garden & ICIC0006293</b>
+<div class="bank-section">
+
+  <!-- QR LEFT -->
+  <div class="bank-qr">
+    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/Oblu_Qr_Pay.jpg">
+    <div class="bank-qr-title">
+      BANK QR
+    </div>
+  </div>
+
+  <!-- BANK DETAILS RIGHT -->
+  <div class="bank-details">
+    <b>Company's Bank Details:<br><br>
+    A/c Holder : OBLU HEALTHCARE LLP<br><br>
+    Bank : ICICI BANK (CC)<br><br>
+    A/c No. : 629351001224<br><br>
+    Branch & IFSC : Rajouri Garden & ICIC0006293</b>
+  </div>
+
 </div>
 
 <div style="text-align:right; margin-top:-180px;">
