@@ -14,8 +14,10 @@ Please follow up with the customers.
 <tr>
 <th>Customer</th>
 <th>Invoice</th>
+<th>Invoice Date</th>
 <th>Pending Amount</th>
 <th>Credit Status</th>
+<th>Ticket Status</th>
 <th>Latest Remark</th>
 <th>Expected Payment Date</th>
 <th>Thread</th>
@@ -35,7 +37,9 @@ Please follow up with the customers.
 {{ r.invoice_number }}
 </a>
 </td>
-
+<td>
+{{ r.invoice_date }}
+</td>
 <td>
 ₹{{ r.pending_amount }}
 </td>
@@ -52,6 +56,20 @@ Crossed by {{ r.credit_days }} days
 </span>
 {% endif %}
 
+</td>
+
+<td>
+{% if r.ticket_status == "RAISED" %}
+<span style="color:orange;font-weight:bold;">
+Raised by {{ r.ticket_raised_by }} on {{ r.ticket_raised_at }}
+</span>
+{% elif r.ticket_status == "SOLVED" %}
+<span style="color:green;">
+Solved
+</span>
+{% else %}
+—
+{% endif %}
 </td>
 
 <td>

@@ -111,10 +111,16 @@ class Command(BaseCommand):
                 rows.append({
                     "customer": vs.customer.name,
                     "invoice_number": vs.voucher.voucher_number,
+                    "invoice_date": vs.voucher_date,
                     "voucher_link": voucher_link,
                     "pending_amount": pending_amount,
                     "credit_status": credit_status,
                     "credit_days": credit_display,
+
+                    "ticket_status": thread.ticket_status if thread else None,
+                    "ticket_raised_by": thread.raised_by.username if thread and thread.raised_by else None,
+                    "ticket_raised_at": thread.raised_at if thread else None,
+
                     "remark": latest_remark,
                     "expected_date": latest_expected_date,
                     "thread_link": thread_link,
@@ -145,17 +151,17 @@ class Command(BaseCommand):
                 subject=subject,
                 body="",
                 from_email="crm@oblutools.com",
-                to=[sp.user.email],
-                # to=["madderladder68@gmail.com"],
-                cc=[
-                    "abhijay.obluhc@gmail.com",
-                    "swasti.obluhc@gmail.com",
-                    "nitin.a@obluhc.com",
-                    "raman.obluhc@gmail.com",
-                    "akshay@obluhc.com",
-                    "bhavya.obluhc@gmail.com",
-                    "vibhuti.obluhc@gmail.com"
-                ],
+                # to=[sp.user.email],
+                to=["madderladder68@gmail.com"],
+                # cc=[
+                #     "abhijay.obluhc@gmail.com",
+                #     "swasti.obluhc@gmail.com",
+                #     "nitin.a@obluhc.com",
+                #     "raman.obluhc@gmail.com",
+                #     "akshay@obluhc.com",
+                #     "bhavya.obluhc@gmail.com",
+                #     "vibhuti.obluhc@gmail.com"
+                # ],
             )
 
             msg.attach_alternative(html_content, "text/html")
