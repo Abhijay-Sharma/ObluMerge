@@ -152,7 +152,7 @@ class Command(BaseCommand):
                 body="",
                 from_email="crm@oblutools.com",
                 # to=[sp.user.email],
-                to=["madderladder68@gmail.com"],
+                to=["madderladder68@gmail.com","vibhuti.obluhc@gmail.com"],
                 # cc=[
                 #     "abhijay.obluhc@gmail.com",
                 #     "swasti.obluhc@gmail.com",
