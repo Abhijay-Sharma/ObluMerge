@@ -55,7 +55,8 @@
       font-size: 15px;
     }
     .table-wrapper { width: 100%; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse;   min-width:500px;
+}
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     th { background: #eee; }
     button {
@@ -99,13 +100,12 @@
     .modal-content {
       background: #fff;
       color: #000;
-      margin: 10% auto;
+      margin: 5% auto;
       padding: 20px;
       border-radius: 16px;
-      width: 90%;
+      width: 95%;
       max-width: 450px;
     }
-
     .close { float:right; cursor:pointer; font-size:20px; }
     @keyframes fadeIn {
       from { opacity:0; transform: translateY(30px); }
@@ -127,6 +127,31 @@
   color: #fff;
   transform: scale(1.05);
 }
+
+.highlight{
+  background: yellow;
+  font-weight: bold;
+}
+
+#customer-suggestions,
+#shipping-suggestions{
+  border:1px solid #ddd;
+  border-radius:8px;
+  background:#fff;
+  max-height:200px;
+  overflow-y:auto;
+}
+
+.suggest-item,
+.shipping-item{
+  padding:8px;
+}
+
+.suggest-item:hover,
+.shipping-item:hover{
+  background:#f2f2f2;
+}
+
 
 
   </style>
@@ -170,11 +195,10 @@
       </div>
       {% endif %}
 
-      <!-- ================= CUSTOMER SECTION ================= -->
+      <!-- ================= SHIPPING CUSTOMER SECTION ================= -->
       <div class="form-section">
         <h3>Customer</h3>
         <button type="button" id="select-customer-btn">Select Customer</button>
-        <a href="{% url 'create_customer' %}" class="btn-outline-primary">Create</a>
 
         <p><strong>Selected:</strong>
           <span id="selected-customer-name">
@@ -200,7 +224,9 @@
       <div class="modal-content">
         <span class="close">&times;</span>
 
-        <h3>Select Shipping Address </h3>
+        <h3 class="shipping-title">Shipping Address (Optional)</h3>
+    <input type="text" id="shipping-search" placeholder="Search shipping customer..." style="width:100%; padding:8px; margin-bottom:10px;">
+        <ul id="shipping-suggestions" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
 
         <select id="modal-shipping-select">
           <option value="">-- Select Shipping Address --</option>
@@ -229,6 +255,7 @@
       <!-- ================= ITEMS SECTION ================= -->
         <div class="form-section">
           <h3>Shipping Address (Optional)</h3>
+
 
           <button type="button" id="select-shipping-btn">
               Select Shipping Address
@@ -342,6 +369,11 @@
   <div class="modal-content">
     <span class="close">&times;</span>
     <h3>Select Customer</h3>
+
+    <input type="text" id="customer-search" placeholder="Search customer..." style="width:100%; padding:8px; margin-bottom:10px;">
+
+    <ul id="customer-suggestions" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
+
     <select id="modal-customer-select">
       <option value="">-- Select Customer --</option>
       {% for customer in customers %}
@@ -408,6 +440,92 @@ $(function () {
     }
     customerModal.hide();
   });
+
+  /* ================= LIVE CUSTOMER SEARCH ================= */
+
+const customers = [
+{% for customer in customers %}
+{
+    id: "{{ customer.id }}",
+    name: "{{ customer.name }}"
+},
+{% endfor %}
+];
+
+$("#customer-search").on("input", function(){
+
+    let query = $(this).val().toLowerCase();
+
+    let list = $("#customer-suggestions");
+
+    list.empty();
+
+    if(query.length === 0) return;
+
+    customers.forEach(function(c){
+
+        let nameLower = c.name.toLowerCase();
+
+        if(nameLower.includes(query)){
+
+            let regex = new RegExp("("+query+")","gi");
+
+            let highlighted = c.name.replace(regex,'<span class="highlight">$1</span>');
+
+            list.append(`
+                <li class="suggest-item"
+                    data-id="${c.id}"
+                    data-name="${c.name}"
+                    style="padding:6px; cursor:pointer; border-bottom:1px solid #eee;">
+                    ${highlighted}
+                </li>
+            `);
+
+        }
+
+    });
+
+});
+
+
+/* ================= SHIPPING CUSTOMER LIVE SEARCH ================= */
+
+
+
+$("#shipping-search").on("input", function(){
+
+    let query = $(this).val().toLowerCase();
+
+    let list = $("#shipping-suggestions");
+
+    list.empty();
+
+    if(query.length === 0) return;
+
+    customers.forEach(function(c){
+
+        let nameLower = c.name.toLowerCase();
+
+        if(nameLower.includes(query)){
+
+            let regex = new RegExp("(" + query + ")", "gi");
+
+            let highlighted = c.name.replace(regex,'<span class="highlight">$1</span>');
+
+            list.append(`
+                <li class="shipping-item"
+                    data-id="${c.id}"
+                    data-name="${c.name}"
+                    style="padding:6px; cursor:pointer; border-bottom:1px solid #eee;">
+                    ${highlighted}
+                </li>
+            `);
+
+        }
+
+    });
+
+});
 
   /* ================= PRODUCT MODAL ================= */
   var productModal = $("#productModal");
@@ -503,20 +621,46 @@ $("#shippingModal .close").click(function(){
 
 $("#confirm-shipping").click(function () {
 
-    let option = $("#modal-shipping-select option:selected");
-
-    let id = option.val();
-    let name = option.data("name");
+    let id = $("#id_shipping_customer").val();
+    let name = $("#selected-shipping-name").text();
 
     if (!id) {
         alert("Please select shipping address");
         return;
     }
 
+    $("#shippingModal").hide();
+
+});
+
+    $(document).on("click",".suggest-item",function(){
+
+    let id = $(this).data("id");
+    let name = $(this).data("name");
+
+    $("#id_customer").val(id);
+
+    $("#selected-customer-name").text(name);
+
+    $("#customer-search").val(name);
+
+    $("#customer-suggestions").empty();
+
+});
+
+    $(document).on("click",".shipping-item",function(){
+
+    let id = $(this).data("id");
+    let name = $(this).data("name");
+
     $("#id_shipping_customer").val(id);
+
     $("#selected-shipping-name").text(name);
 
-    $("#shippingModal").hide();
+    $("#shipping-search").val(name);
+
+    $("#shipping-suggestions").empty();
+
 });
 </script>
 
