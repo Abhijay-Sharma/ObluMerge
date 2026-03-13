@@ -152,6 +152,10 @@
   background:#f2f2f2;
 }
 
+.shipping-text{
+  margin-top:-29px;
+}
+
 
 
   </style>
@@ -197,7 +201,7 @@
 
       <!-- ================= SHIPPING CUSTOMER SECTION ================= -->
       <div class="form-section">
-        <h3>Customer</h3>
+<!--        <h3>Customer</h3>-->
         <button type="button" id="select-customer-btn">Select Customer</button>
 
         <p><strong>Selected:</strong>
@@ -220,48 +224,16 @@
         <input type="hidden" name="customer_email" id="id_customer_email">
       </div>
 
-       <div id="shippingModal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-
-        <h3 class="shipping-title">Shipping Address (Optional)</h3>
-    <input type="text" id="shipping-search" placeholder="Search shipping customer..." style="width:100%; padding:8px; margin-bottom:10px;">
-        <ul id="shipping-suggestions" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
-
-        <select id="modal-shipping-select">
-          <option value="">-- Select Shipping Address --</option>
-
-          {% for customer in customers %}
-          <option value="{{ customer.id }}"
-                  data-name="{{ customer.name }}"
-                  data-address="{{ customer.address }}"
-                  data-city="{{ customer.city }}"
-                  data-state="{{ customer.state }}"
-                  data-pincode="{{ customer.pincode }}"
-                  data-phone="{{ customer.phone }}">
-            {{ customer.name }} - {{ customer.city }}
-          </option>
-          {% endfor %}
-
-        </select>
-
-        <br><br>
-
-    <button type="button" id="confirm-shipping">Confirm</button>      </div>
-    </div>
 
 
 
       <!-- ================= ITEMS SECTION ================= -->
         <div class="form-section">
-          <h3>Shipping Address (Optional)</h3>
+<!--          <h3>Shipping Address (Optional)</h3>-->
 
 
-          <button type="button" id="select-shipping-btn">
-              Select Shipping Address
-          </button>
 
-          <p>
+          <p class="shipping-text" >
             <strong>Selected Shipping:</strong>
             <span id="selected-shipping-name">None</span>
           </p>
@@ -301,14 +273,16 @@
 
               <tr class="item-form">
                 <td>
-                  <span class="product-label">
+                    <span class="product-label">
                     {% if form.instance.product %}
-                      {{ form.instance.product.name }}
+                    {{ form.instance.product.name }}
+                    {% elif form.data.product %}
+                    {{ form.data.product }}
                     {% else %}
-                      None
+                    None
                     {% endif %}
-                  </span>
-                  <button type="button" class="select-product-btn">Select Product</button>
+                    </span>
+                    <button type="button" class="select-product-btn">Select Product</button>
                   {{ form.product }}
                 </td>
 
@@ -368,36 +342,67 @@
 <div id="customerModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
+
     <h3>Select Customer</h3>
 
-    <input type="text" id="customer-search" placeholder="Search customer..." style="width:100%; padding:8px; margin-bottom:10px;">
+    <!-- BILLING CUSTOMER -->
+    <label><strong>Billing Customer</strong></label>
+    <input type="text" id="customer-search"
+           placeholder="Search billing customer..."
+           style="width:100%; padding:8px; margin-bottom:10px;">
 
-    <ul id="customer-suggestions" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
+    <ul id="customer-suggestions"
+        style="list-style:none; padding:0; max-height:150px; overflow-y:auto;">
+    </ul>
 
-    <select id="modal-customer-select">
-      <option value="">-- Select Customer --</option>
-      {% for customer in customers %}
-      <option value="{{ customer.id }}"
-              data-name="{{ customer.name }}"
-              data-address="{{ customer.address }}"
-              data-city="{{ customer.city }}"
-              data-state="{{ customer.state }}"
-              data-pincode="{{ customer.pincode }}"
-              data-phone="{{ customer.phone }}"
-              data-email="{{ customer.email }}">
-        {{ customer.name }}
-      </option>
-      {% endfor %}
-    </select><br><br>
+    <p>
+      Selected Billing:
+      <strong id="billing-selected-name">None</strong>
+    </p>
+
+    <hr style="margin:20px 0">
+
+    <!-- SHIPPING CUSTOMER -->
+    <label><strong>Shipping Address (Optional)</strong></label>
+    <input type="text" id="shipping-search"
+           placeholder="Search shipping customer..."
+           style="width:100%; padding:8px; margin-bottom:10px;">
+
+    <ul id="shipping-suggestions"
+        style="list-style:none; padding:0; max-height:150px; overflow-y:auto;">
+    </ul>
+
+    <p>
+      Selected Shipping:
+      <strong id="shipping-selected-name">None</strong>
+    </p>
+
+    <br>
+
     <button id="confirm-customer">Confirm</button>
+
   </div>
 </div>
+<!--SHIPPING MODAL -->
+
 
 <!-- PRODUCT MODAL -->
 <div id="productModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
     <h3>Select Product</h3>
+    <input type="text"
+       id="product-search"
+       placeholder="Search product..."
+       style="width:100%; padding:8px; margin-bottom:10px;">
+
+        <ul id="product-suggestions"
+            style="list-style:none; padding:0; max-height:200px; overflow-y:auto;">
+        </ul>
+
+        <hr>
+
+
 
     <label>Category</label>
     <select id="category-select">
@@ -562,6 +567,75 @@ $("#shipping-search").on("input", function(){
     productModal.hide();
   });
 
+const products = [
+{% for p in items %}
+{
+    id: "{{ p.id }}",
+    name: "{{ p.name|escapejs }}",
+    category: "{{ p.category.name|escapejs }}"
+},
+{% endfor %}
+];
+
+  /* ================= PRODUCT SEARCHING  ================= */
+
+$("#product-search").on("input", function(){
+
+    let query = $(this).val().toLowerCase();
+    let list = $("#product-suggestions");
+
+    list.empty();
+
+    if(query.length === 0) return;
+
+    products.forEach(function(p){
+
+        if(p.name.toLowerCase().includes(query)){
+
+            let regex = new RegExp("(" + query + ")", "gi");
+            let highlighted = p.name.replace(regex,'<span class="highlight">$1</span>');
+
+            list.append(`
+                <li class="product-item"
+                    data-id="${p.id}"
+                    data-name="${p.name}"
+                    style="padding:6px; cursor:pointer; border-bottom:1px solid #eee;">
+                    ${highlighted}
+                    <small style="color:#888"> (${p.category})</small>
+                </li>
+            `);
+
+        }
+
+    });
+
+});
+
+
+/* ===== CLICK PRODUCT FROM SEARCH ===== */
+
+$(document).on("click",".product-item",function(){
+
+    let id = $(this).data("id");
+    let name = $(this).data("name");
+
+    if(currentProductInput){
+        currentProductInput.val(id);
+    }
+
+    if(currentProductLabel){
+        currentProductLabel.text(name);
+    }
+
+    $("#product-search").val("");
+    $("#product-suggestions").empty();
+
+    $("#productModal").hide();
+
+});
+
+
+
   /* ================= ADD/REMOVE ITEMS ================= */
   $("#add-item").click(function () {
     let totalForms = $("#id_form-TOTAL_FORMS");
@@ -605,7 +679,6 @@ $(".courier-btn").click(function () {
   console.log("Courier mode set to:", mode); // DEBUG
 });
 
-<!-- -----------  ;js for shipping modal--->
 
 /* ================= SHIPPING MODAL ================= */
 
@@ -633,35 +706,46 @@ $("#confirm-shipping").click(function () {
 
 });
 
-    $(document).on("click",".suggest-item",function(){
+$(document).on("click",".suggest-item",function(){
 
     let id = $(this).data("id");
     let name = $(this).data("name");
 
     $("#id_customer").val(id);
-
-    $("#selected-customer-name").text(name);
-
-    $("#customer-search").val(name);
-
-    $("#customer-suggestions").empty();
+    $("#billing-selected-name").text(name);
 
 });
 
-    $(document).on("click",".shipping-item",function(){
+  $(document).on("click",".shipping-item",function(){
 
     let id = $(this).data("id");
     let name = $(this).data("name");
 
     $("#id_shipping_customer").val(id);
-
-    $("#selected-shipping-name").text(name);
-
-    $("#shipping-search").val(name);
-
-    $("#shipping-suggestions").empty();
+    $("#shipping-selected-name").text(name);
 
 });
+
+ $("#confirm-customer").click(function(){
+
+    let billingName = $("#billing-selected-name").text();
+    let shippingName = $("#shipping-selected-name").text();
+
+    if($("#id_customer").val() === ""){
+        alert("Please select billing customer");
+        return;
+    }
+
+    $("#selected-customer-name").text(billingName);
+
+    if($("#id_shipping_customer").val()){
+        $("#selected-shipping-name").text(shippingName);
+    }
+
+    $("#customerModal").hide();
+
+});
+
 </script>
 
 </body>
