@@ -36,14 +36,12 @@ class CreateProformaInvoiceViewLegacy(LoginRequiredMixin, View):
 
         customers = Customer.objects.all() if request.user.is_accountant else Customer.objects.filter(created_by=request.user)
         categories = Category.objects.all().order_by("name")
-        items = InventoryItem.objects.select_related("category").all().order_by("name")
 
         return render(request, "proforma_invoice/create_proforma.html", {
             "invoice_form": invoice_form,
             "formset": formset,
             "customers": customers,
             "categories": categories,
-            "items": items,
         })
 
     def post(self, request, *args, **kwargs):
@@ -72,7 +70,6 @@ class CreateProformaInvoiceViewLegacy(LoginRequiredMixin, View):
 
         customers = Customer.objects.all() if request.user.is_accountant else Customer.objects.filter(created_by=request.user)
         categories = Category.objects.all().order_by("name")
-        items = InventoryItem.objects.select_related("category").all().order_by("name")
 
         return render(request, "proforma_invoice/create_proforma.html", {
             "invoice_form": invoice_form,
@@ -80,7 +77,6 @@ class CreateProformaInvoiceViewLegacy(LoginRequiredMixin, View):
             "customers": customers,
             "categories": categories,
             "selected_customer": selected_customer,
-            "items": items,
         })
 
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
@@ -102,13 +98,14 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
             customers = Customer.objects.filter(proforma_invoices__created_by=request.user.username).distinct()
 
         categories = Category.objects.all().order_by("name")
-
+        items = InventoryItem.objects.select_related("category").all().order_by("name")
 
         return render(request, "proforma_invoice/create_proforma.html", {
             "invoice_form": invoice_form,
             "formset": formset,
             "customers": customers,
             "categories": categories,
+            "items": items,
         })
 
 
@@ -167,6 +164,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                     proforma_invoices__created_by=request.user.username
                 ).distinct()
             categories = Category.objects.all().order_by("name")
+            items = InventoryItem.objects.select_related("category").all().order_by("name")
             return render(
                 request,
                 "proforma_invoice/create_proforma.html",
@@ -176,6 +174,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                     "customers": customers,
                     "categories": categories,
                     "selected_customer": selected_customer,
+                    "items": items,
                 },
             )
 
