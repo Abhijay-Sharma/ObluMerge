@@ -28,12 +28,19 @@ from urllib.parse import urlencode
 from .models import (
     CustomerVoucherStatus,
     PaymentDiscussionThread,
-PaymentTicketEvent
+PaymentTicketEvent,
+    PaymentRemark,
+PaymentExpectedDateHistory,
 )
 from .forms import PaymentRemarkForm, ExpectedDateForm
 from calendar import monthrange
 from decimal import Decimal
 from django.core.mail import EmailMultiAlternatives
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
+
+
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -1106,6 +1113,135 @@ class CustomerPaymentThreadsView(LoginRequiredMixin, TemplateView):
 
         return ctx
 
+
+class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
+
+    template_name = "customers/payment_followup_dashboard.html"
+
+    def get_queryset(self):
+
+        user = self.request.user
+
+        qs = CustomerVoucherStatus.objects.filter(
+            Q(is_unpaid=True) | Q(is_partially_paid=True)
+        ).select_related(
+            "customer",
+            "voucher",
+            "customer__salesperson"
+        ).prefetch_related(
+            "payment_thread__remarks",
+            "payment_thread__expected_date_history",
+            "payment_thread__ticket_events"
+        )
+
+        salesperson_id = self.request.GET.get("salesperson")
+
+        if user.is_superuser:
+
+            if salesperson_id:
+                qs = qs.filter(customer__salesperson_id=salesperson_id)
+
+        else:
+
+            qs = qs.filter(customer__salesperson__user=user)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+
+        ctx = super().get_context_data(**kwargs)
+
+        qs = self.get_queryset()
+
+        # ensure threads exist
+        for vs in qs:
+            PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
+
+        ctx["voucher_statuses"] = qs
+        ctx["salespersons"] = SalesPerson.objects.all()
+
+        ctx["selected_salesperson"] = self.request.GET.get("salesperson")
+
+        return ctx
+
+
+@require_POST
+def payment_followup_action(request):
+
+    action = request.POST.get("action")
+    vs_id = request.POST.get("voucher_status_id")
+
+    vs = CustomerVoucherStatus.objects.get(id=vs_id)
+
+    thread, _ = PaymentDiscussionThread.objects.get_or_create(
+        voucher_status=vs
+    )
+
+    if action == "remark":
+
+        remark = request.POST.get("remark")
+
+        obj = PaymentRemark.objects.create(
+            thread=thread,
+            remark=remark,
+            created_by=request.user
+        )
+
+        return JsonResponse({
+            "status": "ok",
+            "text": remark,
+            "user": request.user.username,
+            "time": obj.created_at.strftime("%d %b %H:%M")
+        })
+
+
+    elif action == "expected":
+
+        date = request.POST.get("expected_date")
+
+        obj = PaymentExpectedDateHistory.objects.create(
+            thread=thread,
+            expected_date=date,
+            set_by=request.user
+        )
+
+        return JsonResponse({
+            "status": "ok",
+            "date": date,
+            "user": request.user.username
+        })
+
+
+    elif action == "raise":
+
+        thread.ticket_status = "RAISED"
+        thread.raised_by = request.user
+        thread.raised_at = timezone.now()
+        thread.save()
+
+        PaymentTicketEvent.objects.create(
+            thread=thread,
+            event_type="RAISED",
+            performed_by=request.user
+        )
+
+        return JsonResponse({"status": "ok"})
+
+
+    elif action == "solve":
+
+        thread.ticket_status = "SOLVED"
+        thread.solved_by = request.user
+        thread.solved_at = timezone.now()
+        thread.save()
+
+        PaymentTicketEvent.objects.create(
+            thread=thread,
+            event_type="SOLVED",
+            performed_by=request.user
+        )
+
+        return JsonResponse({"status": "ok"})
 
 class CustomerEditView(AccountantRequiredMixin, View):
     template_name = "customers/edit_customer.html"

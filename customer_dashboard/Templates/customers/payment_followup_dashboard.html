@@ -1,0 +1,366 @@
+{% extends "customers/base.html" %}
+{% block content %}
+
+<h2>Payment Follow Ups</h2>
+
+{% if request.user.is_superuser %}
+
+<form method="get">
+
+<select name="salesperson">
+
+<option value="">All</option>
+
+{% for sp in salespersons %}
+
+<option value="{{ sp.id }}"
+{% if selected_salesperson == sp.id|stringformat:"s" %}
+selected
+{% endif %}
+>
+{{ sp.name }}
+</option>
+
+{% endfor %}
+
+</select>
+
+<button type="submit">Filter</button>
+
+</form>
+
+{% endif %}
+
+
+<div id="loading"
+style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.2);
+z-index:999;
+text-align:center;
+padding-top:200px;
+font-size:20px;
+">
+
+Saving...
+
+</div>
+
+
+<table class="table table-bordered">
+
+<thead>
+
+<tr>
+<th>Customer</th>
+<th>Invoice</th>
+<th>Date</th>
+<th>Pending</th>
+<th>Remark</th>
+<th>Expected</th>
+<th>Ticket</th>
+<th>History</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for vs in voucher_statuses %}
+
+<tr>
+
+<td>{{ vs.customer.name }}</td>
+<td>{{ vs.voucher.voucher_number }}</td>
+<td>{{ vs.voucher_date }}</td>
+<td>{{ vs.unpaid_amount }}</td>
+
+<td>
+
+<input type="text"
+id="remark-{{vs.id}}"
+placeholder="Remark">
+
+<button onclick="saveRemark({{vs.id}})">
+Save
+</button>
+
+</td>
+
+<td>
+
+<input type="date"
+id="date-{{vs.id}}">
+
+<button onclick="saveDate({{vs.id}})">
+Save
+</button>
+
+</td>
+
+<td>
+
+<div id="ticket-btn-{{vs.id}}">
+
+{% if vs.payment_thread.ticket_status == "RAISED" %}
+
+<button onclick="solveTicket({{vs.id}})">
+Solve
+</button>
+
+{% else %}
+
+<button onclick="raiseTicket({{vs.id}})">
+Raise
+</button>
+
+{% endif %}
+
+</div>
+
+</td>
+
+<td>
+
+<button onclick="toggle({{vs.id}})">
+Show
+</button>
+
+</td>
+
+</tr>
+
+
+<tr id="history-{{vs.id}}" style="display:none">
+
+<td colspan="8">
+
+{% with thread=vs.payment_thread %}
+
+{% if thread %}
+
+<b>Remarks</b>
+
+<ul id="remarks-list-{{vs.id}}">
+
+{% for r in thread.remarks.all %}
+<li>{{r.remark}} - {{r.created_by}} ({{r.created_at}})</li>
+{% empty %}
+<li>No remarks yet</li>
+{% endfor %}
+
+</ul>
+
+
+<b>Expected Dates</b>
+
+<ul id="dates-list-{{vs.id}}">
+
+{% for d in thread.expected_date_history.all %}
+<li>{{d.expected_date}} - {{d.set_by}}</li>
+{% empty %}
+<li>No expected dates yet</li>
+{% endfor %}
+
+</ul>
+
+
+<b>Ticket History</b>
+
+<ul id="ticket-list-{{vs.id}}">
+
+{% for t in thread.ticket_events.all %}
+<li>{{t.event_type}} by {{t.performed_by}} ({{t.performed_at}})</li>
+{% empty %}
+<li>No ticket activity</li>
+{% endfor %}
+
+</ul>
+
+{% endif %}
+
+{% endwith %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+
+<script>
+
+function showLoading(){
+document.getElementById("loading").style.display="block"
+}
+
+function hideLoading(){
+document.getElementById("loading").style.display="none"
+}
+
+
+function postData(data){
+
+showLoading()
+
+return fetch("{% url 'customers:payment_followup_action' %}",{
+
+method:"POST",
+
+headers:{
+"X-CSRFToken":"{{csrf_token}}"
+},
+
+body:new URLSearchParams(data)
+
+}).then(r=>r.json()).then(data=>{
+hideLoading()
+return data
+})
+
+}
+
+
+function saveRemark(id){
+
+let input=document.getElementById("remark-"+id)
+
+let remark=input.value
+
+if(!remark.trim()){
+return
+}
+
+postData({
+action:"remark",
+voucher_status_id:id,
+remark:remark
+}).then(res=>{
+
+let ul=document.getElementById("remarks-list-"+id)
+
+let li=document.createElement("li")
+
+li.innerText=res.text+" - "+res.user
+
+ul.prepend(li)
+
+/* clear input field */
+input.value=""
+
+})
+
+}
+
+
+function saveDate(id){
+
+let input=document.getElementById("date-"+id)
+
+let date=input.value
+
+if(!date){
+return
+}
+
+postData({
+action:"expected",
+voucher_status_id:id,
+expected_date:date
+}).then(res=>{
+
+let ul=document.getElementById("dates-list-"+id)
+
+let li=document.createElement("li")
+
+li.innerText=res.date+" - "+res.user
+
+ul.prepend(li)
+
+/* clear field */
+input.value=""
+
+/* optional: focus again */
+input.focus()
+
+})
+
+}
+
+
+function raiseTicket(id){
+
+postData({
+action:"raise",
+voucher_status_id:id
+}).then(()=>{
+
+let btn=document.getElementById("ticket-btn-"+id)
+
+btn.innerHTML=`<button onclick="solveTicket(${id})">Solve</button>`
+
+let ul=document.getElementById("ticket-list-"+id)
+
+if(ul){
+
+let li=document.createElement("li")
+
+li.innerText="RAISED by you just now"
+
+ul.prepend(li)
+
+}
+
+})
+
+}
+
+
+function solveTicket(id){
+
+postData({
+action:"solve",
+voucher_status_id:id
+}).then(()=>{
+
+let btn=document.getElementById("ticket-btn-"+id)
+
+btn.innerHTML=`<button onclick="raiseTicket(${id})">Raise</button>`
+
+let ul=document.getElementById("ticket-list-"+id)
+
+if(ul){
+
+let li=document.createElement("li")
+
+li.innerText="SOLVED by you just now"
+
+ul.prepend(li)
+
+}
+
+})
+
+}
+
+
+function toggle(id){
+
+let row=document.getElementById("history-"+id)
+
+row.style.display=row.style.display==="none" ? "table-row" : "none"
+
+}
+
+</script>
+
+{% endblock %}

@@ -31,6 +31,16 @@ urlpatterns = [
         views.CustomerPaymentThreadsView.as_view(),
         name="customer_payment_threads",
     ),
+    path(
+        "payment-followups/",
+        views.PaymentFollowUpDashboardView.as_view(),
+        name="payment_followup_dashboard",
+    ),
+    path(
+        "payment-followups/action/",
+        views.payment_followup_action,
+        name="payment_followup_action",
+    ),
     path("sales-report/",views.SalesReportView.as_view(),name="sales_report",),
     path("monthly-sales-report/", views.MonthlySalesReportView.as_view(),name="monthly_sales_report")
 ]
