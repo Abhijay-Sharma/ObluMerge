@@ -6,15 +6,16 @@ import pandas as pd
 import numpy as np
 from .tests import get_meta_campaigns, get_meta_insights
 from inventory.mixins import AccountantRequiredMixin
-
+import os
 
 
 
 class MetaDashboardView(AccountantRequiredMixin, TemplateView):
-    template_name = "meta_ads_dashboard/dashboard.html"
+    template_name = "meta/dashboard.html"
     login_url = "login"   # change if your login url name is different
 
-
+    ACCESS_TOKEN = os.getenv("META_DASHBOARD_ACCESS_TOKEN")
+    AD_ACCOUNT_ID = os.getenv("META_DASHBOARD_AD_ACCOUNT_ID")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
