@@ -40,6 +40,7 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'meta',
     'incentive_calculator',
     'tally_voucher',
     'proforma_invoice',

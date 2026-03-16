@@ -53,4 +53,5 @@ urlpatterns = [
     path('proforma/', include('proforma_invoice.urls')),
     path('vouchers/', include('tally_voucher.urls')),
     path('incentives/', include('incentive_calculator.urls')),
+    path("meta/", include("meta_ads_dashboard.urls")),
 ]
