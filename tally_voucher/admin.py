@@ -11,3 +11,8 @@ from .models import *
 class VoucherAdmin(admin.ModelAdmin):
     list_display = ('party_name', 'date', 'voucher_type', 'voucher_number','voucher_category')
     search_fields = ['party_name','voucher_number']
+
+@admin.register(VoucherRow)
+class VoucherRowAdmin(admin.ModelAdmin):
+    list_display = ('voucher','ledger','amount')
+
