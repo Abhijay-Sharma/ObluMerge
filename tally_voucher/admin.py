@@ -16,3 +16,8 @@ class VoucherAdmin(admin.ModelAdmin):
 class VoucherRowAdmin(admin.ModelAdmin):
     list_display = ('voucher','ledger','amount')
 
+@admin.register(VoucherStockItem)
+class VoucherStockItemAdmin(admin.ModelAdmin):
+    list_display = ('voucher','item','quantity','date_created')
+    search_fields = ['date_created']
+
