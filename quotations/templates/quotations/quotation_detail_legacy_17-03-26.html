@@ -106,52 +106,25 @@
             color: white;
             font-size: 14px;
         }
-
-
-        .drag-handle {
-            cursor: grab;
-            font-size: 16px;
-            width: 25px;
+            @media print {
+        .contact-info2 {
+            margin-top: 10px;
+            height: 30px;
+            background-color: #333 !important;
+            display: flex !important;
+            justify-content: space-around;
+            align-items: center;
+            color: white !important;
+            font-size: 14px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+        .page-break {
+            page-break-before: always;
+            break-before: page;
         }
 
-        .drag-handle:active {
-            cursor: grabbing;
-        }
-
-        tr.sortable-ghost {
-            opacity: 0.4;
-        }
-
-        tr {
-            transition: background 0.2s;
-        }
-
-        tr:hover {
-            background: #fafafa;
-        }
-
-        @media print {
-            .contact-info2 {
-                margin-top: 10px;
-                height: 30px;
-                background-color: #333 !important;
-                display: flex !important;
-                justify-content: space-around;
-                align-items: center;
-                color: white !important;
-                font-size: 14px;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .page-break {
-                page-break-before: always;
-                break-before: page;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-        }
 
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -209,27 +182,24 @@
 
 
     <table>
-    <thead>
-        <tr>
-            <th class="no-print">#</th>
-            <th>S.no</th>
-            <th>Product</th>
-            <th>Qty</th>
-            <th>Net Price (₹)</th>
-            <th>GST (%)</th>
-            <th>GST Amount</th>
-            <th>Unit Price (Inc. GST)</th>
-            {% if has_discount %}
-                <th>Discount (₹)</th>
-            {% endif %}
-            <th>Total (₹)</th>
-        </tr>
-    </thead>
-
-        <tbody id="productTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Net Price (₹)</th>
+                <th>GST (%)</th>
+                <th>GST Amount</th>
+                <th>Unit Price (Inc. GST)</th>
+                {% if has_discount %}
+                    <th>Discount (₹)</th>
+                {% endif %}
+                <th>Total (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for item in quotation.items.all %}
             <tr>
-                <td class="drag-handle no-print">☰</td>
                 <td>{{ forloop.counter }}</td>
                 <td>
                     <strong>{{ item.product.name }}</strong>
@@ -360,7 +330,6 @@
 
     </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script>
 
@@ -390,32 +359,6 @@
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     }
-
-    document.addEventListener("DOMContentLoaded", function () {
-
-        const tableBody = document.getElementById("productTable");
-
-        new Sortable(tableBody, {
-            animation: 150,
-            handle: ".drag-handle",
-            delay: 150,
-            delayOnTouchOnly: true,
-
-            onEnd: function () {
-                updateRowNumbers();
-            }
-        });
-
-        function updateRowNumbers() {
-            const rows = tableBody.querySelectorAll("tr");
-
-            rows.forEach((row, index) => {
-                row.children[1].innerText = index + 1;
-            });
-        }
-
-    });
-
 </script>
 
 
