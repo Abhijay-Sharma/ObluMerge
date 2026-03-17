@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Request Inspector</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    margin:40px;
+}
+
+.section{
+    margin-bottom:30px;
+}
+
+pre{
+    background:#f4f4f4;
+    padding:15px;
+    overflow:auto;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>Request Inspector</h2>
+
+<div class="section">
+
+<h3>Request Info</h3>
+
+<p><b>User:</b> {{log.user}}</p>
+<p><b>User Agent:</b> {{log.user_agent}}</p>
+<p><b>IP:</b> {{log.ip_address}}</p>
+<p><b>Method:</b> {{log.method}}</p>
+<p><b>Session:</b>
+<a href="/sessions/{{log.session_id}}/">
+{{log.session_id|slice:":8"}}
+</a>
+</p>
+<p><b>Path:</b> {{log.path}}</p>
+<p><b>View:</b> {{log.view_name}}</p>
+<p><b>Status:</b> {{log.status_code}}</p>
+<p><b>Execution Time:</b> {{log.execution_time}}</p>
+
+</div>
+
+<div class="section">
+
+<h3>Request Data</h3>
+
+<pre>{{log.request_data}}</pre>
+
+</div>
+
+<div class="section">
+
+<h3>Response Data</h3>
+
+<pre>{{log.response_data}}</pre>
+
+</div>
+
+</body>
+
+</html>
