@@ -1,0 +1,81 @@
+<style>
+/* keep your base styles */
+
+/* GROUP */
+.group {
+  margin-bottom: 20px;
+}
+
+.group-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* SUBGROUP */
+.subgroup {
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.subgroup-title {
+  padding: 10px;
+  background: #f1f5f9;
+  font-weight: 500;
+}
+
+/* URL ROW */
+.url {
+  padding: 8px 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.url-path {
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.url-name {
+  font-size: 12px;
+  color: #6b7280;
+}
+</style>
+
+
+<div class="container">
+  <h2>URLs</h2>
+
+  {% for group, urls in groups.items %}
+    <div class="group">
+
+      <div class="group-title">📦 {{ group }}</div>
+
+      {% regroup urls by subgroup as subgroups %}
+
+      {% for sg in subgroups %}
+        <div class="subgroup">
+
+          {% if sg.grouper %}
+            <div class="subgroup-title">
+              {{ sg.grouper }} ({{ sg.list|length }})
+            </div>
+          {% endif %}
+
+          {% for u in sg.list %}
+            <div class="url">
+              <div class="url-path">{{ u.path }}</div>
+              {% if u.name %}
+                <div class="url-name">{{ u.name }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+        </div>
+      {% endfor %}
+
+    </div>
+  {% endfor %}
+</div>
