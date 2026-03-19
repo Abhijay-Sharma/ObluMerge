@@ -54,4 +54,5 @@ urlpatterns = [
     path('vouchers/', include('tally_voucher.urls')),
     path('incentives/', include('incentive_calculator.urls')),
     path("meta/", include("meta.urls")),
+    path("docs/", include("docs.urls")),
 ]

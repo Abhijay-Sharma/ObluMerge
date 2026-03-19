@@ -1,0 +1,101 @@
+<style>
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f8f9fb;
+  color: #222;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+}
+
+h2 {
+  margin-bottom: 20px;
+}
+
+/* GRID LAYOUT */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
+}
+
+/* CARD */
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+/* HEADER */
+.card-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* LINKS */
+a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* DEPENDENCIES */
+.deps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dep {
+  background: #eef2ff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.empty {
+  font-size: 13px;
+  color: #6b7280;
+}
+</style>
+
+
+<a href="/docs/urls/" class="btn">View URLs</a>
+<div class="container">
+  <h2>Apps & Dependencies</h2>
+
+  <div class="grid">
+    {% for app, deps in apps.items %}
+      <div class="card">
+
+        <div class="card-title">
+          <a href="/docs/app/{{app}}/">{{ app }}</a>
+        </div>
+
+        {% if deps %}
+          <div class="deps">
+            {% for d in deps %}
+              <a href="/docs/app/{{d}}/" class="dep">{{ d }}</a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty">No dependencies</div>
+        {% endif %}
+
+      </div>
+    {% endfor %}
+  </div>
+</div>

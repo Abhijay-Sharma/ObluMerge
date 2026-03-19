@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'proforma_invoice',
     'quotations',
     'inventory',
+    'docs',
     'customer_dashboard',
     'crispy_forms',
     'crispy_bootstrap5',
