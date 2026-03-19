@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from .models import RequestLog
 from django.shortcuts import get_object_or_404
+from django.views.generic import ListView
 
 
 def logs_dashboard(request):
@@ -45,3 +46,27 @@ def session_timeline(request, session_id):
         "request_logs/session_timeline.html",
         {"logs": logs}
     )
+
+
+class LogsDashboardView(ListView):
+    model = RequestLog
+    template_name = "request_logs/dashboard.html"
+    context_object_name = "logs"
+
+    def get_queryset(self):
+        queryset = RequestLog.objects.all().order_by("-created_at")
+
+        user = self.request.GET.get("user")
+        method = self.request.GET.get("method")
+        status = self.request.GET.get("status")
+
+        if user:
+            queryset = queryset.filter(user__username=user)
+
+        if method:
+            queryset = queryset.filter(method=method)
+
+        if status:
+            queryset = queryset.filter(status_code=status)
+
+        return queryset[:500]
