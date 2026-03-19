@@ -7,6 +7,6 @@ from . import views
 
 urlpatterns = [
     path("", views.LogsDashboardView.as_view(), name="logs_dashboard"),
-    path("<int:log_id>/", log_detail, name="log_detail"),
-    path("sessions/<str:session_id>/", session_timeline, name="session_timeline"),
+    path("<int:log_id>/", views.LogDetailView.as_view(), name="log_detail"),
+    path("sessions/<str:session_id>/", views.SessionTimelineView.as_view(), name="session_timeline"),
 ]

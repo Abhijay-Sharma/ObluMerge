@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from .models import RequestLog
 from django.shortcuts import get_object_or_404
-from django.views.generic import ListView
+from django.views.generic import ListView, DetailView
+from inventory.mixins import AccountantRequiredMixin
 
 
 def logs_dashboard(request):
@@ -48,7 +49,7 @@ def session_timeline(request, session_id):
     )
 
 
-class LogsDashboardView(ListView):
+class LogsDashboardView(AccountantRequiredMixin,ListView):
     model = RequestLog
     template_name = "request_logs/dashboard.html"
     context_object_name = "logs"
@@ -70,3 +71,22 @@ class LogsDashboardView(ListView):
             queryset = queryset.filter(status_code=status)
 
         return queryset[:500]
+
+class LogDetailView(AccountantRequiredMixin,DetailView):
+    model = RequestLog
+    template_name = "request_logs/log_detail.html"
+    context_object_name = "log"
+    pk_url_kwarg = "log_id"
+
+
+class SessionTimelineView(AccountantRequiredMixin,ListView):
+    model = RequestLog
+    template_name = "request_logs/session_timeline.html"
+    context_object_name = "logs"
+
+    def get_queryset(self):
+        session_id = self.kwargs.get("session_id")
+
+        return RequestLog.objects.filter(
+            session_id=session_id
+        ).order_by("created_at")
