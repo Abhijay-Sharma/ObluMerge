@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'proforma_invoice',
     'quotations',
     'inventory',
+    'request_logs',
     'customer_dashboard',
     'crispy_forms',
     'crispy_bootstrap5',
@@ -61,6 +62,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'request_logs.middleware.RequestLoggingMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

@@ -1,0 +1,23 @@
+<h2>User Journey</h2>
+
+<ul>
+
+{% for log in logs %}
+
+<li>
+
+{{log.created_at}}
+
+→
+
+{{log.method}}
+
+{{log.path}}
+
+({{log.status_code}})
+
+</li>
+
+{% endfor %}
+
+</ul>

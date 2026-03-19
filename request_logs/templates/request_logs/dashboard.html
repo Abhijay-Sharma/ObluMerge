@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>System Logs</title>
+
+<style>
+
+body{
+    font-family: Arial;
+    background:#f4f6f8;
+}
+
+table{
+    width:100%;
+    border-collapse: collapse;
+}
+
+th,td{
+    padding:8px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+}
+tr:hover{
+background:#e9ecef;
+}
+
+.status200{color:green;font-weight:bold;}
+.status300{color:blue;font-weight:bold;}
+.status400{color:orange;font-weight:bold;}
+.status500{color:red;font-weight:bold;}
+
+.slow{
+    background:#fff3cd;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>System Request Logs</h2>
+<form method="get">
+
+User:
+<input name="user">
+
+Method:
+<select name="method">
+<option value="">All</option>
+<option>GET</option>
+<option>POST</option>
+</select>
+
+Status:
+<input name="status">
+
+<button type="submit">Filter</button>
+
+</form>
+
+<table>
+
+<tr>
+    <th>Session</th>
+    <th>Time</th>
+    <th>User</th>
+    <th>Method</th>
+    <th>Path</th>
+    <th>View</th>
+    <th>Status</th>
+    <th>Execution</th>
+    <th>Queries</th>
+</tr>
+
+{% for log in logs %}
+
+<tr class="{% if log.execution_time > 1 %}slow{% endif %}" 
+onclick="window.location='/logs/{{log.id}}/'" 
+style="cursor:pointer;">
+<td>
+<a href="/sessions/{{log.session_id}}/">
+{{log.session_id|slice:":8"}}
+</a>
+</td>
+<td>{{log.created_at}}</td>
+
+<td>
+{% if log.user %}
+{{log.user.username}}
+{% else %}
+Anonymous
+{% endif %}
+</td>
+
+<td>{{log.method}}</td>
+
+<td>{{log.path}}</td>
+
+<td>{{log.view_name}}</td>
+
+<td class="
+{% if log.status_code < 300 %}status200
+{% elif log.status_code < 400 %}status300
+{% elif log.status_code < 500 %}status400
+{% else %}status500
+{% endif %}
+">
+{{log.status_code}}
+</td>
+
+<td>{{log.execution_time|floatformat:3}} s</td>
+
+<td>{{log.query_count}}</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</body>
+</html>
