@@ -6,7 +6,7 @@ from . import views
 
 
 urlpatterns = [
-    path("", views.LogsDashboardView, name="logs_dashboard"),
+    path("", views.LogsDashboardView.as_view(), name="logs_dashboard"),
     path("<int:log_id>/", log_detail, name="log_detail"),
     path("sessions/<str:session_id>/", session_timeline, name="session_timeline"),
 ]
