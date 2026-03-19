@@ -55,4 +55,5 @@ urlpatterns = [
     path('incentives/', include('incentive_calculator.urls')),
     path("meta/", include("meta.urls")),
     path("logs/", include('request_logs.urls')),
+    path("docs/", include("docs.urls")),
 ]
