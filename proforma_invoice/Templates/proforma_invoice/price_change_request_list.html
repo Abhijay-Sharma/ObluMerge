@@ -1,4 +1,4 @@
-{% extends 'quotations/base.html' %}
+{% extends 'proforma_invoice/base.html' %}
 {% load quotation_extras %}
 {% block content %}
 
@@ -19,6 +19,36 @@
 
     .btn-outline-secondary:hover {
        color: #222 !important;
+    }
+
+    .reason-cell {
+        max-width: 250px;
+        vertical-align: top;
+    }
+
+    .reason-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .text-content {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .text-content.expanded {
+        -webkit-line-clamp: unset;
+    }
+
+    .read-more-text {
+        font-size: 11px;
+        color: #bbb;
+        margin-top: 2px;
+        line-height: 1;
+        cursor: pointer;
     }
 
     @media (max-width: 768px) {
@@ -70,7 +100,18 @@
         {% endif %}
       </td>
 
-      <td>{{ req.reason|default:"-"|truncatechars:40 }}</td>
+      <td class="reason-cell">
+        <div class="reason-wrapper">
+            <span class="text-content">
+                {{ req.reason|default:"-" }}
+            </span>
+
+            {% if req.reason and req.reason|length > 40 %}
+                <span class="read-more-text">read more</span>
+            {% endif %}
+        </div>
+      </td>
+
       <td>{{ req.created_at|date:"d M Y, H:i" }}</td>
 
       <td>
@@ -122,9 +163,7 @@
                     <tr>
                       <td>{{ item.id }}</td>
                       <td>{{ item.product.name }}</td>
-                      <td>
-                          ₹{{ item.unit_price|floatformat:2 }}
-                      </td>
+                      <td>₹{{ item.unit_price|floatformat:2 }}</td>
                       <td>
                         <strong class="text-primary">
                           {{ new_price|floatformat:2 }}
@@ -141,7 +180,6 @@
                 </tr>
               {% endfor %}
 
-              <!-- Courier Section -->
               {% if req.requested_courier_charge %}
               <tr>
                 <td colspan="2"><strong>Courier Charge</strong></td>
@@ -163,5 +201,36 @@
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    document.querySelectorAll(".reason-cell").forEach(function(cell) {
+
+        let text = cell.querySelector(".text-content");
+        let readMore = cell.querySelector(".read-more-text");
+
+        function toggleText() {
+            text.classList.toggle("expanded");
+
+            if (readMore) {
+                if (text.classList.contains("expanded")) {
+                    readMore.textContent = "read less";
+                } else {
+                    readMore.textContent = "read more";
+                }
+            }
+        }
+
+        text.addEventListener("click", toggleText);
+
+        if (readMore) {
+            readMore.addEventListener("click", toggleText);
+        }
+
+    });
+
+});
+</script>
 
 {% endblock %}
