@@ -42,6 +42,7 @@
                         {% if new_price %}
                         <tr>
                             <td>{{ item.product.name }}</td>
+                            <td>{{ item.quantity}}</td>
                             <td align="right">₹ {{ item.unit_price|floatformat:2 }}</td>
                             <td align="right">₹ {{ new_price|floatformat:2 }}</td>
                         </tr>
