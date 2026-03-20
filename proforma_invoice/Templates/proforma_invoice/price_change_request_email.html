@@ -20,7 +20,7 @@
         {{ requested_by.get_full_name|default:requested_by.username }}<br>
 
         <strong>Customer:</strong>
-        {{ invoice.customer_name }}<br>
+        {{ invoice.customer.name }}<br>
 
         <strong>Status:</strong> {{ request_obj.status|title }}
     </p>
