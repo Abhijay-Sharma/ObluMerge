@@ -221,6 +221,187 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
             },
         )
 
+
+class CreateProformaInvoiceView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        invoice_form = ProformaInvoiceForm(user=request.user)
+        formset = ProformaItemFormSet(
+            queryset=ProformaInvoiceItem.objects.none(),
+            user=request.user
+        )
+        # Determine which customers to show in dropdown
+        if request.user.is_accountant:
+            customers = Customer.objects.all()
+        elif hasattr(request.user, "salesperson_profile"):
+            sp=request.user.salesperson_profile.first()
+            customers = Customer.objects.filter(salesperson=sp) if sp else Customer.objects.none()
+            # customers = Customer.objects.filter(salesperson=request.user.salesperson_profile)
+        else:
+            # Normal user: only customers for which this user has created invoices
+            customers = Customer.objects.filter(proforma_invoices__created_by=request.user.username).distinct()
+
+        categories = Category.objects.all().order_by("name")
+        items = InventoryItem.objects.select_related("category").all().order_by("name")
+
+        return render(request, "proforma_invoice/create_proforma.html", {
+            "invoice_form": invoice_form,
+            "formset": formset,
+            "customers": customers,
+            "categories": categories,
+            "items": items,
+        })
+
+
+    def post(self, request, *args, **kwargs):
+        invoice_form = ProformaInvoiceForm(request.POST, user=request.user)
+        formset = ProformaItemFormSet(
+            request.POST, queryset=ProformaInvoiceItem.objects.none(), user=request.user
+        )
+
+        # ---------- Get customer IDs from POST ----------
+        customer_id = request.POST.get("customer")
+        shipping_customer_id = request.POST.get("shipping_customer")
+
+        # ---------- Fetch Customer objects ----------
+        selected_customer = (
+            Customer.objects.filter(id=customer_id).first()
+            if customer_id and customer_id.isdigit()
+            else None
+        )
+        shipping_customer = (
+            Customer.objects.filter(id=shipping_customer_id).first()
+            if shipping_customer_id and shipping_customer_id.isdigit()
+            else None
+        )
+
+        # If no shipping customer, default to billing customer
+        if not shipping_customer:
+            shipping_customer = selected_customer
+
+        # ---------- Access control ----------
+        if selected_customer:
+            # Accountant can access any customer
+            if request.user.is_accountant:
+                pass
+            # Salesperson: can only access their own customers
+            elif hasattr(request.user, "salesperson_profile"):
+                sp =request.user.salesperson_profile.first()
+                if sp and selected_customer.salesperson_id != sp.id:
+                    raise PermissionDenied("Cannot create invoice for this customer")
+            # Normal user: can only use customers for which they already created invoices
+            else:
+                if not ProformaInvoice.objects.filter(
+                        customer=selected_customer,
+                        created_by=request.user.username
+                ).exists():
+                    raise PermissionDenied("Cannot create invoice for this customer")
+        else:
+            invoice_form.add_error(None, "Please select a valid customer.")
+            # Prepare customer list for re-render
+            if request.user.is_accountant:
+                customers = Customer.objects.all()
+            elif hasattr(request.user, "salesperson_profile"):
+                sp = request.user.salesperson_profile.first()
+                customers = Customer.objects.filter(salesperson=sp) if sp else Customer.objects.none()
+            else:
+                customers = Customer.objects.filter(
+                    proforma_invoices__created_by=request.user.username
+                ).distinct()
+            categories = Category.objects.all().order_by("name")
+            return render(
+                request,
+                "proforma_invoice/create_proforma.html",
+                {
+                    "invoice_form": invoice_form,
+                    "formset": formset,
+                    "customers": customers,
+                    "categories": categories,
+                    "selected_customer": selected_customer,
+                },
+            )
+
+        # ---------- Save invoice ----------
+        # ---------- Save invoice ----------
+        if invoice_form.is_valid() and formset.is_valid():
+
+            # ✅ DEFINE FIRST
+            valid_items = [
+                form for form in formset
+                if form.cleaned_data and form.cleaned_data.get("product")
+            ]
+
+            # ❌ STOP if no products
+            if not valid_items:
+                invoice_form.add_error(None, "❌ Please add at least one product.")
+
+                if request.user.is_accountant:
+                    customers = Customer.objects.all()
+                elif hasattr(request.user, "salesperson_profile"):
+                    sp = request.user.salesperson_profile.first()
+                    customers = Customer.objects.filter(salesperson=sp) if sp else Customer.objects.none()
+                else:
+                    customers = Customer.objects.filter(
+                        proforma_invoices__created_by=request.user.username
+                    ).distinct()
+
+                categories = Category.objects.all().order_by("name")
+                items = InventoryItem.objects.select_related("category").all().order_by("name")
+
+                return render(request, "proforma_invoice/create_proforma.html", {
+                    "invoice_form": invoice_form,
+                    "formset": formset,
+                    "customers": customers,
+                    "categories": categories,
+                    "items": items,
+                    "selected_customer": selected_customer,
+                })
+
+            # ✅ SAVE ONLY AFTER VALIDATION
+            invoice = invoice_form.save(commit=False)
+            invoice.customer = selected_customer
+            invoice.shipping_customer = shipping_customer
+            invoice.courier_mode = request.POST.get("courier_mode", "surface")
+
+            if not request.user.is_accountant:
+                invoice.created_by = request.user.username
+
+            invoice.save()
+
+            # ✅ SAVE ITEMS
+            for form in valid_items:
+                item = form.save(commit=False)
+                item.invoice = invoice
+                item.save()
+
+            return redirect("proforma_detail", pk=invoice.pk)
+
+        # ---------- Re-render if form invalid ----------
+        if request.user.is_accountant:
+            customers = Customer.objects.all()
+        elif hasattr(request.user, "salesperson_profile"):
+            sp = request.user.salesperson_profile.first()
+            customers = Customer.objects.filter(salesperson=sp) if sp else Customer.objects.none()
+
+        else:
+            customers = Customer.objects.filter(
+                id__in=ProformaInvoice.objects.filter(
+                    created_by=request.user.username
+                ).values_list("customer_id", flat=True)
+            )
+
+
+        categories = Category.objects.all().order_by("name")
+        items = InventoryItem.objects.select_related("category").all().order_by("name")
+
+        return render(request, "proforma_invoice/create_proforma.html", {
+            "invoice_form": invoice_form,
+            "formset": formset,
+            "customers": customers,
+            "categories": categories,
+            "items": items,
+            "selected_customer": selected_customer,
+        })
+
 class ProformaInvoiceDetailView(View):
     """
     Shows the details of a created Proforma Invoice,
