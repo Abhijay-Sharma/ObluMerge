@@ -989,7 +989,57 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         #     request,
         #     f"Proforma Invoice #{invoice.id} prices updated successfully."
         # )
+        # Build invoice URL properly
+        invoice_url = request.build_absolute_uri(
+            reverse("proforma_detail", kwargs={"pk": invoice.id})
+        )
 
+        # ---------------- EMAIL NOTIFICATION (APPROVED) ----------------
+
+        to_email = [price_request.requested_by.email]
+
+        cc_emails = [
+            "abhijay.obluhc@gmail.com",
+            "swasti.obluhc@gmail.com",
+            "nitin.a@obluhc.com",
+        ]
+
+        # Add reviewer email dynamically
+        if price_request.reviewed_by and price_request.reviewed_by.email:
+            cc_emails.append(price_request.reviewed_by.email)
+
+        email_context = {
+            "request_obj": price_request,
+            "invoice": invoice,
+            "user": price_request.requested_by,
+            "status": "approved",
+            "invoice_url": invoice_url,
+        }
+
+        html_content = render_to_string(
+            "proforma_invoice/price_change_request_status_email.html",
+            email_context
+        )
+
+        subject = f"✅ Price Change Approved (Proforma #{invoice.id})"
+        from_email = "proforma@oblutools.com"
+
+        msg = EmailMultiAlternatives(
+            subject,
+            "",
+            from_email,
+            to_email,
+            cc=list(set(cc_emails))
+        )
+
+        msg.attach_alternative(html_content, "text/html")
+
+        try:
+            msg.send()
+        except Exception as e:
+            print("Email failed:", e)
+
+        # --------------------------------------------------------------
         return redirect("proforma_price_change_requests")
 
 class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
@@ -1009,5 +1059,55 @@ class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
             request,
             f"Request #{price_request.id} has been rejected."
         )
+
+        invoice = price_request.invoice
+
+        invoice_url = request.build_absolute_uri(
+            reverse("proforma_detail", kwargs={"pk": invoice.id})
+        )
+
+        # ---------------- EMAIL NOTIFICATION (REJECTED) ----------------
+
+        to_email = [price_request.requested_by.email]
+
+        cc_emails = [
+            "abhijay.obluhc@gmail.com",
+            "swasti.obluhc@gmail.com",
+            "nitin.a@obluhc.com",
+        ]
+
+        if price_request.reviewed_by and price_request.reviewed_by.email:
+            cc_emails.append(price_request.reviewed_by.email)
+
+        email_context = {
+            "request_obj": price_request,
+            "invoice": invoice,
+            "user": price_request.requested_by,
+            "status": "rejected",
+            "invoice_url": invoice_url,
+        }
+
+        html_content = render_to_string(
+            "proforma_invoice/price_change_request_status_email.html",
+            email_context
+        )
+
+        subject = f"❌ Price Change Rejected (Proforma #{invoice.id})"
+        from_email = "proforma@oblutools.com"
+
+        msg = EmailMultiAlternatives(
+            subject,
+            "",
+            from_email,
+            to_email,
+            cc=list(set(cc_emails))
+        )
+
+        msg.attach_alternative(html_content, "text/html")
+
+        try:
+            msg.send()
+        except Exception as e:
+            print("Email failed:", e)
 
         return redirect("proforma_price_change_requests")

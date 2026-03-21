@@ -1,0 +1,27 @@
+<h2>
+    {% if status == "approved" %}
+        ✅ Your Price Change Request has been Approved
+    {% else %}
+        ❌ Your Price Change Request has been Rejected
+    {% endif %}
+</h2>
+
+<p>Hi {{ user.username }},</p>
+
+<p>
+    Your request for <strong>Proforma Invoice #{{ invoice.id }}</strong> has been
+    <strong>{{ status|upper }}</strong>.
+</p>
+
+{% if status == "approved" %}
+    <p>The updated prices have been applied to the invoice.</p>
+{% else %}
+    <p>No changes were made to the invoice.</p>
+{% endif %}
+
+<p>
+    👉 <a href="{{ invoice_url }}">Click here to view the invoice</a>
+</p>
+
+<br>
+<p>Regards,<br>Oblu Tools Team</p>
