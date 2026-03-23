@@ -403,7 +403,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
         })
 
 
-class CreateProformaInvoiceView(AccountantRequiredMixin, View):
+class CreateProformaInvoiceView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         invoice_form = ProformaInvoiceForm(user=request.user)
         formset = ProformaItemFormSet(
@@ -545,11 +545,11 @@ class CreateProformaInvoiceView(AccountantRequiredMixin, View):
                 for form in valid_items
             )
 
-            if courier_mode == "surface" and total_qty < 100:
+            if courier_mode == "surface" and total_qty < 200:
 
                 invoice_form.add_error(
                     None,
-                    f"❌ Total quantity is {total_qty}. Sheets below 100 cannot be sent via Surface."
+                    f"❌ Total quantity is {total_qty}. Sheets below 200 cannot be sent via Surface."
                 )
 
                 if request.user.is_accountant:
