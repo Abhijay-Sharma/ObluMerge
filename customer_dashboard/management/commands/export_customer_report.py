@@ -118,6 +118,7 @@ class Command(BaseCommand):
         headers = [
             "Customer Name",
             "Salesperson",
+            "Invoice Number",
             "Credit Period (Days)",
             "Outstanding Amount",
             "Voucher Date",
@@ -127,7 +128,6 @@ class Command(BaseCommand):
 
         today = date.today()
 
-        # -------- FETCH DATA --------
         queryset = CustomerVoucherStatus.objects.select_related(
             "customer",
             "customer__salesperson",
@@ -135,7 +135,7 @@ class Command(BaseCommand):
             "voucher"
         ).filter(
             voucher_type="TAX INVOICE",
-            unpaid_amount__gt=0  # only outstanding
+            unpaid_amount__gt=0
         )
 
         self.stdout.write(f"Processing {queryset.count()} voucher statuses...")
@@ -147,7 +147,6 @@ class Command(BaseCommand):
             voucher_date = obj.voucher_date
             days_passed = (today - voucher_date).days
 
-            # -------- FILTER > 180 DAYS --------
             if days_passed <= 180:
                 continue
 
@@ -161,10 +160,13 @@ class Command(BaseCommand):
 
             outstanding = obj.unpaid_amount or Decimal("0.00")
 
-            # -------- WRITE ROW --------
+            # ✅ invoice number
+            invoice_number = obj.voucher.voucher_number if obj.voucher else ""
+
             ws.append([
                 customer.name,
                 customer.salesperson.name if customer.salesperson else "",
+                invoice_number,
                 credit_days,
                 float(outstanding),
                 voucher_date.strftime("%Y-%m-%d"),
@@ -173,7 +175,6 @@ class Command(BaseCommand):
 
             count += 1
 
-        # -------- SAVE FILE --------
         file_name = "overdue_180_days_report.xlsx"
         wb.save(file_name)
 
