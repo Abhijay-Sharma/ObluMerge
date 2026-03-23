@@ -1209,9 +1209,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         #     f"Proforma Invoice #{invoice.id} prices updated successfully."
         # )
         # Build invoice URL properly
-        invoice_url = request.build_absolute_uri(
-            reverse("proforma_detail", kwargs={"pk": invoice.id})
-        )
+        invoice_url = "https://oblutools.com/proforma/"+str(invoice.id)
 
         # ---------------- EMAIL NOTIFICATION (APPROVED) ----------------
 
@@ -1281,9 +1279,7 @@ class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
 
         invoice = price_request.invoice
 
-        invoice_url = request.build_absolute_uri(
-            reverse("proforma_detail", kwargs={"pk": invoice.id})
-        )
+        invoice_url = "https://oblutools.com/proforma/"+str(invoice.id)
 
         # ---------------- EMAIL NOTIFICATION (REJECTED) ----------------
 
