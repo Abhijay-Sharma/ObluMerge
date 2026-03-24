@@ -367,7 +367,7 @@ Place of Supply : Delhi-34
 </tbody>
 </table>
 
-{% with courier_charge=approved_request.requested_courier_charge|default:invoice.courier_charge %}
+{% with courier_charge=approved_request.requested_courier_charge|default_if_none:invoice.courier_charge %}
 
 <div class="totals-wrapper">
 <table>
