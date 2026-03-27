@@ -48,54 +48,75 @@
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             padding: 15px 20px; border-radius: 12px; margin-bottom: 25px;
-            display: flex; align-items: center; justify-content: space-between;
         }
 
-        select {
-            background: #1a1a1a; color: #fff; padding: 10px 15px;
-            border: 1px solid #333; border-radius: 8px; width: 300px;
+        .filter-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
-        /* Table */
-        .report-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px; overflow: hidden;
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
 
+        .input-group label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        select, input[type="date"] {
+            background: #1a1a1a;
+            color: #fff;
+            padding: 10px 12px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .btn-calculate {
+            background: var(--accent-green);
+            color: #000;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-calculate:hover { opacity: 0.8; }
+
+        /* Average Insight Block */
+        .avg-insight-card {
+            background: linear-gradient(145deg, #0b0b0b, #1a1a1a);
+            border: 1px solid var(--accent-green);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Table Styles (Keep existing) */
+        .report-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
-
-        th {
-            background: #1a1a1a; color: #666; font-size: 11px;
-            text-transform: uppercase; padding: 12px 15px; text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            border-right: 1px solid var(--border-color);
-        }
-
-        td {
-            padding: 10px 15px; border-bottom: 1px solid #1a1a1a;
-            font-size: 13px; border-right: 1px solid #1a1a1a;
-        }
-
-        .month-header {
-            background: #1a1a1a; color: var(--accent-green);
-            font-weight: 700; font-size: 15px; border-left: 5px solid var(--accent-green);
-        }
-
-        .month-total-row {
-            background: #0f0f0f; color: var(--accent-yellow); font-weight: 700;
-        }
-
-        .grand-total-row {
-            background: #000; color: var(--accent-green);
-            font-size: 18px; font-weight: 800; border-top: 3px solid var(--accent-green);
-        }
-
+        th { background: #1a1a1a; color: #666; font-size: 11px; text-transform: uppercase; padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
+        td { padding: 10px 15px; border-bottom: 1px solid #1a1a1a; font-size: 13px; border-right: 1px solid #1a1a1a; }
+        .month-header { background: #1a1a1a; color: var(--accent-green); font-weight: 700; font-size: 15px; border-left: 5px solid var(--accent-green); }
+        .month-total-row { background: #0f0f0f; color: var(--accent-yellow); font-weight: 700; }
+        .grand-total-row { background: #000; color: var(--accent-green); font-size: 18px; font-weight: 800; border-top: 3px solid var(--accent-green); }
         a { color: var(--accent-green); text-decoration: none; }
         .badge { font-size: 9px; padding: 2px 5px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
         .bg-red { background: #ff4d4d; color: white; }
         .bg-orange { background: #ffb84d; color: black; }
-
         .text-right { text-align: right; }
         .text-muted { color: #555; }
         .sn-col { color: #888; font-weight: 600; text-align: center; width: 40px; }
@@ -104,20 +125,49 @@
 <body>
 
     <div class="filter-card">
-        <h2 style="margin:0; font-size: 18px;">Monthly Sales Report</h2>
-        <form method="get">
-            <select name="salesperson" onchange="this.form.submit()">
-                <option value="">-- Choose Salesperson --</option>
-                {% for sp in salespersons %}
-                <option value="{{ sp.id }}" {% if selected_salesperson.id == sp.id %}selected{% endif %}>
-                    {{ sp.name }}
-                </option>
-                {% endfor %}
-            </select>
+        <form method="get" class="filter-form">
+            <div class="input-group">
+                <label>Salesperson</label>
+                <select name="salesperson">
+                    <option value="">-- Select --</option>
+                    {% for sp in salespersons %}
+                    <option value="{{ sp.id }}" {% if selected_salesperson.id == sp.id %}selected{% endif %}>
+                        {{ sp.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>From Date</label>
+                <input type="date" name="start_date" value="{{ start_date }}">
+            </div>
+
+            <div class="input-group">
+                <label>To Date</label>
+                <input type="date" name="end_date" value="{{ end_date }}">
+            </div>
+
+            <button type="submit" class="btn-calculate">Calculate</button>
         </form>
     </div>
 
     {% if grouped_months %}
+
+    <!-- NEW: RANGE AVERAGE ANALYSIS BLOCK -->
+    <div class="avg-insight-card">
+        <div>
+            <h4 style="margin: 0; font-size: 14px; color: var(--accent-green); text-transform: uppercase;">Range Average Analysis</h4>
+            <p style="margin: 5px 0 0; font-size: 12px; color: #666;">
+                Calculated across <b>{{ num_months }}</b> months in the selected period
+            </p>
+        </div>
+        <div style="text-align: right;">
+            <small style="color: #666; display: block; font-size: 10px; text-transform: uppercase;">Avg Monthly Sales</small>
+            <span style="font-size: 26px; font-weight: 800; color: var(--accent-green);">₹{{ avg_monthly_sales|floatformat:2 }}</span>
+        </div>
+    </div>
+
     <!-- STAT CARDS -->
     <div class="stats-container">
         <div class="stat-card">
@@ -201,7 +251,7 @@
     </div>
     {% elif selected_salesperson %}
         <div class="stat-card">
-            <p style="font-size: 14px; color: #888;">No sales history found for this salesperson.</p>
+            <p style="font-size: 14px; color: #888;">No sales history found for this salesperson within the selected range.</p>
         </div>
     {% endif %}
 

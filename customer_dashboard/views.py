@@ -1772,26 +1772,36 @@ class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
 
         return ctx
 
-class AllMonthsSalesReportView(AccountantRequiredMixin,TemplateView):
+class AllMonthsSalesReportView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/all_months_sales_report.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
 
+        # 1. GET FILTERS
         salesperson_id = self.request.GET.get("salesperson")
+        start_date_str = self.request.GET.get("start_date")
+        end_date_str = self.request.GET.get("end_date")
+
         if not salesperson_id:
             ctx.update({"grouped_months": None, "grand_total": Decimal("0.00")})
             return ctx
 
-        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
+        salesperson = get_object_or_404(SalesPerson, id=salesperson_id)
         ctx["selected_salesperson"] = salesperson
 
-        # 1. Fetch data
+        # 2. FETCH DATA WITH DATE RANGE
         voucher_statuses = CustomerVoucherStatus.objects.filter(
             sold_by=salesperson,
             voucher_type__iexact="TAX INVOICE",
         ).select_related("customer").order_by("-voucher_date", "-voucher_id")
+
+        # Apply Date Range Filters
+        if start_date_str:
+            voucher_statuses = voucher_statuses.filter(voucher_date__gte=start_date_str)
+        if end_date_str:
+            voucher_statuses = voucher_statuses.filter(voucher_date__lte=end_date_str)
 
         voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
         voucher_ids = list(voucher_status_map.keys())
@@ -1804,11 +1814,11 @@ class AllMonthsSalesReportView(AccountantRequiredMixin,TemplateView):
             .order_by("-voucher__date", "-voucher_id")
         )
 
-        # 2. Grouping Logic
+        # 3. GROUPING & TOTALS LOGIC
         grouped_months = OrderedDict()
         processed_vouchers = set()
         grand_total = Decimal("0.00")
-        global_sr_no = 1  # Continuous counter across months
+        global_sr_no = 1
 
         for si in stock_items:
             month_key = si.voucher.date.strftime("%B %Y")
@@ -1816,7 +1826,6 @@ class AllMonthsSalesReportView(AccountantRequiredMixin,TemplateView):
             if month_key not in grouped_months:
                 grouped_months[month_key] = {"rows": [], "monthly_total": Decimal("0.00")}
 
-            # Calculate Invoice Total
             current_invoice_total = Decimal("0.00")
             for row in si.voucher.rows.all():
                 if row.ledger.strip().lower() == si.voucher.party_name.strip().lower():
@@ -1832,7 +1841,7 @@ class AllMonthsSalesReportView(AccountantRequiredMixin,TemplateView):
 
             voucher_status = voucher_status_map.get(si.voucher_id)
             grouped_months[month_key]["rows"].append({
-                "sn": global_sr_no,  # Continuous Serial Number
+                "sn": global_sr_no,
                 "date": si.voucher.date,
                 "customer": si.voucher.party_name,
                 "customer_id": voucher_status.customer_id if voucher_status else None,
@@ -1847,12 +1856,22 @@ class AllMonthsSalesReportView(AccountantRequiredMixin,TemplateView):
             })
             global_sr_no += 1
 
-        ctx["grouped_months"] = grouped_months
-        ctx["grand_total"] = grand_total
-        ctx["total_invoices_count"] = len(processed_vouchers)
-        ctx["total_items_count"] = len(stock_items)
-        return ctx
+        # 4. CALCULATE MONTHLY AVERAGE
+        num_months = len(grouped_months)
+        avg_monthly_sales = grand_total / num_months if num_months > 0 else 0
 
+        # 5. CONTEXT
+        ctx.update({
+            "grouped_months": grouped_months,
+            "grand_total": grand_total,
+            "total_invoices_count": len(processed_vouchers),
+            "total_items_count": len(stock_items),
+            "num_months": num_months,
+            "avg_monthly_sales": avg_monthly_sales,
+            "start_date": start_date_str,
+            "end_date": end_date_str,
+        })
+        return ctx
 import json
 from django.views.generic import TemplateView
 from django.db.models import Count
