@@ -538,18 +538,66 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                 })
 
             # ================= SURFACE VALIDATION =================
+            # courier_mode = request.POST.get("courier_mode", "surface")
+            #
+            # total_qty = sum(
+            #     form.cleaned_data.get("quantity", 0)
+            #     for form in valid_items
+            # )
+            #
+            # if courier_mode == "surface" and total_qty < 200:
+            #
+            #     invoice_form.add_error(
+            #         None,
+            #         f"❌ Total quantity is {total_qty}. Sheets below 200 cannot be sent via Surface."
+            #     )
+            #
+            #     if request.user.is_accountant:
+            #         customers = Customer.objects.all()
+            #     elif hasattr(request.user, "salesperson_profile"):
+            #         sp = request.user.salesperson_profile.first()
+            #         customers = Customer.objects.filter(salesperson=sp) if sp else Customer.objects.none()
+            #     else:
+            #         customers = Customer.objects.filter(
+            #             proforma_invoices__created_by=request.user.username
+            #         ).distinct()
+            #
+            #     categories = Category.objects.all().order_by("name")
+            #     items = InventoryItem.objects.select_related("category").all().order_by("name")
+            #
+            #     return render(request, "proforma_invoice/create_proforma.html", {
+            #         "invoice_form": invoice_form,
+            #         "formset": formset,
+            #         "customers": customers,
+            #         "categories": categories,
+            #         "items": items,
+            #         "selected_customer": selected_customer,
+            #     })
+
+            # ================= SURFACE VALIDATION =================
             courier_mode = request.POST.get("courier_mode", "surface")
 
-            total_qty = sum(
+            # Categories that require minimum 200 qty for surface
+            RESTRICTED_CATEGORIES = ["THERMOFORMING SHEETS", "BAY MATERIALS"]
+
+            # Sum quantity ONLY for restricted categories
+            restricted_qty = sum(
                 form.cleaned_data.get("quantity", 0)
                 for form in valid_items
+                if (
+                        form.cleaned_data.get("product")
+                        and form.cleaned_data["product"].category
+                        and form.cleaned_data["product"].category.name in RESTRICTED_CATEGORIES
+                )
             )
 
-            if courier_mode == "surface" and total_qty < 200:
+            # Apply rule ONLY if restricted category items exist
+            if courier_mode == "surface" and restricted_qty > 0 and restricted_qty < 200:
 
                 invoice_form.add_error(
                     None,
-                    f"❌ Total quantity is {total_qty}. Sheets below 200 cannot be sent via Surface."
+                    f"❌ Total quantity for Thermoforming/Bay Material is {restricted_qty}. "
+                    "These categories cannot be sent via Surface below 200 sheets."
                 )
 
                 if request.user.is_accountant:
