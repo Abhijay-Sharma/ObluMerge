@@ -38,7 +38,7 @@ from decimal import Decimal
 from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-
+from collections import OrderedDict
 
 
 
@@ -1770,6 +1770,87 @@ class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
         ctx["rows"] = rows
         ctx["total_sales"] = total_sales
 
+        return ctx
+
+class AllMonthsSalesReportView(AccountantRequiredMixin,TemplateView):
+    template_name = "customers/all_months_sales_report.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
+
+        salesperson_id = self.request.GET.get("salesperson")
+        if not salesperson_id:
+            ctx.update({"grouped_months": None, "grand_total": Decimal("0.00")})
+            return ctx
+
+        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
+        ctx["selected_salesperson"] = salesperson
+
+        # 1. Fetch data
+        voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=salesperson,
+            voucher_type__iexact="TAX INVOICE",
+        ).select_related("customer").order_by("-voucher_date", "-voucher_id")
+
+        voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
+        voucher_ids = list(voucher_status_map.keys())
+
+        vouchers = Voucher.objects.filter(id__in=voucher_ids).prefetch_related("rows")
+        stock_items = (
+            VoucherStockItem.objects
+            .filter(voucher__in=vouchers)
+            .select_related("voucher", "item")
+            .order_by("-voucher__date", "-voucher_id")
+        )
+
+        # 2. Grouping Logic
+        grouped_months = OrderedDict()
+        processed_vouchers = set()
+        grand_total = Decimal("0.00")
+        global_sr_no = 1  # Continuous counter across months
+
+        for si in stock_items:
+            month_key = si.voucher.date.strftime("%B %Y")
+
+            if month_key not in grouped_months:
+                grouped_months[month_key] = {"rows": [], "monthly_total": Decimal("0.00")}
+
+            # Calculate Invoice Total
+            current_invoice_total = Decimal("0.00")
+            for row in si.voucher.rows.all():
+                if row.ledger.strip().lower() == si.voucher.party_name.strip().lower():
+                    current_invoice_total = Decimal(str(row.amount))
+                    break
+
+            display_total = None
+            if si.voucher_id not in processed_vouchers:
+                processed_vouchers.add(si.voucher_id)
+                display_total = current_invoice_total
+                grouped_months[month_key]["monthly_total"] += current_invoice_total
+                grand_total += current_invoice_total
+
+            voucher_status = voucher_status_map.get(si.voucher_id)
+            grouped_months[month_key]["rows"].append({
+                "sn": global_sr_no,  # Continuous Serial Number
+                "date": si.voucher.date,
+                "customer": si.voucher.party_name,
+                "customer_id": voucher_status.customer_id if voucher_status else None,
+                "voucher_no": si.voucher.voucher_number,
+                "voucher_id": si.voucher.id,
+                "product": si.item.name if si.item else "Unknown",
+                "quantity": si.quantity,
+                "item_amount": si.amount,
+                "invoice_total": display_total,
+                "is_unpaid": bool(voucher_status and voucher_status.is_unpaid),
+                "is_partially_paid": bool(voucher_status and voucher_status.is_partially_paid),
+            })
+            global_sr_no += 1
+
+        ctx["grouped_months"] = grouped_months
+        ctx["grand_total"] = grand_total
+        ctx["total_invoices_count"] = len(processed_vouchers)
+        ctx["total_items_count"] = len(stock_items)
         return ctx
 
 import json

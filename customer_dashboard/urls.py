@@ -43,4 +43,5 @@ urlpatterns = [
     ),
     path("sales-report/",views.SalesReportView.as_view(),name="sales_report",),
     path("monthly-sales-report/", views.MonthlySalesReportView.as_view(),name="monthly_sales_report")
+    path("all-months-sales-report/", views.AllMonthsSalesReportView.as_view(), name="all_months_sales_report"),
 ]

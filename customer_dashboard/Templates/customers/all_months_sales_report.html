@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Report Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080808;
+            --card-bg: #121212;
+            --accent-green: #00ff99;
+            --accent-yellow: #ffd54d;
+            --text-white: #ffffff;
+            --border-color: #252525;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-white);
+            font-family: 'Poppins', sans-serif;
+            margin: 0; padding: 25px;
+        }
+
+        /* Stats Section */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .stat-card h3 { margin: 0; font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-card p { margin: 10px 0 0; font-size: 24px; font-weight: 700; color: var(--accent-green); }
+        .stat-card p.yellow { color: var(--accent-yellow); }
+
+        /* Filter Area */
+        .filter-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px 20px; border-radius: 12px; margin-bottom: 25px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        select {
+            background: #1a1a1a; color: #fff; padding: 10px 15px;
+            border: 1px solid #333; border-radius: 8px; width: 300px;
+        }
+
+        /* Table */
+        .report-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px; overflow: hidden;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        th {
+            background: #1a1a1a; color: #666; font-size: 11px;
+            text-transform: uppercase; padding: 12px 15px; text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 10px 15px; border-bottom: 1px solid #1a1a1a;
+            font-size: 13px; border-right: 1px solid #1a1a1a;
+        }
+
+        .month-header {
+            background: #1a1a1a; color: var(--accent-green);
+            font-weight: 700; font-size: 15px; border-left: 5px solid var(--accent-green);
+        }
+
+        .month-total-row {
+            background: #0f0f0f; color: var(--accent-yellow); font-weight: 700;
+        }
+
+        .grand-total-row {
+            background: #000; color: var(--accent-green);
+            font-size: 18px; font-weight: 800; border-top: 3px solid var(--accent-green);
+        }
+
+        a { color: var(--accent-green); text-decoration: none; }
+        .badge { font-size: 9px; padding: 2px 5px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
+        .bg-red { background: #ff4d4d; color: white; }
+        .bg-orange { background: #ffb84d; color: black; }
+
+        .text-right { text-align: right; }
+        .text-muted { color: #555; }
+        .sn-col { color: #888; font-weight: 600; text-align: center; width: 40px; }
+    </style>
+</head>
+<body>
+
+    <div class="filter-card">
+        <h2 style="margin:0; font-size: 18px;">Monthly Sales Report</h2>
+        <form method="get">
+            <select name="salesperson" onchange="this.form.submit()">
+                <option value="">-- Choose Salesperson --</option>
+                {% for sp in salespersons %}
+                <option value="{{ sp.id }}" {% if selected_salesperson.id == sp.id %}selected{% endif %}>
+                    {{ sp.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if grouped_months %}
+    <!-- STAT CARDS -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <h3>Total Revenue</h3>
+            <p>₹{{ grand_total }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Invoices</h3>
+            <p class="yellow">{{ total_invoices_count }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Items Sold</h3>
+            <p class="yellow">{{ total_items_count }}</p>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sn-col">Sr.</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Voucher No</th>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th class="text-right">Item Amount</th>
+                    <th class="text-right" style="color: var(--accent-green);">Inv. Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for month_name, data in grouped_months.items %}
+                    <tr>
+                        <td colspan="8" class="month-header">{{ month_name }}</td>
+                    </tr>
+
+                    {% for r in data.rows %}
+                    <tr style="{% if not r.invoice_total %}opacity: 0.8;{% endif %}">
+                        <td class="sn-col">{{ r.sn }}</td>
+                        <td style="white-space:nowrap;">{{ r.date|date:"d M y" }}</td>
+                        <td>
+                            {% if r.customer_id %}<a href="{% url 'customers:customerpaymentstatus' r.customer_id %}">{{ r.customer }}</a>
+                            {% else %}{{ r.customer }}{% endif %}
+
+                            {% if r.is_unpaid %}<span class="badge bg-red">UNPAID</span>
+                            {% elif r.is_partially_paid %}<span class="badge bg-orange">PARTIAL</span>{% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'voucher_detail' r.voucher_id %}" target="_blank" style="color:#fff; text-decoration:underline; font-size: 11px;">
+                                {{ r.voucher_no }}
+                            </a>
+                        </td>
+                        <td style="font-size: 12px; max-width: 250px;">{{ r.product }}</td>
+                        <td>{{ r.quantity }}</td>
+                        <td class="text-right text-muted">₹{{ r.item_amount }}</td>
+
+                        <td class="text-right fw-bold" style="background: rgba(0,255,153,0.02);">
+                            {% if r.invoice_total %}
+                                <span style="color: var(--accent-green); font-weight: 700;">₹{{ r.invoice_total }}</span>
+                            {% else %}
+                                <span style="color: #333;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    <tr class="month-total-row">
+                        <td colspan="7" class="text-right">Total Sales of {{ month_name }}</td>
+                        <td class="text-right">₹{{ data.monthly_total }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+
+            <tfoot>
+                <tr class="grand-total-row">
+                    <td colspan="7" class="text-right">GRAND TOTAL BUSINESS (ALL TIME)</td>
+                    <td class="text-right">₹{{ grand_total }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% elif selected_salesperson %}
+        <div class="stat-card">
+            <p style="font-size: 14px; color: #888;">No sales history found for this salesperson.</p>
+        </div>
+    {% endif %}
+
+</body>
+</html>
