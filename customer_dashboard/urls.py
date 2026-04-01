@@ -44,4 +44,22 @@ urlpatterns = [
     path("sales-report/",views.SalesReportView.as_view(),name="sales_report",),
     path("monthly-sales-report/", views.MonthlySalesReportView.as_view(),name="monthly_sales_report"),
     path("all-months-sales-report/", views.AllMonthsSalesReportView.as_view(), name="all_months_sales_report"),
+
+    path("sales-by-products/", views.SalesByProductsView.as_view(), name="product_sales_report"),
+
+    # Page created by Swasti
+    path("salesperson/customer-summary/", views.SalesPersonCustomerOwnershipView.as_view(),name="salesperson_customer_summary"),
+
+    #Page created by Swasti
+    path("salesperson-performance-report/",views.AdminSalespersonConversionReportView.as_view(),name="customer_performance_report"),
+
+    path("remark-interaction-gap/", views.RemarkInteractionGapView.as_view(), name="remark_interaction_gap"),
+
+    path("payment-summary", views.SalespersonPaymentSummaryView.as_view(), name="payment_collection_summary"),
+
+    path("performance-collection/", views.SalespersonPerformanceCollectionView.as_view(), name="performance_collection"),
+
+    path("geo-sales-report/", views.GeoSalesReportView.as_view(), name="geo_sales_report"),
+
+    path("sales-perfomance-review/", views.SalesPerformanceReviewView.as_view(), name="performance_review"),
 ]
