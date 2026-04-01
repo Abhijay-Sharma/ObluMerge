@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Sales Report </title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080808;
+            --card-bg: #121212;
+            --accent-green: #00ff99;
+            --accent-yellow: #ffd54d;
+            --text-white: #ffffff;
+            --border-color: #252525;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-white);
+            font-family: 'Poppins', sans-serif;
+            margin: 0; padding: 25px;
+        }
+
+        .header-area { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+
+        select {
+            background: #1a1a1a; color: #fff; padding: 12px 20px;
+            border: 1px solid #333; border-radius: 10px; width: 350px; cursor: pointer;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px; margin-bottom: 30px;
+        }
+        .stat-card {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            padding: 20px; border-radius: 15px; text-align: center;
+        }
+        .stat-card h4 { margin: 0; font-size: 11px; color: #666; text-transform: uppercase; }
+        .stat-card p { margin: 10px 0 0; font-size: 24px; font-weight: 700; color: var(--accent-green); }
+
+        /* Level 1: Product Accordion */
+        .product-acc {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 12px; margin-bottom: 12px; overflow: hidden;
+        }
+        .product-header {
+            padding: 18px 25px; display: flex; justify-content: space-between;
+            align-items: center; cursor: pointer; transition: 0.3s;
+        }
+        .product-header:hover { background: #1a1a1a; }
+        .product-name { font-weight: 600; font-size: 16px; color: var(--accent-green); }
+        .qty-badge { background: #222; padding: 4px 12px; border-radius: 20px; font-size: 13px; color: var(--accent-yellow); border: 1px solid #333; }
+
+        .customer-list { display: none; padding: 0 20px 15px; background: #0c0c0c; }
+
+        /* Level 2: Customer Row (Inside Product) */
+        .customer-row {
+            border-bottom: 1px solid #1a1a1a; padding: 12px 15px;
+            cursor: pointer; transition: 0.2s; border-left: 3px solid transparent;
+        }
+        .customer-row:hover { border-left-color: var(--accent-yellow); background: #141414; }
+        .customer-row-flex { display: flex; justify-content: space-between; align-items: center; }
+        .customer-name { font-size: 14px; font-weight: 400; }
+
+        .order-details { display: none; padding: 15px; background: #111; margin-top: 5px; border-radius: 8px; }
+
+        /* Level 3: Order Table (Inside Customer) */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; color: #555; padding: 8px; border-bottom: 1px solid #222; text-transform: uppercase; font-size: 10px; }
+        td { padding: 10px 8px; border-bottom: 1px solid #1a1a1a; }
+        a.v-link { color: var(--accent-green); text-decoration: none; font-weight: 600; }
+        a.v-link:hover { text-decoration: underline; }
+
+        .icon { font-size: 12px; transition: 0.3s; color: #444; }
+        .rotate { transform: rotate(180deg); }
+    </style>
+</head>
+<body>
+
+    <div class="header-area">
+        <h2 style="margin:0;">Product Sales History</h2>
+        <form method="get">
+            <select name="salesperson" onchange="this.form.submit()">
+                <option value="">-- Select Salesperson --</option>
+                {% for sp in salespersons %}
+                <option value="{{ sp.id }}" {% if selected_salesperson.id == sp.id %}selected{% endif %}>
+                    {{ sp.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if product_data %}
+    <!-- OVERVIEW STATS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h4>Unique Products Sold</h4>
+            <p>{{ unique_products_count }}</p>
+        </div>
+        <div class="stat-card">
+            <h4>Total Units Sold</h4>
+            <p style="color: var(--accent-yellow);">{{ total_units }}</p>
+        </div>
+        <div class="stat-card">
+            <h4>Salesperson</h4>
+            <p style="font-size: 18px;">{{ selected_salesperson.name }}</p>
+        </div>
+    </div>
+
+    <!-- PRODUCT LIST -->
+    {% for p_name, p_info in product_data.items %}
+    <div class="product-acc">
+        <!-- Level 1 Header -->
+        <div class="product-header" onclick="toggleLevel(this, 'customer-list')">
+            <span class="product-name">{{ p_name }}</span>
+            <div>
+                <span class="qty-badge">Total: {{ p_info.total_qty }} Units</span>
+                <span class="icon" style="margin-left:15px;">▼</span>
+            </div>
+        </div>
+
+        <!-- Level 2 Content (Customers) -->
+        <div class="customer-list">
+            <div style="font-size: 11px; color: #555; margin: 10px 0;">Customers who bought this product:</div>
+            {% for c_name, c_info in p_info.customers.items %}
+            <div class="customer-item">
+                <div class="customer-row" onclick="toggleLevel(this, 'order-details')">
+                    <div class="customer-row-flex">
+                        <span class="customer-name">{{ c_name }}</span>
+                        <span style="font-size: 13px; font-weight: 600;">{{ c_info.total_qty }} Units <span class="icon">▼</span></span>
+                    </div>
+                </div>
+
+                <!-- Level 3 Content (Orders) -->
+                <div class="order-details">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order Date</th>
+                                <th>Voucher Number</th>
+                                <th style="text-align: right;">Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in c_info.orders %}
+                            <tr>
+                                <td>{{ order.date|date:"d M Y" }}</td>
+                                <td>
+                                    <a href="{% url 'voucher_detail' order.voucher_id %}" target="_blank" class="v-link">
+                                        {{ order.voucher_no }}
+                                    </a>
+                                </td>
+                                <td style="text-align: right; font-weight: 600; color: var(--accent-green);">{{ order.qty }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% elif selected_salesperson %}
+    <div class="stat-card" style="padding: 50px;">
+        <p style="color: #666; font-size: 16px;">No product sales records found for this salesperson.</p>
+    </div>
+    {% endif %}
+
+    <script>
+        function toggleLevel(element, className) {
+            // Find the next sibling with the target class
+            const content = element.parentElement.querySelector('.' + className);
+            const icon = element.querySelector('.icon');
+
+            if (content.style.display === "block") {
+                content.style.display = "none";
+                if(icon) icon.classList.remove('rotate');
+            } else {
+                content.style.display = "block";
+                if(icon) icon.classList.add('rotate');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -39,7 +39,12 @@ from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from collections import OrderedDict
-
+from django.db.models import Sum, Count, F
+from django.db.models.functions import TruncMonth
+from django.db.models import Avg, F, ExpressionWrapper, fields
+from collections import defaultdict
+from decimal import Decimal, ROUND_HALF_UP
+from datetime import date, timedelta, datetime
 
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
@@ -1872,6 +1877,768 @@ class AllMonthsSalesReportView(AccountantRequiredMixin, TemplateView):
             "end_date": end_date_str,
         })
         return ctx
+
+
+
+
+# KASHISH KPI VIEWS
+
+#sales report by each product
+class SalesByProductsView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/product_sales_report.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
+
+        sp_id = self.request.GET.get("salesperson")
+        if not sp_id:
+            ctx.update({
+                "product_data": None,
+                "selected_salesperson": None
+            })
+            return ctx
+
+        salesperson = SalesPerson.objects.filter(id=sp_id).first()
+        ctx["selected_salesperson"] = salesperson
+
+        if not salesperson:
+            return ctx
+
+        # STEP 1: Get the IDs of all vouchers sold by this salesperson
+        sold_voucher_ids = CustomerVoucherStatus.objects.filter(
+            sold_by=salesperson,
+            voucher_type__iexact="TAX INVOICE"
+        ).values_list('voucher_id', flat=True)
+
+        # STEP 2: Get the stock items belonging to those specific vouchers
+        stock_items = VoucherStockItem.objects.filter(
+            voucher_id__in=sold_voucher_ids
+        ).select_related('item', 'voucher').order_by('-voucher__date')
+
+        # 3. Build the Hierarchy: Product -> Customer -> List of Orders
+        product_data = OrderedDict()
+        total_qty_all = 0
+
+        for si in stock_items:
+            p_name = si.item.name if si.item else "Unknown Product"
+            c_name = si.voucher.party_name
+            qty = si.quantity or 0
+            total_qty_all += qty
+
+            # Initialize Product level
+            if p_name not in product_data:
+                product_data[p_name] = {
+                    "total_qty": 0,
+                    "customers": OrderedDict()
+                }
+
+            product_data[p_name]["total_qty"] += qty
+
+            # Initialize Customer level inside Product
+            if c_name not in product_data[p_name]["customers"]:
+                product_data[p_name]["customers"][c_name] = {
+                    "total_qty": 0,
+                    "orders": []
+                }
+
+            product_data[p_name]["customers"][c_name]["total_qty"] += qty
+
+            # Add specific order details
+            product_data[p_name]["customers"][c_name]["orders"].append({
+                "date": si.voucher.date,
+                "voucher_no": si.voucher.voucher_number,
+                "voucher_id": si.voucher.id,
+                "qty": qty
+            })
+
+        ctx["product_data"] = product_data
+        ctx["total_units"] = total_qty_all
+        ctx["unique_products_count"] = len(product_data)
+
+        return ctx
+
+# page created by swasti
+class SalesPersonCustomerOwnershipView(LoginRequiredMixin,TemplateView):
+    template_name = "customers/salesperson_customer_summary.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # -------------------------
+        # Salesperson dropdown
+        # -------------------------
+
+        ctx["salespersons"] = (
+            SalesPerson.objects
+            .all()
+            .order_by("name")
+        )
+
+        salesperson_id = self.request.GET.get("salesperson")
+
+        # -------------------------
+        # Date range (default 3 months)
+        # -------------------------
+
+        today = date.today()
+        default_start = today - timedelta(days=90)
+
+        start_date = self.request.GET.get("start_date")
+        end_date = self.request.GET.get("end_date")
+
+        if start_date:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        else:
+            start_date = default_start
+
+        if end_date:
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        else:
+            end_date = today
+        if not start_date:
+            start_date = default_start
+
+        if not end_date:
+            end_date = today
+
+        # IMPORTANT — send strings to template
+        ctx["start_date"] = start_date.strftime("%Y-%m-%d")
+        ctx["end_date"] = end_date.strftime("%Y-%m-%d")
+
+        if not salesperson_id:
+            ctx["new_customers"] = []
+            ctx["new_customer_count"] = 0
+            ctx["selected_salesperson"] = None
+            return ctx
+
+        salesperson = get_object_or_404(
+            SalesPerson,
+            pk=salesperson_id
+        )
+
+        ctx["selected_salesperson"] = salesperson
+
+        # -------------------------
+        # First voucher per customer
+        # -------------------------
+        # #  consider TAX INVOICE
+        first_voucher_subquery = (
+            CustomerVoucherStatus.objects
+            .filter(
+        # Run this query for each customer
+
+                customer=OuterRef("pk"),
+                voucher_type="TAX INVOICE"
+
+            )
+            .order_by("voucher_date", "id")
+        )
+
+        #  Attach first sale info to every customer
+
+        customers_with_first_sale = (
+            Customer.objects
+            .annotate(
+        # Get the date of the first TAX INVOICE
+
+                first_sale_date=Subquery(
+                    first_voucher_subquery
+                    .values("voucher_date")[:1]
+                ),
+        # Get who sold that first TAX INVOICE
+
+                first_seller_id=Subquery(
+                    first_voucher_subquery
+                    .values("sold_by")[:1]
+                )
+            )
+        )
+
+        # -------------------------
+        # NEW CUSTOMERS
+        # -------------------------
+
+        new_customers = (
+            customers_with_first_sale
+            .filter(
+                first_seller_id=salesperson.id,
+                first_sale_date__gte=start_date,
+                first_sale_date__lte=end_date
+            )
+            .order_by("-first_sale_date")
+        )
+
+        ctx["new_customers"] = new_customers
+        ctx["new_customer_count"] = new_customers.count()
+
+        return ctx
+
+#page created by swasti
+class AdminSalespersonConversionReportView(AccountantRequiredMixin, TemplateView):
+    template_name = "customers/salesperson_performance_report.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        s_date = self.request.GET.get("start_date")
+        e_date = self.request.GET.get("end_date")
+        start_date = date.fromisoformat(s_date) if s_date else date(2026, 1, 1)
+        end_date = date.fromisoformat(e_date) if e_date else date(2026, 3, 31)
+        weeks_passed = ((end_date - start_date).days or 1) / 7.0
+
+        excluded = ["Abhijay", "Aryan", "Jackson", "Kaushik", "Mukesh", "Nimit", "Online", "online Order", "Raman",
+                    "test1", "Vibhuti"]
+        all_sp = SalesPerson.objects.all().exclude(name__in=excluded).order_by(Lower("name"))
+        ctx["all_salespersons"] = all_sp
+
+        sp_id = self.request.GET.get("salesperson")
+        salespersons = all_sp.filter(id=sp_id) if sp_id else all_sp
+        ctx["selected_sp_id"] = int(sp_id) if sp_id else None
+
+        salesperson_data = []
+        for sp in salespersons:
+            customers = Customer.objects.filter(salesperson=sp)
+            conv_custs = []
+            total_inact_days = 0
+            for cust in customers:
+                v_hist = Voucher.objects.filter(party_name__iexact=cust.name, voucher_type="TAX INVOICE").order_by(
+                    "-date")
+
+                # behavioral sync logic
+                recent = v_hist.filter(date__range=(start_date, end_date)).order_by('date')
+                if recent.exists():
+                    first_inv = recent.first()
+                    prev = v_hist.filter(date__lt=first_inv.date).order_by('-date').first()
+                    if prev and (first_inv.date - prev.date).days > 90:
+                        cust.remarks_count = cust.remarks.filter(created_at__date__range=(start_date, end_date)).count()
+                        cust.followup_count = cust.followups.filter(followup_date__range=(start_date, end_date)).count()
+                        conv_custs.append(cust)
+                if v_hist.first(): total_inact_days += max((end_date - v_hist.first().date).days, 0)
+
+            # KPI CALCULATIONS (Strictly 10% total)
+            total_c = customers.count()
+            avg_inact = round(total_inact_days / total_c, 2) if total_c > 0 else 0
+
+            # E1: Converted (5%)
+            e1 = round(min((len(conv_custs) / weeks_passed) * 5, 5), 2) if weeks_passed > 0 else 0
+            # E2: Inactiveness (5%)
+            e2 = 5.0 if avg_inact <= 45 else (2.5 if avg_inact <= 90 else 0.0)
+
+            salesperson_data.append({
+                "salesperson": sp, "total_customers": total_c, "converted_count": len(conv_custs),
+                "converted_customers": conv_custs,
+                "avg_inactiveness": avg_inact, "total_conversion_score": round(e1 + e2, 2),
+                "e1": e1, "e2": e2,
+            })
+
+        ctx.update({"salesperson_data": salesperson_data, "start_date": start_date, "end_date": end_date})
+        return ctx
+
+# HELPER FUNCTION: To calculate Average time between remarks
+def calculate_avg_time(current_sp):
+    today = date.today()
+    start_date = date(today.year, 1, 1)
+
+    # Get all remarks in range
+    remarks = CustomerRemark.objects.filter(
+        salesperson=current_sp,
+        created_at__date__gte=start_date,
+        created_at__date__lte=today
+    ).order_by('customer_id', 'created_at')
+
+    # Group remarks by customer
+    customer_map = defaultdict(list)
+
+    for r in remarks:
+        customer_map[r.customer_id].append(r.created_at.date())
+
+    customer_gaps = []
+
+    for customer_id, dates in customer_map.items():
+
+        # Case 1: Only 1 remark
+        if len(dates) == 1:
+            gap = (today - dates[0]).days
+            customer_gaps.append(gap)
+            continue
+
+        # Case 2: Multiple remarks → calculate gaps
+        gaps = []
+        for i in range(1, len(dates)):
+            diff = (dates[i] - dates[i-1]).days
+            gaps.append(diff)
+
+        avg_gap = sum(gaps) / len(gaps)
+        customer_gaps.append(avg_gap)
+
+    # Final average across customers
+    if customer_gaps:
+        final_avg = round(sum(customer_gaps) / len(customer_gaps), 1)
+        return f"{final_avg} Days"
+
+    return "N/A"
+
+# PAGE 1: Summary Dashboard
+class SalespersonPaymentSummaryView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/payment_collection_summary.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # 1. Dropdown Filter
+        all_sp = SalesPerson.objects.all().order_by("name")
+        hide = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "online", "online order", "mukesh", "aryan", "test1"]
+        ctx["salespersons_list"] = [sp for sp in all_sp if sp.name.lower() not in hide]
+
+        sp_id = self.request.GET.get("salesperson")
+        if not sp_id: return ctx
+
+        current_sp = get_object_or_404(SalesPerson, id=sp_id)
+        ctx["selected_sp"] = current_sp
+
+        # 2. Timeframe Setup (Jan 1st Start)
+        today = date.today()
+        start_yr = date(today.year if today.month > 3 else today.year - 1, 1, 1)
+        days_passed = (today - start_yr).days or 1
+        weeks_passed = days_passed / 7.0
+
+        assigned_customers = Customer.objects.filter(salesperson=current_sp)
+        total_cust = assigned_customers.count()
+
+        # --- KPI CALCULATIONS (TOTAL 15%) ---
+        # A. Remark Volume (3%)
+        actual_remarks_yr = CustomerRemark.objects.filter(salesperson=current_sp,
+                                                          created_at__date__range=(start_yr, today)).count()
+        target_rem_total = total_cust * weeks_passed
+        score_rem_vol = round(min((actual_remarks_yr / target_rem_total) * 3, 3), 2) if target_rem_total > 0 else 0
+
+        # B. Follow-up Volume (3%)
+        actual_fups_yr = CustomerFollowUp.objects.filter(salesperson=current_sp,
+                                                         created_at__date__range=(start_yr, today)).count()
+        target_fup_total = total_cust * weeks_passed
+        score_fup_vol = round(min((actual_fups_yr / target_fup_total) * 3, 3), 2) if target_fup_total > 0 else 0
+
+        # C. Follow-up On-Time (5%)
+        tasks_due = CustomerFollowUp.objects.filter(salesperson=current_sp, followup_date__lte=today)
+        on_time_count = total_delay_sum = 0
+        if tasks_due.exists():
+            on_time_count = tasks_due.filter(is_completed=True, completed_at__date__lte=F('followup_date')).count()
+            score_on_time = round((on_time_count / tasks_due.count()) * 5, 2)
+            for f in tasks_due:
+                if f.is_completed and f.completed_at:
+                    total_delay_sum += max((f.completed_at.date() - f.followup_date).days, 0)
+                else:
+                    total_delay_sum += (today - f.followup_date).days
+            avg_fup_delay = total_delay_sum / tasks_due.count()
+        else:
+            score_on_time = avg_fup_delay = 0
+
+        # D. Ticket Resolution Speed (4%)
+        active_tickets = PaymentDiscussionThread.objects.filter(voucher_status__sold_by=current_sp).exclude(
+            ticket_status="NONE")
+        avg_t_days = 0
+        if active_tickets.exists():
+            now = timezone.now()
+            total_t_days = sum([((t.solved_at.date() - t.raised_at.date()).days if t.solved_at else (
+                        now.date() - t.raised_at.date()).days) for t in active_tickets])
+            avg_t_days = total_t_days / active_tickets.count()
+            score_speed = round(max(0, 4 - (avg_t_days - 2)), 2)
+        else:
+            score_speed = 0
+
+        # --- NON-WEIGHTED TRACKING DATA ---
+        customer_avg_list = []
+        for cust in assigned_customers:
+            c = CustomerRemark.objects.filter(customer=cust, salesperson=current_sp,
+                                              created_at__date__range=(start_yr, today)).count()
+            customer_avg_list.append(days_passed / (c if c > 0 else 1))
+
+        # FIXED: Variable explicitly defined for the template
+        date_hist = PaymentExpectedDateHistory.objects.filter(thread__voucher_status__sold_by=current_sp)
+        total_expected_dates_count = date_hist.count()
+        kept = sum(1 for log in date_hist if
+                   log.thread.voucher_status.is_fully_paid and log.thread.voucher_status.updated_at.date() <= log.expected_date)
+
+        # 3. CONTEXT UPDATE
+        ctx.update({
+            "total_block_d_score": round(score_rem_vol + score_fup_vol + score_on_time + score_speed, 2),
+            "score_rem_vol": score_rem_vol, "score_fup_vol": score_fup_vol,
+            "score_on_time": score_on_time, "score_speed": score_speed,
+            "total_remarks_count": actual_remarks_yr,
+            "remarks_per_customer": round(actual_remarks_yr / (total_cust or 1), 2),
+            "avg_fup_per_cust": round(actual_fups_yr / (total_cust or 1), 2),
+            "avg_fups_per_week": round((actual_fups_yr / (total_cust or 1)) / weeks_passed,
+                                       2) if weeks_passed > 0 else 0,
+            "avg_remark_gap": f"{round(sum(customer_avg_list) / total_cust, 1) if total_cust > 0 else 0} Days",
+            "on_time_followups_count": on_time_count,
+            "total_followups_count": tasks_due.count(),
+            "avg_followup_delay": f"{round(avg_fup_delay, 1)} Days",
+            "payments_received_on_time": kept,
+            "total_expected_dates_count": total_expected_dates_count,  # Matches template name
+            "weeks_passed": round(weeks_passed, 1),
+            "tickets_total": active_tickets.count(),
+            "tickets_raised": active_tickets.filter(ticket_status="RAISED").count(),
+            "tickets_solved": active_tickets.filter(ticket_status="SOLVED").count(),
+            "avg_ticket_resolve_time": f"{round(avg_t_days, 1)} Days",
+            "pending_payment_count": CustomerVoucherStatus.objects.filter(sold_by=current_sp, is_fully_paid=False,
+                                                                          voucher_type__iexact="TAX INVOICE").count(),
+            "lifetime_invoice_count": CustomerVoucherStatus.objects.filter(sold_by=current_sp,
+                                                                           voucher_type__iexact="TAX INVOICE").count(),
+            "thread_remarks_count": PaymentRemark.objects.filter(
+                created_by=current_sp.user).count() if current_sp.user else 0,
+        })
+        return ctx
+
+# PAGE 2: The Detailed List Page
+class SalespersonPerformanceCollectionView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/performance_collection.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        sp_id = self.request.GET.get("salesperson")
+        current_sp = get_object_or_404(SalesPerson, id=sp_id)
+        ctx["selected_sp"] = current_sp
+        today = date.today()
+
+        # 1. Health Stats (Jan 1st Logic - Shared with Summary)
+        assigned_customers = Customer.objects.filter(salesperson=current_sp)
+        start_of_year = date(today.year, 1, 1)
+        period = (today - start_of_year).days or 1
+        d_sum, g_sum = 0, 0
+        for cust in assigned_customers:
+            c = CustomerRemark.objects.filter(customer=cust, salesperson=current_sp,
+                                              created_at__date__range=(start_of_year, today)).count()
+            d_sum += period
+            g_sum += (c + 1)
+        ctx["avg_remark_gap"] = f"{round(d_sum / g_sum, 1)} Days" if g_sum > 0 else "1 Day"
+        ctx["remarks_per_customer"] = round(
+            CustomerRemark.objects.filter(salesperson=current_sp).count() / assigned_customers.count(),
+            2) if assigned_customers.exists() else 0
+
+        # 2. Follow-up Audit logic
+        followups = CustomerFollowUp.objects.filter(salesperson=current_sp).select_related('customer').order_by(
+            '-followup_date')
+        total_delay, done_count = 0, 0
+        for f in followups:
+            f.date_set_on = f.created_at.date()
+            if f.is_completed and f.completed_at:
+                done_count += 1
+                if f.completed_at.date() <= f.followup_date:
+                    f.res_label, f.res_class, f.delay = "On-Time", "b-green", 0
+                else:
+                    delay = (f.completed_at.date() - f.followup_date).days
+                    f.res_label, f.res_class, f.delay = "Late", "b-red", delay
+                    total_delay += delay
+            else:
+                f.res_label, f.res_class, f.delay = ("Overdue", "b-red",
+                                                     (today - f.followup_date).days) if f.followup_date < today else (
+                    "Pending", "b-dim", 0)
+
+        ctx["all_followups_list"] = followups
+        ctx["avg_followup_delay"] = f"{round(total_delay / done_count, 1)} Days" if done_count > 0 else "0 Days"
+
+        # 3. Tickets logic (Resolution Speed + Individual Speed)
+        tickets = PaymentDiscussionThread.objects.filter(voucher_status__sold_by=current_sp).exclude(
+            ticket_status="NONE").select_related('voucher_status__customer', 'voucher_status__voucher').order_by(
+            '-raised_at')
+        now, total_t_sec = timezone.now(), 0
+        for t in tickets:
+            if t.raised_at:
+                diff = (t.solved_at - t.raised_at) if t.solved_at else (now - t.raised_at)
+                total_t_sec += diff.total_seconds()
+                t.time_label, t.time_result = ("Solved In",
+                                               f"{diff.days}d {diff.seconds // 3600}h") if t.solved_at else (
+                    "Open Since", f"{diff.days}d {diff.seconds // 3600}h")
+
+        ctx["all_tickets_list"] = tickets
+        if tickets.exists():
+            avg_t = total_t_sec / tickets.count()
+            ctx["avg_ticket_resolve_time"] = f"{int(avg_t // 86400)}d {int((avg_t % 86400) // 3600)}h"
+        else:
+            ctx["avg_ticket_resolve_time"] = "0 Days"
+
+        # 4. Standard Logs
+        ctx["pending_invoices"] = CustomerVoucherStatus.objects.filter(sold_by=current_sp, is_fully_paid=False,
+                                                                       voucher_type__iexact="TAX INVOICE").select_related(
+            'customer', 'voucher').annotate(
+            date_entry_count=Count('payment_thread__expected_date_history', distinct=True)).order_by('-voucher_date')
+
+        date_log = PaymentExpectedDateHistory.objects.filter(thread__voucher_status__sold_by=current_sp).select_related(
+            'thread__voucher_status__customer', 'thread__voucher_status__voucher').order_by('-created_at')
+        for log in date_log:
+            v = log.thread.voucher_status
+            if v.is_fully_paid:
+                log.reality_label, log.reality_class = ("On-Time",
+                                                        "b-green") if v.updated_at.date() <= log.expected_date else (
+                    "Delayed", "b-yellow")
+            else:
+                log.reality_label, log.reality_class = ("Missed", "b-red") if log.expected_date < today else ("Waiting",
+                                                                                                              "b-dim")
+        ctx["expected_date_log"] = date_log
+
+        ctx["all_remarks_list"] = CustomerRemark.objects.filter(salesperson=current_sp).select_related(
+            'customer').order_by('-created_at')
+        if current_sp.user:
+            ctx["all_thread_remarks"] = PaymentRemark.objects.filter(created_by=current_sp.user).select_related(
+                'thread__voucher_status__customer').order_by('-created_at')
+
+        return ctx
+
+class RemarkInteractionGapView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/remark_interaction_gap.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # 1. Setup Salesperson and Date Range
+        sp_id = self.request.GET.get("salesperson")
+        selected_sp = get_object_or_404(SalesPerson, id=sp_id)
+
+        today = date.today()
+        start_of_year = date(today.year, 1, 1)
+
+        total_days_in_year_so_far = (today - start_of_year).days
+        if total_days_in_year_so_far <= 0:
+            total_days_in_year_so_far = 1
+
+        # 2. Get all customers
+        assigned_customers = Customer.objects.filter(
+            salesperson=selected_sp
+        ).order_by('name')
+
+        audit_data = []
+        customer_avg_list = []   # ✅ NEW (IMPORTANT)
+
+        for cust in assigned_customers:
+            # Get remarks for this customer
+            remarks = CustomerRemark.objects.filter(
+                customer=cust,
+                salesperson=selected_sp,
+                created_at__date__range=(start_of_year, today)
+            ).order_by('created_at')
+
+            remark_count = remarks.count()
+
+            gaps = remarks.count()
+
+            if remark_count == 0:
+                gaps = remark_count+ 1
+            else:
+                gaps = remarks.count()
+
+            # per customer avg
+            cust_avg = round(total_days_in_year_so_far / gaps, 1)
+
+            # store for final avg
+            customer_avg_list.append(cust_avg)   # ✅ FIXED
+
+            audit_data.append({
+                'customer_name': cust.name,
+                'remark_count': remark_count,
+                'remark_dates': [r.created_at.date() for r in remarks],
+                'total_days': total_days_in_year_so_far,
+                'gaps': gaps,
+                'result': cust_avg
+            })
+
+        # 3. FINAL CORRECT AVERAGE
+        if customer_avg_list:
+            final_avg = round(sum(customer_avg_list) / len(customer_avg_list), 1)
+        else:
+            final_avg = 0
+
+        ctx.update({
+            "selected_sp": selected_sp,
+            "audit_data": audit_data,
+            "start_date": start_of_year,
+            "end_date": today,
+            "total_period_days": total_days_in_year_so_far,
+            "final_avg_result": final_avg,
+            "total_customers": assigned_customers.count()
+        })
+
+        return ctx
+
+
+class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/performance_review.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # 1. POPULATE DROPDOWN
+        all_sp = SalesPerson.objects.all().order_by("name")
+        hide_names = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan",
+                      "test1", "online"]
+        ctx["salespersons"] = [sp for sp in all_sp if sp.name.lower() not in hide_names]
+
+        # 2. CHECK SELECTION
+        sp_id = self.request.GET.get("salesperson")
+        if not sp_id:
+            return ctx
+
+        selected_sp = get_object_or_404(SalesPerson, id=sp_id)
+        ctx["selected_salesperson"] = selected_sp
+
+        # ------------------------------------------------------
+        # 3. INITIALIZE ALL VARIABLES (Prevents NameError)
+        # ------------------------------------------------------
+        today = date.today()
+        sync_start = date(2026, 1, 1)
+        sync_end = date(2026, 4, 1)
+        sync_weeks = (sync_end - sync_start).days / 7.0
+        fy_start = date(2025, 4, 1)
+
+        # Data Objects
+        performance_rows = []
+        cat_data = []
+        new_cust_qs = Customer.objects.none()
+
+        # Counters
+        actual_category_count = 0
+        actual_new_clients = 0
+        conv_count = 0
+        total_inactive_days = 0
+        on_time_pay = 0
+        total_interactions = 0
+        g_actual = g_bench = Decimal("0.00")
+
+        # Scores
+        score_a = score_b = score_c = score_d = score_e = score_geo = 0
+        d1 = d2 = d3 = d4 = e1_score = e2_score = 0
+
+        # Geo
+        top_st_name = "N/A"
+        top_st_orders = 0
+        top_st_dist_actual = 0
+        top_st_dist_total = 1
+        top_st_penetration_pct = 0
+
+        # ------------------------------------------------------
+        # 4. FETCH DATA
+        # ------------------------------------------------------
+        voucher_statuses = CustomerVoucherStatus.objects.filter(sold_by=selected_sp, voucher_type__iexact="TAX INVOICE")
+        sold_vids = voucher_statuses.filter(voucher_date__range=(fy_start, today)).values_list('voucher_id', flat=True)
+        sp_customers = Customer.objects.filter(salesperson=selected_sp)
+        total_assigned = sp_customers.count()
+
+        # --- BLOCK A: CATEGORY (10%) ---
+        stock_items = VoucherStockItem.objects.filter(voucher_id__in=sold_vids)
+        cat_data = stock_items.exclude(item__category__name__icontains="Service").values(
+            cat_name=F('item__category__name')).annotate(total_qty=Sum('quantity')).order_by('-total_qty')
+        actual_category_count = cat_data.count()
+        score_a = round(min((actual_category_count / 15) * 10, 10), 2)
+
+        # --- BLOCK B: REVENUE (20%) ---
+        target_val = Decimal("500000.00") if selected_sp.manager is None else Decimal("200000.00")
+        monthly_data = VoucherRow.objects.filter(voucher_id__in=sold_vids,
+                                                 ledger__iexact=F('voucher__party_name')).annotate(
+            month=TruncMonth('voucher__date')).values('month').annotate(actual=Sum('amount')).order_by('-month')
+        for entry in monthly_data:
+            act = Decimal(str(entry['actual'] or 0));
+            g_actual += act;
+            g_bench += target_val
+            performance_rows.append(
+                {'month': entry['month'], 'target': target_val, 'actual': act, 'diff': act - target_val,
+                 'pct': round((act / target_val * 100), 2) if target_val > 0 else 0, 'status': act >= target_val})
+        score_b = round(min(((g_actual / g_bench) if g_bench > 0 else 0) * 20, 20), 2)
+
+        # --- BLOCK C: NEW CLIENTS (10%) ---
+        new_cust_qs = Customer.objects.annotate(f_date=Subquery(
+            CustomerVoucherStatus.objects.filter(customer=OuterRef("pk"), voucher_type="TAX INVOICE").order_by(
+                "voucher_date").values("voucher_date")[:1]), f_seller=Subquery(
+            CustomerVoucherStatus.objects.filter(customer=OuterRef("pk"), voucher_type="TAX INVOICE").order_by(
+                "voucher_date").values("sold_by")[:1])).filter(f_seller=selected_sp.id,
+                                                               f_date__gte=sync_start).order_by("-f_date")
+        actual_new_clients = new_cust_qs.count()
+        score_c = round(min((actual_new_clients / 12) * 10, 10), 2)
+
+        # --- BLOCK D: COLLECTION (15% TOTAL) ---
+        if total_assigned > 0:
+            target_vol = total_assigned * sync_weeks
+            rem_gen = CustomerRemark.objects.filter(salesperson=selected_sp,
+                                                    created_at__date__range=(sync_start, sync_end)).count()
+            rem_thread = PaymentRemark.objects.filter(created_by=selected_sp.user, created_at__date__range=(sync_start,
+                                                                                                            sync_end)).count() if selected_sp.user else 0
+            total_interactions = rem_gen + rem_thread
+            d1 = round(min((total_interactions / target_vol) * 3, 3), 2)
+            fup_cnt = CustomerFollowUp.objects.filter(salesperson=selected_sp,
+                                                      created_at__date__range=(sync_start, sync_end)).count()
+            d2 = round(min((fup_cnt / target_vol) * 3, 3), 2)
+            tasks = CustomerFollowUp.objects.filter(salesperson=selected_sp,
+                                                    followup_date__range=(sync_start, sync_end))
+            if tasks.exists():
+                on_time = tasks.filter(is_completed=True, completed_at__date__lte=F('followup_date')).count()
+                d3 = round((on_time / tasks.count()) * 5, 2)
+            active_t = PaymentDiscussionThread.objects.filter(
+                voucher_status__customer__salesperson=selected_sp).exclude(ticket_status="NONE")
+            if active_t.exists():
+                t_days = sum([((t.solved_at.date() - t.raised_at.date()).days if t.solved_at else (
+                            sync_end - t.raised_at.date()).days) for t in active_t])
+                d4 = round(max(0, min(4, 4 - ((t_days / active_t.count()) - 2))), 2)
+        score_d = round(d1 + d2 + d3 + d4, 2)
+
+        # --- BLOCK E: CONVERSION (10% TOTAL) ---
+        for cust in sp_customers:
+            v_hist = Voucher.objects.filter(party_name__iexact=cust.name, voucher_type="TAX INVOICE").order_by("-date")
+            recent = v_hist.filter(date__range=(sync_start, sync_end)).order_by('date')
+            if recent.exists():
+                first_inv = recent.first()
+                prev_inv = v_hist.filter(date__lt=first_inv.date).order_by('-date').first()
+                if prev_inv and (first_inv.date - prev_inv.date).days > 90: conv_count += 1
+            if v_hist.first(): total_inactive_days += max((sync_end - v_hist.first().date).days, 0)
+        e1_score = round(min((conv_count / sync_weeks) * 5, 5), 2)
+        avg_inact = round(total_inactive_days / (total_assigned or 1), 2)
+        e2_score = 5.0 if avg_inact <= 45 else (2.5 if avg_inact <= 90 else 0.0)
+        score_e = round(e1_score + e2_score, 2)
+
+        # --- BLOCK H: GEO (5%) ---
+        DIST_MAP = {"Andhra Pradesh": 26, "Kerala": 14, "Maharashtra": 36, "Gujarat": 33, "Karnataka": 31,
+                    "Tamil Nadu": 38, "Uttar Pradesh": 75}
+        geo_qs = CustomerVoucherStatus.objects.filter(customer__salesperson=selected_sp,
+                                                      voucher_type__iexact="TAX INVOICE",
+                                                      voucher_date__range=(fy_start, sync_end)).values(
+            st=F('customer__state')).annotate(orders=Count('id'),
+                                              dists=Count('customer__district', distinct=True)).order_by('-orders')
+        if geo_qs.exists():
+            top = geo_qs[0]
+            top_st_name = top['st']
+            top_st_orders = top['orders']
+            top_st_dist_actual = top['dists']
+            top_st_dist_total = DIST_MAP.get(top_st_name, 1)
+            top_st_penetration_pct = round((top_st_dist_actual / top_st_dist_total * 100), 1)
+            score_geo = round(min((top_st_penetration_pct / 70) * 5, 5), 2)
+
+        # ------------------------------------------------------
+        # 5. CONTEXT UPDATE
+        # ------------------------------------------------------
+        ctx.update({
+            "total_kpi": round(score_a + score_b + score_c + score_d + score_e + score_geo, 1),
+            "category_earned_score": score_a, "revenue_earned_score": score_b, "new_customer_earned_score": score_c,
+            "total_collection_score": score_d, "total_conversion_score": score_e, "score_geo": score_geo,
+            "performance_table": performance_rows, "grand_actual": g_actual, "grand_benchmark": g_bench,
+            "grand_ach_pct": round((g_actual / g_bench * 100) if g_bench > 0 else 0, 2),
+            "grand_diff": g_actual - g_bench,
+            "category_sales": cat_data, "actual_category_count": actual_category_count,
+            "new_customers": new_cust_qs, "actual_new_clients": actual_new_clients,
+            "top_st_name": top_st_name, "top_st_orders": top_st_orders, "top_st_dist_actual": top_st_dist_actual,
+            "top_st_dist_total": top_st_dist_total, "top_st_penetration_pct": top_st_penetration_pct,
+            "avg_inactiveness": avg_inact, "converted_count": conv_count, "e1_score": e1_score, "e2_score": e2_score,
+            "pending_count": CustomerVoucherStatus.objects.filter(customer__salesperson=selected_sp,
+                                                                  is_fully_paid=False).count(),
+            "total_expected_dates": PaymentExpectedDateHistory.objects.filter(
+                thread__voucher_status__customer__salesperson=selected_sp).count(),
+            "total_thread_remarks": PaymentRemark.objects.filter(
+                thread__voucher_status__customer__salesperson=selected_sp).count(),
+            "total_tickets": active_t.count() if 'active_t' in locals() else 0,
+            "unique_products_count": stock_items.values('item').distinct().count(),
+            "total_units_sold": stock_items.aggregate(t=Sum('quantity'))['t'] or 0,
+            "total_vouchers_count": sold_vids.count(),
+            "top_products": stock_items.values('item__name').annotate(qty=Sum('quantity')).order_by('-qty')[:5],
+            "remark_frequency": round((total_interactions / (total_assigned or 1)) / sync_weeks, 2),
+        })
+        return ctx
+
 import json
 from django.views.generic import TemplateView
 from django.db.models import Count

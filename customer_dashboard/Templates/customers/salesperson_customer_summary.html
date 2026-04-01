@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Acquisition Summary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080808;
+            --card: #121212;
+            --green: #00ff99;
+            --yellow: #ffd54d;
+            --border: #252525;
+            --text-dim: #777;
+        }
+
+        body {
+            background: var(--bg);
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 25px;
+        }
+
+        .page-wrapper { max-width: 1100px; margin: 0 auto; }
+
+        /* HEADER */
+        .page-header {
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
+        }
+        .page-header h2 { margin: 0; font-size: 24px; font-weight: 700; }
+        .page-header p { margin: 5px 0 0; color: var(--text-dim); font-size: 13px; }
+
+        /* FILTER BAR */
+        .filter-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; font-weight: 600; }
+
+        select, input {
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 10px 15px;
+            border-radius: 8px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        button {
+            background: var(--green);
+            color: #000;
+            border: none;
+            padding: 11px 25px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { opacity: 0.8; transform: translateY(-2px); }
+
+        /* STAT CARD */
+        .stat-card {
+            background: linear-gradient(145deg, #121212, #1a1a1a);
+            border: 1px solid var(--border);
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            display: inline-block;
+            min-width: 250px;
+        }
+        .stat-card small { font-size: 12px; color: var(--text-dim); text-transform: uppercase; display: block; margin-bottom: 10px; }
+        .stat-card span { font-size: 32px; font-weight: 800; color: var(--yellow); }
+
+        /* DATA TABLE */
+        .table-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .table-title { padding: 15px 20px; background: #1a1a1a; font-size: 13px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 11px; color: var(--text-dim); padding: 15px 20px; text-transform: uppercase; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+        td { padding: 15px 20px; font-size: 14px; border-bottom: 1px solid #1a1a1a; border-right: 1px solid #1a1a1a; }
+
+        tr:hover { background: #181818; }
+        th:last-child, td:last-child { border-right: none; }
+
+        .sn-col { width: 50px; color: var(--text-dim); text-align: center; }
+        .date-col { color: var(--green); font-weight: 600; }
+
+        /* MOBILE RESPONSIVE */
+        @media (max-width: 850px) {
+            form { grid-template-columns: 1fr; }
+            .stat-card { width: 100%; box-sizing: border-box; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <h2>New Customer Summary</h2>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filter-panel">
+        <form method="get">
+            <div class="input-group">
+                <label>Salesperson</label>
+                <select name="salesperson">
+                    <option value="">-- Choose Salesperson --</option>
+                    {% for sp in salespersons %}
+                    <option value="{{ sp.id }}" {% if selected_salesperson.id == sp.id %}selected{% endif %}>
+                        {{ sp.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>From Date</label>
+                <input type="date" name="start_date" value="{{ start_date }}">
+            </div>
+
+            <div class="input-group">
+                <label>To Date</label>
+                <input type="date" name="end_date" value="{{ end_date }}">
+            </div>
+
+            <button type="submit">Update View</button>
+        </form>
+    </div>
+
+    {% if selected_salesperson %}
+
+    <!-- SUMMARY STAT -->
+    <div class="stat-card">
+        <small>Total New Customers Of {{ selected_salesperson.name }}</small>
+        <span>{{ new_customer_count }}</span>
+    </div>
+
+    <!-- DATA TABLE -->
+    <div class="table-card">
+        <div class="table-title"> From ({{ start_date }}) To ({{ end_date }})</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="sn-col">#</th>
+                    <th>Customer Name</th>
+                    <th>Conversion Date (First Sale)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in new_customers %}
+                <tr>
+                    <td class="sn-col">{{ forloop.counter }}</td>
+                    <td style="font-weight: 600;">{{ c.name }}</td>
+                    <td class="date-col">{{ c.first_sale_date|date:"d M Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                        No new customers were acquired during this specific period.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <!-- EMPTY STATE -->
+    <div style="text-align:center; padding: 100px 20px; border: 2px dashed var(--border); border-radius: 20px;">
+        <p style="color: var(--text-dim);">Select a salesperson and date range above to view customer summaries.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

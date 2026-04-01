@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Details | {{ selected_sp.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080808; --card: #121212; --border: #222;
+            --green: #00ff99; --red: #ff4d4d; --blue: #00d4ff; --yellow: #ffd54d; --purple: #a855f7; --cyan: #22d3ee; --indigo: #6366f1; --rose: #f43f5e; --dim: #777;
+        }
+        body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; padding: 25px; line-height: 1.6; }
+        .wrapper { max-width: 1250px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        .btn-back { color: var(--dim); text-decoration: none; font-size: 13px; border: 1px solid var(--border); padding: 8px 18px; border-radius: 8px; transition: 0.3s; }
+        .btn-back:hover { color: #fff; border-color: #555; background: #1a1a1a; }
+        .section-label { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; margin: 45px 0 15px; display: block; border-left: 3px solid var(--dim); padding-left: 12px; letter-spacing: 1px; }
+
+        .list-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 10px; color: var(--dim); padding: 15px; text-transform: uppercase; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); background: #1a1a1a; }
+        td { padding: 15px; font-size: 13px; border-bottom: 1px solid #1a1a1a; border-right: 1px solid #1a1a1a; }
+        th:last-child, td:last-child { border-right: none; }
+
+        .clickable-row { cursor: pointer; transition: 0.2s; }
+        .clickable-row:hover { background: #1c1c1c !important; }
+        .link-voucher { color: var(--blue); text-decoration: underline; font-weight: 600; cursor: pointer; }
+
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; }
+        .b-green { color: var(--green); border: 1px solid var(--green); background: rgba(0, 255, 153, 0.05); }
+        .b-yellow { color: var(--yellow); border: 1px solid var(--yellow); background: rgba(255, 213, 77, 0.05); }
+        .b-red { color: var(--red); border: 1px solid var(--red); background: rgba(255, 77, 77, 0.05); }
+        .b-dim { color: var(--dim); border: 1px solid var(--dim); }
+
+        .remark-item { background: #161616; border: 1px solid var(--border); border-radius: 12px; padding: 18px; border-left: 4px solid var(--blue); margin-bottom: 12px; }
+        .text-red { color: var(--red); font-weight: 700; } .text-green { color: var(--green); font-weight: 700; }
+        .analytics-pill { background: #111; padding: 4px 12px; border-radius: 8px; border: 1px solid #333; font-size: 11px; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header">
+        <div><h2>Performance Collection Details</h2><p style="color:var(--dim); font-size:13px;">Audit for: <b>{{ selected_sp.name }}</b></p></div>
+        <a href="{% url 'customers:payment_collection_summary' %}?salesperson={{ selected_sp.id }}" class="btn-back">← Back</a>
+    </div>
+
+    <!-- 1. PENDING -->
+    <span class="section-label">Total Unpaid Invoices List</span>
+    <div class="list-card">
+        <table>
+            <thead><tr><th>Date</th><th>Customer</th><th>Voucher No</th><th style="text-align:center">Extensions</th><th style="text-align:right">Pending</th></tr></thead>
+            <tbody>
+                {% for inv in pending_invoices %}
+                <tr><td>{{ inv.voucher_date|date:"d M Y" }}</td><td>{{ inv.customer.name }}</td><td class="link-voucher" onclick="window.location='{% url 'customers:customerpaymentstatus' inv.customer.id %}#inv-{{ inv.id }}'">{{ inv.voucher.voucher_number }}</td>
+                    <td style="text-align:center;">{% if inv.date_entry_count > 1 %}<span class="badge b-red">⚠ {{ inv.date_entry_count|add:"-1" }} Changed</span>{% elif inv.date_entry_count == 1 %}<span style="color:var(--dim)">Set once</span>{% else %}<span style="color:#444;">None</span>{% endif %}</td>
+                    <td style="text-align:right;" class="text-red">₹ {{ inv.unpaid_amount }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 2. REMARKS -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <span class="section-label" id="remarks-section">Total Customer Remarks</span>
+        <div style="margin-bottom:15px; display:flex; gap:10px;">
+            <div class="analytics-pill"><span style="color:var(--dim)">Avg. remark per customer:</span> <b style="color:var(--indigo)">{{ remarks_per_customer }} / Cust</b></div>
+            <div class="analytics-pill"><span style="color:var(--dim)">Avg Gap:</span> <b style="color:var(--indigo)">{{ avg_remark_gap }}</b></div>
+        </div>
+    </div>
+    {% for r in all_remarks_list %}
+    <div class="remark-item">
+        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;"><b class="text-blue">👤 {{ r.customer.name }}</b><span style="color:var(--dim)">📅 {{ r.created_at|date:"d M Y | h:i A" }}</span></div>
+        <div style="font-size:14px; color:#ddd;">"{{ r.remark }}"</div>
+    </div>
+    {% endfor %}
+
+    <!-- 3. FOLLOW-UPS -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <span class="section-label" id="followups-section">Customer Follow-Ups</span>
+        <div style="margin-bottom:15px;">
+            <div class="analytics-pill" style="border-color: var(--rose);"><span style="color:var(--dim)">Completion Avg Delay:</span> <b class="text-red">{{ avg_followup_delay }}</b></div>
+        </div>
+    </div>
+    <div class="list-card">
+        <table>
+            <thead><tr><th>Set On</th><th>Scheduled For</th><th>Completed On</th><th>Customer</th><th style="text-align:center">Result</th><th style="text-align:center">Delay</th></tr></thead>
+            <tbody>
+                {% for f in all_followups_list %}
+                <tr><td style="color:var(--dim)">{{ f.date_set_on|date:"d M Y" }}</td><td style="color:var(--yellow); font-weight:600;">{{ f.followup_date|date:"d M Y" }}</td><td>{% if f.is_completed %}{{ f.completed_at|date:"d M Y" }}{% else %}<span style="color:#444">—</span>{% endif %}</td><td>{{ f.customer.name }}</td><td style="text-align:center"><span class="badge {{ f.res_class }}">{{ f.res_label }}</span></td><td style="text-align:center">{% if f.delay > 0 %}<b class="text-red">{{ f.delay }} Days</b>{% else %}<span style="color:var(--dim)">—</span>{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 4. EXPECTED DATES -->
+    <span class="section-label" id="dates-section">Expected Dates Set For Payments </span>
+    <div class="list-card">
+        <table>
+            <thead><tr><th>Set On</th><th>Customer</th><th>Invoice (Click Bill)</th><th>Expected Date (Click Thread)</th><th style="text-align:center">Reality</th></tr></thead>
+            <tbody>
+                {% for d in expected_date_log %}
+                <tr><td>{{ d.created_at|date:"d M Y" }}</td><td>{{ d.thread.voucher_status.customer.name }}</td>
+                    <td><a href="{% url 'voucher_detail' d.thread.voucher_status.voucher.id %}" target="_blank" class="link-voucher">{{ d.thread.voucher_status.voucher.voucher_number }}</a></td>
+                    <td><a href="{% url 'customers:payment_thread_detail' d.thread.voucher_status.id %}" style="color:var(--green); text-decoration:none; font-weight:700;">{{ d.expected_date|date:"d M Y" }}</a></td>
+                    <td style="text-align:center;"><span class="badge {{ d.reality_class }}">{{ d.reality_label }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 5. TICKETS -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <span class="section-label" id="tickets-section">Payment Thread Tickets</span>
+        <div style="margin-bottom:15px;">
+            <div class="analytics-pill" style="border-color: var(--purple);"><span style="color:var(--dim)">Total Avg Resolution (Inc. Pending):</span> <b class="text-purple">{{ avg_ticket_resolve_time }}</b></div>
+        </div>
+    </div>
+    <div class="list-card">
+        <table>
+            <thead><tr><th>Raised At</th><th>Status</th><th>Customer</th><th style="text-align:center">Time Taken</th><th>Solved At</th></tr></thead>
+            <tbody>
+                {% for t in all_tickets_list %}
+                <tr class="clickable-row" onclick="window.location='{% url 'customers:payment_thread_detail' t.voucher_status.id %}'">
+                    <td>{{ t.raised_at|date:"d M Y" }}</td><td>{% if t.ticket_status == "RAISED" %}<span class="badge b-red">🚨 Raised</span>{% else %}<span class="badge b-green">✅ Solved</span>{% endif %}</td><td>{{ t.voucher_status.customer.name }}</td>
+                    <td style="text-align:center;"><small style="display:block; color:var(--dim); font-size:9px;">{{ t.time_label }}</small> <span class="{% if t.ticket_status == 'RAISED' %}text-red{% else %}text-green{% endif %} fw-bold">{{ t.time_result }}</span></td>
+                    <td>{{ t.solved_at|date:"d M Y"|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 6. THREAD REMARKS -->
+    <span class="section-label" id="thread-remarks-section">Payment Thread Remarks History</span>
+    {% for pr in all_thread_remarks %}
+    <div class="remark-item" style="border-left-color: var(--cyan);"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;"><span><b class="text-cyan">💬 {{ pr.thread.voucher_status.customer.name }}</b> <small style="color:var(--dim); margin-left:10px;">Inv: {{ pr.thread.voucher_status.voucher.voucher_number }}</small></span><span style="color:var(--dim)">{{ pr.created_at|date:"d M Y | h:i A" }}</span></div><div style="font-size:14px; color:#ddd;">"{{ pr.remark }}"</div><div style="margin-top:10px;"><a href="{% url 'customers:payment_thread_detail' pr.thread.voucher_status.id %}" style="color:var(--cyan); text-decoration:none; font-size:11px;">View Full Thread →</a></div></div>
+    {% endfor %}
+</div>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesperson Performance Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080808;
+            --card: #121212;
+            --border: #252525;
+            --green: #00ff99;
+            --red: #ff4d4d;
+            --yellow: #ffd54d;
+            --blue: #00d4ff;
+            --dim: #777;
+            --white: #fff;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--white);
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 25px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1300px; margin: 0 auto; }
+
+        /* HEADER & FILTERS */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header-title h2 { margin: 0; font-size: 26px; font-weight: 700; }
+        .header-title p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
+
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            background: var(--card);
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            align-items: center;
+        }
+
+        .filter-bar label { font-size: 10px; text-transform: uppercase; color: var(--dim); font-weight: 700; display: block; margin-bottom: 4px; }
+        .filter-bar input { background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 8px 12px; border-radius: 6px; outline: none; }
+        .filter-bar button { background: var(--blue); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 14px; }
+        .filter-bar button:hover { opacity: 0.9; }
+
+        /* SALESPERSON CARD */
+        .sp-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+        }
+
+        .sp-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sp-name::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+        /* KPI GRID ORGANIZED BY GROUPS */
+        .kpi-section-label {
+            font-size: 10px;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: block;
+            font-weight: 700;
+        }
+
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-box {
+            background: #1a1a1a;
+            border: 1px solid #222;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            transition: 0.3s;
+        }
+        .kpi-box:hover { border-color: #444; transform: translateY(-3px); }
+
+        .kpi-title { font-size: 11px; color: var(--dim); margin-bottom: 5px; }
+        .kpi-value { font-size: 18px; font-weight: 700; }
+
+        /* Highlight Colors */
+        .primary { border-top: 3px solid var(--blue); }
+        .success { border-top: 3px solid var(--green); }
+        .warning { border-top: 3px solid var(--yellow); }
+        .danger { border-top: 3px solid var(--red); }
+
+        .val-green { color: var(--green); }
+        .val-red { color: var(--red); }
+        .val-yellow { color: var(--yellow); }
+
+        /* TABLE */
+        .table-wrap {
+            background: #0c0c0c;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #1a1a1a;
+        }
+
+        .table-title { padding: 12px 15px; font-size: 12px; font-weight: 700; color: var(--dim); text-transform: uppercase; background: #151515; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 10px; color: var(--dim); padding: 12px 15px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #141414; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: #141414; }
+
+        .badge-qty { background: #222; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: var(--yellow); font-size: 11px; }
+
+        @media (max-width: 900px) {
+            .page-header { flex-direction: column; align-items: flex-start; gap: 20px; }
+            .filter-bar { width: 100%; box-sizing: border-box; flex-wrap: wrap; }
+            .kpi-row { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- TOP HEADER -->
+    <div class="page-header">
+        <div class="header-title">
+            <h2>Performance & Conversion Analytics</h2>
+        </div>
+
+        <form method="get" class="filter-bar">
+            <div>
+                <label>Salesperson</label>
+                <select name="salesperson" style="background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 8px 12px; border-radius: 6px; outline: none; width: 200px;">
+                    <option value="">-- All Salespersons --</option>
+                    {% for sp in all_salespersons %}
+                    <option value="{{ sp.id }}" {% if selected_sp_id == sp.id %}selected{% endif %}>
+                        {{ sp.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Start Date</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div>
+                <label>End Date</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            <button type="submit">Filter Report</button>
+        </form>
+    </div>
+
+    <!-- MAIN DATA LOOP -->
+    {% for data in salesperson_data %}
+    <div class="sp-card">
+
+        <div class="sp-name">
+            {{ data.salesperson.name }}
+            <span class="kpi-total-badge">Conversion KPI: {{ data.total_conversion_score }}% / 10%</span>
+        </div>
+
+        <!-- KPI GROUP 1: SALES VOLUME -->
+        <span class="kpi-section-label">Account Health & Conversion</span>
+        <div class="kpi-row">
+            <div class="kpi-box primary">
+                <div class="kpi-title">Total Customers</div>
+                <div class="kpi-value">{{ data.total_customers }}</div>
+            </div>
+            <div class="kpi-box success">
+                <div class="kpi-title">Converted Customers (5%)</div>
+                <div class="kpi-value val-green">{{ data.converted_count }}</div>
+                <small style="color:var(--dim)">Score: {{ data.e1 }}/5</small>
+            </div>
+            <div class="kpi-box warning">
+                <div class="kpi-title">Avg. Customer Inactiveness (5%)</div>
+                <div class="kpi-value">{{ data.avg_inactiveness }} days</div>
+                <small style="color:var(--dim)">Score: {{ data.e2 }}/5</small>
+            </div>
+        </div>
+
+{#        <!-- KPI GROUP 2: REMOVED WEIGHTAGE FROM ACTIVITY -->#}
+{#        <span class="kpi-section-label">Communication & Effort</span>#}
+{#        <div class="kpi-row">#}
+{#            <div class="kpi-box">#}
+{#                <div class="kpi-title">Remarks / Customers</div>#}
+{#                <div class="kpi-value val-yellow">{{ data.remark_per_customer }}</div>#}
+{#            </div>#}
+{#            <div class="kpi-box">#}
+{#                <div class="kpi-title">Followups / Customers</div>#}
+{#                <div class="kpi-value val-yellow">{{ data.followup_per_customer }}</div>#}
+{#            </div>#}
+{#        </div>#}
+
+        <!-- KPI GROUP 3: REMOVED WEIGHTAGE FROM FREQUENCY/DISCIPLINE -->
+{#        <span class="kpi-section-label">Frequency & Reliability</span>#}
+{#        <div class="kpi-row">#}
+{#            <div class="kpi-box">#}
+{#                <div class="kpi-title">Remark Frequency</div>#}
+{#                <div class="kpi-value">{{ data.remark_frequency }} /wk</div>#}
+{#            </div>#}
+{#            <div class="kpi-box">#}
+{#                <div class="kpi-title">Followup Frequency</div>#}
+{#                <div class="kpi-value">{{ data.followup_frequency }} /wk</div>#}
+{#            </div>#}
+{#            <div class="kpi-box success">#}
+{#                <div class="kpi-title">On-Time Follow-ups %</div>#}
+{#                <div class="kpi-value val-green">{{ data.on_time_percent }}%</div>#}
+{#            </div>#}
+{#            <div class="kpi-box danger">#}
+{#                <div class="kpi-title">Delayed Follow-ups %</div>#}
+{#                <div class="kpi-value val-red">{{ data.late_percent }}%</div>#}
+{#            </div>#}
+{#        </div>#}
+{#    </div>#}
+
+        <!-- CONVERTED LIST -->
+        <div class="table-wrap">
+            <div class="table-title">Converted Inactive Customers To Active Customers in this Period</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Remarks Logged</th>
+                        <th>Followups Handled</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in data.converted_customers %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ c.name }}</td>
+                        <td><span class="badge-qty">{{ c.remarks_count }}</span></td>
+                        <td><span class="badge-qty">{{ c.followup_count }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 30px; color: var(--dim);">No successful conversions recorded.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    {% endfor %}
+
+</div>
+
+</body>
+</html>

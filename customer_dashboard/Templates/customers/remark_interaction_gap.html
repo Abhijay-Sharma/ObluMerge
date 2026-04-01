@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaction Audit | {{ selected_sp.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080808; --card: #121212; --border: #252525;
+            --green: #00ff99; --yellow: #ffd54d; --blue: #00d4ff; --dim: #777;
+        }
+        body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; padding: 25px; line-height: 1.6; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+        .formula-box { background: #1a1a1a; padding: 20px; border-radius: 15px; border: 1px dashed var(--blue); margin-bottom: 30px; }
+
+        .summary-banner { display: flex; gap: 20px; margin-bottom: 30px; }
+        .stat-pill { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 15px; flex: 1; text-align: center; }
+        .stat-pill small { color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+        .stat-pill b { display: block; font-size: 24px; color: var(--green); }
+
+        .list-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 11px; color: var(--dim); padding: 15px; text-transform: uppercase; border-bottom: 1px solid var(--border); background: #1a1a1a; }
+        td { padding: 15px; font-size: 13px; border-bottom: 1px solid #1a1a1a; }
+
+        .math-text { font-family: monospace; color: var(--yellow); font-size: 14px; font-weight: 700; }
+        .date-list { font-size: 11px; color: var(--dim); display: block; margin-top: 5px; max-width: 300px; }
+
+        .badge { padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+        .b-good { background: rgba(0, 255, 153, 0.1); color: var(--green); }
+        .b-bad { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2 style="margin:0;">Interaction Velocity Audit</h2>
+        <p style="color:var(--dim); margin:5px 0 0;">Reviewing how the <b>{{ final_avg_result }} Days</b> average was calculated for <b>{{ selected_sp.name }}</b></p>
+    </div>
+
+    <!-- LOGIC EXPLANATION -->
+    <div class="formula-box">
+        <b style="color: var(--blue); display: block; margin-bottom: 10px;">How is this calculated?</b>
+        <p style="font-size: 13px; margin: 0; color: #ccc;">
+            We measure the salesperson's consistency from <b>Jan 1st</b> to <b>Today</b> (Total: {{ total_period_days }} days). <br>
+            Each customer creates "Gaps" based on the number of remarks: <br>
+            <span style="color:var(--yellow)">
+                Per Customer: {{ total_period_days }} Days ÷ (Remarks)
+                <br>if Remark is zero for a customer then the gap is considered as 1 by default<br>
+                Final: Average of all customer gaps
+            </span>
+        </p>
+    </div>
+
+    <!-- OVERALL SUMMARY -->
+    <div class="summary-banner">
+        <div class="stat-pill"><small>Total Period</small><b>{{ total_period_days }} Days</b></div>
+        <div class="stat-pill"><small>Customers Audited</small><b>{{ total_customers }}</b></div>
+        <div class="stat-pill"><small>Final Avg Gap</small><b style="color:var(--blue)">{{ final_avg_result }} Days</b></div>
+    </div>
+
+    <!-- DETAILED TABLE -->
+    <div class="list-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Customer Name</th>
+                    <th>Remarks</th>
+                    <th>Math Breakdown</th>
+                    <th style="text-align: right;">Avg Gap</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in audit_data %}
+                <tr>
+                    <td>
+                        <b>{{ row.customer_name }}</b>
+                        <span class="date-list">
+                            Dates: {% for d in row.remark_dates %}{{ d|date:"d M" }}{% if not forloop.last %}, {% endif %}{% empty %}No contact{% endfor %}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if row.remark_count > 0 %}b-good{% else %}b-bad{% endif %}">
+                            {{ row.remark_count }} Remarks
+                        </span>
+                    </td>
+                    <td class="math-text">
+                        {{ row.total_days }} Days / {{ row.gaps }} Gaps
+                    </td>
+                    <td style="text-align: right; font-weight: 700; font-size: 16px;">
+                        {{ row.result }} <small style="font-size: 10px; font-weight: 400; color: var(--dim);">Days</small>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
