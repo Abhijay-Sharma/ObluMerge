@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo Sales Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg: #080808; --card: #121212; --border: #252525;
+            --green: #00ff99; --yellow: #ffd54d; --blue: #00d4ff; --dim: #777;
+        }
+        body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; padding: 25px; margin: 0; }
+        .wrapper { max-width: 1250px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        select { background: #1a1a1a; color: #fff; padding: 10px 15px; border: 1px solid #333; border-radius: 8px; width: 280px; font-family: inherit; }
+
+        .report-section { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 25px; margin-bottom: 40px; }
+        .section-label { font-size: 14px; font-weight: 700; color: var(--dim); text-transform: uppercase; margin-bottom: 20px; display: block; letter-spacing: 1px; }
+
+        .map-container { height: 500px; width: 100%; border-radius: 15px; background: #000; border: 1px solid #222; margin-bottom: 25px; }
+
+        .table-wrap { border-radius: 12px; overflow: hidden; border: 1px solid #222; background: #0c0c0c; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a1a1a; color: var(--dim); font-size: 10px; text-transform: uppercase; padding: 15px; text-align: left; }
+        td { padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #1a1a1a; }
+
+        .state-row { background: #181818; font-weight: 700; cursor: pointer; }
+        .district-row { background: #111; font-weight: 600; display: none; cursor: pointer; color: #ddd; }
+        .item-row { background: #080808; display: none; color: #999; }
+
+        .toggle-icon { display: inline-block; width: 15px; transition: 0.3s; font-size: 10px; color: var(--blue); }
+        .rotate { transform: rotate(90deg); }
+        .text-right { text-align: right; }
+        .text-green { color: var(--green); } .text-yellow { color: var(--yellow); }
+        .map-label-text { text-align: center; color: #000; font-weight: 800; font-size: 10px; text-shadow: 0 0 3px #fff; pointer-events: none; }
+        .leaflet-control-layers { background: #111 !important; color: #fff !important; border: 1px solid #333 !important; padding: 10px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header">
+        <div><h2>Performance Collection Audit</h2><p style="margin:5px 0 0; color:var(--dim); font-size: 12px;">FY 2025-26 Audit</p></div>
+        <form method="get"><select name="salesperson" onchange="this.form.submit()"><option value="">-- Choose Salesperson --</option>{% for sp in salespersons %}<option value="{{ sp.id }}" {% if selected_sp.id == sp.id %}selected{% endif %}>{{ sp.name }}</option>{% endfor %}</select></form>
+    </div>
+
+    {% if selected_sp %}
+    <!-- SECTION 1: REVENUE -->
+    <div class="report-section">
+        <span class="section-label">Section 1: Revenue Drilldown (State > District > Customer)</span>
+        <div id="map1" class="map-container"></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Hierarchy</th><th class="text-right">Orders</th><th class="text-right">Total Value</th></tr></thead>
+                <tbody>
+                    {% for state, s_data in geo_data.items %}
+                    <tr class="state-row" onclick="toggleNode('s1-{{ forloop.counter }}', this)"><td><span class="toggle-icon">▶</span> {{ state }}</td><td class="text-right">{{ s_data.orders }}</td><td class="text-right text-green">₹ {{ s_data.value|floatformat:2 }}</td></tr>
+                    {% for d_name, d_data in s_data.districts.items %}
+                    <tr class="district-row s1-{{ forloop.parentloop.counter }}-child" onclick="toggleNode('d1-{{ forloop.parentloop.counter }}-{{ forloop.counter }}', this)"><td style="padding-left: 30px;"><span class="toggle-icon">▶</span> {{ d_name }}</td><td class="text-right">{{ d_data.orders }}</td><td class="text-right">₹ {{ d_data.value|floatformat:2 }}</td></tr>
+                    {% for c_name, c_data in d_data.customers.items %}
+                    <tr class="item-row s1-{{ forloop.parentloop.parentloop.counter }}-child d1-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-child"><td style="padding-left: 60px;">👤 {{ c_name }}</td><td class="text-right">{{ c_data.orders }}</td><td class="text-right">₹ {{ c_data.value|floatformat:2 }}</td></tr>
+                    {% endfor %}{% endfor %}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECTION 2: CATEGORY -->
+    <div class="report-section">
+        <span class="section-label">Section 2: Category Shading (Unit Drilldown)</span>
+        <form method="get" style="margin-bottom: 25px;"><input type="hidden" name="salesperson" value="{{ selected_sp.id }}"><select name="category" onchange="this.form.submit()"><option value="">-- Choose Category --</option>{% for cat in categories %}<option value="{{ cat }}" {% if selected_cat == cat %}selected{% endif %}>{{ cat }}</option>{% endfor %}</select></form>
+        <div id="map2" class="map-container"></div>
+        {% if selected_cat %}
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>State</th><th>District</th><th>Product Name</th><th class="text-right">Units</th><th class="text-right">Amount</th></tr></thead>
+                <tbody>
+                    {% for state, s_data in cat_hierarchy.items %}
+                    <tr class="state-row parent-row" onclick="toggleNode('s2-{{ forloop.counter }}', this)"><td><span class="toggle-icon">▶</span> {{ state }}</td><td></td><td></td><td class="text-right text-yellow">{{ s_data.qty|floatformat:0 }}</td><td class="text-right">₹ {{ s_data.amt|floatformat:2 }}</td></tr>
+                    {% for d_name, p_list in s_data.districts.items %}{% for item in p_list %}
+                    <tr class="item-row s2-{{ forloop.parentloop.parentloop.counter }}-child"><td></td><td style="font-weight:600; border-left:2px solid var(--yellow); background:#0c0c0c;">{% if forloop.first %}{{ d_name }}{% endif %}</td><td style="color:#ccc">{{ item.p_name }}</td><td class="text-right">{{ item.qty|floatformat:0 }}</td><td class="text-right">₹ {{ item.amt|floatformat:2 }}</td></tr>
+                    {% endfor %}{% endfor %}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function toggleNode(id, el) {
+        const icon = el.querySelector('.toggle-icon');
+        const opening = icon && !icon.classList.contains('rotate');
+        if (opening) { icon.classList.add('rotate'); document.querySelectorAll('.' + id + '-child').forEach(c => c.style.display = 'table-row'); }
+        else { icon.classList.remove('rotate'); hideRecursive(id); }
+    }
+    function hideRecursive(pId) {
+        document.querySelectorAll('.' + pId + '-child').forEach(c => {
+            c.style.display = 'none';
+            const icon = c.querySelector('.toggle-icon'); if(icon) icon.classList.remove('rotate');
+            const sub = c.getAttribute('onclick'); if(sub) { const m = sub.match(/'([^']+)'/); if(m) hideRecursive(m[1]); }
+        });
+    }
+
+    function buildLayer(data, color, isState) {
+        const layer = L.featureGroup();
+        if(!data || data.length === 0) return layer;
+        const maxVal = Math.max(...data.map(d => d.value));
+        data.forEach(d => {
+            const p = d.value/maxVal;
+            const shade = color==='green' ? (p>0.7?'#007b4b':p>0.4?'#00d688':'#b3ffd6') : (p>0.7?'#b38f00':p>0.4?'#ffcc00':'#fff5cc');
+            const radius = isState ? 24 : 12;
+            const bubble = L.circleMarker([d.lat, d.lon], { radius: radius, fillColor: shade, color: '#fff', weight: 1, fillOpacity: 0.7 });
+            let tip = `<b>${d.name}</b><br>${color==='green'?'Value: ₹'+d.value.toLocaleString():'Units: '+Math.round(d.value)}`;
+            if(d.count) tip += `<br>Orders: ${d.count}`;
+            bubble.bindTooltip(tip, { sticky:true, direction:'top' }).addTo(layer);
+            const labelStr = color==='green' ? (Math.round(d.value/1000)+'K') : Math.round(d.value);
+            L.marker([d.lat, d.lon], { icon: L.divIcon({ className:'map-label-text', html:`<span>${labelStr}</span>`, iconSize:[40,20] }), interactive: false }).addTo(layer);
+        });
+        return layer;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        {% if selected_sp %}
+        const map1 = L.map('map1', { attributionControl: false }).setView([22.5, 78], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map1);
+        const m1s = buildLayer({{ map1_state_json|safe }}, 'green', true).addTo(map1);
+        const m1d = buildLayer({{ map1_dist_json|safe }}, 'green', false);
+        L.control.layers({"State View": m1s, "District View": m1d}, null, {collapsed: false}).addTo(map1);
+
+        {% if map2_state_json %}
+        const map2 = L.map('map2', { attributionControl: false }).setView([22.5, 78], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
+        const m2s = buildLayer({{ map2_state_json|safe }}, 'yellow', true).addTo(map2);
+        const m2d = buildLayer({{ map2_dist_json|safe }}, 'yellow', false);
+        L.control.layers({"State View": m2s, "District View": m2d}, null, {collapsed: false}).addTo(map2);
+        {% endif %}{% endif %}
+    });
+</script>
+</body>
+</html>

@@ -2740,3 +2740,120 @@ class DetailedMapView(AccountantRequiredMixin, TemplateView):
 
         ctx["map_data_json"] = json.dumps(data)
         return ctx
+
+
+class GeoSalesReportView(AccountantRequiredMixin, TemplateView):
+    template_name = "customers/geo_sales_report.html"
+
+    STATE_COORDS = {
+        "Andhra Pradesh": [15.91, 79.74], "Arunachal Pradesh": [28.21, 94.72], "Assam": [26.20, 92.93],
+        "Bihar": [25.09, 85.31], "Chhattisgarh": [21.27, 81.86], "Goa": [15.29, 74.12],
+        "Gujarat": [22.25, 71.19], "Haryana": [29.05, 76.08], "Himachal Pradesh": [31.10, 77.17],
+        "Jharkhand": [23.61, 85.27], "Karnataka": [15.31, 75.71], "Kerala": [10.85, 76.27],
+        "Madhya Pradesh": [22.97, 78.65], "Maharashtra": [19.75, 75.71], "Manipur": [24.66, 93.90],
+        "Meghalaya": [25.46, 91.36], "Mizoram": [23.16, 92.93], "Nagaland": [26.15, 94.56],
+        "Odisha": [20.95, 85.09], "Punjab": [31.14, 75.34], "Rajasthan": [27.02, 74.21],
+        "Sikkim": [27.53, 88.51], "Tamil Nadu": [11.12, 78.65], "Telangana": [18.11, 79.01],
+        "Tripura": [23.94, 91.98], "Uttar Pradesh": [26.84, 80.94], "Uttarakhand": [30.06, 79.01],
+        "West Bengal": [22.98, 87.85], "Delhi": [28.70, 77.10], "Jammu and Kashmir": [33.77, 76.57],
+        "Ladakh": [34.15, 77.57], "Chandigarh": [30.73, 76.77]
+    }
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        all_sp = SalesPerson.objects.all().order_by("name")
+        hide = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan", "test1"]
+        ctx["salespersons"] = [sp for sp in all_sp if sp.name.lower() not in hide]
+        ctx["categories"] = VoucherStockItem.objects.values_list('item__category__name', flat=True).distinct().exclude(
+            item__category__name__isnull=True).order_by('item__category__name')
+
+        sp_id = self.request.GET.get("salesperson")
+        selected_cat = self.request.GET.get("category")
+        if not sp_id: return ctx
+
+        selected_sp = get_object_or_404(SalesPerson, id=sp_id)
+        ctx["selected_sp"] = selected_sp
+        ctx["selected_cat"] = selected_cat
+
+        start_date, end_date = date(2025, 4, 1), date(2026, 3, 31)
+        base_qs = CustomerVoucherStatus.objects.filter(
+            customer__salesperson=selected_sp, voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=(start_date, end_date)
+        ).select_related('customer')
+
+        # --- SECTION 1 LOGIC (REVENUE MAP & TABLE) ---
+        raw_geo = base_qs.values(st=F('customer__state'), dt=F('customer__district'), name=F('customer__name'),
+                                 lat=F('customer__latitude'), lon=F('customer__longitude')).annotate(
+            total_val=Sum('voucher_amount'), total_orders=Count('id')).order_by('st', 'dt', 'name')
+
+        geo_hierarchy = {}
+        s_map1, d_map1 = defaultdict(lambda: {'val': 0, 'count': 0}), {}
+
+        for item in raw_geo:
+            st, dt = str(item['st']).strip().title(), str(item['dt']).strip().title()
+            val, count = float(item['total_val'] or 0), item['total_orders']
+
+            s_map1[st]['val'] += val
+            s_map1[st]['count'] += count
+
+            dk = (st, dt)
+            if dk not in d_map1:
+                d_map1[dk] = {'val': 0, 'count': 0, 'lat': item['lat'] or self.STATE_COORDS.get(st, [22, 78])[0],
+                              'lon': item['lon'] or self.STATE_COORDS.get(st, [22, 78])[1]}
+            d_map1[dk]['val'] += val
+            d_map1[dk]['count'] += count
+
+            if st not in geo_hierarchy: geo_hierarchy[st] = {'orders': 0, 'value': 0, 'districts': {}}
+            geo_hierarchy[st]['orders'] += count
+            geo_hierarchy[st]['value'] += val
+            if dt not in geo_hierarchy[st]['districts']: geo_hierarchy[st]['districts'][dt] = {'orders': 0, 'value': 0,
+                                                                                               'customers': {}}
+            geo_hierarchy[st]['districts'][dt]['orders'] += count
+            geo_hierarchy[st]['districts'][dt]['value'] += val
+            geo_hierarchy[st]['districts'][dt]['customers'][item['name']] = {'orders': count, 'value': val}
+
+        ctx["geo_data"] = OrderedDict(sorted(geo_hierarchy.items()))
+        ctx["map1_state_json"] = json.dumps([{'name': k, 'lat': self.STATE_COORDS.get(k, [22, 78])[0],
+                                              'lon': self.STATE_COORDS.get(k, [22, 78])[1], 'value': v['val'],
+                                              'count': v['count']} for k, v in s_map1.items()])
+        ctx["map1_dist_json"] = json.dumps(
+            [{'name': f"{k[1]}, {k[0]}", 'lat': v['lat'], 'lon': v['lon'], 'value': v['val'], 'count': v['count']} for
+             k, v in d_map1.items()])
+
+        # --- SECTION 2 LOGIC (CATEGORY MAP & TABLE) ---
+        cat_hierarchy = {}
+        s_map2, d_map2 = defaultdict(float), {}
+        if selected_cat:
+            v_ids = base_qs.values_list('voucher_id', flat=True)
+            cat_raw = VoucherStockItem.objects.filter(voucher_id__in=v_ids, item__category__name=selected_cat).values(
+                st=F('voucher__customer_status__customer__state'), dt=F('voucher__customer_status__customer__district'),
+                p_name=F('item__name'), lat=F('voucher__customer_status__customer__latitude'),
+                lon=F('voucher__customer_status__customer__longitude')).annotate(q=Sum('quantity'),
+                                                                                 a=Sum('amount')).order_by('st', 'dt',
+                                                                                                           'p_name')
+
+            for item in cat_raw:
+                st, dt = str(item['st']).strip().title(), str(item['dt']).strip().title()
+                qty, amt = float(item['q'] or 0), float(item['a'] or 0)
+                s_map2[st] += qty
+                dk = (st, dt)
+                if dk not in d_map2:
+                    d_map2[dk] = {'qty': 0, 'lat': item['lat'] or self.STATE_COORDS.get(st, [22, 78])[0],
+                                  'lon': item['lon'] or self.STATE_COORDS.get(st, [22, 78])[1]}
+                d_map2[dk]['qty'] += qty
+
+                if st not in cat_hierarchy: cat_hierarchy[st] = {'qty': 0, 'amt': 0, 'districts': {}}
+                if dt not in cat_hierarchy[st]['districts']: cat_hierarchy[st]['districts'][dt] = []
+                cat_hierarchy[st]['districts'][dt].append({'p_name': item['p_name'], 'qty': qty, 'amt': amt})
+                cat_hierarchy[st]['qty'] += qty
+                cat_hierarchy[st]['amt'] += amt
+
+            ctx["cat_hierarchy"] = OrderedDict(sorted(cat_hierarchy.items()))
+            ctx["map2_state_json"] = json.dumps([{'name': k, 'lat': self.STATE_COORDS.get(k, [22, 78])[0],
+                                                  'lon': self.STATE_COORDS.get(k, [22, 78])[1], 'value': v} for k, v in
+                                                 s_map2.items()])
+            ctx["map2_dist_json"] = json.dumps(
+                [{'name': f"{k[1]}, {k[0]}", 'lat': v['lat'], 'lon': v['lon'], 'value': v['qty']} for k, v in
+                 d_map2.items()])
+
+        return ctx
