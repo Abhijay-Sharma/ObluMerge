@@ -2469,7 +2469,7 @@ class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
         # 1. POPULATE DROPDOWN
         all_sp = SalesPerson.objects.all().order_by("name")
         hide_names = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan",
-                      "test1", "online","Jackson","Kaushik","Nimit"]
+                      "test1", "online","jackson","kaushik","nimit"]
         ctx["salespersons"] = [sp for sp in all_sp if sp.name.lower() not in hide_names]
 
         # 2. CHECK SELECTION
