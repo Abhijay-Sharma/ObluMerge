@@ -2469,7 +2469,7 @@ class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
         # 1. POPULATE DROPDOWN
         all_sp = SalesPerson.objects.all().order_by("name")
         hide_names = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan",
-                      "test1", "online"]
+                      "test1", "online","Jackson","Kaushik","Nimit"]
         ctx["salespersons"] = [sp for sp in all_sp if sp.name.lower() not in hide_names]
 
         # 2. CHECK SELECTION
@@ -2479,6 +2479,16 @@ class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
 
         selected_sp = get_object_or_404(SalesPerson, id=sp_id)
         ctx["selected_salesperson"] = selected_sp
+        qualitative_map = {
+            "aman": 29.0,
+            "ankush": 29.0,
+            "bhavya": 29.5,
+            "naveen": 29.5,
+            "satish": 29.5,
+            "rushikesh": 28.6
+        }
+        # Lookup score, default to 0 if name not in dictionary
+        qualitative_score = qualitative_map.get(selected_sp.name.lower(), 0.0)
 
         # ------------------------------------------------------
         # 3. INITIALIZE ALL VARIABLES (Prevents NameError)
@@ -2609,6 +2619,8 @@ class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
             top_st_penetration_pct = round((top_st_dist_actual / top_st_dist_total * 100), 1)
             score_geo = round(min((top_st_penetration_pct / 70) * 5, 5), 2)
 
+
+        quantitative_total = score_a + score_b + score_c + score_d + score_e + score_geo
         # ------------------------------------------------------
         # 5. CONTEXT UPDATE
         # ------------------------------------------------------
@@ -2636,6 +2648,9 @@ class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
             "total_vouchers_count": sold_vids.count(),
             "top_products": stock_items.values('item__name').annotate(qty=Sum('quantity')).order_by('-qty')[:5],
             "remark_frequency": round((total_interactions / (total_assigned or 1)) / sync_weeks, 2),
+            "total_kpi": round(quantitative_total + qualitative_score, 1),  # Out of 100
+            "qualitative_score": qualitative_score,
+            "quantitative_score": round(quantitative_total, 1),
         })
         return ctx
 

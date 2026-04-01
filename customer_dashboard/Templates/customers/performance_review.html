@@ -197,9 +197,16 @@
          <!-- 🏆 MASTER KPI Master Scorecard -->
         <div class="kpi-main-card">
             <span>Aggregated Performance Rating</span>
-            <h1>{{ total_kpi }} <small style="font-size: 20px; color: var(--text-dim); font-weight: 400;">/ 70</small></h1>
+
+            <!-- Changed /70 to /100 -->
+            <h1>{{ total_kpi }} <small style="font-size: 20px; color: var(--text-dim); font-weight: 400;">/ 100</small></h1>
 
             <div class="kpi-summary-badges">
+                <!-- New Qualitative Badge -->
+                <div class="mini-kpi-badge" style="color: var(--cyan); border-color: var(--cyan); background: rgba(34, 211, 238, 0.1);">
+                    Qualitative Data: {{ qualitative_score }} / 30%
+                </div>
+
                 <div class="mini-kpi-badge" style="color: var(--green); border-color: var(--green);">Category Mix: {{ category_earned_score }}%</div>
                 <div class="mini-kpi-badge" style="color: var(--blue); border-color: var(--blue);">Monthly: {{ revenue_earned_score }}%</div>
                 <div class="mini-kpi-badge" style="color: var(--yellow); border-color: var(--yellow);">New Clients: {{ new_customer_earned_score }}%</div>
@@ -207,6 +214,10 @@
                 <div class="mini-kpi-badge" style="color: var(--cyan); border-color: var(--cyan);">Conversion: {{ total_conversion_score }}%</div>
                 <div class="mini-kpi-badge" style="color: var(--green); border-color: var(--green); border-style: dashed;">Geo: {{ score_geo }}%</div>
             </div>
+
+        <div style="margin-top: 15px; font-size: 11px; color: var(--text-dim);">
+            Quantitative (System): {{ quantitative_score }}/70 | Qualitative (Manual): {{ qualitative_score }}/30
+        </div>
         </div>
 
     {% endif %}
