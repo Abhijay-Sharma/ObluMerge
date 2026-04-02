@@ -2654,6 +2654,180 @@ class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
         })
         return ctx
 
+
+class SalesPersonQualitativeReportView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/salesperson_qualitative_report.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # 1. Handle Navigation & Filtering
+        all_sp = SalesPerson.objects.all().order_by("name")
+        excluded = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "online", "mukesh", "aryan", "test1", "danish",
+                    "jackson", "kaushik", "online order", "nimit"]
+        ctx["salespersons"] = [sp for sp in all_sp if sp.name.lower() not in excluded]
+
+        sp_id = self.request.GET.get("salesperson")
+        if not sp_id:
+            return ctx
+
+        selected_sp = get_object_or_404(SalesPerson, id=sp_id)
+        name_key = selected_sp.name.lower()
+        ctx["selected_sp"] = selected_sp
+
+        # 2. COMPLETE DATABASE FROM PDFs
+        QUALITATIVE_DB = {
+            "bhavya": {
+                "attendance": {"present": 281, "working": 315, "score": 7.14},
+                "leaves": [
+                    {"type": "EL + CL (Earned & Casual)", "assigned": 32, "taken": 31},
+                    {"type": "Sick Leave (SL)", "assigned": 5, "taken": 3},
+                    {"type": "Bereavement Leave", "assigned": 3, "taken": 0},
+                    {"type": "Half Day (Grace)", "assigned": 0, "taken": 0}
+                ],
+                "compliance": [
+                    {"ind": "Policy Violation", "status": "No", "rem": ""},
+                    {"ind": "Warning Issued", "status": "No", "rem": ""},
+                    {"ind": "Notice Served", "status": "0", "rem": ""},
+                    {"ind": "HR Complaint", "status": "No", "rem": ""},
+                ],
+                "discipline": [
+                    {"ind": "Late Reporting", "val": "YES", "rem": "SOMETIMES"},
+                    {"ind": "Dress Code Compliance", "val": "YES", "rem": "SOMETIMES"},
+                    {"ind": "Behavior Complaints", "val": "NO", "rem": ""},
+                    {"ind": "Workplace Violations", "val": "NO", "rem": ""},
+                ],
+                "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
+                "integrity": {"hon": 4, "acc": 5, "res": 5, "eth": 5, "val": 5, "score": 4.5},
+                "total": 29.5
+            },
+            "ankush": {
+                "attendance": {"present": 285, "working": 315, "score": 7.0},
+                "leaves": [
+                    {"type": "EL + CL (Earned & Casual)", "assigned": 32, "taken": 27.5},
+                    {"type": "Sick Leave (SL)", "assigned": 5, "taken": 3},
+                    {"type": "Bereavement Leave", "assigned": 3, "taken": 0},
+                    {"type": "Half Day (Grace)", "assigned": 0, "taken": 0}
+                ],
+                "compliance": [
+                    {"ind": "Policy Violation", "status": "No", "rem": ""},
+                    {"ind": "Warning Issued", "status": "No", "rem": ""},
+                    {"ind": "Notice Served", "status": "0", "rem": ""},
+                    {"ind": "HR Complaint", "status": "No", "rem": ""},
+                ],
+                "discipline": [
+                    {"ind": "Late Reporting (Punctual)", "val": "4", "rem": "Rating (1-5)"},
+                    {"ind": "Dress Code Compliance", "val": "5", "rem": "Rating (1-5)"},
+                    {"ind": "Behavior Complaints", "val": "5", "rem": ""},
+                    {"ind": "Workplace Violations", "val": "5", "rem": ""},
+                ],
+                "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
+                "integrity": {"hon": 4, "acc": 4, "res": 4, "eth": 5, "val": 5, "score": 4.5},
+                "total": 29.0
+            },
+            "aman": {
+                "attendance": {"present": 285, "working": 315, "score": 7.0},
+                "leaves": [
+                    {"type": "EL + CL (Earned & Casual)", "assigned": 32, "taken": 27},
+                    {"type": "Sick Leave (SL)", "assigned": 5, "taken": 3},
+                    {"type": "Bereavement Leave", "assigned": 3, "taken": 0},
+                    {"type": "Half Day (Grace)", "assigned": 0, "taken": 0}
+                ],
+                "compliance": [
+                    {"ind": "Policy Violation", "status": "No", "rem": ""},
+                    {"ind": "Warning Issued", "status": "No", "rem": ""},
+                    {"ind": "Notice Served", "status": "0", "rem": ""},
+                    {"ind": "HR Complaint", "status": "No", "rem": ""},
+                ],
+                "discipline": [
+                    {"ind": "Late Reporting", "val": "NO", "rem": ""},
+                    {"ind": "Dress Code Compliance", "val": "NO", "rem": ""},
+                    {"ind": "Behavior Complaints", "val": "NO", "rem": ""},
+                    {"ind": "Workplace Violations", "val": "NO", "rem": ""},
+                ],
+                "teamwork": {"comm": 5, "part": 3, "conflict": 5, "support": 5, "collab": 5, "score": 4.5,
+                             "rem_part": "Never attend sport activity"},
+                "integrity": {"hon": 3.5, "acc": 4, "res": 5, "eth": 5, "val": 5, "score": 4.5,
+                              "rem_hon": "Never disclose reason of his leaves"},
+                "total": 29.0
+            },
+            "rushikesh": {
+                "attendance": {"present": "N/A", "working": 315, "score": 8.0},
+                "leaves": [
+                    {"type": "EL + CL (Earned & Casual)", "assigned": 32, "taken": 4.5},
+                    {"type": "Sick Leave (SL)", "assigned": 5, "taken": 1},
+                    {"type": "Bereavement Leave", "assigned": 3, "taken": 1},
+                    {"type": "Half Day (Grace)", "assigned": 0, "taken": 0}
+                ],
+                "compliance": [
+                    {"ind": "Policy Violation", "status": "No", "rem": ""},
+                    {"ind": "Warning Issued", "status": "No", "rem": ""},
+                    {"ind": "Notice Served", "status": "0", "rem": ""},
+                    {"ind": "HR Complaint", "status": "No", "rem": ""},
+                ],
+                "discipline": [
+                    {"ind": "Late Reporting", "val": "NO", "rem": ""},
+                    {"ind": "Dress Code Compliance", "val": "NO", "rem": ""},
+                    {"ind": "Behavior Complaints", "val": "NO", "rem": ""},
+                    {"ind": "Workplace Violations", "val": "NO", "rem": ""},
+                ],
+                "teamwork": {"comm": 4, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 4.5},
+                "integrity": {"hon": 4, "acc": 4, "res": 4.5, "eth": 4, "val": 4, "score": 4.1},
+                "total": 28.6
+            },
+            "satish": {
+                "attendance": {"present": 313, "working": 315, "score": 8.0},
+                "leaves": [
+                    {"type": "EL + CL (Earned & Casual)", "assigned": 5, "taken": 2},
+                    {"type": "Sick Leave (SL)", "assigned": 5, "taken": 0},
+                    {"type": "Bereavement Leave", "assigned": 3, "taken": 0},
+                    {"type": "Half Day (Grace)", "assigned": 0, "taken": 0}
+                ],
+                "compliance": [
+                    {"ind": "Policy Violation", "status": "No", "rem": ""},
+                    {"ind": "Warning Issued", "status": "No", "rem": ""},
+                    {"ind": "Notice Served", "status": "0", "rem": ""},
+                    {"ind": "HR Complaint", "status": "No", "rem": ""},
+                ],
+                "discipline": [
+                    {"ind": "Late Reporting", "val": "NO", "rem": ""},
+                    {"ind": "Dress Code Compliance", "val": "NO", "rem": ""},
+                    {"ind": "Behavior Complaints", "val": "NO", "rem": ""},
+                    {"ind": "Workplace Violations", "val": "NO", "rem": ""},
+                ],
+                "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
+                "integrity": {"hon": 5, "acc": 4.5, "res": 4.5, "eth": 5, "val": 5, "score": 4.5},
+                "total": 29.5
+            },
+            "naveen": {
+                "attendance": {"present": 310, "working": 315, "score": 7.14},
+                "leaves": [
+                    {"type": "EL + CL (Earned & Casual)", "assigned": 20, "taken": 4.5},
+                    {"type": "Sick Leave (SL)", "assigned": 5, "taken": 0},
+                    {"type": "Bereavement Leave", "assigned": 3, "taken": 0},
+                    {"type": "Half Day (Grace)", "assigned": 0, "taken": 0}
+                ],
+                "compliance": [
+                    {"ind": "Policy Violation", "status": "No", "rem": ""},
+                    {"ind": "Warning Issued", "status": "No", "rem": ""},
+                    {"ind": "Notice Served", "status": "0", "rem": ""},
+                    {"ind": "HR Complaint", "status": "No", "rem": ""},
+                ],
+                "discipline": [
+                    {"ind": "Late Reporting", "val": "NO", "rem": ""},
+                    {"ind": "Dress Code Compliance", "val": "NO", "rem": ""},
+                    {"ind": "Behavior Complaints", "val": "NO", "rem": ""},
+                    {"ind": "Workplace Violations", "val": "NO", "rem": ""},
+                ],
+                "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
+                "integrity": {"hon": 5, "acc": 4.5, "res": 4.5, "eth": 5, "val": 5, "score": 4.5},
+                "total": 29.5
+            },
+        }
+
+        ctx["data"] = QUALITATIVE_DB.get(name_key, None)
+        return ctx
+
 import json
 from django.views.generic import TemplateView
 from django.db.models import Count

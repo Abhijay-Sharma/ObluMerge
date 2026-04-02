@@ -62,4 +62,6 @@ urlpatterns = [
     path("geo-sales-report/", views.GeoSalesReportView.as_view(), name="geo_sales_report"),
 
     path("sales-perfomance-review/", views.SalesPerformanceReviewView.as_view(), name="performance_review"),
+
+    path("salesperson-qualitative-report/", views.SalesPersonQualitativeReportView.as_view(), name="salesperson_qualitative_report"),
 ]
