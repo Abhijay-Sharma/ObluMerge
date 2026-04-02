@@ -218,6 +218,9 @@
         <div style="margin-top: 15px; font-size: 11px; color: var(--text-dim);">
             Quantitative (System): {{ quantitative_score }}/70 | Qualitative (Manual): {{ qualitative_score }}/30
         </div>
+        <div style="text-align:center;">
+            <a href="{% url 'customers:salesperson_qualitative_report' %}?salesperson={{ selected_salesperson.id }}" class="btn-link" style="background:var(--purple); color:#fff; border:none; padding:10px 30px;">Open Qualitative Report →</a>
+        </div>
         </div>
 
     {% endif %}
