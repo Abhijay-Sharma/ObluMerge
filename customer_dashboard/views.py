@@ -2480,12 +2480,12 @@ class SalesPerformanceReviewView(LoginRequiredMixin, TemplateView):
         selected_sp = get_object_or_404(SalesPerson, id=sp_id)
         ctx["selected_salesperson"] = selected_sp
         qualitative_map = {
-            "aman": 29.0,
-            "ankush": 29.0,
-            "bhavya": 29.5,
-            "naveen": 29.5,
-            "satish": 29.5,
-            "rushikesh": 28.6
+            "aman": 28.0,
+            "ankush": 28.0,
+            "bhavya": 28.5,
+            "naveen": 28.5,
+            "satish": 28.5,
+            "rushikesh": 27.6
         }
         # Lookup score, default to 0 if name not in dictionary
         qualitative_score = qualitative_map.get(selected_sp.name.lower(), 0.0)
