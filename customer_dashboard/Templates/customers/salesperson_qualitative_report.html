@@ -96,7 +96,7 @@
 
             <!-- Discipline -->
             <div class="card">
-                <div class="card-head"><h3>Discipline Tracking</h3><span class="score-pill">{{ data.score_discipline|default:5.0 }}/5</span></div>
+                <div class="card-head"><h3>Discipline Tracking</h3><span class="score-pill">{{ data.score_discipline|default:5.0|floatformat:1 }}/5</span></div>
                 <table>
                     <thead><tr><th>Indicator</th><th style="text-align:center">Value</th><th style="text-align:right">Remarks</th></tr></thead>
                     {% for row in data.discipline %}
@@ -110,28 +110,28 @@
             </div>
 
             <!-- Teamwork -->
-            <div class="card">
+           <div class="card">
                 <div class="card-head"><h3>Teamwork Evaluation</h3><span class="score-pill">{{ data.teamwork.score }}/5</span></div>
                 <table>
-                    <thead><tr><th>Indicator</th><th style="text-align:right">Rating (1-5)</th></tr></thead>
-                    <tr><td>Communication</td><td class="col-stat val-highlight">{{ data.teamwork.comm }}</td></tr>
-                    <tr><td>Team Participation</td><td class="col-stat val-highlight">{{ data.teamwork.part }}</td></tr>
-                    <tr><td>Conflict Handling</td><td class="col-stat val-highlight">{{ data.teamwork.conflict }}</td></tr>
-                    <tr><td>Support to Team</td><td class="col-stat val-highlight">{{ data.teamwork.support }}</td></tr>
-                    <tr><td>Collaboration</td><td class="col-stat val-highlight">{{ data.teamwork.collab }}</td></tr>
+                    <thead><tr><th class="col-ind">Indicator</th><th class="col-val">Rating</th><th class="col-rem">Remarks</th></tr></thead>
+                    <tr><td>Communication</td><td class="col-val">{{ data.teamwork.comm }}</td><td class="col-rem"></td></tr>
+                    <tr><td>Team Participation</td><td class="col-val">{{ data.teamwork.part }}</td><td class="col-rem">{{ data.teamwork.rem_part }}</td></tr>
+                    <tr><td>Conflict Handling</td><td class="col-val">{{ data.teamwork.conflict }}</td><td class="col-rem"></td></tr>
+                    <tr><td>Support to Team</td><td class="col-val">{{ data.teamwork.support }}</td><td class="col-rem"></td></tr>
+                    <tr><td>Collaboration</td><td class="col-val">{{ data.teamwork.collab }}</td><td class="col-rem"></td></tr>
                 </table>
-            </div>
+           </div>
 
-            <!-- Integrity -->
+            <!-- INTEGRITY  -->
             <div class="card">
                 <div class="card-head"><h3>Integrity Assessment</h3><span class="score-pill">{{ data.integrity.score }}/5</span></div>
                 <table>
-                    <thead><tr><th>Indicator</th><th style="text-align:right">Rating (1-5)</th></tr></thead>
-                    <tr><td>Honesty</td><td class="col-stat val-highlight">{{ data.integrity.hon }}</td></tr>
-                    <tr><td>Accountability</td><td class="col-stat val-highlight">{{ data.integrity.acc }}</td></tr>
-                    <tr><td>Responsibility</td><td class="col-stat val-highlight">{{ data.integrity.res }}</td></tr>
-                    <tr><td>Ethical Behaviour</td><td class="col-stat val-highlight">{{ data.integrity.eth }}</td></tr>
-                    <tr><td>Respect for Company Values</td><td class="col-stat val-highlight">{{ data.integrity.val }}</td></tr>
+                    <thead><tr><th class="col-ind">Indicator</th><th class="col-val">Rating</th><th class="col-rem">Remarks</th></tr></thead>
+                    <tr><td>Honesty</td><td class="col-val">{{ data.integrity.hon }}</td><td class="col-rem">{{ data.integrity.rem_hon }}</td></tr>
+                    <tr><td>Accountability</td><td class="col-val">{{ data.integrity.acc }}</td><td class="col-rem"></td></tr>
+                    <tr><td>Responsibility</td><td class="col-val">{{ data.integrity.res }}</td><td class="col-rem"></td></tr>
+                    <tr><td>Ethical Behaviour</td><td class="col-val">{{ data.integrity.eth }}</td><td class="col-rem"></td></tr>
+                    <tr><td>Respect for Values</td><td class="col-val">{{ data.integrity.val }}</td><td class="col-rem"></td></tr>
                 </table>
             </div>
         </div>

@@ -2699,7 +2699,7 @@ class SalesPersonQualitativeReportView(LoginRequiredMixin, TemplateView):
                 ],
                 "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
                 "integrity": {"hon": 4, "acc": 5, "res": 5, "eth": 5, "val": 5, "score": 4.5},
-                "total": 29.5
+                "total": 28.5
             },
             "ankush": {
                 "attendance": {"present": 285, "working": 315, "score": 7.0},
@@ -2723,7 +2723,7 @@ class SalesPersonQualitativeReportView(LoginRequiredMixin, TemplateView):
                 ],
                 "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
                 "integrity": {"hon": 4, "acc": 4, "res": 4, "eth": 5, "val": 5, "score": 4.5},
-                "total": 29.0
+                "total": 28.0
             },
             "aman": {
                 "attendance": {"present": 285, "working": 315, "score": 7.0},
@@ -2749,7 +2749,7 @@ class SalesPersonQualitativeReportView(LoginRequiredMixin, TemplateView):
                              "rem_part": "Never attend sport activity"},
                 "integrity": {"hon": 3.5, "acc": 4, "res": 5, "eth": 5, "val": 5, "score": 4.5,
                               "rem_hon": "Never disclose reason of his leaves"},
-                "total": 29.0
+                "total": 28.0
             },
             "rushikesh": {
                 "attendance": {"present": "N/A", "working": 315, "score": 8.0},
@@ -2773,7 +2773,8 @@ class SalesPersonQualitativeReportView(LoginRequiredMixin, TemplateView):
                 ],
                 "teamwork": {"comm": 4, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 4.5},
                 "integrity": {"hon": 4, "acc": 4, "res": 4.5, "eth": 4, "val": 4, "score": 4.1},
-                "total": 28.6
+                "total": 27.6,
+                "score_discipline": 4.0,
             },
             "satish": {
                 "attendance": {"present": 313, "working": 315, "score": 8.0},
@@ -2797,7 +2798,7 @@ class SalesPersonQualitativeReportView(LoginRequiredMixin, TemplateView):
                 ],
                 "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
                 "integrity": {"hon": 5, "acc": 4.5, "res": 4.5, "eth": 5, "val": 5, "score": 4.5},
-                "total": 29.5
+                "total": 28.5
             },
             "naveen": {
                 "attendance": {"present": 310, "working": 315, "score": 7.14},
@@ -2821,7 +2822,7 @@ class SalesPersonQualitativeReportView(LoginRequiredMixin, TemplateView):
                 ],
                 "teamwork": {"comm": 5, "part": 5, "conflict": 5, "support": 5, "collab": 5, "score": 5.0},
                 "integrity": {"hon": 5, "acc": 4.5, "res": 4.5, "eth": 5, "val": 5, "score": 4.5},
-                "total": 29.5
+                "total": 28.5
             },
         }
 
