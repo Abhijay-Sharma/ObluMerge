@@ -1,173 +1,261 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Meta Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>oblu | Meta Ads Intelligence</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        form { background: #f3f3f3; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
-        label { font-weight: bold; margin-right: 5px; }
-        select, input[type=date] { padding: 6px; margin-right: 10px; }
-        button { padding: 8px 15px; cursor: pointer; background: black; color: white; border-radius: 6px; margin-top:10px; }
-        .chart-box { margin-bottom: 40px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+
+        .oblu-logo { background: #000; color: #fff; padding: 4px 12px; font-weight: 800; letter-spacing: -0.5px; border-radius: 2px; display: inline-block; }
+
+        .stat-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+        .custom-select-list::-webkit-scrollbar { width: 5px; }
+        .custom-select-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .metric-label { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 5px; display: block; }
+        select, input { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 0.9rem; width: 100%; outline-color: #2563eb; }
+
+        /* Ensures chart fills its container properly on mobile */
+        #mainChart { width: 100%; min-height: 350px; }
     </style>
 </head>
-<body>
+<body class="text-slate-900">
 
-<h1>Meta Campaign Dashboard</h1>
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex flex-wrap justify-between items-center sticky top-0 z-50 gap-2">
+        <div class="flex items-center gap-3">
+            <div class="oblu-logo text-lg md:text-xl">oblu</div>
+            <span class="text-slate-300 hidden sm:inline">|</span>
+            <h1 class="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-widest">Meta Ads Dashboard</h1>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-semibold text-slate-600">
+            <i class="far fa-calendar-alt"></i> {{ from_date }} — {{ to_date }}
+        </div>
+    </nav>
 
-<form id="filterForm" method="GET">
-    <!-- Date Range -->
-    <div>
-        <label>From:</label>
-        <input type="date" name="from" value="{{ from_date }}">
-        <label>To:</label>
-        <input type="date" name="to" value="{{ to_date }}">
+    <div class="max-w-[1600px] mx-auto p-4 md:p-6 grid grid-cols-12 gap-4 md:gap-6">
+
+        <!-- Sidebar Controls (Stacks on mobile, Sidebar on LG screens) -->
+        <aside class="col-span-12 lg:col-span-3 space-y-4 md:space-y-6">
+            <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                <form id="filterForm" method="GET" class="space-y-4 md:space-y-6">
+                    <div>
+                        <label class="metric-label">Date Range</label>
+                        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2">
+                            <input type="date" name="from" value="{{ from_date }}">
+                            <input type="date" name="to" value="{{ to_date }}">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="metric-label">Campaign Selection</label>
+                        <select name="campaign" required class="bg-slate-50">
+                            <option value="">-- Select --</option>
+                            {% for camp in campaigns %}
+                                <option value="{{ camp.id }}" {% if camp.id in selected_campaigns %}selected{% endif %}>
+                                    {{ camp.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200">
+                        <i class="fas fa-sync-alt mr-2"></i> Update Data
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="space-y-4 md:space-y-6">
+                    <div>
+                        <label class="metric-label">Primary Metric</label>
+                        <select id="primaryMetric" class="bg-blue-50 border-blue-100">
+                            <option value="spend">Spend (₹)</option>
+                            <option value="impressions">Impressions</option>
+                            <option value="reach">Reach</option>
+                            <option value="frequency">Frequency</option>
+                            <option value="clicks">Clicks</option>
+                            <option value="unique_clicks">Unique Clicks</option>
+                            <option value="cpc">CPC (₹)</option>
+                            <option value="cpm">CPM (₹)</option>
+                            <option value="ctr">CTR (%)</option>
+                            <option value="inline_link_clicks">Inline Link Clicks</option>
+                            <option value="conversions">Conversions</option>
+                            <option value="post_engagement">Post Engagement</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="metric-label">Compare VS</label>
+                        <select id="compareMetrics" multiple size="5" class="custom-select-list bg-slate-50">
+                            <option value="spend">Spend</option>
+                            <option value="impressions">Impressions</option>
+                            <option value="reach">Reach</option>
+                            <option value="frequency">Frequency</option>
+                            <option value="clicks">Clicks</option>
+                            <option value="unique_clicks">Unique Clicks</option>
+                            <option value="cpc">CPC</option>
+                            <option value="cpm">CPM</option>
+                            <option value="ctr">CTR</option>
+                            <option value="inline_link_clicks">Inline Link Clicks</option>
+                            <option value="conversions">Conversions</option>
+                            <option value="post_engagement">Post Engagement</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="metric-label">Visual Type</label>
+                        <select id="chartTypeSelect">
+                            <option value="line">Smooth Line</option>
+                            <option value="bar">Bar Graph</option>
+                            <option value="area">Area Map</option>
+                        </select>
+                    </div>
+
+                    <button type="button" onclick="updateChart()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+                        Refresh Graph
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Dashboard Content -->
+        <div class="col-span-12 lg:col-span-9 space-y-4 md:space-y-6">
+
+            {% if error %}
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl flex items-center gap-3">
+                <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
+                <span class="text-red-800 text-xs md:text-sm font-medium">{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <!-- KPI Row (Responsive: 2 columns on mobile, 4 on desktop) -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                <div class="stat-card p-4 md:p-5">
+                    <span class="metric-label">Total Spend</span>
+                    <h2 id="total-spend" class="text-sm md:text-2xl font-extrabold text-slate-900 truncate">₹0</h2>
+                </div>
+                <div class="stat-card p-4 md:p-5">
+                    <span class="metric-label">Conversions</span>
+                    <h2 id="total-conv" class="text-sm md:text-2xl font-extrabold text-slate-900 truncate">0</h2>
+                </div>
+                <div class="stat-card p-4 md:p-5">
+                    <span class="metric-label">Avg. CPC</span>
+                    <h2 id="avg-cpc" class="text-sm md:text-2xl font-extrabold text-slate-900 truncate">₹0</h2>
+                </div>
+                <div class="stat-card p-4 md:p-5">
+                    <span class="metric-label">Total Reach</span>
+                    <h2 id="total-reach" class="text-sm md:text-2xl font-extrabold text-slate-900 truncate">0</h2>
+                </div>
+            </div>
+
+            <!-- Chart Container -->
+            <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                    <h3 class="font-bold text-slate-800 text-xs md:text-sm uppercase tracking-wide">Performance Trends</h3>
+                    <div class="text-[9px] uppercase font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">Interactive Engine</div>
+                </div>
+                <!-- Height adjusted for mobile/desktop -->
+                <div id="mainChart" class="h-[350px] md:h-[550px]"></div>
+            </div>
+        </div>
     </div>
 
-    <!-- Campaign Selector -->
-    <div style="margin-top:10px;">
-        <label>Select Campaign:</label>
-        <select name="campaign" required>
-            <option value="">-- Choose Campaign --</option>
-            {% for camp in campaigns %}
-                <option value="{{ camp.id }}"
-                    {% if camp.id in selected_campaigns %}selected{% endif %}>
-                    {{ camp.name }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+    <!-- JSON data -->
+    {{ chart_data|json_script:"chart-data" }}
 
-    <!-- Submit to load new campaign/date -->
-    <button type="submit">Load Insights</button>
-
-    <!-- Metric Selector -->
-    <div style="margin-top:10px;">
-        <label>Primary Metric:</label>
-        <select id="primaryMetric">
-            <option value="spend">Spend</option>
-            <option value="impressions">Impressions</option>
-            <option value="reach">Reach</option>
-            <option value="frequency">Frequency</option>
-            <option value="clicks">Clicks</option>
-            <option value="unique_clicks">Unique Clicks</option>
-            <option value="cpc">CPC</option>
-            <option value="cpm">CPM</option>
-            <option value="ctr">CTR</option>
-            <option value="inline_link_clicks">Inline Link Clicks</option>
-            <option value="conversions">Conversions</option>
-            <option value="post_engagement">Post Engagement</option>
-        </select>
-
-        <label>Compare vs:</label>
-        <select id="compareMetrics" multiple size="4">
-            <option value="spend">Spend</option>
-            <option value="impressions">Impressions</option>
-            <option value="reach">Reach</option>
-            <option value="frequency">Frequency</option>
-            <option value="clicks">Clicks</option>
-            <option value="unique_clicks">Unique Clicks</option>
-            <option value="cpc">CPC</option>
-            <option value="cpm">CPM</option>
-            <option value="ctr">CTR</option>
-            <option value="inline_link_clicks">Inline Link Clicks</option>
-            <option value="conversions">Conversions</option>
-            <option value="post_engagement">Post Engagement</option>
-        </select>
-
-        <label>Graph Type:</label>
-        <select id="chartTypeSelect">
-            <option value="line">Line</option>
-            <option value="bar">Bar</option>
-            <option value="area">Area</option>
-        </select>
-
-        <button type="button" onclick="updateChart()">Update Chart</button>
-    </div>
-</form>
-
-{% if error %}
-<p style="color:red; font-weight:bold;">{{ error }}</p>
-{% endif %}
-
-<div class="chart-box">
-    <div id="mainChart" style="height:500px;"></div>
-</div>
-
-<!-- JSON data -->
-{{ chart_data|json_script:"chart-data" }}
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const chartData = JSON.parse(document.getElementById("chart-data").textContent);
-
-    if (!chartData.length) return;
-
-    // Prepare global metrics
-    window.dates = chartData.map(item => item.date_start);
-    window.metrics = {
-        spend: chartData.map(item => parseFloat(item.spend || 0)),
-        impressions: chartData.map(item => parseInt(item.impressions || 0)),
-        reach: chartData.map(item => parseInt(item.reach || 0)),
-        frequency: chartData.map(item => parseFloat(item.frequency || 0)),
-        clicks: chartData.map(item => parseInt(item.clicks || 0)),
-        unique_clicks: chartData.map(item => parseInt(item.unique_clicks || 0)),
-        cpc: chartData.map(item => parseFloat(item.cpc || 0)),
-        cpm: chartData.map(item => parseFloat(item.cpm || 0)),
-        ctr: chartData.map(item => parseFloat(item.ctr || 0)),
-        inline_link_clicks: chartData.map(item => parseInt(item.inline_link_clicks || 0)),
-        conversions: chartData.map(item => parseInt(item.actions?.find(a => a.action_type.includes("lead") || a.action_type.includes("conversion"))?.value || 0)),
-        post_engagement: chartData.map(item => parseInt(item.post_engagement || 0))
-    };
-
-    // Initial chart
-    updateChart();
-});
-
-function updateChart() {
-    const primary = document.getElementById("primaryMetric").value;
-    const compareSelect = document.getElementById("compareMetrics");
-    const compareMetrics = Array.from(compareSelect.selectedOptions).map(o => o.value);
-
-    const allMetrics = [primary, ...compareMetrics.filter(m => m !== primary)];
-    const chartType = document.getElementById("chartTypeSelect").value;
-    const colors = ["#007bff","#28a745","#ffc107","#dc3545","#6f42c1","#20c997","#fd7e14","#17a2b8","#6610f2","#e83e8c","#fd7e14","#6c757d"];
-
-    const traces = allMetrics.map((metric, idx) => {
-        let mode = "lines+markers";
-        let fill = "";
-        if(chartType === "area") { mode="lines"; fill="tozeroy"; }
-
-        let yaxis = idx === 0 ? 'y1' : 'y2';
-
-        return {
-            x: window.dates,
-            y: window.metrics[metric],
-            type: chartType === "bar" ? "bar" : "scatter",
-            mode: chartType === "line" || chartType === "area" ? mode : undefined,
-            fill: fill,
-            line: { color: colors[idx % colors.length] },
-            name: metric.toUpperCase().replace("_"," "),
-            yaxis: yaxis
-        };
+    <script>
+    const inrFormatter = new Intl.NumberFormat('en-IN', {
+        style: 'currency', currency: 'INR', maximumFractionDigits: 0
     });
 
-    const layout = {
-        title: "Compare Metrics",
-        xaxis: { title: "Date" },
-        yaxis: { title: allMetrics[0].toUpperCase().replace("_"," ") },
-        yaxis2: {
-            title: allMetrics.length > 1 ? allMetrics[1].toUpperCase().replace("_"," ") : "",
-            overlaying: 'y',
-            side: 'right'
-        },
-        legend: { orientation: "h", y: -0.2 }
+    document.addEventListener("DOMContentLoaded", function () {
+        const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+        if (!chartData.length) return;
+
+        window.dates = chartData.map(item => item.date_start);
+        window.metrics = {
+            spend: chartData.map(item => parseFloat(item.spend || 0)),
+            impressions: chartData.map(item => parseInt(item.impressions || 0)),
+            reach: chartData.map(item => parseInt(item.reach || 0)),
+            frequency: chartData.map(item => parseFloat(item.frequency || 0)),
+            clicks: chartData.map(item => parseInt(item.clicks || 0)),
+            unique_clicks: chartData.map(item => parseInt(item.unique_clicks || 0)),
+            cpc: chartData.map(item => parseFloat(item.cpc || 0)),
+            cpm: chartData.map(item => parseFloat(item.cpm || 0)),
+            ctr: chartData.map(item => parseFloat(item.ctr || 0)),
+            inline_link_clicks: chartData.map(item => parseInt(item.inline_link_clicks || 0)),
+            conversions: chartData.map(item => parseInt(item.actions?.find(a => a.action_type.includes("lead") || a.action_type.includes("conversion"))?.value || 0)),
+            post_engagement: chartData.map(item => parseInt(item.post_engagement || 0))
+        };
+
+        const totalSpend = window.metrics.spend.reduce((a, b) => a + b, 0);
+        const avgCpc = window.metrics.cpc.reduce((a, b) => a + b, 0) / window.metrics.cpc.length;
+
+        document.getElementById('total-spend').innerText = inrFormatter.format(totalSpend);
+        document.getElementById('total-conv').innerText = window.metrics.conversions.reduce((a, b) => a + b, 0).toLocaleString('en-IN');
+        document.getElementById('avg-cpc').innerText = inrFormatter.format(avgCpc || 0);
+        document.getElementById('total-reach').innerText = window.metrics.reach.reduce((a, b) => a + b, 0).toLocaleString('en-IN');
+
+        updateChart();
+    });
+
+    function updateChart() {
+        const primary = document.getElementById("primaryMetric").value;
+        const compareSelect = document.getElementById("compareMetrics");
+        const compareMetrics = Array.from(compareSelect.selectedOptions).map(o => o.value);
+        const allMetrics = [primary, ...compareMetrics.filter(m => m !== primary)];
+        const chartType = document.getElementById("chartTypeSelect").value;
+        const colors = ["#2563eb","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899","#06b6d4","#f97316"];
+
+        const traces = allMetrics.map((metric, idx) => {
+            let mode = "lines+markers";
+            let fill = (chartType === "area") ? "tozeroy" : "";
+
+            return {
+                x: window.dates,
+                y: window.metrics[metric],
+                type: chartType === "bar" ? "bar" : "scatter",
+                mode: chartType === "line" || chartType === "area" ? mode : undefined,
+                fill: fill,
+                line: { color: colors[idx % colors.length], width: window.innerWidth < 768 ? 2 : 3, shape: 'spline' },
+                marker: { size: window.innerWidth < 768 ? 4 : 6 },
+                name: metric.toUpperCase().replace("_"," "),
+                yaxis: idx === 0 ? 'y1' : 'y2'
+            };
+        });
+
+        const layout = {
+            hovermode: "x unified",
+            xaxis: { gridcolor: '#f1f5f9', tickfont: {size: 10} },
+            yaxis: { title: allMetrics[0].toUpperCase(), gridcolor: '#f1f5f9', tickfont: {size: 10} },
+            yaxis2: { overlaying: 'y', side: 'right', showgrid: false, tickfont: {size: 10} },
+            legend: { orientation: "h", y: -0.2, x: 0.5, xanchor: "center", font: {size: 10} },
+            margin: { t: 20, r: 30, l: 30, b: 80 },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+        };
+
+        const config = {
+            responsive: true,
+            displaylogo: false,
+            toImageButtonOptions: { format: 'png', filename: 'oblu_report' }
+        };
+
+        Plotly.newPlot("mainChart", traces, layout, config);
+    }
+
+    // Auto-resize graph when window changes
+    window.onresize = function() {
+        Plotly.Plots.resize(document.getElementById("mainChart"));
     };
-
-    Plotly.newPlot("mainChart", traces, layout);
-}
-</script>
-
+    </script>
 </body>
 </html>

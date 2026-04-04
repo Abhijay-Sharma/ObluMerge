@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Meta Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        form { background: #f3f3f3; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
+        label { font-weight: bold; margin-right: 5px; }
+        select, input[type=date] { padding: 6px; margin-right: 10px; }
+        button { padding: 8px 15px; cursor: pointer; background: black; color: white; border-radius: 6px; margin-top:10px; }
+        .chart-box { margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+
+<h1>Meta Campaign Dashboard</h1>
+
+<form id="filterForm" method="GET">
+    <!-- Date Range -->
+    <div>
+        <label>From:</label>
+        <input type="date" name="from" value="{{ from_date }}">
+        <label>To:</label>
+        <input type="date" name="to" value="{{ to_date }}">
+    </div>
+
+    <!-- Campaign Selector -->
+    <div style="margin-top:10px;">
+        <label>Select Campaign:</label>
+        <select name="campaign" required>
+            <option value="">-- Choose Campaign --</option>
+            {% for camp in campaigns %}
+                <option value="{{ camp.id }}"
+                    {% if camp.id in selected_campaigns %}selected{% endif %}>
+                    {{ camp.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Submit to load new campaign/date -->
+    <button type="submit">Load Insights</button>
+
+    <!-- Metric Selector -->
+    <div style="margin-top:10px;">
+        <label>Primary Metric:</label>
+        <select id="primaryMetric">
+            <option value="spend">Spend</option>
+            <option value="impressions">Impressions</option>
+            <option value="reach">Reach</option>
+            <option value="frequency">Frequency</option>
+            <option value="clicks">Clicks</option>
+            <option value="unique_clicks">Unique Clicks</option>
+            <option value="cpc">CPC</option>
+            <option value="cpm">CPM</option>
+            <option value="ctr">CTR</option>
+            <option value="inline_link_clicks">Inline Link Clicks</option>
+            <option value="conversions">Conversions</option>
+            <option value="post_engagement">Post Engagement</option>
+        </select>
+
+        <label>Compare vs:</label>
+        <select id="compareMetrics" multiple size="4">
+            <option value="spend">Spend</option>
+            <option value="impressions">Impressions</option>
+            <option value="reach">Reach</option>
+            <option value="frequency">Frequency</option>
+            <option value="clicks">Clicks</option>
+            <option value="unique_clicks">Unique Clicks</option>
+            <option value="cpc">CPC</option>
+            <option value="cpm">CPM</option>
+            <option value="ctr">CTR</option>
+            <option value="inline_link_clicks">Inline Link Clicks</option>
+            <option value="conversions">Conversions</option>
+            <option value="post_engagement">Post Engagement</option>
+        </select>
+
+        <label>Graph Type:</label>
+        <select id="chartTypeSelect">
+            <option value="line">Line</option>
+            <option value="bar">Bar</option>
+            <option value="area">Area</option>
+        </select>
+
+        <button type="button" onclick="updateChart()">Update Chart</button>
+    </div>
+</form>
+
+{% if error %}
+<p style="color:red; font-weight:bold;">{{ error }}</p>
+{% endif %}
+
+<div class="chart-box">
+    <div id="mainChart" style="height:500px;"></div>
+</div>
+
+<!-- JSON data -->
+{{ chart_data|json_script:"chart-data" }}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+
+    if (!chartData.length) return;
+
+    // Prepare global metrics
+    window.dates = chartData.map(item => item.date_start);
+    window.metrics = {
+        spend: chartData.map(item => parseFloat(item.spend || 0)),
+        impressions: chartData.map(item => parseInt(item.impressions || 0)),
+        reach: chartData.map(item => parseInt(item.reach || 0)),
+        frequency: chartData.map(item => parseFloat(item.frequency || 0)),
+        clicks: chartData.map(item => parseInt(item.clicks || 0)),
+        unique_clicks: chartData.map(item => parseInt(item.unique_clicks || 0)),
+        cpc: chartData.map(item => parseFloat(item.cpc || 0)),
+        cpm: chartData.map(item => parseFloat(item.cpm || 0)),
+        ctr: chartData.map(item => parseFloat(item.ctr || 0)),
+        inline_link_clicks: chartData.map(item => parseInt(item.inline_link_clicks || 0)),
+        conversions: chartData.map(item => parseInt(item.actions?.find(a => a.action_type.includes("lead") || a.action_type.includes("conversion"))?.value || 0)),
+        post_engagement: chartData.map(item => parseInt(item.post_engagement || 0))
+    };
+
+    // Initial chart
+    updateChart();
+});
+
+function updateChart() {
+    const primary = document.getElementById("primaryMetric").value;
+    const compareSelect = document.getElementById("compareMetrics");
+    const compareMetrics = Array.from(compareSelect.selectedOptions).map(o => o.value);
+
+    const allMetrics = [primary, ...compareMetrics.filter(m => m !== primary)];
+    const chartType = document.getElementById("chartTypeSelect").value;
+    const colors = ["#007bff","#28a745","#ffc107","#dc3545","#6f42c1","#20c997","#fd7e14","#17a2b8","#6610f2","#e83e8c","#fd7e14","#6c757d"];
+
+    const traces = allMetrics.map((metric, idx) => {
+        let mode = "lines+markers";
+        let fill = "";
+        if(chartType === "area") { mode="lines"; fill="tozeroy"; }
+
+        let yaxis = idx === 0 ? 'y1' : 'y2';
+
+        return {
+            x: window.dates,
+            y: window.metrics[metric],
+            type: chartType === "bar" ? "bar" : "scatter",
+            mode: chartType === "line" || chartType === "area" ? mode : undefined,
+            fill: fill,
+            line: { color: colors[idx % colors.length] },
+            name: metric.toUpperCase().replace("_"," "),
+            yaxis: yaxis
+        };
+    });
+
+    const layout = {
+        title: "Compare Metrics",
+        xaxis: { title: "Date" },
+        yaxis: { title: allMetrics[0].toUpperCase().replace("_"," ") },
+        yaxis2: {
+            title: allMetrics.length > 1 ? allMetrics[1].toUpperCase().replace("_"," ") : "",
+            overlaying: 'y',
+            side: 'right'
+        },
+        legend: { orientation: "h", y: -0.2 }
+    };
+
+    Plotly.newPlot("mainChart", traces, layout);
+}
+</script>
+
+</body>
+</html>
