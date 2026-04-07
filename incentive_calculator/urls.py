@@ -21,4 +21,8 @@ urlpatterns = [
         views.ProductIncentiveListView.as_view(),
         name="product_incentive_list",
     ),
+    path('admin-incentive-control/', views.ASMIncentivePaidUnpaidView.as_view(), name='admin_incentive_control'),
+
+
+    path('rsm-team-dashboard/', views.RSMTeamIncentiveDashboardView.as_view(), name='rsm_team_dashboard'),
 ]
