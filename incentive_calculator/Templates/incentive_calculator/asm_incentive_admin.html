@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Incentive Control</title>
+<style>
+    body { background:#0a0a0a; color:#e0e0e0; font-family: 'Segoe UI', sans-serif; padding:15px; margin: 0; line-height: 1.4; }
+    .container { max-width: 1450px; margin: 0 auto; }
+    .card { background:#151515; border:1px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    h2, h3 { color: #00ff99; margin: 5px 0 15px 0; }
+    .filter-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .filter-form select, .filter-form input, .filter-form button { background: #222; border: 1px solid #444; color: white; padding: 10px 15px; border-radius: 8px; }
+    .filter-form button { background: #00ff99; color: #000; font-weight: bold; border: none; cursor: pointer; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 15px; }
+    .summary-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 180px; }
+    .summary-card h2 { font-size: 24px; margin: 5px 0; color: #fff; }
+    .text-muted { color: #888; font-size: 0.85em; }
+    .table-responsive { width: 100%; overflow-x: auto; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+    th { background: #1a1a1a; color: #777; font-size: 11px; text-transform: uppercase; text-align: left; padding: 12px; }
+    td { padding: 12px; border-bottom: 1px solid #222; font-size: 13.5px; }
+    .badge { font-size:10px; padding:4px 8px; border-radius:4px; font-weight: bold; border: none; cursor: pointer; }
+    .green { background:#00ff99; color: #000; } .red { background:#ff4d4d; color: #fff; } .orange { background:#ffb84d; color: #000; }
+    a { color:#00ff99; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h2>Incentive Control (Admin Dashboard)</h2>
+
+    <!-- FILTERS -->
+    <div class="card">
+        <form class="filter-form" method="get">
+            <select name="salesperson" required>
+                <option value="">-- Select Salesperson --</option>
+                {% for sp in salespersons %}<option value="{{ sp.id }}" {% if selected_salesperson.id == sp.id %}selected{% endif %}>{{ sp.name }}</option>{% endfor %}
+            </select>
+            <input type="month" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}" required>
+            <button type="submit">LOAD DATA</button>
+        </form>
+    </div>
+
+    {% if selected_salesperson %}
+    <!-- BULK ACTION BAR -->
+    <div class="card" style="border: 1px solid #00ff99; background: rgba(0,255,153,0.05); display: flex; justify-content: space-between; align-items: center;">
+        <div><h3 style="margin:0;">Accounting Actions</h3><p class="text-muted" style="margin:0;">Finalize all eligible items for {{ selected_salesperson.name }}</p></div>
+        <form method="POST">{% csrf_token %}<input type="hidden" name="action" value="bulk_pay"><input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}"><input type="hidden" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}"><button type="submit" class="filter-form button" onclick="return confirm('Are u sure that u want to mark as paid for the whole month?')">💰 Bulk Mark as PAID</button></form>
+    </div>
+
+    <!-- 4 STAT CARDS -->
+    <div class="summary-grid">
+        <div class="card summary-card">
+            <div><span class="text-muted">Dynamic Units (True Qty)</span><h2>{{ dynamic_group_qty|floatformat:2 }}</h2><span class="text-muted">Rate: ₹{{ dynamic_rate_used|floatformat:2 }}</span></div>
+            <div style="border-top:1px solid #333; padding-top:8px;">{% for c, q in category_summary.items %}<div style="display:flex; justify-content:space-between; font-size:11px;"><span>{{ c }}:</span><b>{{ q|floatformat:0 }}</b></div>{% endfor %}</div>
+        </div>
+        <div class="card summary-card" style="justify-content:center;"><span class="text-muted">Current Month Sales</span><h2>₹{{ total_sales|floatformat:2 }}</h2></div>
+        <div class="card summary-card" style="justify-content:center;"><span class="text-muted">Current Month Payout</span><h2 style="color:#00ff99;">₹{{ grand_total_incentive|floatformat:2 }}</h2></div>
+
+        <!-- ✅ ACCURATE UNPAID CARD -->
+        <div class="card summary-card" style="border-left: 4px solid #ff4d4d;">
+            <span class="text-muted" style="font-weight:bold;">Unpaid Incentives (FY)</span>
+            <div style="flex-grow:1; margin-top:8px;">
+                {% for item in unpaid_months_data %}<div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:3px;"><span>{{ item.month }}</span><b>₹{{ item.amount|floatformat:0 }}</b></div>{% empty %}<div class="text-muted">All dues cleared!</div>{% endfor %}
+            </div>
+            <div style="border-top:1px solid #333; padding-top:8px; display:flex; justify-content:space-between;"><span>Total Pending FY</span><b style="color:#ff4d4d; font-size:1.2em;">₹{{ total_unpaid_grand|floatformat:0 }}</b></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Detailed Sales Log</h3>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>Date</th><th>Customer</th><th>Voucher</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr class="{% if not r.is_fully_paid %}unpaid{% endif %}">
+                        <td class="text-muted">{{ r.date|date:"d M y" }}</td>
+                        <td>{{ r.customer }}</td>
+                        <td><a href="{% url 'voucher_detail' r.voucher_id %}" target="_blank" style="text-decoration:underline;">{{ r.voucher_no }}</a></td>
+                        <td class="{% if r.has_incentive %}product-green{% else %}product-yellow{% endif %}">{{ r.product }}</td>
+                        <td>{{ r.quantity|floatformat:2 }}</td>
+                        <td>₹{{ r.amount|floatformat:2 }}</td>
+                        <td>{% if r.payout_done %}<span class="badge green">✓ PAID</span>{% elif not r.is_fully_paid %}<span class="text-muted" style="font-size:11px;">Waiting Payment</span>{% elif r.has_incentive %}<span class="badge orange">PENDING</span>{% endif %}</td>
+                        <td>
+                            <form method="POST">{% csrf_token %}<input type="hidden" name="voucher_id" value="{{ r.voucher_id }}"><input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}"><input type="hidden" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}">
+                                {% if r.payout_done %}<input type="hidden" name="action" value="unpay"><button type="submit" class="badge red">✕ Unpay</button>
+                                {% elif r.is_fully_paid and r.has_incentive %}<input type="hidden" name="action" value="pay_single"><button type="submit" class="badge green">✓ Pay</button>{% endif %}</form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ✅ BREAKDOWN TABLE AT BOTTOM -->
+    <div class="card">
+        <h3>Incentive Breakdown by Product</h3>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>Product Name</th><th>Total Qty</th><th>Applied Rate</th><th style="text-align: right;">Total Incentive</th></tr></thead>
+                <tbody>
+                    {% for name, data in product_totals.items %}
+                    <tr>
+                        <td>{{ name }}{% if data.is_pack %}<div class="text-muted" style="font-size:11px;">Multiplier x{{ data.multiplier|floatformat:0 }}</div>{% endif %}</td>
+                        <td>{{ data.paid_qty|floatformat:2 }}</td>
+                        <td>₹{{ data.rate|floatformat:2 }}</td>
+                        <td style="text-align: right; color:#00ff99; font-weight:bold;">₹{{ data.incentive|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

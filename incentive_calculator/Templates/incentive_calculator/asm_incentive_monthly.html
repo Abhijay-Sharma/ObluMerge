@@ -1,155 +1,231 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ASM Monthly Incentive Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASM Incentive Dashboard</title>
 
 <style>
-body { background:#000; color:white; font-family:Poppins,sans-serif; padding:25px; }
-.card { background:#111; border:1px solid #333; border-radius:12px; padding:20px; margin-bottom:20px; }
-table { width:100%; border-collapse:collapse; }
-th, td { padding:10px; border-bottom:1px solid #333; }
+    /* BASE THEME */
+    body {
+        background:#0a0a0a; color:#e0e0e0;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        padding: 15px; margin: 0; line-height: 1.4;
+    }
+    h2, h3 { color: #00ff99; margin-bottom: 15px; margin-top: 5px; }
 
-tr.unpaid { background:#2a0000; }
-tr.partial { background:#2a1a00; }
+    .container { max-width: 1400px; margin: 0 auto; }
 
-.product-green { color:#00ff99; font-weight:600; }
-.product-yellow { color:#ffd54d; font-weight:600; }
+    .card {
+        background:#151515; border:1px solid #333;
+        border-radius: 12px; padding: 15px;
+        margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
 
-.badge { font-size:11px; padding:4px 8px; border-radius:6px; margin-left:5px; }
-.badge.red { background:#ff4d4d; }
-.badge.orange { background:#ffb84d; color:black; }
+    /* FILTERS */
+    .filter-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .filter-form select, .filter-form input, .filter-form button {
+        background: #222; border: 1px solid #444; color: white;
+        padding: 10px 15px; border-radius: 8px; font-size: 14px;
+    }
+    .filter-form button { background: #00ff99; color: #000; font-weight: bold; border: none; cursor: pointer; }
 
-a { color:#00ff99; }
+    /* COMPACT SUMMARY GRID (Horizontal Row) */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 15px; margin-bottom: 15px;
+    }
+    .summary-card {
+        display: flex; flex-direction: column; justify-content: center; min-height: 140px;
+    }
+    .summary-card h2 { font-size: 26px; margin: 5px 0; color: #fff; }
+    .text-muted { color: #888; font-size: 0.85em; }
+
+    /* CATEGORY BREAKDOWN LIST */
+    .breakdown-box { border-top: 1px solid #333; margin-top: 10px; padding-top: 8px; }
+    .breakdown-item { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
+    .breakdown-item b { color: #aaa; }
+
+    /* TABLES */
+    .table-responsive { width: 100%; overflow-x: auto; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    th { background: #1a1a1a; color: #777; font-size: 11px; text-transform: uppercase; text-align: left; padding: 10px 15px; }
+    td { padding: 10px 15px; border-bottom: 1px solid #222; font-size: 13.5px; }
+    tr:hover { background: #1a1a1a; }
+
+    /* STATUS COLORS */
+    .product-green { color:#00ff99; font-weight:600; }
+    .product-yellow { color:#ffd54d; font-weight:600; }
+    .badge { font-size:10px; padding:2px 5px; border-radius:4px; font-weight: bold; margin-left: 5px; }
+    .badge.red { background:#ff4d4d; color: white; }
+
+    /* LINKS */
+    a { color:#00ff99; text-decoration: none; }
+    .voucher-link { color: #fff; text-decoration: underline; font-size: 12px; }
+
+    @media (max-width: 768px) {
+        .summary-grid { grid-template-columns: 1fr; }
+        .filter-form select, .filter-form input, .filter-form button { flex: 1 1 100%; }
+    }
 </style>
 </head>
 
 <body>
 
-<h2>ASM Incentive Calculator — Monthly</h2>
+<div class="container">
+    <h2>ASM Incentive Dashboard</h2>
 
-<!-- FILTER -->
-<div class="card">
-<form method="get">
+    <!-- FILTERS -->
+    <div class="card">
+        <form class="filter-form" method="get">
+            <select name="salesperson" required>
+                <option value="">-- Select Salesperson --</option>
+                {% for sp in salespersons %}
+                <option value="{{ sp.id }}" {% if selected_salesperson and sp.id == selected_salesperson.id %}selected{% endif %}>
+                    {{ sp.name }}
+                </option>
+                {% endfor %}
+            </select>
 
-    <select name="salesperson" required>
-        <option value="">-- Select Salesperson --</option>
-        {% for sp in salespersons %}
-        <option value="{{ sp.id }}"
-            {% if selected_salesperson and sp.id == selected_salesperson.id %}selected{% endif %}>
-            {{ sp.name }}
-        </option>
-        {% endfor %}
-    </select>
+            <input type="month" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}" required>
 
-    <!-- ✅ MONTH CALENDAR PICKER -->
-    <input type="month" name="month_picker"
-           value="{{ year }}-{% if month < 10 %}0{{ month }}{% else %}{{ month }}{% endif %}"
-           required>
+            <button type="submit">GO</button>
+        </form>
+    </div>
 
-    <button type="submit">Calculate</button>
-</form>
-</div>
+    {% if selected_salesperson %}
+        <!-- PERFORMANCE SUMMARY GRID -->
+        <div class="summary-grid">
 
+            <!-- CARD 1: DYNAMIC QTY & BREAKDOWN -->
+            <div class="card summary-card">
+                <div>
+                    <span class="text-muted">Dynamic Paid Quantity</span>
+                    <h2>{{ dynamic_group_qty|floatformat:2 }}</h2>
+                    <span class="text-muted">Rate Used: <b style="color: #00ff99;">₹{{ dynamic_rate_used|floatformat:2 }}</b></span>
+                </div>
 
-{% if rows %}
-<div class="card">
-<h3>Sales Rows</h3>
+                <div class="breakdown-box">
+                    {% for cat_name, total_qty in category_summary.items %}
+                    <div class="breakdown-item">
+                        <span>{{ cat_name }}:</span>
+                        <b>{{ total_qty|floatformat:0 }} Items</b>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
 
-<table>
-<thead>
-<tr>
-<th>Date</th><th>Customer</th><th>Voucher</th><th>Product</th><th>Qty</th><th>Amount</th>
-</tr>
-</thead>
-<tbody>
+            <!-- CARD 2: TOTAL SALES -->
+            <div class="card summary-card">
+                <span class="text-muted">Total Sales Amount (Tax Inc.)</span>
+                <h2>₹{{ total_sales|floatformat:2 }}</h2>
+            </div>
 
-{% for r in rows %}
-<tr class="{% if r.is_unpaid %}unpaid{% elif r.is_partially_paid %}partial{% endif %}">
-<td>{{ r.date }}</td>
+            <!--CARD 3: Grand Total Incentive (Potential)-->
+            <div class="card summary-card">
+                <span class="text-muted">Grand Total Incentive (Potential)</span>
+                <h2 style="color: #00ff99;">₹{{ grand_total_incentive|floatformat:2 }}</h2>
 
-<td>
-    {% if r.customer_id %}
-        <a href="{% url 'customers:customerpaymentstatus' r.customer_id %}">
-            {{ r.customer }}
-        </a>
-    {% else %}
-        {{ r.customer }}
+                <div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                        <span class="text-muted">Payable (Collected):</span>
+                        <b style="color: #00ff99;">₹{{ payable_incentive|floatformat:2 }}</b>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
+                        <span class="text-muted">Pending (Unpaid Invoices):</span>
+                        <b style="color: #ff4d4d;">₹{{ unpayable_incentive|floatformat:2 }}</b>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- DETAILED SALES LOG -->
+        <div class="card">
+            <h3>Detailed Sales Log</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Voucher</th>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Amount</th>
+                            <th>Incentive Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in rows %}
+                        <tr class="{% if not r.is_fully_paid %}unpaid{% endif %}">
+                            <td class="text-muted">{{ r.date|date:"d M y" }}</td>
+                            <td>
+                                {% if r.customer_id %}
+                                    <a href="{% url 'customers:customerpaymentstatus' r.customer_id %}">{{ r.customer }}</a>
+                                {% else %}
+                                    {{ r.customer }}
+                                {% endif %}
+                                {% if not r.is_fully_paid %}<span class="badge red">Unpaid</span>{% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'voucher_detail' r.voucher_id %}" target="_blank" class="voucher-link">
+                                    {{ r.voucher_no }}
+                                </a>
+                            </td>
+                            <td class="{% if r.has_incentive %}product-green{% else %}product-yellow{% endif %}">
+                                {{ r.product }}
+                            </td>
+                            <td>{{ r.quantity|floatformat:2 }}</td>
+                            <td>₹{{ r.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if not r.is_fully_paid %}
+                                    <span class="text-muted" style="font-size: 11px;">Waiting Payment</span>
+                                {% elif r.has_incentive %}
+                                    <span class="product-green" style="font-size: 11px;">✓ Calculated</span>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 11px;">Non-Incentive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- BREAKDOWN TABLE -->
+        <div class="card">
+            <h3>Incentive Payout Breakdown</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Total Qty Sold</th>
+                            <th>Applied Rate</th>
+                            <th style="text-align: right;">Total Potential Payout</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for name, data in product_totals.items %}
+                        <tr>
+                            <td>{{ name }}</td>
+                            <td>{{ data.paid_qty|floatformat:0 }}</td>
+                            <td>₹{{ data.rate|floatformat:2 }}</td>
+                            <td style="text-align: right;">
+                                <div style="color: #00ff99; font-weight: bold;">₹{{ data.potential_payout|floatformat:2 }}</div>
+                                <div style="color: #888; font-size: 10px;">Ready: ₹{{ data.ready_payout|floatformat:2 }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     {% endif %}
-
-    {% if r.is_unpaid %}
-        <span class="badge red">UNPAID</span>
-    {% elif r.is_partially_paid %}
-        <span class="badge orange">PARTIAL</span>
-    {% endif %}
-</td>
-
-<td>
-    <a href="{% url 'voucher_detail' r.voucher_id %}" target="_blank" style="color:#fff;text-decoration:underline;">
-        {{ r.voucher_no }}
-    </a>
-</td>
-
-<td>
-    <span class="{% if r.has_incentive %}product-green{% else %}product-yellow{% endif %}">
-        {{ r.product }}
-    </span>
-</td>
-
-<td>{{ r.quantity }}</td>
-<td>₹{{ r.amount }}</td>
-</tr>
-{% endfor %}
-
-<tr style="font-weight:bold;border-top:2px solid #555;">
-<td colspan="5" style="text-align:right;">TOTAL</td>
-<td>₹{{ total_sales }}</td>
-</tr>
-
-</tbody>
-</table>
 </div>
-{% endif %}
-
-{% if product_totals %}
-<div class="card">
-<h3>Product-wise Incentive</h3>
-
-<p>
-Dynamic Group Paid Qty: <b>{{ dynamic_group_qty }}</b><br>
-Dynamic Rate Used:
-<b>
-{% if dynamic_rate_used is not None %}
-₹{{ dynamic_rate_used }}
-{% else %}
-Base Rates
-{% endif %}
-</b>
-</p>
-
-<table>
-<thead>
-<tr>
-<th>Product</th><th>Paid Qty</th><th>Rate</th><th>Incentive</th>
-</tr>
-</thead>
-<tbody>
-{% for product, data in product_totals.items %}
-<tr>
-<td>{{ product }}</td>
-<td>{{ data.paid_qty }}</td>
-<td>₹{{ data.rate }}</td>
-<td>₹{{ data.incentive }}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-
-<h3 style="margin-top:15px;">
-Grand Total Incentive: ₹{{ grand_total_incentive }}
-</h3>
-</div>
-{% endif %}
 
 </body>
 </html>

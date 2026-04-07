@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSM Team Performance Dashboard</title>
+
+<style>
+    /* BASE THEME */
+    body {
+        background:#0a0a0a; color:#e0e0e0;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        padding: 20px; margin: 0; line-height: 1.4;
+    }
+    h2, h3 { color: #00ff99; margin: 0; }
+    .container { max-width: 1450px; margin: 0 auto; }
+
+    .card {
+        background:#151515; border:1px solid #333;
+        border-radius: 12px; padding: 20px;
+        margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+
+    /* FILTERS */
+    .filter-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 5px; }
+    .filter-form select, .filter-form input, .filter-form button {
+        background: #222; border: 1px solid #444; color: white;
+        padding: 10px 15px; border-radius: 8px; font-size: 14px;
+    }
+    .filter-form button { background: #00ff99; color: #000; font-weight: bold; border: none; cursor: pointer; }
+
+    /* SPLIT SUMMARY CARD (Left: Money, Right: Category Summary) */
+    .rsm-main-card {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: stretch;
+        gap: 30px;
+        border-left: 5px solid #00ff99;
+        padding: 25px;
+    }
+    .rsm-total-box { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .rsm-total-box h1 { font-size: 42px; margin: 10px 0; color: #fff; }
+
+    .team-summary-box {
+        flex: 1;
+        border-left: 1px solid #333;
+        padding-left: 30px;
+        display: flex;
+        flex-direction: column;
+    }
+    .summary-title { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 10px; }
+    .summary-list-item { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
+    .summary-list-item b { color: #00ff99; }
+
+    /* ASM CARD STYLING */
+    .asm-section-card { padding: 0; overflow: hidden; border: 1px solid #333; margin-top: 30px; }
+
+    .asm-header {
+        background: #1a1a1a;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid #333;
+    }
+    .asm-info h2 { color: #00ccff; font-size: 24px; margin-bottom: 5px; }
+
+    /* ASM MINI CATEGORY LIST */
+    .asm-cat-grid { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
+    .asm-cat-pill { background: #111; padding: 5px 12px; border-radius: 6px; border: 1px solid #222; font-size: 12px; }
+    .asm-cat-pill span { color: #888; }
+    .asm-cat-pill b { color: #eee; margin-left: 5px; }
+
+    .asm-payout-info { text-align: right; }
+    .asm-payout-info b { font-size: 26px; color: #00ff99; display: block; }
+    .asm-earned-label { font-size: 11px; color: #666; margin-top: 5px; }
+
+    /* BADGES */
+    .badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+    .badge-success { background: rgba(0, 255, 153, 0.1); color: #00ff99; border: 1px solid #00ff99; }
+    .badge-danger { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border: 1px solid #ff4d4d; }
+
+    /* TABLE STYLING */
+    .table-responsive { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #1a1a1a; color: #666; font-size: 11px; text-transform: uppercase; text-align: left; padding: 12px 20px; }
+    td { padding: 12px 20px; border-bottom: 1px solid #222; font-size: 13.5px; color: #ccc; }
+    tr:hover { background: #1c1c1c; }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .bold-green { color: #00ff99; font-weight: 600; }
+
+    @media (max-width: 850px) {
+        .rsm-main-card { flex-direction: column; }
+        .team-summary-box { border-left: none; padding-left: 0; border-top: 1px solid #333; padding-top: 20px; }
+        .asm-header { flex-direction: column; gap: 20px; }
+        .asm-payout-info { text-align: left; }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>RSM Team Performance Dashboard</h2>
+
+    <!-- 1. FILTERS -->
+    <div class="card">
+        <form method="get" class="filter-form">
+            <select name="rsm" required>
+                <option value="">-- Select RSM --</option>
+                {% for r in rsms %}
+                <option value="{{ r.id }}" {% if selected_rsm.id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="month" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}" required>
+            <button type="submit">GENERATE REPORT</button>
+        </form>
+    </div>
+
+    {% if selected_rsm %}
+
+    <!-- 2. RSM MAIN STAT CARD -->
+    <div class="card rsm-main-card">
+        <div class="rsm-total-box">
+            <span class="text-muted">Total Team Incentive for <b>{{ selected_rsm.name }}</b></span>
+            <h1>₹{{ grand_total_rsm|floatformat:2 }}</h1>
+            <p class="text-muted" style="margin:0;">Calculated from all team sales this month.</p>
+        </div>
+
+        <div class="team-summary-box">
+            <span class="summary-title">Team-wide Category Summary</span>
+            <div style="flex-grow: 1;">
+                {% for cat, qty in team_category_summary.items %}
+                <div class="summary-list-item">
+                    <span>{{ cat }}:</span>
+                    <b>{{ qty|floatformat:0 }} Items</b>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ASM BREAKDOWN LOOP -->
+    {% for report in team_report %}
+    <div class="card asm-section-card">
+
+        <!-- ASM HEADER -->
+        <div class="asm-header">
+            <div class="asm-info">
+                <h2>{{ report.asm_name }}</h2>
+
+                <!-- Target Status -->
+                {% if report.total_sheets >= 1000 %}
+                    <span class="badge badge-success">✓ 1000 SHEETS TARGET MET (RSM EARNS ₹1/SHEET)</span>
+                {% else %}
+                    <span class="badge badge-danger">✕ BELOW 1000 SHEETS (RSM EARNS ₹0/SHEET)</span>
+                {% endif %}
+
+                <!-- ASM Mini Category List -->
+                <div class="asm-cat-grid">
+                    {% for c, q in report.asm_categories.items %}
+                    <div class="asm-cat-pill">
+                        <span>{{ c }}:</span><b>{{ q|floatformat:0 }}</b>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="asm-payout-info">
+                <span class="text-muted">RSM's Share from this ASM</span>
+                <b>₹{{ report.rsm_grand_total|floatformat:2 }}</b>
+                <div class="asm-earned-label">ASM's Total Incentive: ₹{{ report.asm_grand_total|floatformat:2 }}</div>
+            </div>
+        </div>
+
+        <!-- PRODUCT TABLE -->
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product Details</th>
+                        <th class="text-center">Sold Qty</th>
+                        <th class="text-center">Payout Qty</th>
+                        <th class="text-right">ASM Earned</th>
+                        <th class="text-right">RSM Earned</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in report.items %}
+                    <tr>
+                        <td>
+                            {{ item.name }}
+                            {% if item.is_sheet %}
+                                <span class="text-muted" style="font-size: 10px; margin-left: 5px;">(Sheets)</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ item.qty|floatformat:0 }}</td>
+                        <td class="text-center">{{ item.true_qty|floatformat:0 }}</td>
+                        <td class="text-right" style="color: #777;">₹{{ item.asm_incentive|floatformat:2 }}</td>
+                        <td class="text-right bold-green">₹{{ item.rsm_incentive|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="background: #111; font-weight: bold; border-top: 1px solid #444;">
+                        <td colspan="3" class="text-right" style="padding: 15px; color: #888;">{{ report.asm_name }} SECTION TOTALS:</td>
+                        <td class="text-right" style="color: #888;">₹{{ report.asm_grand_total|floatformat:2 }}</td>
+                        <td class="text-right bold-green" style="padding-right: 20px;">₹{{ report.rsm_grand_total|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card" style="text-align: center; padding: 60px;">
+        <h3 class="text-muted">No sales found for this team in the selected month.</h3>
+    </div>
+    {% endfor %}
+
+    {% endif %}
+</div>
+
+</body>
+</html>
