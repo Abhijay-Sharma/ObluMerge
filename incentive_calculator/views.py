@@ -1370,141 +1370,185 @@ class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
     template_name = "incentive_calculator/asm_incentive_monthly.html"
 
     def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
+        logged_in_user = self.request.user
 
-        # 1. INITIALIZE EVERYTHING TO ZERO
-        ctx.update({
-            "rows": [], "product_totals": {}, "category_summary": {},
-            "grand_total_incentive": Decimal("0.00"),
-            "payable_incentive": Decimal("0.00"),
-            "unpayable_incentive": Decimal("0.00"),
-            "total_sales": Decimal("0.00"), "dynamic_group_qty": Decimal("0.00"),
-            "dynamic_rate_used": Decimal("0.00"), "selected_salesperson": None
+        # 1. IDENTITY & PERMISSION CHECK
+        # Find the salesperson profile linked to this login
+        user_salesperson_profile = SalesPerson.objects.filter(user=logged_in_user).first()
+
+        # Decide who appears in the dropdown and who we are looking at
+        if logged_in_user.is_superuser or logged_in_user.is_staff:
+            # Admins can see everyone
+            allowed_salespersons_list = SalesPerson.objects.all().order_by("name")
+            requested_id = self.request.GET.get("salesperson")
+            # If admin picked someone from dropdown, use that, else default to themselves
+            target_salesperson = allowed_salespersons_list.filter(
+                id=requested_id).first() if requested_id else user_salesperson_profile
+        else:
+            # Regular user can ONLY see themselves
+            target_salesperson = user_salesperson_profile
+            allowed_salespersons_list = SalesPerson.objects.filter(
+                id=target_salesperson.id) if target_salesperson else SalesPerson.objects.none()
+
+        # 2. INITIALIZE CONTEXT DEFAULTS
+        context.update({
+            "salespersons": allowed_salespersons_list,
+            "selected_salesperson": target_salesperson,
+            "rows": [],
+            "product_totals": {},
+            "category_summary": {},
+            "grand_total_incentive": Decimal("0.00"),  # Total Potential
+            "payable_incentive": Decimal("0.00"),  # Total Realized (Paid by Customer)
+            "unpayable_incentive": Decimal("0.00"),  # Total Pending (Unpaid Invoices)
+            "total_sales": Decimal("0.00"),
+            "dynamic_group_qty": Decimal("0.00"),
+            "dynamic_rate_used": Decimal("0.00"),
         })
 
-        # 2. DROPDOWN & FILTERS
-        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
-        salesperson_id = self.request.GET.get("salesperson")
-        month_picker = self.request.GET.get("month_picker")
-        if not salesperson_id or not month_picker: return ctx
+        # 3. VALIDATE FILTERS
+        selected_month_picker = self.request.GET.get("month_picker")
+        if not target_salesperson or not selected_month_picker:
+            return context
 
+        # 4. DATE RANGE SETUP
         try:
-            year, month = map(int, month_picker.split("-"))
-            start_date = date(year, month, 1)
-            end_date = date(year, month, monthrange(year, month)[1])
-            ctx.update({"year": year, "month": month})
-        except:
-            return ctx
+            year, month = map(int, selected_month_picker.split("-"))
+            month_start = date(year, month, 1)
+            month_end = date(year, month, monthrange(year, month)[1])
+            context.update({"year": year, "month": month})
+        except (ValueError, TypeError):
+            return context
 
-        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
-        if not salesperson: return ctx
-        ctx["selected_salesperson"] = salesperson
+        # 5. FETCH DATA & RULES
+        # Map rules by name for high-speed robust matching (fixes "Non-Incentive" labels)
+        all_rules = ProductIncentive.objects.select_related("product", "category").all()
+        name_based_rule_map = {rule.product.name.strip().lower(): rule for rule in all_rules}
 
-        # 3. MATCHING LOGIC
-        incentive_map = {pi.product.name.strip().lower(): pi for pi in
-                         ProductIncentive.objects.all().select_related("product", "category")}
-
-        # 4. FETCH DATA
-        v_statuses = CustomerVoucherStatus.objects.filter(
-            sold_by=salesperson, voucher_type__iexact="TAX INVOICE",
-            voucher_date__range=[start_date, end_date]
+        voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=target_salesperson,
+            voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[month_start, month_end]
         )
-        if not v_statuses.exists(): return ctx
 
-        v_ids = v_statuses.values_list("voucher_id", flat=True)
-        v_status_map = {cvs.voucher_id: cvs for cvs in v_statuses}
-        stock_items = VoucherStockItem.objects.filter(voucher_id__in=v_ids).select_related("voucher",
-                                                                                           "item").prefetch_related(
+        if not voucher_statuses.exists():
+            return context
+
+        unique_voucher_ids = voucher_statuses.values_list("voucher_id", flat=True).distinct()
+        voucher_status_mapping = {vs.voucher_id: vs for vs in voucher_statuses}
+        stock_items_list = VoucherStockItem.objects.filter(voucher_id__in=unique_voucher_ids).select_related("voucher",
+                                                                                                             "item").prefetch_related(
             "voucher__rows")
 
-        # 5. DATA PROCESSING
-        rows = []
-        all_sales_calc = []
-        dynamic_product_ids = set()
-        total_sales_val = Decimal("0.00")
-        processed_vouchers = set()
+        # 6. DATA PRE-PROCESSING
+        transaction_log_rows = []
+        monthly_calculation_queue = []
+        processed_vouchers_set = set()
+        total_monthly_revenue = Decimal("0.00")
 
-        for si in stock_items:
-            if not si.item: continue
+        for item in stock_items_list:
+            if not item.item: continue
 
-            product_name_key = si.item.name.strip().lower()
-            config = incentive_map.get(product_name_key)
+            product_name_key = item.item.name.strip().lower()
+            rule_config = name_based_rule_map.get(product_name_key)
+            status_obj = voucher_status_mapping.get(item.voucher_id)
 
-            status = v_status_map.get(si.voucher_id)
-            is_fully_paid = bool(status and status.is_fully_paid)
+            # Robust payment check: Is the checkbox checked OR is the balance 0?
+            is_invoice_cleared = bool(status_obj and (status_obj.is_fully_paid or status_obj.unpaid_amount == 0))
 
-            if si.voucher_id not in processed_vouchers:
-                processed_vouchers.add(si.voucher_id)
-                party_row = si.voucher.rows.filter(ledger__icontains=si.voucher.party_name.strip()).first()
-                total_sales_val += Decimal(str(party_row.amount if party_row else (si.voucher.amount or 0)))
+            # Revenue Total (Ledger amount calculation)
+            if item.voucher_id not in processed_vouchers_set:
+                processed_vouchers_set.add(item.voucher_id)
+                party_row = item.voucher.rows.filter(ledger__icontains=item.voucher.party_name.strip()).first()
+                total_monthly_revenue += Decimal(str(party_row.amount if party_row else (item.voucher.amount or 0)))
 
-            if config:
-                if config.has_dynamic_price: dynamic_product_ids.add(product_name_key)
-                unit_p = Decimal(str(si.amount)) / Decimal(str(si.quantity)) if si.quantity > 0 else Decimal('0')
-                all_sales_calc.append({
-                    'name': si.item.name, 'config': config, 'qty': Decimal(str(si.quantity)),
-                    'is_paid': is_fully_paid, 'unit_p': unit_p,
-                    'cat': config.category.name if config.category else "Other"
+            if rule_config:
+                unit_price = Decimal(str(item.amount)) / Decimal(str(item.quantity)) if item.quantity > 0 else Decimal(
+                    '0')
+                monthly_calculation_queue.append({
+                    'name': item.item.name,
+                    'rule': rule_config,
+                    'qty': Decimal(str(item.quantity)),
+                    'is_paid': is_invoice_cleared,
+                    'unit_p': unit_price,
+                    'cat': rule_config.category.name if rule_config.category else "Other"
                 })
 
-            rows.append({
-                "date": si.voucher.date, "customer": si.voucher.party_name,
-                "voucher_no": si.voucher.voucher_number, "product": si.item.name,
-                "quantity": si.quantity, "amount": si.amount, "is_fully_paid": is_fully_paid,
-                "has_incentive": config is not None, "voucher_id": si.voucher.id,
-                "customer_id": status.customer_id if status else None,
+            transaction_log_rows.append({
+                "date": item.voucher.date,
+                "customer": item.voucher.party_name,
+                "voucher_no": item.voucher.voucher_number,
+                "product": item.item.name,
+                "quantity": item.quantity,
+                "amount": item.amount,
+                "is_fully_paid": is_invoice_cleared,
+                "has_incentive": rule_config is not None,
+                "voucher_id": item.voucher.id,
+                "customer_id": status_obj.customer_id if status_obj else None,
             })
 
-        # 6. DYNAMIC RATE CALCULATION
-        total_dyn_vol = sum(
-            [s['qty'] * s['config'].pack_size_multiplier for s in all_sales_calc if s['config'].has_dynamic_price])
+        # 7. PERFORMANCE THRESHOLD (The 0/3/4 Rate)
+        total_dynamic_volume = sum([
+            s['qty'] * s['rule'].pack_size_multiplier
+            for s in monthly_calculation_queue if s['rule'].has_dynamic_price
+        ])
 
-        if total_dyn_vol < 500:
-            group_rate = Decimal("0.00")
-        elif total_dyn_vol < 3000:
-            group_rate = Decimal("3.00")
+        if total_dynamic_volume < 500:
+            active_rate = Decimal("0.00")
+        elif total_dynamic_volume < 3000:
+            active_rate = Decimal("3.00")
         else:
-            group_rate = Decimal("4.00")
+            active_rate = Decimal("4.00")
 
-        # 7. FINAL AGGREGATION & CATEGORY SUMMARY
-        product_totals = {}
-        category_summary = {}  # Will store the physical count
-        grand_potential = Decimal("0.00")
-        payable_collected = Decimal("0.00")
+        # 8. FINAL AGGREGATION (Splitting into Potential vs. Payable)
+        payout_breakdown_table = {}
+        category_item_summary = {}
+        grand_total_potential = Decimal("0.00")
+        realized_payable_total = Decimal("0.00")
 
-        for s in all_sales_calc:
-            cfg = s['config']
+        for sale in monthly_calculation_queue:
+            rule = sale['rule']
 
-            # ✅ NEW: POPULATE CATEGORY SUMMARY (Physical Item Count)
-            cat_name = s['cat']
-            category_summary[cat_name] = category_summary.get(cat_name, Decimal('0')) + s['qty']
+            # Category Physical Item Count
+            category_item_summary[sale['cat']] = category_item_summary.get(sale['cat'], Decimal('0')) + sale['qty']
 
-            base_rate, _ = cfg.get_effective_rates
-            rate = group_rate if (cfg.has_dynamic_price and base_rate <= 4) else base_rate
+            # Use Dynamic Rate or Fixed Base Rate
+            asm_base_rate, _ = rule.get_effective_rates
+            applied_rate = active_rate if rule.has_dynamic_price else asm_base_rate
 
-            if cfg.msp > 0 and s['unit_p'] < cfg.msp: continue
+            # MSP Check (Protection)
+            if rule.msp > 0 and sale['unit_p'] < rule.msp: continue
 
-            val = s['qty'] * cfg.pack_size_multiplier * rate
-            grand_potential += val
-            if s['is_paid']: payable_collected += val
+            # Final Row Math
+            row_value = sale['qty'] * rule.pack_size_multiplier * applied_rate
 
-            p_name = s['name']
-            if p_name not in product_totals:
-                product_totals[p_name] = {"paid_qty": 0, "rate": rate, "potential_payout": 0, "ready_payout": 0}
+            grand_total_potential += row_value
+            if sale['is_paid']:
+                realized_payable_total += row_value
 
-            product_totals[p_name]["paid_qty"] += s['qty']
-            product_totals[p_name]["potential_payout"] += val
-            product_totals[p_name]["ready_payout"] += val if s['is_paid'] else 0
+            # Build data for the Breakdown Table
+            prod_name = sale['name']
+            if prod_name not in payout_breakdown_table:
+                payout_breakdown_table[prod_name] = {"paid_qty": 0, "rate": applied_rate, "potential_payout": 0,
+                                                     "ready_payout": 0}
 
-        # 8. CONTEXT UPDATE
-        ctx.update({
-            "rows": rows, "product_totals": product_totals, "category_summary": category_summary,
-            "grand_total_incentive": grand_potential,
-            "payable_incentive": payable_collected,
-            "unpayable_incentive": grand_potential - payable_collected,
-            "total_sales": total_sales_val, "dynamic_group_qty": total_dyn_vol, "dynamic_rate_used": group_rate,
+            payout_breakdown_table[prod_name]["paid_qty"] += sale['qty']
+            payout_breakdown_table[prod_name]["potential_payout"] += row_value
+            payout_breakdown_table[prod_name]["ready_payout"] += row_value if sale['is_paid'] else 0
+
+        # 9. RETURN FINAL DATA
+        context.update({
+            "rows": transaction_log_rows,
+            "product_totals": payout_breakdown_table,
+            "category_summary": category_item_summary,
+            "grand_total_incentive": grand_total_potential,
+            "payable_incentive": realized_payable_total,
+            "unpayable_incentive": grand_total_potential - realized_payable_total,
+            "total_sales": total_monthly_revenue,
+            "dynamic_group_qty": total_dynamic_volume,
+            "dynamic_rate_used": active_rate,
         })
-        return ctx
+        return context
 
 
 class ASMIncentivePaidUnpaidView(AccountantRequiredMixin, TemplateView):
