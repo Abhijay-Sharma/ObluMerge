@@ -402,6 +402,19 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
             "selected_customer": selected_customer,
         })
 
+DISABLED_PROFORMA_PRODUCT_IDS = [
+2708,2709,2722,2727,2728,2729,2730,2763,2769,2782,
+2787,2797,2803,2805,2821,2824,2835,2837,2838,2841,
+2842,2843,2844,2851,2855,2859,2860,2862,2871,2872,
+2874,2875,2882,2884,2887,2888,2896,2909,2916,2932,
+2933,2943,2956,2957,2958,2961,2963,2964,2965,2966,
+2974,2980,2981,2982,2984,2985,2986,2987,2989,2998,
+3016,3030,3031,3075,3078,3079,3080,3087,3088,3089,
+3090,3104,3127,3131,3132,3133,3134,3135,3140,3141,
+3149,3160,3161,3162,3163,3165,3170,3174,3175,3181,
+3241,3242,3243,3244,3245,3246,3266,3268,3295,3307,
+3308,3309,3310,3311,3312,3313,3314,3315,3316,3317
+]
 
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
@@ -422,7 +435,12 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
             customers = Customer.objects.filter(proforma_invoices__created_by=request.user.username).distinct()
 
         categories = Category.objects.all().order_by("name")
-        items = InventoryItem.objects.select_related("category").all().order_by("name")
+        items = (
+            InventoryItem.objects
+            .select_related("category")
+            .exclude(id__in=DISABLED_PROFORMA_PRODUCT_IDS)
+            .order_by("name")
+        )
 
         return render(request, "proforma_invoice/create_proforma.html", {
             "invoice_form": invoice_form,
@@ -611,7 +629,12 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                     ).distinct()
 
                 categories = Category.objects.all().order_by("name")
-                items = InventoryItem.objects.select_related("category").all().order_by("name")
+                items = (
+                    InventoryItem.objects
+                    .select_related("category")
+                    .exclude(id__in=DISABLED_PROFORMA_PRODUCT_IDS)
+                    .order_by("name")
+                )
 
                 return render(request, "proforma_invoice/create_proforma.html", {
                     "invoice_form": invoice_form,
@@ -921,10 +944,18 @@ class ProformaInvoiceDetailView(LoginRequiredMixin, DetailView):
         # 🔹 Courier Charges + GST (Tally-style)
         # =========================
         # if approved_request and approved_request.requested_courier_charge:
-        if approved_request and approved_request.requested_courier_charge is not None:
-            courier_charge = Decimal(str(approved_request.requested_courier_charge))
+        model_courier = invoice.courier_charge()
+
+        if (
+                approved_request
+                and approved_request.requested_courier_charge
+                and Decimal(str(approved_request.requested_courier_charge)) > 0
+        ):
+            courier_charge = Decimal(
+                str(approved_request.requested_courier_charge)
+            )
         else:
-            courier_charge = Decimal(str(invoice.courier_charge() or 0))
+            courier_charge = Decimal(str(model_courier or 0))
 
         # Combined GST % (Tally-style)
         if subtotal_excl > 0:

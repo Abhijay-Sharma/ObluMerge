@@ -13,7 +13,7 @@ from decimal import Decimal
 from num2words import num2words
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
-
+from django.db.models import Q
 # 🧾 1. Product Pricing
 class ProductPrice(models.Model):
     """
@@ -203,6 +203,170 @@ class ProformaInvoice(models.Model):
 
         return total_courier
 
+    def courier_charge(self):
+
+        total_courier = Decimal("0.00")
+
+        items = self.items.select_related(
+            "product",
+            "product__category"
+        )
+
+        total_sheet_qty = Decimal("0")
+        sheet_product = None
+
+        # Categories that must be summed together
+        SHEET_CATEGORIES = [
+            "THERMOFORMING SHEETS",
+            "BAY MATERIALS",
+        ]
+
+        # Categories that charge per unit
+        PER_UNIT_KEYWORDS = [
+            "PRINTER",
+            "RESIN",
+            "ANYCUBIC",
+            "FILAMENT",
+            "MACHINE",
+        ]
+
+        # -------------------------
+        # STEP 1 — SUM SHEETS
+        # -------------------------
+
+        for item in items:
+
+            qty = Decimal(str(item.quantity or 0))
+            if qty <= 0:
+                continue
+
+            product = item.product
+
+            category_name = (
+                product.category.name.upper()
+                if product.category else ""
+            )
+
+            print("CATEGORY:", category_name)
+
+            if category_name in SHEET_CATEGORIES:
+
+                total_sheet_qty += qty
+
+                if not sheet_product:
+                    sheet_product = product
+
+        print("TOTAL SHEET QTY:", total_sheet_qty)
+
+        # -------------------------
+        # STEP 2 — APPLY SHEET SLAB ONCE
+        # -------------------------
+
+        if total_sheet_qty > 0 and sheet_product:
+
+            try:
+
+                sheet_rule = CourierCharge.objects.get(
+                    product=sheet_product,
+                    mode=self.courier_mode
+                )
+
+            except CourierCharge.DoesNotExist:
+
+                sheet_rule = None
+
+            if sheet_rule:
+
+                tier = (
+                    sheet_rule.tiers
+                    .filter(min_quantity__lte=total_sheet_qty)
+                    .filter(
+                        Q(max_quantity__gte=total_sheet_qty)
+                        | Q(max_quantity__isnull=True)
+                    )
+                    .order_by("-min_quantity")
+                    .first()
+                )
+
+                if tier:
+                    print("SHEET CHARGE:", tier.charge)
+
+                    total_courier += tier.charge
+
+        # -------------------------
+        # STEP 3 — OTHER PRODUCTS
+        # -------------------------
+
+        for item in items:
+
+            qty = Decimal(str(item.quantity or 0))
+            if qty <= 0:
+                continue
+
+            product = item.product
+
+            category_name = (
+                product.category.name.upper()
+                if product.category else ""
+            )
+
+            # Skip sheets (already handled)
+            if category_name in SHEET_CATEGORIES:
+                continue
+
+            try:
+
+                rule = CourierCharge.objects.get(
+                    product=product,
+                    mode=self.courier_mode
+                )
+
+            except CourierCharge.DoesNotExist:
+                continue
+
+            tier = (
+                rule.tiers
+                .filter(min_quantity__lte=qty)
+                .filter(
+                    Q(max_quantity__gte=qty)
+                    | Q(max_quantity__isnull=True)
+                    | Q(max_quantity=0)
+                )
+                .order_by("-min_quantity")
+                .first()
+            )
+
+            if not tier:
+                continue
+
+            # Detect per-unit categories safely
+            is_per_unit = any(
+                keyword in category_name
+                for keyword in PER_UNIT_KEYWORDS
+            )
+
+            if is_per_unit:
+
+                charge = qty * tier.charge
+
+            else:
+
+                charge = tier.charge
+
+            print(
+                "PRODUCT:", product.name,
+                "| CATEGORY:", category_name,
+                "| QTY:", qty,
+                "| RATE:", tier.charge,
+                "| CHARGE:", charge
+            )
+
+            total_courier += charge
+
+        print("FINAL COURIER:", total_courier)
+
+        return total_courier
+
     def courier_gst(self):
         """
         Correct courier GST calculation:
@@ -278,6 +442,31 @@ class ProformaInvoice(models.Model):
         """Products incl GST + Courier incl GST"""
         # return self.items_total() + self.courier_charge() + self.courier_gst()
         return self.items_total() + self.courier_charge() + self.courier_gst()
+
+    def grand_total_in_words(self):
+        amount = self.grand_total().quantize(Decimal("0.01"))
+
+        rupees = int(amount)
+        paise = int((amount - Decimal(rupees)) * 100)
+
+        words = (
+                num2words(rupees, lang="en_IN")
+                .replace(",", "")
+                .title()
+                + " Rupees"
+        )
+
+        if paise > 0:
+            words += (
+                    " "
+                    + num2words(paise, lang="en_IN")
+                    .replace(",", "")
+                    .title()
+                    + " Paise"
+            )
+
+        words += " Only"
+        return words
 
     def grand_total_in_words(self):
         amount = self.grand_total().quantize(Decimal("0.01"))
