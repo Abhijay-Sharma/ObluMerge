@@ -1754,16 +1754,60 @@ class ASMIncentivePaidUnpaidView(AccountantRequiredMixin, TemplateView):
         return redirect(f"{request.path}?salesperson={salesperson_id}&month_picker={month_picker}")
 
 
-class RSMTeamIncentiveDashboardView(AccountantRequiredMixin, TemplateView):
+class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
     template_name = "incentive_calculator/rsm_team_dashboard.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["rsms"] = SalesPerson.objects.filter(manager__isnull=True).order_by("name")
+        # ctx["rsms"] = SalesPerson.objects.filter(manager__isnull=True).order_by("name")
+
+        logged_in_user = self.request.user  # new
+
+        # Identify the salesperson profile linked to the logged-in user
+        user_sp_profile = SalesPerson.objects.filter(user=logged_in_user).first()  # new
+
+        # Check if the user is an Admin, Staff, or in the Accountant group
+        is_privileged_user = (
+                logged_in_user.is_superuser or  # new
+                logged_in_user.is_staff or  # new
+                logged_in_user.groups.filter(name='Accountant').exists()  # new
+        )  # new
+
+        # ---------------------------------
+        # 1. PERMISSION-BASED DROPDOWN FILTER
+        # ---------------------------------
+        if is_privileged_user:
+            # Accountants/Admins see all RSMs (Managers)
+            allowed_rsms = SalesPerson.objects.filter(manager__isnull=True).order_by("name")
+        elif user_sp_profile and user_sp_profile.manager is None:
+            # RSM sees only their own profile in the dropdown
+            allowed_rsms = SalesPerson.objects.filter(id=user_sp_profile.id)
+        else:
+            # ASMs or non-linked users see nothing
+            allowed_rsms = SalesPerson.objects.none()
+
+        ctx["rsms"] = allowed_rsms  # new
+
+        # 2. SELECTION LOGIC
 
         rsm_id = self.request.GET.get("rsm")
+
         month_picker = self.request.GET.get("month_picker")
-        if not rsm_id or not month_picker: return ctx
+
+        # If not an Admin, we force the rsm_id to be the user's own profile ID
+        # This prevents someone from manually changing the ID in the URL to see others
+        if not is_privileged_user:
+            if user_sp_profile:
+                rsm_id = user_sp_profile.id
+            else:
+                return ctx
+
+        if not rsm_id or not month_picker:
+            return ctx
+
+        # Final check: Is the requested ID actually in the 'allowed' list
+        if not allowed_rsms.filter(id=rsm_id).exists():
+            return ctx
 
         year, month = map(int, month_picker.split("-"))
         start_date = date(year, month, 1)
