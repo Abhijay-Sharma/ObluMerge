@@ -1188,26 +1188,26 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
         ).select_related(
             "customer",
             "voucher",
-            "customersalesperson"
+            "customer__salesperson"
         ).prefetch_related(
-            "payment_threadremarks",
-            "payment_threadexpected_date_history",
-            "payment_threadticket_events"
+            "payment_thread__remarks",
+            "payment_thread__expected_date_history",
+            "payment_thread__ticket_events"
         )
 
         if is_power_user:
             # Power users (Admin/Accountants) see the specific person they selected
             if salesperson_id:
-                qs = qs.filter(customersalesperson_id=salesperson_id)
+                qs = qs.filter(customer__salesperson_id=salesperson_id)
         else:
             # Regular salespersons only see their own assigned customers
-            qs = qs.filter(customersalesperson__user=user)
+            qs = qs.filter(customer__salesperson__user=user)
 
         return qs
 
-    def get_context_data(self, kwargs):
+    def get_context_data(self, **kwargs):
 
-        ctx = super().get_context_data(kwargs)
+        ctx = super().get_context_data(**kwargs)
         user = self.request.user
 
         is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
@@ -1226,7 +1226,6 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
         ctx["is_staff"] = is_power_user
 
         return ctx
-
 
 @require_POST
 def payment_followup_action(request):
