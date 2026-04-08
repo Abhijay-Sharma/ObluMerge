@@ -1247,39 +1247,6 @@ class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
             "invoice__items__product"
         )
 
-class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
-    model = ProformaPriceChangeRequest
-    template_name = "proforma_invoice/price_change_request_list.html"
-    context_object_name = "requests"
-
-    def get_queryset(self):
-        # Default ordering: Latest first
-        queryset = ProformaPriceChangeRequest.objects.select_related(
-            "invoice", "requested_by", "reviewed_by"
-        ).prefetch_related(
-            "invoice__items__product"
-        ).order_by("-created_at")
-
-        # Get values from the URL
-        f_id = self.request.GET.get('f_id')
-        f_inv = self.request.GET.get('f_inv')
-        f_user = self.request.GET.get('f_user')
-        f_status = self.request.GET.get('f_status')
-        f_date = self.request.GET.get('f_date')
-
-        # Apply Filters
-        if f_id:
-            queryset = queryset.filter(id__icontains=f_id)
-        if f_inv:
-            queryset = queryset.filter(invoice__id__icontains=f_inv)
-        if f_user:
-            queryset = queryset.filter(requested_by__username__icontains=f_user)
-        if f_status:
-            queryset = queryset.filter(status=f_status)
-        if f_date:
-            queryset = queryset.filter(created_at__date=f_date)
-
-        return queryset
 
 
 class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
