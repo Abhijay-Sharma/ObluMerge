@@ -1169,6 +1169,64 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
 
         return ctx
 
+class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
+
+    template_name = "customers/payment_followup_dashboard.html"
+
+    def get_queryset(self):
+
+        user = self.request.user
+        salesperson_id = self.request.GET.get("salesperson")
+
+        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
+
+        if is_power_user and not salesperson_id:
+            return CustomerVoucherStatus.objects.none()
+
+        qs = CustomerVoucherStatus.objects.filter(
+            Q(is_unpaid=True) | Q(is_partially_paid=True)
+        ).select_related(
+            "customer",
+            "voucher",
+            "customersalesperson"
+        ).prefetch_related(
+            "payment_threadremarks",
+            "payment_threadexpected_date_history",
+            "payment_threadticket_events"
+        )
+
+        if is_power_user:
+            # Power users (Admin/Accountants) see the specific person they selected
+            if salesperson_id:
+                qs = qs.filter(customersalesperson_id=salesperson_id)
+        else:
+            # Regular salespersons only see their own assigned customers
+            qs = qs.filter(customersalesperson__user=user)
+
+        return qs
+
+    def get_context_data(self, kwargs):
+
+        ctx = super().get_context_data(kwargs)
+        user = self.request.user
+
+        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
+
+        qs = self.get_queryset()
+
+        # ensure threads exist
+        if qs.exists():
+            for vs in qs:
+                PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
+
+        ctx["voucher_statuses"] = qs
+        ctx["salespersons"] = SalesPerson.objects.all()
+
+        ctx["selected_salesperson"] = self.request.GET.get("salesperson")
+        ctx["is_staff"] = is_power_user
+
+        return ctx
+
 
 @require_POST
 def payment_followup_action(request):
