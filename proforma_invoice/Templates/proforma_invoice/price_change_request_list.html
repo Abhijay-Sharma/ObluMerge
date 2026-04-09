@@ -3,85 +3,87 @@
 {% block content %}
 
 <style>
-    h2 { color:white; font-size: 2rem; margin-top:20px; margin-left:40px;}
+    h2 { color:white; font-size: 1.8rem; margin-top:20px; margin-left:40px;}
+
+    /* Table Wrapper for Horizontal Scroll on Mobile */
+    .table-container {
+      width: 95%;
+      margin: 20px auto;
+      overflow-x: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    table { width: 100%; min-width: 900px; border-collapse: collapse; }
+
+    /* Theme Colors */
+    .bg-custom-dark { background-color: #595555 !important; color: white !important; }
+    .main-row td { color: white !important; border-bottom: 1px solid #444; padding: 12px 8px; }
 
     /* Header Filter Styling */
-    th { position: relative; color: #fff; }
-
-    .filter-symbol {
-        cursor: pointer;
-        padding-left: 5px;
-        color: #ffc107; /* Gold color for symbol */
-        font-size: 1.1rem;
-    }
+    th { position: relative; color: #fff; background-color: #212529 !important; padding: 12px 8px !important; }
+    .filter-symbol { cursor: pointer; padding-left: 5px; color: #ffc107; font-size: 1rem; }
 
     .filter-popup {
-        display: none;
-        position: absolute;
-        background: #333;
-        border: 1px solid #777;
-        padding: 8px;
-        z-index: 100;
-        top: 100%;
-        left: 0;
-        min-width: 150px;
-        box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+        display: none; position: absolute; background: #333; border: 1px solid #777;
+        padding: 8px; z-index: 100; top: 100%; left: 0; min-width: 160px;
     }
-
     .filter-popup.show { display: block; }
-
     .filter-popup input, .filter-popup select {
-        width: 100%;
-        background: #222;
-        color: white;
-        border: 1px solid #555;
-        font-size: 0.85rem;
-        padding: 4px;
+        width: 100%; background: #222; color: white; border: 1px solid #555; padding: 4px; font-size: 0.85rem;
     }
 
-    /* Existing Styles */
-    .table-container { width: 95%; margin: 0 auto; overflow-x: auto; border-radius:10px; }
-    table { width: 95%; margin: 0 auto; }
+    .clear-btn { font-size: 0.8rem; color: #ff6b6b; text-decoration: none; margin-left: 20px; }
+
+    /* Reason Cell Logic */
     .reason-cell { max-width: 250px; vertical-align: top; }
     .text-content { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
     .text-content.expanded { -webkit-line-clamp: unset; }
-    .read-more-text { font-size: 11px; color: #bbb; margin-top: 2px; cursor: pointer; }
+    .read-more-text { font-size: 11px; color: #ffc107; cursor: pointer; margin-top: 2px; }
 
-    .clear-btn {
-        font-size: 0.8rem;
-        color: #ff6b6b;
-        text-decoration: none;
-        margin-left: 20px;
+    /* Action Buttons Mobile Fix */
+    .action-btns { display: flex; gap: 5px; }
+
+    @media (max-width: 768px) {
+      h2 { font-size: 1.4rem; margin-left: 15px; }
+      .table-container { width: 100%; border-radius: 0; }
     }
 </style>
 
-<div class="d-flex align-items-center">
+<div class="d-flex align-items-center flex-wrap">
     <h2>All Proforma Price Change Requests</h2>
     <a href="{{ request.path }}" class="clear-btn">[Clear All Filters]</a>
 </div>
 
-<form method="get" id="filterForm">
+<!-- Hidden Main Filter Form -->
+<form method="get" id="filterForm" action=""></form>
+
+<div class="table-container">
 <table>
-  <thead class="table-dark">
-    <tr>
+  <thead>
+    <tr class="table-dark">
       <th>ID <span class="filter-symbol" onclick="toggleFilter(event, 'f-id')">≡</span>
         <div class="filter-popup" id="f-id">
-            <input type="text" name="f_id" value="{{ request.GET.f_id }}" placeholder="ID..." onchange="this.form.submit()">
+            <input type="text" name="f_id" form="filterForm" value="{{ request.GET.f_id }}" placeholder="ID..." onchange="this.form.submit()">
         </div>
       </th>
-      <th>Proforma Invoice <span class="filter-symbol" onclick="toggleFilter(event, 'f-inv')">≡</span>
+      <th>Invoice <span class="filter-symbol" onclick="toggleFilter(event, 'f-inv')">≡</span>
         <div class="filter-popup" id="f-inv">
-            <input type="text" name="f_inv" value="{{ request.GET.f_inv }}" placeholder="Inv #" onchange="this.form.submit()">
+            <input type="text" name="f_inv" form="filterForm" value="{{ request.GET.f_inv }}" placeholder="Inv #" onchange="this.form.submit()">
         </div>
       </th>
       <th>Requested By <span class="filter-symbol" onclick="toggleFilter(event, 'f-user')">≡</span>
         <div class="filter-popup" id="f-user">
-            <input type="text" name="f_user" value="{{ request.GET.f_user }}" placeholder="Username..." onchange="this.form.submit()">
+            <!-- Datalist for Salesperson suggestions -->
+            <input type="text" name="f_user" form="filterForm" list="salespersons" value="{{ request.GET.f_user }}" placeholder="Name..." onchange="this.form.submit()">
+            <datalist id="salespersons">
+                {% for name in salespersons %}<option value="{{ name }}">{% endfor %}
+            </datalist>
         </div>
       </th>
       <th>Status <span class="filter-symbol" onclick="toggleFilter(event, 'f-stat')">≡</span>
         <div class="filter-popup" id="f-stat">
-            <select name="f_status" onchange="this.form.submit()">
+            <select name="f_status" form="filterForm" onchange="this.form.submit()">
                 <option value="">All</option>
                 <option value="pending" {% if request.GET.f_status == 'pending' %}selected{% endif %}>Pending</option>
                 <option value="approved" {% if request.GET.f_status == 'approved' %}selected{% endif %}>Approved</option>
@@ -90,9 +92,9 @@
         </div>
       </th>
       <th>Reason</th>
-      <th>Requested At <span class="filter-symbol" onclick="toggleFilter(event, 'f-date')">≡</span>
+      <th>Date <span class="filter-symbol" onclick="toggleFilter(event, 'f-date')">≡</span>
         <div class="filter-popup" id="f-date">
-            <input type="date" name="f_date" value="{{ request.GET.f_date }}" onchange="this.form.submit()">
+            <input type="date" name="f_date" form="filterForm" value="{{ request.GET.f_date }}" onchange="this.form.submit()">
         </div>
       </th>
       <th>Actions</th>
@@ -100,7 +102,7 @@
   </thead>
   <tbody>
     {% for req in requests %}
-    <tr style="background-color: #595555 !important; border-bottom: 1px solid #444;">
+    <tr class="main-row bg-custom-dark">
       <td>{{ req.id }}</td>
       <td>#{{ req.invoice.id }}</td>
       <td>{{ req.requested_by.username }}</td>
@@ -113,7 +115,6 @@
           <span class="badge bg-danger">Rejected</span>
         {% endif %}
       </td>
-
       <td class="reason-cell">
         <div class="reason-wrapper">
             <span class="text-content">{{ req.reason|default:"-" }}</span>
@@ -122,110 +123,99 @@
             {% endif %}
         </div>
       </td>
-
       <td>{{ req.created_at|date:"d M Y, H:i" }}</td>
-
       <td>
         {% if req.status == "pending" %}
-          <div class="d-flex gap-1">
-            <button type="submit" formaction="{% url 'proforma_price_change_approve' req.id %}" formmethod="post" class="btn btn-success btn-sm">Approve</button>
-            <button type="submit" formaction="{% url 'proforma_price_change_reject' req.id %}" formmethod="post" class="btn btn-danger btn-sm">Reject</button>
+          <div class="action-btns">
+            <!-- Separate POST forms for Approve/Reject to prevent CSRF conflict -->
+            <form action="{% url 'proforma_price_change_approve' req.id %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+            </form>
+            <form action="{% url 'proforma_price_change_reject' req.id %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+            </form>
           </div>
         {% else %}
-          <small>By <b>{{ req.reviewed_by.username }}</b></small>
+          <div style="line-height:1.2">
+            <small>By: <b>{{ req.reviewed_by.username }}</b></small><br>
+            <small style="font-size: 0.75rem; opacity: 0.8;">{{ req.reviewed_at|date:"d M, H:i" }}</small>
+          </div>
         {% endif %}
       </td>
     </tr>
-          <!-- Expandable Row -->
+
+    <!-- Expandable Row -->
     <tr class="table-light">
-      <td colspan="7">
-        <button class="btn btn-sm btn-outline-secondary mb-2"
-                type="button"
-                style="background-color: #fff !important;"
-                data-bs-toggle="collapse"
-                data-bs-target="#details-{{ req.id }}">
-          View Requested Changes
-        </button>
-
+      <td colspan="7" class="p-0">
+        <div class="p-2 border-bottom">
+            <button class="btn btn-sm btn-outline-secondary" type="button" style="background-color: #fff !important;"
+                    data-bs-toggle="collapse" data-bs-target="#details-{{ req.id }}">
+              View Requested Changes
+            </button>
+        </div>
         <div class="collapse" id="details-{{ req.id }}">
-          <table class="table table-sm table-bordered mt-2">
-            <thead>
-              <tr>
-                <th style="background-color: #595555 !important">Item ID</th>
-                <th style="background-color: #595555 !important">Product</th>
-                <th style="background-color: #595555 !important">Old Price (₹)</th>
-                <th style="background-color: #595555 !important">Requested Price (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-
+          <div class="p-3">
+            <table class="table table-sm table-bordered bg-white mb-0">
+                <thead class="table-secondary">
+                  <tr>
+                    <th>Item ID</th>
+                    <th>Product</th>
+                    <th>Old Price</th>
+                    <th>Requested Price</th>
+                  </tr>
+                </thead>
+                <tbody>
               {% for item in req.invoice.items.all %}
                 {% with new_price=req.requested_product_prices|get_item:item.id|stringformat:"s" %}
                   {% if new_price %}
-                    <tr>
-                      <td>{{ item.id }}</td>
-                      <td>{{ item.product.name }}</td>
-                      <td>₹{{ item.unit_price|floatformat:2 }}</td>
-                      <td>
-                        <strong class="text-primary">
-                          {{ new_price|floatformat:2 }}
-                        </strong>
-                      </td>
-                    </tr>
+                        <tr>
+                          <td style="background-color: white; color:black;">{{ item.id }}</td>
+                          <td style="background-color: white; color:black;">{{ item.product.name }}</td>
+                          <td style="background-color: white; color:black;">₹{{ item.unit_price|floatformat:2 }}</td>
+                          <td class="text-primary fw-bold" style="background-color: white; color:black;">₹{{ new_price|floatformat:2 }}</td>
+                        </tr>
+                      {% endif %}
+                    {% endwith %}
+                  {% endfor %}
+
+                  {% if req.requested_courier_charge is not None %}
+                  <tr class="table-info">
+                    <td colspan="2" style="background-color: white; color:black;"><strong>Courier Charge</strong></td>
+                    <td style="background-color: white; color:black;">₹{{ req.invoice.courier_charge|floatformat:2 }}</td>
+                    <td class="text-primary fw-bold" style="background-color: white; color:black;">₹{{ req.requested_courier_charge|floatformat:2 }}</td>
+                  </tr>
                   {% endif %}
-                {% endwith %}
-              {% empty %}
-                <tr>
-                  <td colspan="4" class="text-muted">
-                    No items found for this invoice.
-                  </td>
-                </tr>
-              {% endfor %}
-  <!--  Courier Price Change (The Fix) -->
-<!--              Use 'is not None' so that 0 is displayed-->
-
-          {% if req.requested_courier_charge is not None %}
-              <tr>
-                <td colspan="2"><strong>Courier Charge</strong></td>
-                <td>₹{{ req.invoice.courier_charge|floatformat:2 }}</td>
-                <td>
-                  <strong class="text-primary">
-                    ₹{{ req.requested_courier_charge|floatformat:2 }}
-                  </strong>
-                </td>
-              </tr>
-              {% endif %}
-
-
-            </tbody>
-          </table>
+                </tbody>
+            </table>
+          </div>
         </div>
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
-</form>
+</div>
 
 <script>
+// Filter Popups Logic
 function toggleFilter(event, elementId) {
     event.stopPropagation();
-    // Close other popups
     document.querySelectorAll('.filter-popup').forEach(el => {
         if (el.id !== elementId) el.classList.remove('show');
     });
-    // Toggle current
     document.getElementById(elementId).classList.toggle('show');
 }
 
-// Close popup if clicking outside
+// Close popups on click outside
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.filter-popup')) {
         document.querySelectorAll('.filter-popup').forEach(el => el.classList.remove('show'));
     }
 });
 
-// Read more logic
+// Reason Text Expansion
 document.querySelectorAll(".reason-cell").forEach(function(cell) {
     let text = cell.querySelector(".text-content");
     let readMore = cell.querySelector(".read-more-text");
