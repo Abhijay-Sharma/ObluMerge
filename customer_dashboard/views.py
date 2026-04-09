@@ -1183,17 +1183,20 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
         if is_power_user and not salesperson_id:
             return CustomerVoucherStatus.objects.none()
 
-        qs = CustomerVoucherStatus.objects.filter(
+        qs = (CustomerVoucherStatus.objects.filter(
             Q(is_unpaid=True) | Q(is_partially_paid=True)
-        ).select_related(
+        )
+        .select_related(
             "customer",
             "voucher",
-            "customer__salesperson"
-        ).prefetch_related(
+            "customer__salesperson",
+            "customer__credit_profile"
+        )
+        .prefetch_related(
             "payment_thread__remarks",
             "payment_thread__expected_date_history",
             "payment_thread__ticket_events"
-        )
+        ))
 
         if is_power_user:
             # Power users (Admin/Accountants) see the specific person they selected
@@ -1203,25 +1206,41 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
             # Regular salespersons only see their own assigned customers
             qs = qs.filter(customer__salesperson__user=user)
 
-        return qs
+        return qs.order_by("customer__name")
 
     def get_context_data(self, **kwargs):
 
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-
         is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-
         qs = self.get_queryset()
+        today = date.today()
 
-        # ensure threads exist
         if qs.exists():
             for vs in qs:
                 PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
 
+                # 2. CREDIT PERIOD CALCULATION
+                credit_period = 0
+                if hasattr(vs.customer, "credit_profile") and vs.customer.credit_profile:
+                    credit_period = vs.customer.credit_profile.credit_period_days
+
+                days_elapsed = (today - vs.voucher_date).days
+
+                if days_elapsed > credit_period:
+                    vs.credit_display_text = f"Crossed by {days_elapsed} days"
+                    vs.credit_display_color = "status-crossed"
+                else:
+                    remaining = max(credit_period - days_elapsed, 0)
+                    vs.credit_display_text = f"{remaining} days remaining"
+
+                    if remaining <= 10:
+                        vs.credit_display_color = "status-warning"
+                    else:
+                        vs.credit_display_color = "status-remaining"
+
         ctx["voucher_statuses"] = qs
         ctx["salespersons"] = SalesPerson.objects.all()
-
         ctx["selected_salesperson"] = self.request.GET.get("salesperson")
         ctx["is_staff"] = is_power_user
 
