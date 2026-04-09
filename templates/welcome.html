@@ -205,6 +205,7 @@
       <button class="btn" onclick="location.href='/proforma/'">Proforma Invoice Maker</button>
       <button class="btn" onclick="location.href='/incentives/asm/paid-only/'">Incentive Calculator</button>
       <button class="btn" onclick="redirectTo('quotations')">Quotation Maker</button>
+      <button class="btn" onclick="location.href='/customers/payment-followups/'">View Pending Payments</button>
       {% if request.user.is_accountant %}
         <button class="btn" onclick="location.href='/customers/salesperson-customers/'">Salesperson-Customers</button>
         <button class="btn" onclick="location.href='/customers/sales-report/'">Sales-Report</button>
