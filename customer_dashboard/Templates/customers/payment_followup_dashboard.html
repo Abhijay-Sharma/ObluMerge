@@ -1,324 +1,315 @@
-{% extends "customers/base.html" %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1250">
+    <title>Payment Follow-Up Dashboard</title>
+    <style>
+        /* Standalone CSS - Google Sheets UI */
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f1f3f4; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            min-width: 1250px; 
+        }
 
-<style>
-    body { background-color: #f9fbfd; font-family: 'Segoe UI', Roboto, Arial, sans-serif; }
+        /* CUSTOM NAVIGATION BAR */
+        .oblu-nav {
+            background-color: #ffffff;
+            border-bottom: 1px solid #dadce0;
+            padding: 0 30px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
 
-    .sheets-outer-wrapper {
-        padding: 10px;
-        min-height: 100vh;
-    }
+        .nav-left .brand {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a73e8;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
 
-    .sheets-main-card {
-        background: white;
-        border: 1px solid #dadce0;
-        border-radius: 8px;
-        overflow: hidden;
-        margin: 0 auto;
-        width: 100%;
-        box-shadow: 0 1px 3px rgba(60,64,67, 0.3);
-    }
+        .nav-right {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
 
-    .sheets-toolbar {
-        padding: 16px;
-        border-bottom: 1px solid #e0e0e0;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
+        .nav-link {
+            text-decoration: none;
+            color: #5f6368;
+            font-size: 14px;
+            font-weight: 500;
+        }
 
-    @media (min-width: 768px) {
+        .nav-link:hover { color: #1a73e8; }
+
+        /* LOADING BAR */
+        #loader-top {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 3px;
+            background: #1a73e8; z-index: 9999;
+        }
+
+        /* MAIN DASHBOARD CARD */
+        .sheets-outer-wrapper { padding: 30px; }
+
+        .sheets-card {
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            width: 1200px;
+            margin: 0 auto;
+            box-shadow: 0 1px 3px rgba(60,64,67, 0.3);
+            overflow: hidden;
+        }
+
+        /* TOOLBAR INSIDE CARD */
         .sheets-toolbar {
-            flex-direction: row;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
             justify-content: space-between;
             align-items: center;
         }
-    }
 
-    .toolbar-left {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    @media (min-width: 768px) {
-        .toolbar-left {
-            flex-direction: row;
-            align-items: center;
-            gap: 24px;
+        .toolbar-title { font-size: 18px; font-weight: 500; color: #3c4043; margin: 0; }
+        
+        .user-pill {
+            background: #e8f0fe; color: #1967d2; border: 1px solid #c2d7fa;
+            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
         }
-    }
 
-    .toolbar-title {
-        font-size: 18px;
-        font-weight: 500;
-        color: #3c4043;
-        margin: 0;
-        white-space: nowrap;
-    }
+        /* GRID STYLING */
+        .table-sheets { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
-    .filter-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
+        .table-sheets th {
+            background: #f8f9fa; color: #5f6368; font-size: 11px; font-weight: 600;
+            text-transform: uppercase; border: 1px solid #e0e0e0; padding: 10px;
+        }
 
-    .user-badge {
-        background: #e8f0fe;
-        color: #1967d2;
-        border: 1px solid #c2d7fa;
-        padding: 4px 12px;
-        border-radius: 16px;
-        font-size: 12px;
-        font-weight: 500;
-        white-space: nowrap;
-        align-self: flex-start;
-    }
+        .table-sheets td {
+            border: 1px solid #e0e0e0; padding: 8px 10px; font-size: 13px;
+            color: #3c4043; vertical-align: middle; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
 
-    @media (min-width: 768px) {
-        .user-badge { align-self: center; }
-    }
+        .cust-cell { font-weight: 600; color: #1a73e8; display: block; }
+        .amt-red { color: #d93025; font-weight: 700; text-align: right; }
 
-    /* TABLE GRID STYLING */
-    .table-responsive-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
+        .cell-input {
+            border: 1px solid #dadce0; padding: 5px; font-size: 12px;
+            border-radius: 4px; width: 100%; outline-color: #1a73e8;
+        }
 
-    .table-sheets {
-        width: 100%;
-        min-width: 1000px;
-        border-collapse: collapse;
-    }
+        .btn-sheet {
+            padding: 4px 10px; font-size: 11px; font-weight: 600;
+            border-radius: 4px; border: 1px solid #dadce0; background: white;
+            cursor: pointer; text-transform: uppercase;
+        }
 
-    .table-sheets th {
-        background: #f8f9fa;
-        color: #5f6368;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        border: 1px solid #e0e0e0;
-        padding: 8px 12px;
-        text-align: left;
-    }
+        .btn-blue { background: #1a73e8 !important; color: white !important; border-color: #1a73e8 !important; }
 
-    .table-sheets td {
-        border: 1px solid #e0e0e0;
-        padding: 8px 12px;
-        font-size: 13px;
-        color: #3c4043;
-        vertical-align: middle;
-    }
+        .btn-history-active {
+            background-color: #e8f0fe !important;
+            color: #1967d2 !important;
+            border-color: #1967d2 !important;
+        }
 
-    .customer-cell { font-weight: 500; color: #1a73e8; }
-    .voucher-sub { font-size: 11px; color: #70757a; display: block; }
-    .pending-amt { color: #d93025; font-weight: 600; }
+        /* EXPANDED DRAWER */
+        .drawer { background: #fbfbfb; border-bottom: 2px solid #1a73e8; }
+        .drawer-content { display: flex; gap: 30px; padding: 20px; white-space: normal !important; }
+        .drawer-col { flex: 1; }
+        .drawer-h { font-weight: 700; font-size: 11px; color: #1a73e8; margin-bottom: 10px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+        .log-item { font-size: 12px; margin-bottom: 8px; border-bottom: 1px solid #f1f1f1; padding-bottom: 6px; }
+        .log-meta { color: #888; font-size: 10px; margin-top: 2px; }
+    </style>
+</head>
+<body>
 
-    /* Inputs & Buttons */
-    .cell-input {
-        border: 1px solid #dadce0;
-        padding: 4px 8px;
-        font-size: 12px;
-        border-radius: 4px;
-        width: 100%;
-        outline-color: #1a73e8;
-    }
-
-    .btn-sheet {
-        padding: 4px 10px;
-        font-size: 11px;
-        font-weight: 500;
-        border-radius: 4px;
-        border: 1px solid #dadce0;
-        background: white;
-        color: #3c4043;
-        cursor: pointer;
-        text-transform: uppercase;
-        white-space: nowrap;
-    }
-
-    .btn-save { background: #1a73e8; color: white; border-color: #1a73e8; }
-
-    /* History Button Highlighting */
-    .btn-has-history {
-        background-color: #e8f0fe !important;
-        color: #1967d2 !important;
-        border-color: #1967d2 !important;
-        font-weight: bold !important;
-    }
-
-    .history-drawer { background: #f8f9fa; }
-
-    #loading-bar {
-        display:none; position:fixed; top:0; left:0; width:100%; height:3px;
-        background:#1a73e8; z-index:9999;
-    }
-</style>
-
-<div id="loading-bar"></div>
-
-<div class="sheets-outer-wrapper">
-    <div class="sheets-main-card">
-
-        <!-- Toolbar (Responsive Header) -->
-        <div class="sheets-toolbar">
-            <div class="toolbar-left">
-                <h1 class="toolbar-title">Payment Follow-Ups</h1>
-
-                {% if is_staff %}
-                <form method="get" class="filter-group">
-                    <label style="font-size: 13px; color: #5f6368;">Salesperson:</label>
-                    <select name="salesperson" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #dadce0;">
-                        <option value="">-- All Accounts --</option>
-                        {% for sp in salespersons %}
-                        <option value="{{ sp.id }}" {% if selected_salesperson == sp.id|stringformat:"s" %}selected{% endif %}>
-                            {{ sp.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    {% if selected_salesperson %}
-                        <a href="." style="font-size: 12px; color: #1a73e8; text-decoration: none; margin-left: 5px;">Reset</a>
-                    {% endif %}
-                </form>
-                {% endif %}
-            </div>
-
-            <div class="user-badge">
-                User: {{ request.user.username }}
-            </div>
+    <!-- NAVIGATION -->
+    <nav class="oblu-nav">
+        <div class="nav-left">
+            <a href="/" class="brand">OBLU TOOLS</a>
         </div>
+        <div class="nav-right">
+            <!-- Ensure these URL names match your urls.py -->
+            <a href="{% url 'customers:monthly_sales_report' %}" class="nav-link">Sales Report</a>
+            <a href="{% url 'customers:salesperson_customer_orders' %}" class="nav-link">Salesperson Customer Report</a>
+            <span class="user-pill">User: {{ request.user.username }}</span>
+        </div>
+    </nav>
 
-        <!-- Table Grid -->
-        <div class="table-responsive-wrapper">
-            {% if not voucher_statuses %}
-                <div style="padding: 60px; text-align: center; color: #70757a;">
-                    {% if is_staff and not selected_salesperson %}
-                        Please select a salesperson to load follow-up data.
-                    {% else %}
-                        No pending records found.
+    <div id="loader-top"></div>
+
+    <div class="sheets-outer-wrapper">
+        <div class="sheets-card">
+            
+            <div class="sheets-toolbar">
+                <div style="display:flex; align-items:center; gap:25px;">
+                    <h1 class="toolbar-title">Payment Follow-Ups</h1>
+                    
+                    {% if is_staff %}
+                    <form method="get" style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:13px; color:#555;">Salesperson:</span>
+                        <select name="salesperson" onchange="this.form.submit()" style="padding:5px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                            <option value="">-- Master View (Select SP) --</option>
+                            {% for sp in salespersons %}
+                            <option value="{{ sp.id }}" {% if selected_salesperson == sp.id|stringformat:"s" %}selected{% endif %}>{{ sp.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if selected_salesperson %}
+                            <a href="." style="font-size:12px; color:#1a73e8; text-decoration:none;">Reset</a>
+                        {% endif %}
+                    </form>
                     {% endif %}
                 </div>
-            {% else %}
-            <table class="table-sheets">
-                <thead>
-                    <tr>
-                        <th style="width: 280px;">Customer / Voucher</th>
-                        <th style="width: 120px;">Date</th>
-                        <th style="width: 120px;">Pending</th>
-                        <th style="width: 250px;">Quick Remark</th>
-                        <th style="width: 180px;">Expected Date</th>
-                        <th style="width: 120px;">Ticket Status</th>
-                        <th style="width: 120px; text-align: center;">History</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for vs in voucher_statuses %}
-                    <tr>
-                        <td>
-                            <span class="customer-cell">{{ vs.customer.name }}</span>
-                            <span class="voucher-sub">{{ vs.voucher.voucher_number }}</span>
-                        </td>
-                        <td>{{ vs.voucher_date|date:"d M Y" }}</td>
-                        <td class="pending-amt text-end">{{ vs.unpaid_amount }}</td>
-                        <td>
-                            <div style="display: flex; gap: 4px;">
-                                <input type="text" id="remark-{{vs.id}}" class="cell-input" placeholder="Note...">
-                                <button class="btn-sheet btn-save" onclick="saveRemark({{vs.id}})">Save</button>
-                            </div>
-                        </td>
-                        <td>
-                            <div style="display: flex; gap: 4px;">
-                                <input type="date" id="date-{{vs.id}}" class="cell-input">
-                                <button class="btn-sheet" onclick="saveDate({{vs.id}})">Set</button>
-                            </div>
-                        </td>
-                        <td>
-                            <div id="ticket-btn-{{vs.id}}">
-                                {% if vs.payment_thread.ticket_status == "RAISED" %}
-                                    <button class="btn-sheet" style="background: #fef7e0; color: #b06000; border-color: #fce8b2; width: 100%;" onclick="solveTicket({{vs.id}})">SOLVE</button>
-                                {% else %}
-                                    <button class="btn-sheet" style="width: 100%;" onclick="raiseTicket({{vs.id}})">RAISE</button>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td style="text-align: center;">
-                            {% with thread=vs.payment_thread %}
-                                {% if thread.remarks.all or thread.expected_date_history.all or thread.ticket_events.all %}
-                                    <button class="btn-sheet btn-has-history" style="width: 90%;" onclick="toggle({{vs.id}})">VIEW</button>
-                                {% else %}
-                                    <button class="btn-sheet" style="width: 90%; color: #bdc1c6;" onclick="toggle({{vs.id}})">NONE</button>
-                                {% endif %}
-                            {% endwith %}
-                        </td>
-                    </tr>
+            </div>
 
-                    <!-- History (Expanded View) -->
-                    <tr id="history-{{vs.id}}" style="display:none;" class="history-drawer">
-                        <td colspan="7">
-                            <div style="display: flex; flex-wrap: wrap; gap: 30px; padding: 15px;">
-                                <div style="flex: 1; min-width: 250px;">
-                                    <div style="font-weight: bold; font-size: 11px; color: #1a73e8; margin-bottom: 8px;">REMARKS HISTORY</div>
-                                    {% for r in vs.payment_thread.remarks.all %}
-                                        <div style="font-size: 12px; border-bottom: 1px solid #eee; padding: 4px 0;">
-                                            {{ r.remark }} <br>
-                                            <small style="color: #999;">{{ r.created_by }} • {{ r.created_at|date:"d/m H:i" }}</small>
-                                        </div>
-                                    {% empty %}No remarks{% endfor %}
+            <div style="width: 100%;">
+                {% if not voucher_statuses %}
+                    <div style="padding: 100px; text-align: center; color: #70757a; font-size: 16px;">
+                        Please select a salesperson to display follow-up data.
+                    </div>
+                {% else %}
+                <table class="table-sheets">
+                    <thead>
+                        <tr>
+                            <th style="width: 300px;">Customer / Voucher</th>
+                            <th style="width: 100px;">Date</th>
+                            <th style="width: 120px;">Pending</th>
+                            <th style="width: 280px;">Remark</th>
+                            <th style="width: 180px;">Exp. Date</th>
+                            <th style="width: 100px;">Ticket</th>
+                            <th style="width: 100px; text-align: center;">History</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vs in voucher_statuses %}
+                        <tr>
+                            <td>
+                                <span class="cust-cell">{{ vs.customer.name }}</span>
+                                <span style="font-size:11px; color:#777;">{{ vs.voucher.voucher_number }}</span>
+                            </td>
+                            <td>{{ vs.voucher_date|date:"d M Y" }}</td>
+                            <td class="amt-red">{{ vs.unpaid_amount }}</td>
+                            <td>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="rem-{{vs.id}}" class="cell-input" placeholder="New note...">
+                                    <button class="btn-sheet btn-blue" onclick="saveRemark({{vs.id}})">Save</button>
                                 </div>
-                                <div style="flex: 1; min-width: 200px;">
-                                    <div style="font-weight: bold; font-size: 11px; color: #1a73e8; margin-bottom: 8px;">DATE HISTORY</div>
-                                    {% for d in vs.payment_thread.expected_date_history.all %}
-                                        <div style="font-size: 12px; margin-bottom: 4px;">
-                                            <strong>{{ d.expected_date|date:"d M Y" }}</strong>
-                                            <small style="color: #999;">by {{ d.set_by }}</small>
-                                        </div>
-                                    {% empty %}No dates{% endfor %}
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="date" id="date-{{vs.id}}" class="cell-input">
+                                    <button class="btn-sheet" onclick="saveDate({{vs.id}})">Set</button>
                                 </div>
+                            </td>
+                            <td>
+                                <div id="tkt-btn-{{vs.id}}">
+                                    {% if vs.payment_thread.ticket_status == "RAISED" %}
+                                        <button class="btn-sheet" style="background:#fef7e0; color:#b06000; width:100%;" onclick="solveTicket({{vs.id}})">SOLVE</button>
+                                    {% else %}
+                                        <button class="btn-sheet" style="width:100%;" onclick="raiseTicket({{vs.id}})">RAISE</button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                {% with thread=vs.payment_thread %}
+                                {% if thread.remarks.exists or thread.expected_date_history.exists or thread.ticket_events.exists %}
+                                    <button class="btn-sheet btn-history-active" onclick="toggle({{vs.id}})">VIEW</button>
+                                {% else %}
+                                    <button class="btn-sheet" style="color:#ccc; width:100%;" onclick="toggle({{vs.id}})">NONE</button>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
+                        </tr>
 
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% endif %}
+                        <!-- HISTORY DRAWER -->
+                        <tr id="drawer-{{vs.id}}" style="display:none;" class="drawer">
+                            <td colspan="7">
+                                <div class="drawer-content">
+                                    <div class="drawer-col" style="flex: 2;">
+                                        <div class="drawer-h">REMARKS LOG</div>
+                                        {% for r in vs.payment_thread.remarks.all %}
+                                            <div class="log-item">
+                                                {{ r.remark }}
+                                                <div class="log-meta">{{ r.created_by }} • {{ r.created_at|date:"d/m H:i" }}</div>
+                                            </div>
+                                        {% empty %}<div class="log-item" style="color:#999">No remarks</div>{% endfor %}
+                                    </div>
+
+                                    <div class="drawer-col">
+                                        <div class="drawer-h">EXPECTED DATES</div>
+                                        {% for d in vs.payment_thread.expected_date_history.all %}
+                                            <div class="log-item">
+                                                <strong>{{ d.expected_date|date:"d M Y" }}</strong>
+                                                <div class="log-meta">set by {{ d.set_by }}</div>
+                                            </div>
+                                        {% empty %}<div class="log-item" style="color:#999">No dates set</div>{% endfor %}
+                                    </div>
+
+                                    <div class="drawer-col">
+                                        <div class="drawer-h">TICKET ACTIVITY</div>
+                                        {% for t in vs.payment_thread.ticket_events.all %}
+                                            <div class="log-item">
+                                                <span style="color: {% if t.event_type == 'RAISED' %}#d93025{% else %}#188038{% endif %}; font-weight:700;">
+                                                    {{ t.event_type }}
+                                                </span>
+                                                <div class="log-meta">by {{ t.performed_by }} on {{ t.performed_at|date:"d/m" }}</div>
+                                            </div>
+                                        {% empty %}<div class="log-item" style="color:#999">No activity</div>{% endfor %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    function showLoading(){ document.getElementById("loading-bar").style.display="block" }
-    function hideLoading(){ document.getElementById("loading-bar").style.display="none" }
+    <script>
+        function showLoad() { document.getElementById("loader-top").style.display = "block"; }
+        function hideLoad() { document.getElementById("loader-top").style.display = "none"; }
 
-    function postData(data){
-        showLoading();
-        return fetch("{% url 'customers:payment_followup_action' %}", {
-            method:"POST",
-            headers:{"X-CSRFToken":"{{csrf_token}}"},
-            body:new URLSearchParams(data)
-        }).then(r=>r.json()).then(data=>{
-            location.reload();
-        }).catch(() => { hideLoading(); alert("Error saving data."); });
-    }
+        function postData(data) {
+            showLoad();
+            return fetch("{% url 'customers:payment_followup_action' %}", {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{csrf_token}}" },
+                body: new URLSearchParams(data)
+            })
+            .then(r => r.json())
+            .then(data => { location.reload(); })
+            .catch(() => { hideLoad(); alert("Error connecting to server."); });
+        }
 
-    function saveRemark(id){
-        let val = document.getElementById("remark-"+id).value;
-        if(val.trim()) postData({action:"remark", voucher_status_id:id, remark:val});
-    }
+        function saveRemark(id) {
+            let val = document.getElementById("rem-" + id).value;
+            if (val.trim()) postData({ action: "remark", voucher_status_id: id, remark: val });
+        }
 
-    function saveDate(id){
-        let val = document.getElementById("date-"+id).value;
-        if(val) postData({action:"expected", voucher_status_id:id, expected_date:val});
-    }
+        function saveDate(id) {
+            let val = document.getElementById("date-" + id).value;
+            if (val) postData({ action: "expected", voucher_status_id: id, expected_date: val });
+        }
 
-    function raiseTicket(id){ postData({action:"raise", voucher_status_id:id}); }
-    function solveTicket(id){ postData({action:"solve", voucher_status_id:id}); }
-
-    function toggle(id){
-        let row = document.getElementById("history-"+id);
-        row.style.display = (row.style.display === "none") ? "table-row" : "none";
-    }
-</script>
-{% endblock %}
+        function raiseTicket(id) { postData({ action: "raise", voucher_status_id: id }); }
+        function solveTicket(id) { postData({ action: "solve", voucher_status_id: id }); }
+        function toggle(id) {
+            let el = document.getElementById("drawer-" + id);
+            el.style.display = (el.style.display === "none") ? "table-row" : "none";
+        }
+    </script>
+</body>
+</html>
