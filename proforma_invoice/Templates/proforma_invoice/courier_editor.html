@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing Control Center</title>
+
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.1/dist/index.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.1/dist/jspreadsheet.min.css" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.css" type="text/css" />
+
+    <style>
+        :root {
+            --brand-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --vibrant-green: #10b981;
+            --bg-main: #f1f5f9;
+            --text-dark: #000000; /* Set to pure black */
+            --border-soft: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-dark);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background: var(--brand-gradient);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+            z-index: 10;
+            flex-wrap: wrap; /* Responsive wrap */
+            gap: 15px;
+        }
+
+        .logo-section {
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-section h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .btn-save {
+            background: white;
+            color: #6366f1;
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 50px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            background: var(--vibrant-green);
+            color: white;
+        }
+
+        main {
+            flex: 1;
+            padding: 1rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow: hidden;
+        }
+
+        .tool-bar {
+            background: white;
+            padding: 1rem;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-soft);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            background: #f8fafc;
+            border: 1px solid var(--border-soft);
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            width: 300px;
+            outline: none;
+        }
+
+        /* --- TABLE STYLE UPDATES --- */
+        .table-wrapper {
+            background: white;
+            border-radius: 0; /* Optional: remove radius for a cleaner full-screen look */
+            border: none;
+            border-top: 1px solid var(--border-soft);
+            overflow: auto;
+            flex: 1;
+            width: 100%;
+        }
+
+        .jexcel {
+            width: 100% !important;
+        }
+
+
+        /* Force all table text to be BLACK */
+        .jexcel > tbody > tr > td {
+            color: #000000 !important; /* Pure black text */
+            padding: 10px 12px !important;
+            font-size: 14px;
+        }
+
+        /* Ensure read-only cells don't look greyed out/faded */
+        .jexcel > tbody > tr > td.readonly {
+            color: #000000 !important;
+            background-color: #fafbfc !important;
+        }
+
+        .jexcel > thead > tr > td {
+            background: #f8fafc !important;
+            color: #6366f1 !important;
+            font-weight: 700 !important;
+            text-align: center;
+
+        }
+
+        /* --- RESPONSIVE ADJUSTMENTS --- */
+        @media (max-width: 768px) {
+            header { padding: 1rem; justify-content: center; text-align: center; }
+            main { padding: 0.75rem; }
+            .search-box { width: 100%; }
+            .tool-bar { flex-direction: column; align-items: stretch; }
+            .filter-group { flex-direction: column; align-items: stretch; }
+            .logo-section h1 { font-size: 1rem; }
+        }
+
+        #sync-status {
+            font-size: 0.85rem;
+            margin-right: 15px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .dirty-text { color: #fef08a !important; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-section">
+        <i class="fas fa-bolt fa-lg"></i>
+        <h1>Update Courier Pricing</h1>
+    </div>
+    <div style="display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 10px;">
+        <span id="sync-status"><i class="fas fa-check-circle"></i> Database Synced</span>
+        <button class="btn-save" onclick="saveData()" id="saveBtn">
+            <i class="fas fa-save"></i> UPDATE CHANGES
+        </button>
+    </div>
+</header>
+
+<main>
+    <div class="tool-bar">
+        <div class="filter-group">
+            <input type="text" id="tableSearch" class="search-box" placeholder="Search product or mode..." onkeyup="doSearch(this.value)">
+            <select class="mode-pill" id="modeFilter" onchange="doModeFilter()" style="padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-soft);">
+                <option value="">All Modes</option>
+                <option value="Surface">Surface Mode</option>
+                <option value="Air">Air Mode</option>
+            </select>
+        </div>
+        <div style="color: #64748b; font-size: 0.85rem;">
+            <i class="fas fa-info-circle"></i> Slabs are restricted by Product & Mode
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <div id="spreadsheet"></div>
+    </div>
+</main>
+
+<script>
+    let isDirty = false;
+    let table;
+
+    try {
+        const rawData = {{ courier_json|safe }};
+
+        table = jspreadsheet(document.getElementById('spreadsheet'), {
+            data: rawData,
+<!--            tableOverflow: true,-->
+<!--            tableWidth: '100%',-->
+<!--            columnSorting: true,-->
+
+            columns: [
+                { type: 'hidden', title: 'ID' },
+                { type:     'text', title: 'Product Name', width: 400, readOnly: true },
+                { type: 'text', title: 'Shipping Mode', width: 150, readOnly: true },
+                { type: 'numeric', title: 'Min Qty', width: 100 },
+                { type: 'numeric', title: 'Max Qty', width: 100 },
+                { type: 'numeric', title: 'Charge (₹)', width: 150, mask: '₹ #,##0.00' },
+            ],
+            pagination: 50,
+            search: true,
+            // BLOCK EDITING ON PROTECTED FIELDS
+            onbeforechange: function(instance, cell, x, y, value) {
+                // Product Name is column 1, Shipping Mode is column 2
+                if (x == 1 || x == 2) {
+                    jSuites.notification({
+                        name: 'Restricted field',
+                        message: 'This field cannot be edited.',
+                        type: 'error'
+                    });
+                    return false; // This cancels the change
+                }
+            },
+            onchange: function() {
+                handleTableChange();
+            }
+        });
+
+        window.myTable = table;
+
+    } catch (err) {
+        console.error("Initialization Error:", err);
+    }
+
+    function doSearch(val) { window.myTable.search(val); }
+    function doModeFilter() { window.myTable.search(document.getElementById('modeFilter').value); }
+
+    function handleTableChange() {
+        isDirty = true;
+        const status = document.getElementById('sync-status');
+        status.innerHTML = `<i class="fas fa-circle-exclamation"></i> Unsaved edits...`;
+        status.classList.add('dirty-text');
+    }
+
+    async function saveData() {
+        const saveBtn = document.getElementById('saveBtn');
+        const status = document.getElementById('sync-status');
+        const data = window.myTable.getData();
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> UPDATING...`;
+
+        try {
+            const response = await fetch("{% url 'save_courier_slabs' %}", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ data: data })
+            });
+
+            const result = await response.json();
+
+            if (result.status === "success") {
+                jSuites.notification({ name: 'Success', message: 'Pricing updated!', type: 'success' });
+                isDirty = false;
+                status.innerHTML = `<i class="fas fa-check-circle"></i> Database Synced`;
+                status.classList.remove('dirty-text');
+            } else {
+                alert("Error: " + result.message);
+            }
+        } catch (e) {
+            alert("Network fail: " + e.message);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = `<i class="fas fa-save"></i> UPDATE CHANGES`;
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const nativeSearch = document.querySelector('.jexcel_search');
+        if (nativeSearch) nativeSearch.style.display = 'none';
+    });
+</script>
+
+</body>
+</html>

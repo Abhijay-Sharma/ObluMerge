@@ -32,4 +32,7 @@ urlpatterns = [
 
     path("proforma/price-request/<int:pk>/reject/",views.ProformaPriceChangeRequestRejectView.as_view(),
          name="proforma_price_change_reject"),
+
+    path('courier-editor/', views.CourierPricingView.as_view(), name='courier_editor'),
+    path('courier-editor/save/', views.SaveCourierSlabsView.as_view(), name='save_courier_slabs'),
 ]

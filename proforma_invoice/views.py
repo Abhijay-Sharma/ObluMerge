@@ -25,6 +25,17 @@ from decimal import Decimal, ROUND_HALF_UP
 from num2words import num2words
 from customer_dashboard.models import SalesPerson, Customer
 from django.core.exceptions import PermissionDenied
+import json
+from django.views.generic import TemplateView
+from django.views import View
+from django.http import JsonResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from decimal import Decimal
+from .models import CourierChargeTier
+from django.db import transaction
+import logging
+logger = logging.getLogger(__name__)
 
 class CreateProformaInvoiceViewLegacy(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
@@ -1430,3 +1441,95 @@ class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
             print("Email failed:", e)
 
         return redirect("proforma_price_change_requests")
+
+
+class CourierPricingView(TemplateView):
+    template_name = "proforma_invoice/courier_editor.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Fetch data
+        tiers = CourierChargeTier.objects.select_related(
+            'courier_product__product'
+        ).all()
+
+        # DEBUG: Check your terminal!
+        print(f"DEBUG: Found {tiers.count()} slabs in database")
+
+        courier_data = []
+        for t in tiers:
+            # Safely get product name
+            p_name = "Unknown Product"
+            if t.courier_product and t.courier_product.product:
+                p_name = t.courier_product.product.name
+
+            # Safely get mode
+            mode = "N/A"
+            if t.courier_product:
+                mode = t.courier_product.get_mode_display()
+
+            courier_data.append([
+                int(t.id),
+                str(p_name),
+                str(mode),
+                int(t.min_quantity or 0),
+                int(t.max_quantity) if t.max_quantity is not None else "",
+                float(t.charge or 0)
+            ])
+
+        context['courier_json'] = json.dumps(courier_data)
+        return context
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+
+
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SaveCourierSlabsView(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = json.loads(request.body)
+            data = payload.get('data', [])
+
+            print(f"--- ATTEMPTING TO SAVE {len(data)} ROWS ---")
+
+            # Use transaction to ensure either everything saves or nothing does
+            with transaction.atomic():
+                for index, row in enumerate(data):
+                    try:
+                        # row[0] is the ID (Hidden column)
+                        tier_id = row[0]
+                        tier = CourierChargeTier.objects.get(id=tier_id)
+
+                        # Update values
+                        tier.min_quantity = int(row[3])
+
+                        # Handle Max Qty (can be None)
+                        max_qty = row[4]
+                        tier.max_quantity = int(max_qty) if (
+                                    max_qty is not None and str(max_qty).strip() != "") else None
+
+                        # Handle Charge
+                        # We strip any ₹ or commas if Jspreadsheet sent them as strings
+                        charge_val = str(row[5]).replace('₹', '').replace(',', '').strip()
+                        tier.charge = Decimal(charge_val)
+
+                        tier.save()
+
+                    except CourierChargeTier.DoesNotExist:
+                        print(f"Error: Row {index} has invalid ID: {row[0]}")
+                        continue
+                    except Exception as row_err:
+                        print(f"Error saving row {index}: {str(row_err)}")
+                        raise row_err  # Trigger rollback
+
+            print("--- SAVE SUCCESSFUL ---")
+            return JsonResponse({"status": "success", "message": "Changes saved to database."})
+
+        except Exception as e:
+            print(f"--- SAVE FAILED: {str(e)} ---")
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
