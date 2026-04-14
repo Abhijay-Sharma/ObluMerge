@@ -1759,53 +1759,32 @@ class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        # ctx["rsms"] = SalesPerson.objects.filter(manager__isnull=True).order_by("name")
+        logged_in_user = self.request.user
+        user_sp_profile = SalesPerson.objects.filter(user=logged_in_user).first()
 
-        logged_in_user = self.request.user  # new
-
-        # Identify the salesperson profile linked to the logged-in user
-        user_sp_profile = SalesPerson.objects.filter(user=logged_in_user).first()  # new
-
-        # Check if the user is an Admin, Staff, or in the Accountant group
         is_privileged_user = (
-                logged_in_user.is_superuser or  # new
-                logged_in_user.is_staff or  # new
-                logged_in_user.groups.filter(name='Accountant').exists()  # new
-        )  # new
+                logged_in_user.is_superuser or
+                logged_in_user.is_staff or
+                logged_in_user.groups.filter(name='Accountant').exists()
+        )
 
-        # ---------------------------------
-        # 1. PERMISSION-BASED DROPDOWN FILTER
-        # ---------------------------------
         if is_privileged_user:
-            # Accountants/Admins see all RSMs (Managers)
             allowed_rsms = SalesPerson.objects.filter(manager__isnull=True).order_by("name")
         elif user_sp_profile and user_sp_profile.manager is None:
-            # RSM sees only their own profile in the dropdown
             allowed_rsms = SalesPerson.objects.filter(id=user_sp_profile.id)
         else:
-            # ASMs or non-linked users see nothing
             allowed_rsms = SalesPerson.objects.none()
 
-        ctx["rsms"] = allowed_rsms  # new
-
-        # 2. SELECTION LOGIC
-
+        ctx["rsms"] = allowed_rsms
         rsm_id = self.request.GET.get("rsm")
-
         month_picker = self.request.GET.get("month_picker")
 
-        # If not an Admin, we force the rsm_id to be the user's own profile ID
-        # This prevents someone from manually changing the ID in the URL to see others
         if not is_privileged_user:
-            if user_sp_profile:
-                rsm_id = user_sp_profile.id
-            else:
-                return ctx
+            rsm_id = user_sp_profile.id if user_sp_profile else None
 
         if not rsm_id or not month_picker:
             return ctx
 
-        # Final check: Is the requested ID actually in the 'allowed' list
         if not allowed_rsms.filter(id=rsm_id).exists():
             return ctx
 
@@ -1819,84 +1798,108 @@ class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
                            ProductIncentive.objects.select_related("product", "category").all()}
 
         team_report = []
-        team_category_summary = {}  # Global summary for the RSM's stat card
-        grand_total_rsm_earning = Decimal("0.00")
+        team_category_summary = {}
+
+        # GRAND TOTAL BUCKETS for the RSM
+        grand_rsm_paid = Decimal("0.00")
+        grand_rsm_pending = Decimal("0.00")
 
         for asm in rsm_user.team_members.all():
-            paid_vouchers = CustomerVoucherStatus.objects.filter(
+            # FETCH ALL VOUCHERS (Removed is_fully_paid=True filter here)
+            all_vouchers = CustomerVoucherStatus.objects.filter(
                 sold_by=asm, voucher_type__iexact="TAX INVOICE",
-                voucher_date__range=[start_date, end_date], is_fully_paid=True
-            ).values_list('voucher_id', flat=True)
+                voucher_date__range=[start_date, end_date]
+            ).select_related('voucher')
 
-            stock_items = VoucherStockItem.objects.filter(voucher_id__in=paid_vouchers).select_related('item',
-                                                                                                       'voucher')
-
-            asm_dynamic_qty = Decimal("0.00")
-            asm_category_summary = {}  # Category summary for THIS specific ASM
+            asm_total_sheets_vol = Decimal("0.00")
+            asm_category_summary = {}
             temp_item_list = []
 
-            for si in stock_items:
-                cfg = incentive_rules.get(si.item.name.strip().lower())
-                if cfg:
-                    true_qty = Decimal(str(si.quantity)) * cfg.pack_size_multiplier
-                    if cfg.has_dynamic_price:
-                        asm_dynamic_qty += true_qty
+            for vs in all_vouchers:
+                is_paid = bool(vs.is_fully_paid or vs.unpaid_amount == 0)
+                items = VoucherStockItem.objects.filter(voucher=vs.voucher).select_related('item')
 
-                    # Track Category Stats
-                    if cfg.category:
-                        cat_name = cfg.category.name
-                        physical_qty = Decimal(str(si.quantity))
-                        # Add to individual ASM count
-                        asm_category_summary[cat_name] = asm_category_summary.get(cat_name, Decimal('0')) + physical_qty
-                        # Add to global team count
-                        team_category_summary[cat_name] = team_category_summary.get(cat_name,
-                                                                                    Decimal('0')) + physical_qty
+                for si in items:
+                    cfg = incentive_rules.get(si.item.name.strip().lower())
+                    if cfg:
+                        true_qty = Decimal(str(si.quantity)) * cfg.pack_size_multiplier
+                        if cfg.has_dynamic_price:
+                            asm_total_sheets_vol += true_qty
 
-                    temp_item_list.append({'si': si, 'cfg': cfg, 'true_qty': true_qty})
+                        if cfg.category:
+                            cat_name = cfg.category.name
+                            physical_qty = Decimal(str(si.quantity))
+                            asm_category_summary[cat_name] = asm_category_summary.get(cat_name,
+                                                                                      Decimal('0')) + physical_qty
+                            team_category_summary[cat_name] = team_category_summary.get(cat_name,
+                                                                                        Decimal('0')) + physical_qty
 
-            # Thresholds
-            rsm_sheet_rate = Decimal('1.00') if asm_dynamic_qty >= 1000 else Decimal('0.00')
-            if asm_dynamic_qty < 500:
+                        temp_item_list.append({
+                            'si': si, 'cfg': cfg, 'true_qty': true_qty, 'is_paid': is_paid
+                        })
+
+            # Rate Logic (Based on Total Potential Volume)
+            rsm_sheet_rate = Decimal('1.00') if asm_total_sheets_vol >= 1000 else Decimal('0.00')
+            if asm_total_sheets_vol < 500:
                 asm_m_rate = Decimal('0.00')
-            elif asm_dynamic_qty < 3000:
+            elif asm_total_sheets_vol < 3000:
                 asm_m_rate = Decimal('3.00')
             else:
                 asm_m_rate = Decimal('4.00')
 
-            asm_total_incentive, rsm_total_from_asm, detailed_products = Decimal('0'), Decimal('0'), []
+            # ASM BUCKETS
+            asm_paid = Decimal('0')
+            asm_pending = Decimal('0')
+            rsm_from_asm_paid = Decimal('0')
+            rsm_from_asm_pending = Decimal('0')
+            detailed_products = []
 
             for entry in temp_item_list:
-                si, cfg, t_qty = entry['si'], entry['cfg'], entry['true_qty']
+                si, cfg, t_qty, is_paid = entry['si'], entry['cfg'], entry['true_qty'], entry['is_paid']
                 asm_base, rsm_base = cfg.get_effective_rates
+
                 final_asm_rate = asm_m_rate if cfg.has_dynamic_price else asm_base
                 final_rsm_rate = rsm_sheet_rate if cfg.has_dynamic_price else rsm_base
 
                 unit_price = Decimal(str(si.amount)) / Decimal(str(si.quantity)) if si.quantity > 0 else 0
-                asm_row = t_qty * final_asm_rate if not (cfg.msp > 0 and unit_price < cfg.msp) else 0
-                rsm_row = t_qty * final_rsm_rate
+
+                # Math
+                asm_val = t_qty * final_asm_rate if not (cfg.msp > 0 and unit_price < cfg.msp) else 0
+                rsm_val = t_qty * final_rsm_rate
+
+                if is_paid:
+                    asm_paid += asm_val
+                    rsm_from_asm_paid += rsm_val
+                else:
+                    asm_pending += asm_val
+                    rsm_from_asm_pending += rsm_val
 
                 detailed_products.append({
                     'name': si.item.name, 'qty': si.quantity, 'true_qty': t_qty,
-                    'asm_incentive': asm_row, 'rsm_incentive': rsm_row, 'is_sheet': cfg.has_dynamic_price
+                    'asm_incentive': asm_val, 'rsm_incentive': rsm_val,
+                    'is_sheet': cfg.has_dynamic_price, 'is_paid': is_paid
                 })
-                asm_total_incentive += asm_row
-                rsm_total_from_asm += rsm_row
 
             if temp_item_list:
                 team_report.append({
                     'asm_name': asm.name,
-                    'total_sheets': asm_dynamic_qty,
-                    'asm_grand_total': asm_total_incentive,
-                    'rsm_grand_total': rsm_total_from_asm,
+                    'total_sheets': asm_total_sheets_vol,
+                    'asm_paid': asm_paid,
+                    'asm_pending': asm_pending,
+                    'rsm_paid': rsm_from_asm_paid,
+                    'rsm_pending': rsm_from_asm_pending,
                     'items': detailed_products,
-                    'asm_categories': asm_category_summary  # Passed to ASM section
+                    'asm_categories': asm_category_summary
                 })
-                grand_total_rsm_earning += rsm_total_from_asm
+                grand_rsm_paid += rsm_from_asm_paid
+                grand_rsm_pending += rsm_from_asm_pending
 
         ctx.update({
             "team_report": team_report,
-            "grand_total_rsm": grand_total_rsm_earning,
-            "team_category_summary": team_category_summary  # Passed to main stat card
+            "grand_rsm_paid": grand_rsm_paid,
+            "grand_rsm_pending": grand_rsm_pending,
+            "grand_rsm_potential": grand_rsm_paid + grand_rsm_pending,
+            "team_category_summary": team_category_summary
         })
         return ctx
 
