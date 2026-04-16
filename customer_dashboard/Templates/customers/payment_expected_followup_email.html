@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+        h2 {
+            margin-bottom: 5px;
+        }
+        .section {
+            margin-top: 30px;
+        }
+        .highlight-box {
+            background: #f5f7fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .overdue {
+            color: #d32f2f;
+        }
+        .today {
+            color: #f57c00;
+        }
+        .no-date {
+            color: #1976d2;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 13px;
+        }
+        th {
+            background: #f1f1f1;
+        }
+        .cta {
+            margin-top: 20px;
+            padding: 12px;
+            background: #e3f2fd;
+            border-radius: 6px;
+        }
+        a {
+            color: #1565c0;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <h2>📅 Payment Follow-ups</h2>
+    <p>Hi {{ salesperson.name }},</p>
+
+    <!-- 🔗 MAIN CTA -->
+    <div class="highlight-box">
+        👉 <strong>Update all payment follow-ups here:</strong><br>
+        <a href="{{ payment_page }}">
+            {{ payment_page }}
+        </a>
+    </div>
+
+    <!-- 🔴 OVERDUE -->
+    {% if overdue_rows %}
+    <div class="section">
+        <h3 class="overdue">🔴 Overdue Payments (Action Required)</h3>
+        <p>
+            These payments are past the expected date.<br>
+            Please update the <strong>reason in remark</strong> and set a <strong>new expected date</strong>.
+        </p>
+
+        <table>
+            <tr>
+                <th>Customer</th>
+                <th>Invoice</th>
+                <th>Invoice Date</th>
+                <th>Pending Amount</th>
+                <th>Expected Date</th>
+                <th>Last Remark</th>
+            </tr>
+
+            {% for row in overdue_rows %}
+            <tr>
+                <td>{{ row.customer }}</td>
+                <td>{{ row.invoice_number }}</td>
+                <td>{{ row.invoice_date }}</td>
+                <td>₹{{ row.pending_amount }}</td>
+                <td>{{ row.expected_date }}</td>
+                <td>{{ row.remark|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- 🟡 TODAY -->
+    {% if today_rows %}
+    <div class="section">
+        <h3 class="today">🟡 Payments Due Today</h3>
+        <p>
+            These payments are expected today.<br>
+            Please ensure timely collection.
+        </p>
+
+        <table>
+            <tr>
+                <th>Customer</th>
+                <th>Invoice</th>
+                <th>Pending Amount</th>
+                <th>Expected Date</th>
+            </tr>
+
+            {% for row in today_rows %}
+            <tr>
+                <td>{{ row.customer }}</td>
+                <td>{{ row.invoice_number }}</td>
+                <td>₹{{ row.pending_amount }}</td>
+                <td>{{ row.expected_date }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- ⚪ NO DATE -->
+    {% if no_date_rows %}
+    <div class="section">
+        <h3 class="no-date">⚪ Missing Expected Dates</h3>
+        <p>
+            These invoices do not have an expected payment date.<br>
+            Please set one to enable proper tracking.
+        </p>
+
+        <table>
+            <tr>
+                <th>Customer</th>
+                <th>Invoice</th>
+                <th>Pending Amount</th>
+            </tr>
+
+            {% for row in no_date_rows %}
+            <tr>
+                <td>{{ row.customer }}</td>
+                <td>{{ row.invoice_number }}</td>
+                <td>₹{{ row.pending_amount }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- FOOTER -->
+    <div class="cta">
+        💡 Keeping expected dates updated helps improve collections and visibility.
+    </div>
+
+    <p style="margin-top: 30px;">
+        Regards,<br>
+        CRM System
+    </p>
+
+</div>
+</body>
+</html>
