@@ -1378,7 +1378,7 @@ class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
         user_salesperson_profile = SalesPerson.objects.filter(user=logged_in_user).first()
 
         # Decide who appears in the dropdown and who we are looking at
-        if logged_in_user.is_superuser or logged_in_user.is_staff:
+        if logged_in_user.is_superuser or logged_in_user.is_accountant:
             # Admins can see everyone
             allowed_salespersons_list = SalesPerson.objects.all().order_by("name")
             requested_id = self.request.GET.get("salesperson")
