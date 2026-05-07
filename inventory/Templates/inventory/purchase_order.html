@@ -1,0 +1,1054 @@
+{% load static %}
+
+{% block title %}Purchase Order Generator{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Base ─────────────────────────────────────────────────────────── */
+  .po-wrapper { padding: 24px; max-width: 100%; }
+
+  /* ── Category selector ───────────────────────────────────────────── */
+  .category-card {
+    background:#fff; border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,.07);
+    padding:48px 40px; max-width:560px; margin:80px auto; text-align:center;
+  }
+  .category-card h2 { font-size:1.6rem; font-weight:700; color:#1e293b; margin-bottom:8px; }
+  .category-card p  { color:#64748b; margin-bottom:28px; }
+  .category-card select {
+    width:100%; padding:12px 16px; border:2px solid #e2e8f0; border-radius:10px;
+    font-size:1rem; color:#334155; background:#f8fafc; margin-bottom:20px;
+    appearance:none; cursor:pointer;
+  }
+  .btn-primary {
+    background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none;
+    border-radius:10px; padding:13px 32px; font-size:1rem; font-weight:600;
+    cursor:pointer; width:100%; transition:opacity .2s;
+  }
+  .btn-primary:hover { opacity:.88; }
+
+  /* ── Page header ─────────────────────────────────────────────────── */
+  .po-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:24px; flex-wrap:wrap; gap:12px;
+  }
+  .po-header h1 { font-size:1.5rem; font-weight:700; color:#1e293b; margin:0; }
+  .badge-cat { background:#ede9fe; color:#6d28d9; border-radius:20px; padding:5px 14px; font-size:.85rem; font-weight:600; }
+  .right-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .right-actions select {
+    padding:8px 14px; border-radius:8px; border:1.5px solid #e2e8f0;
+    font-size:.9rem; background:#fff; color:#334155; cursor:pointer;
+  }
+  .btn-dl     { background:#10b981; color:#fff; border:none; padding:9px 20px; border-radius:8px; font-size:.9rem; font-weight:600; cursor:pointer; }
+  .btn-dl:hover { background:#059669; }
+  .btn-print  { background:#6366f1; color:#fff; border:none; padding:9px 20px; border-radius:8px; font-size:.9rem; font-weight:600; cursor:pointer; }
+  .btn-toggle-dead {
+    background:#fff; border:1.5px solid #e2e8f0; color:#334155;
+    padding:9px 20px; border-radius:8px; font-size:.9rem; font-weight:600; cursor:pointer;
+  }
+  .btn-toggle-dead.active { background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
+
+  /* ── Summary strip ───────────────────────────────────────────────── */
+  .summary-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:14px; margin-bottom:28px; }
+  .sc { background:#fff; border-radius:12px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+  .sc-label { font-size:.73rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; display:block; }
+  .sc-value { font-size:1.5rem; font-weight:700; color:#1e293b; display:block; margin-top:2px; }
+  .sc.danger .sc-value { color:#ef4444; }
+  .sc.warn   .sc-value { color:#f59e0b; }
+  .sc.green  .sc-value { color:#10b981; }
+  .sc.purple .sc-value { color:#7c3aed; }
+
+  /* ── Table ───────────────────────────────────────────────────────── */
+  .table-scroll { overflow-x:auto; border-radius:14px; box-shadow:0 4px 24px rgba(0,0,0,.07); }
+  .po-table { width:100%; border-collapse:collapse; background:#fff; font-size:.88rem; min-width:1800px; }
+  .po-table thead tr { background:#1e293b; color:#fff; }
+  .po-table thead th {
+    padding:13px 14px; text-align:left; font-weight:600;
+    font-size:.77rem; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+  }
+  .po-table thead th:first-child { border-radius:14px 0 0 0; }
+  .po-table thead th:last-child  { border-radius:0 14px 0 0; }
+  .po-table tbody tr.data-row { border-bottom:1px solid #f1f5f9; transition:background .15s; }
+  .po-table tbody tr.data-row:hover { background:#fafbff; }
+  .po-table td { padding:12px 14px; color:#334155; vertical-align:middle; }
+
+  tr.row-ok     { }
+  tr.row-warn   { background:#fffbeb !important; }
+  tr.row-urgent { background:#fff1f2 !important; }
+  tr.row-dead   { background:#f8fafc !important; opacity:.7; }
+
+  /* ── Cell styles ─────────────────────────────────────────────────── */
+  .product-name { font-weight:600; color:#1e293b; }
+  .unit-badge   { display:inline-block; background:#f1f5f9; color:#64748b; border-radius:4px; padding:1px 6px; font-size:.75rem; margin-left:4px; }
+  .sub-note     { font-size:.72rem; color:#94a3b8; margin-top:2px; }
+
+  .growth-cell  { display:flex; flex-direction:column; gap:4px; }
+  .growth-label { font-size:.7rem; color:#94a3b8; }
+  .gpill { display:inline-flex; align-items:center; gap:4px; border-radius:20px; padding:3px 9px; font-size:.78rem; font-weight:600; width:fit-content; }
+  .gpill.up   { background:#dcfce7; color:#16a34a; }
+  .gpill.down { background:#fee2e2; color:#dc2626; }
+  .gpill.flat { background:#f1f5f9; color:#64748b; }
+
+  .pred-cell  { display:flex; flex-direction:column; gap:3px; }
+  .pred-row   { display:flex; justify-content:space-between; gap:8px; }
+  .pred-month { font-size:.73rem; color:#94a3b8; }
+  .pred-qty   { font-weight:600; color:#6366f1; }
+  .pred-muted { color:#94a3b8; font-size:.78rem; font-style:italic; }
+
+  .tag-dead   { background:#fee2e2; color:#dc2626; border-radius:20px; padding:3px 10px; font-size:.78rem; font-weight:600; }
+  .tag-active { background:#dcfce7; color:#16a34a; border-radius:20px; padding:3px 10px; font-size:.78rem; font-weight:600; }
+
+  .po-qty  { color:#6366f1; font-weight:700; }
+  .po-none { color:#cbd5e1; font-style:italic; font-size:.8rem; }
+
+  .intransit-badge { display:inline-block; background:#dbeafe; color:#1d4ed8; border-radius:6px; padding:2px 7px; font-size:.74rem; font-weight:600; margin-top:3px; }
+
+  .del-date    { font-weight:600; color:#0369a1; }
+  .del-arrived { color:#10b981; font-weight:600; }
+  .del-none    { color:#cbd5e1; font-style:italic; font-size:.8rem; }
+
+  /* rec cell */
+  .rec-qty  { font-size:1.05rem; font-weight:700; }
+  .rec-ok   .rec-qty { color:#10b981; }
+  .rec-warn .rec-qty { color:#f59e0b; }
+  .rec-urg  .rec-qty { color:#ef4444; }
+  .rec-note { font-size:.75rem; color:#94a3b8; margin-top:3px; }
+  .moq-badge { background:#fef3c7; color:#92400e; border-radius:6px; padding:2px 7px; font-size:.74rem; font-weight:600; display:inline-block; margin-top:4px; }
+  .ok-note  { color:#10b981; font-weight:600; font-size:.82rem; }
+  .dead-note { color:#64748b; font-size:.82rem; font-style:italic; }
+  .lasts-badge { display:inline-block; background:#f0fdf4; color:#166534; border-radius:6px; padding:2px 7px; font-size:.74rem; font-weight:600; margin-top:5px; }
+
+  /* overstock */
+  .over-tag  { background:#ede9fe; color:#6d28d9; border-radius:20px; padding:3px 10px; font-size:.78rem; font-weight:600; }
+  .mo-ok   { color:#10b981; font-weight:600; }
+  .mo-warn { color:#f59e0b; font-weight:600; }
+  .mo-low  { color:#ef4444; font-weight:600; }
+
+  /* gst purchase cell */
+  .gst-date  { font-weight:600; color:#0369a1; }
+  .gst-qty   { color:#6366f1; font-weight:700; }
+  .gst-none  { color:#cbd5e1; font-style:italic; font-size:.8rem; }
+
+  /* ── Math breakdown rows ─────────────────────────────────────────── */
+  tr.math-row { display:none; }
+  tr.math-row.open { display:table-row; }
+  tr.math-row td { padding:0; border-bottom:2px solid #e2e8f0; }
+
+  .math-panel {
+    background:#f8fafc; padding:20px 24px;
+    font-size:.83rem; color:#334155; line-height:1.7;
+  }
+  .math-panel h4 { font-size:.85rem; font-weight:700; color:#1e293b; margin:0 0 12px; }
+  .math-steps { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px 20px; margin-bottom:16px; }
+  .math-step { background:#fff; border-radius:8px; padding:10px 14px; border-left:3px solid #6366f1; }
+  .math-step.step-warn  { border-left-color:#f59e0b; }
+  .math-step.step-ok    { border-left-color:#10b981; }
+  .math-step.step-info  { border-left-color:#0ea5e9; }
+  .math-step .ms-label  { font-size:.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; }
+  .math-step .ms-value  { font-weight:700; color:#1e293b; font-size:.95rem; }
+  .math-step .ms-note   { font-size:.72rem; color:#64748b; margin-top:2px; }
+  .math-conclusion { margin-top:12px; padding:12px 16px; background:#fff; border-radius:8px; border:1.5px solid #e2e8f0; }
+
+  /* Chart canvas wrapper */
+  .chart-wrap { position:relative; margin:16px 0 8px; background:#fff; border-radius:10px; padding:12px; border:1px solid #e2e8f0; overflow:hidden; }
+  .chart-wrap canvas { display:block; }
+  .chart-legend { display:flex; gap:16px; font-size:.75rem; color:#64748b; margin-bottom:8px; flex-wrap:wrap; }
+  .chart-legend span { display:flex; align-items:center; gap:5px; }
+  .cl-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  .btn-show-math {
+    background:none; border:1px solid #cbd5e1; border-radius:6px;
+    padding:3px 10px; font-size:.75rem; color:#64748b; cursor:pointer;
+    margin-top:6px; white-space:nowrap;
+  }
+  .btn-show-math:hover { background:#f1f5f9; border-color:#94a3b8; }
+
+  /* ── Modal ────────────────────────────────────────────────────────── */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(15,23,42,.45);
+    z-index:1000; align-items:center; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-box {
+    background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.18);
+    width:min(680px,94vw); max-height:80vh; display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 22px; border-bottom:1px solid #e2e8f0; flex-shrink:0;
+  }
+  .modal-header h3 { font-size:1rem; font-weight:700; color:#1e293b; margin:0; }
+  .modal-close {
+    background:none; border:none; font-size:1.4rem; cursor:pointer;
+    color:#94a3b8; line-height:1; padding:0 4px;
+  }
+  .modal-close:hover { color:#ef4444; }
+  .modal-body { overflow-y:auto; padding:20px 22px; flex:1; }
+  .modal-loading { text-align:center; color:#94a3b8; padding:40px 0; font-size:.9rem; }
+
+  /* Customer table in modal */
+  .cust-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  .cust-table thead tr { background:#f8fafc; }
+  .cust-table th { padding:9px 12px; text-align:left; font-size:.75rem; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e2e8f0; }
+  .cust-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; color:#334155; }
+  .cust-name { font-weight:600; color:#1e293b; }
+  .cust-total { font-weight:700; color:#6366f1; }
+  .cust-monthly-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .cust-m-pill { background:#f1f5f9; border-radius:4px; padding:1px 6px; font-size:.72rem; color:#64748b; }
+
+  /* PO / GST history table in modal */
+  .hist-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  .hist-table thead tr { background:#f8fafc; }
+  .hist-table th { padding:9px 12px; text-align:left; font-size:.75rem; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e2e8f0; }
+  .hist-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; color:#334155; }
+  .hist-table tr:last-child td { border-bottom:none; }
+
+  /* small link-style buttons for modals */
+  .btn-link {
+    background:none; border:none; color:#6366f1; font-size:.78rem; font-weight:600;
+    cursor:pointer; padding:0; text-decoration:underline; text-underline-offset:2px;
+  }
+  .btn-link:hover { color:#4f46e5; }
+
+  /* ── Legend ──────────────────────────────────────────────────────── */
+  .legend-section { background:#fff; border-radius:14px; padding:32px 36px; box-shadow:0 2px 12px rgba(0,0,0,.06); margin-top:40px; }
+  .legend-section h2 { font-size:1.15rem; font-weight:700; color:#1e293b; margin-bottom:20px; }
+  .legend-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px; }
+  .li-item { display:flex; gap:14px; }
+  .li-icon { width:36px; height:36px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+  .li-icon.purple { background:#ede9fe; } .li-icon.blue { background:#dbeafe; }
+  .li-icon.green  { background:#dcfce7; } .li-icon.red  { background:#fee2e2; }
+  .li-icon.amber  { background:#fef3c7; } .li-icon.slate { background:#f1f5f9; }
+  .li-text h4 { font-size:.9rem; font-weight:700; color:#1e293b; margin:0 0 4px; }
+  .li-text p  { font-size:.83rem; color:#64748b; margin:0; line-height:1.55; }
+
+  /* checkbox */
+  .cb-col { text-align:center; }
+  input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:#6366f1; }
+
+  @media print {
+    .no-print { display:none !important; }
+    .po-wrapper { padding:0; }
+    .table-scroll { box-shadow:none; overflow:visible; }
+    .po-table { min-width:unset; }
+    tr.math-row { display:none !important; }
+    .legend-section { break-before:page; }
+    .modal-overlay { display:none !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="po-wrapper">
+
+{% if products is None %}
+{# ── Category selector ──────────────────────────────────────────────── #}
+<div class="category-card">
+  <div style="font-size:2.5rem;margin-bottom:12px">📦</div>
+  <h2>Purchase Order Generator</h2>
+  <p>Select a product category to load the purchase order analysis.</p>
+  <form method="get">
+    <select name="category" required>
+      <option value="" disabled selected>— Select a category —</option>
+      {% for cat in categories %}
+        <option value="{{ cat.id }}">{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-primary">Load Products →</button>
+  </form>
+</div>
+
+{% else %}
+{# ── Header ──────────────────────────────────────────────────────────── #}
+<div class="po-header">
+  <div>
+    <h1>📦 Purchase Order Planner</h1>
+    <span class="badge-cat">{% for cat in categories %}{% if cat.id == selected_category_id %}{{ cat.name }}{% endif %}{% endfor %}</span>
+  </div>
+  <div class="right-actions no-print">
+    <form method="get" style="display:inline-flex;gap:8px;align-items:center" id="filterForm">
+      <select name="category" onchange="this.form.submit()">
+        {% for cat in categories %}
+          <option value="{{ cat.id }}" {% if cat.id == selected_category_id %}selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="hide_dead" id="hideDeadInput" value="{{ hide_dead|yesno:'1,0' }}">
+    </form>
+    <button class="btn-toggle-dead {% if hide_dead %}active{% endif %}" onclick="toggleDeadFilter()" id="deadFilterBtn">
+      {% if hide_dead %}💀 Show Dead Stock{% else %}💀 Hide Dead Stock{% endif %}
+    </button>
+    <button class="btn-dl" onclick="downloadPO()">⬇ Download CSV</button>
+    <button class="btn-print" onclick="window.print()">🖨 Print</button>
+  </div>
+</div>
+
+{# ── Summary strip ─────────────────────────────────────────────────── #}
+<div class="summary-strip no-print">
+  <div class="sc"><span class="sc-label">Total Products</span><span class="sc-value">{{ products|length }}</span></div>
+  <div class="sc danger"><span class="sc-label">🔴 Urgent Orders</span><span id="urgentCount" class="sc-value">—</span></div>
+  <div class="sc warn">  <span class="sc-label">🟡 Need to Order</span><span id="warnCount"   class="sc-value">—</span></div>
+  <div class="sc purple"><span class="sc-label">💀 Dead Stock</span>   <span id="deadCount"   class="sc-value">—</span></div>
+  <div class="sc">       <span class="sc-label">📦 Overstocked</span>  <span id="overCount"   class="sc-value">—</span></div>
+  <div class="sc green"> <span class="sc-label">✅ Sufficient</span>   <span id="okCount"     class="sc-value">—</span></div>
+</div>
+
+{# ── Table ────────────────────────────────────────────────────────────── #}
+<div class="table-scroll">
+<table class="po-table" id="poTable">
+  <thead>
+    <tr>
+      <th class="cb-col no-print"><input type="checkbox" id="selectAll"></th>
+      <th>Product</th>
+      <th>Current Stock<br><small style="font-weight:400;opacity:.7">Avg / day (Tally)</small></th>
+      <th>Growth<br><small style="font-weight:400;opacity:.7">1-Year / Last 3M</small></th>
+      <th>Sales Forecast<br><small style="font-weight:400;opacity:.7">M+1 / M+2 / M+3</small></th>
+      <th>Dead Stock?</th>
+      <th>Top Customers</th>
+      <th>Last Purchase Order<br><small style="font-weight:400;opacity:.7">Latest PO</small></th>
+      <th>GST Purchases<br><small style="font-weight:400;opacity:.7">Received stock</small></th>
+      <th>In Transit</th>
+      <th>Order Qty<br><small style="font-weight:400;opacity:.7">Recommendation</small></th>
+      <th>Stock Runway</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for p in products %}
+
+  {# ── Data row ──────────────────────────────────────────────────────── #}
+  <tr class="data-row row-{{ p.order_urgency }}"
+      data-urgency="{{ p.order_urgency }}"
+      data-dead="{{ p.is_dead|yesno:'1,0' }}"
+      data-over="{{ p.is_overstocked|yesno:'1,0' }}"
+      data-math-id="math-{{ forloop.counter }}">
+
+    <td class="cb-col no-print"><input type="checkbox" class="row-cb" value="{{ p.id }}"></td>
+
+    {# 1 — Product name #}
+    <td>
+      <div class="product-name">{{ p.name }}</div>
+      <span class="unit-badge">{{ p.unit|default:"—" }}</span>
+    </td>
+
+    {# 2 — Current stock + avg daily (from tally) #}
+    <td>
+      <strong style="font-size:1.05rem;color:#1e293b">{{ p.current_stock|floatformat:0 }}</strong>
+      <div class="sub-note">avg {{ p.avg_daily }}/day <span style="color:#6366f1;font-size:.68rem">(Tally Apr-25)</span></div>
+    </td>
+
+    {# 3 — Growth #}
+    <td>
+      <div class="growth-cell">
+        <span class="growth-label">1-Year (YoY)</span>
+        {% if p.growth_1y is not None %}
+          <span class="gpill {% if p.growth_1y >= 0 %}up{% else %}down{% endif %}">{% if p.growth_1y >= 0 %}▲{% else %}▼{% endif %} {{ p.growth_1y }}%</span>
+        {% else %}
+          <span class="gpill flat">N/A</span>
+        {% endif %}
+        <span class="growth-label" style="margin-top:5px">Last 3M vs Prev 3M</span>
+        {% if p.growth_3m is not None %}
+          <span class="gpill {% if p.growth_3m >= 0 %}up{% else %}down{% endif %}">{% if p.growth_3m >= 0 %}▲{% else %}▼{% endif %} {{ p.growth_3m }}%</span>
+        {% else %}
+          <span class="gpill flat">N/A</span>
+        {% endif %}
+        {% if p.monthly_growth_rate_pct %}
+          <div class="sub-note">Blended: {{ p.monthly_growth_rate_pct }}%/mo</div>
+        {% endif %}
+      </div>
+    </td>
+
+    {# 4 — Forecast #}
+    <td>
+      {% if p.pred_m1 is not None %}
+        <div class="pred-cell">
+          <div class="pred-row"><span class="pred-month">M+1</span><span class="pred-qty">{{ p.pred_m1 }} {{ p.unit }}</span></div>
+          <div class="pred-row"><span class="pred-month">M+2</span><span class="pred-qty">{{ p.pred_m2 }} {{ p.unit }}</span></div>
+          <div class="pred-row"><span class="pred-month">M+3</span><span class="pred-qty">{{ p.pred_m3 }} {{ p.unit }}</span></div>
+          <div class="sub-note" style="margin-top:3px">Growth-adjusted</div>
+        </div>
+      {% elif p.is_dead %}
+        <span class="pred-muted">— Dead stock</span>
+      {% else %}
+        <span class="pred-muted">— No data</span>
+      {% endif %}
+    </td>
+
+    {# 5 — Dead stock #}
+    <td>
+      {% if p.is_dead %}
+        <span class="tag-dead">⚠ Dead Stock</span>
+        <div class="sub-note">No sale in 90 days</div>
+      {% else %}
+        <span class="tag-active">✓ Active</span>
+        <div class="sub-note">Sold in last 90d</div>
+      {% endif %}
+    </td>
+
+    {# 6 — Top customers (modal trigger) #}
+    <td>
+      <button class="btn-link" onclick="openCustomerModal({{ p.id }}, '{{ p.name|escapejs }}')">
+        👥 View Top 5
+      </button>
+    </td>
+
+    {# 7 — Last Purchase Order (PO voucher) #}
+    <td>
+      {% if p.latest_po_date %}
+        <div class="po-qty">{{ p.latest_po_qty|floatformat:0 }} {{ p.unit }}</div>
+        <div style="font-weight:600;font-size:.82rem">{{ p.latest_po_date|date:"d M Y" }}</div>
+        {% if p.incoming_qty %}
+          <span class="intransit-badge">🚚 In transit</span>
+        {% endif %}
+        {% if p.po_rows|length > 1 %}
+          <button class="btn-link" style="display:block;margin-top:4px" onclick="openPOModal({{ p.id }}, '{{ p.name|escapejs }}')">
+            All {{ p.po_rows|length }} POs →
+          </button>
+        {% endif %}
+      {% else %}
+        <span class="po-none">No PO found</span>
+      {% endif %}
+    </td>
+
+    {# 8 — GST Purchases (received stock) #}
+    <td>
+      {% if p.latest_gst_date %}
+        <div class="gst-qty">{{ p.latest_gst_qty|floatformat:0 }} {{ p.unit }}</div>
+        <div class="gst-date" style="font-size:.82rem">{{ p.latest_gst_date|date:"d M Y" }}</div>
+        {% if p.gst_rows|length > 1 %}
+          <button class="btn-link" style="display:block;margin-top:4px" onclick="openGSTModal({{ p.id }}, '{{ p.name|escapejs }}')">
+            All {{ p.gst_rows|length }} receipts →
+          </button>
+        {% endif %}
+      {% else %}
+        <span class="gst-none">No GST purchase</span>
+      {% endif %}
+    </td>
+
+    {# 9 — In Transit #}
+    <td>
+      {% if p.incoming_qty %}
+        <div class="intransit-badge" style="font-size:.82rem">🚚 {{ p.incoming_qty|floatformat:0 }} {{ p.unit }}</div>
+        {% if p.incoming_date %}
+          <div class="sub-note">ETA: {{ p.incoming_date|date:"d M Y" }}</div>
+          <div class="sub-note">({{ p.expected_delivery_days }} day lead)</div>
+        {% endif %}
+      {% else %}
+        <span class="del-none">None</span>
+      {% endif %}
+    </td>
+
+    {# 10 — Order recommendation #}
+    <td>
+      {% if p.order_urgency == "dead" %}
+        <div class="dead-note">⛔ No order — dead stock</div>
+
+      {% elif p.order_final == 0 %}
+        <div class="rec-ok">
+          <div class="ok-note">✅ Stock sufficient</div>
+          <div class="rec-note">Runway: {% if p.runway_months %}{{ p.runway_months }}mo{% else %}—{% endif %}</div>
+        </div>
+
+      {% else %}
+        <div class="{% if p.order_urgency == 'urgent' %}rec-urg{% elif p.order_urgency == 'warn' %}rec-warn{% else %}rec-ok{% endif %}">
+          <div class="rec-qty">Order {{ p.order_final }} {{ p.unit }}</div>
+          {% if p.moq_note %}
+            <div class="moq-badge">⚠ MOQ applied: {{ p.moq_note }}</div>
+          {% endif %}
+          {% if p.order_lasts_months %}
+            <div class="lasts-badge">📅 Lasts ~{{ p.order_lasts_months }}mo</div>
+          {% endif %}
+          <div class="rec-note">
+            {% if p.order_urgency == "urgent" %}🔴 Order NOW — stock critical
+            {% else %}🟡 Order soon — runway ending{% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if p.order_urgency != "dead" %}
+        <button class="btn-show-math no-print" onclick="toggleMath('math-{{ forloop.counter }}', this)">
+          🔍 Show working
+        </button>
+      {% endif %}
+    </td>
+
+    {# 11 — Stock runway #}
+    <td>
+      {% if p.months_of_stock is not None %}
+        {% if p.is_overstocked %}
+          <span class="over-tag">📦 Overstocked</span>
+          <div class="mo-ok" style="margin-top:4px">{{ p.months_of_stock }} months</div>
+          <div class="sub-note">9+ months on hand</div>
+        {% elif p.months_of_stock >= 3 %}
+          <div class="mo-ok">{{ p.months_of_stock }} months</div>
+          <div class="sub-note">Comfortable runway</div>
+        {% elif p.months_of_stock >= 1 %}
+          <div class="mo-warn">{{ p.months_of_stock }} months</div>
+          <div class="sub-note">Getting low</div>
+        {% else %}
+          <div class="mo-low">{{ p.months_of_stock }} months</div>
+          <div class="sub-note">⚠ Very low</div>
+        {% endif %}
+      {% else %}
+        <span style="color:#cbd5e1;font-style:italic;font-size:.8rem">No sales data</span>
+      {% endif %}
+    </td>
+  </tr>
+
+  {# ── Math breakdown row ────────────────────────────────────────────── #}
+  <tr class="math-row" id="math-{{ forloop.counter }}">
+    <td colspan="12">
+      {% with s=p.calc_steps %}
+      <div class="math-panel">
+        <h4>📐 Order Calculation — {{ p.name }}</h4>
+
+        {% if s.note %}
+          <p style="color:#64748b;font-style:italic">{{ s.note }}</p>
+        {% else %}
+
+        <div class="math-steps">
+
+          <div class="math-step step-info">
+            <div class="ms-label">📊 Current Stock</div>
+            <div class="ms-value">{{ s.current_stock|floatformat:0 }} {{ p.unit }}</div>
+            <div class="ms-note">Live stock from inventory</div>
+          </div>
+
+          <div class="math-step step-info">
+            <div class="ms-label">📉 Avg Daily (Tally, Apr-25)</div>
+            <div class="ms-value">{{ s.avg_daily }}/day</div>
+            <div class="ms-note">Total sales since Apr 2025 ÷ days elapsed</div>
+          </div>
+
+          <div class="math-step step-info">
+            <div class="ms-label">📈 Monthly Growth Rate</div>
+            <div class="ms-value">{{ s.monthly_growth_rate_pct }}% / month</div>
+            <div class="ms-note">Blended avg of 1Y growth ÷ 12 and 3M growth ÷ 3</div>
+          </div>
+
+          <div class="math-step step-info">
+            <div class="ms-label">🚚 Lead Time</div>
+            <div class="ms-value">{{ s.delivery_days }} days</div>
+            <div class="ms-note">Days until new batch arrives if ordered today</div>
+          </div>
+
+          {% if s.incoming_qty > 0 %}
+          <div class="math-step step-info">
+            <div class="ms-label">📬 Incoming (Open PO)</div>
+            <div class="ms-value">{{ s.incoming_qty|floatformat:0 }} {{ p.unit }}</div>
+            <div class="ms-note">
+              {% if s.incoming_arrives_in is not None %}
+                Arrives in {{ s.incoming_arrives_in }} days ({{ s.incoming_date|date:"d M Y" }})
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="math-step">
+            <div class="ms-label">📦 Stock When New Batch Arrives</div>
+            <div class="ms-value">{{ s.stock_at_arrival|floatformat:0 }} {{ p.unit }}</div>
+            <div class="ms-note">Simulated: current − demand during lead time (growth-adjusted); + incoming if it arrives first</div>
+          </div>
+
+          <div class="math-step {% if s.shortfall > 0 %}step-warn{% else %}step-ok{% endif %}">
+            <div class="ms-label">🔮 3-Month Demand After Arrival (+20% buffer)</div>
+            <div class="ms-value">{{ s.demand_3m_after }}</div>
+            <div class="ms-note">{{ s.demand_source }}</div>
+          </div>
+
+          <div class="math-step {% if s.shortfall > 0 %}step-warn{% else %}step-ok{% endif %}">
+            <div class="ms-label">⚠ Shortfall</div>
+            <div class="ms-value">{{ s.shortfall }}</div>
+            <div class="ms-note">3M demand − stock on arrival{% if s.incoming_after_new_batch > 0 %} − late incoming ({{ s.incoming_after_new_batch|floatformat:0 }}){% endif %}</div>
+          </div>
+
+          <div class="math-step step-info">
+            <div class="ms-label">📅 Stock Runway</div>
+            <div class="ms-value">{% if s.runway_months %}~{{ s.runway_months }} months{% else %}&gt; 6 months{% endif %}</div>
+            <div class="ms-note">Day stock hits zero at growth-adjusted consumption</div>
+          </div>
+
+          <div class="math-step {% if s.reorder_point_days <= 0 %}step-warn{% else %}step-ok{% endif %}">
+            <div class="ms-label">🔔 Reorder Point</div>
+            <div class="ms-value">
+              {% if s.reorder_point_days <= 0 %}ORDER NOW{% else %}in {{ s.reorder_point_days }} days{% endif %}
+            </div>
+            <div class="ms-note">Runway − lead time = {{ s.runway_days }} − {{ s.delivery_days }}</div>
+          </div>
+
+          {% if s.moq_note %}
+          <div class="math-step step-warn">
+            <div class="ms-label">📋 MOQ Applied</div>
+            <div class="ms-value">{{ s.moq }}</div>
+            <div class="ms-note">Shortfall ({{ s.shortfall }}) was below MOQ → rounded up</div>
+          </div>
+          {% endif %}
+
+          {% if s.order_lasts_months %}
+          <div class="math-step step-ok">
+            <div class="ms-label">📅 Order Lasts</div>
+            <div class="ms-value">~{{ s.order_lasts_months }} months</div>
+            <div class="ms-note">(stock on arrival + order) ÷ avg_daily ÷ 30</div>
+          </div>
+          {% endif %}
+
+        </div>{# end math-steps #}
+
+        {# ── Stock projection chart ──────────────────────────────────── #}
+        <div style="margin-top:8px">
+          <div class="chart-legend">
+            <span><span class="cl-dot" style="background:#6366f1"></span>Stock level</span>
+            <span><span class="cl-dot" style="background:#ef4444"></span>3-month buffered demand (reorder trigger)</span>
+            {% if s.incoming_qty > 0 %}<span><span class="cl-dot" style="background:#10b981"></span>Incoming PO added</span>{% endif %}
+            {% if s.reorder_point_days > 0 %}<span><span class="cl-dot" style="background:#f59e0b"></span>Reorder point</span>{% endif %}
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart-{{ forloop.counter }}" height="180"></canvas>
+          </div>
+          <div class="sub-note" style="text-align:center">Next 90-day stock trajectory (growth-adjusted). Shaded area = buffer zone.</div>
+        </div>
+
+        <div class="math-conclusion" style="margin-top:14px">
+          {% if s.shortfall == 0 %}
+            ✅ <strong>No order needed.</strong>
+            Stock on arrival ({{ s.stock_at_arrival|floatformat:0 }}) covers the 3-month buffered demand ({{ s.demand_3m_after }}).
+            {% if s.reorder_point_days > 0 %}Reorder in {{ s.reorder_point_days }} days.{% endif %}
+          {% else %}
+            📬 <strong>Order {{ s.order_final }} {{ p.unit }}.</strong>
+            Shortfall of {{ s.shortfall }} units vs 3-month demand ({{ s.demand_3m_after }}, incl. 20% buffer).
+            {% if s.order_now %}🔴 Stock will run out before the new batch arrives — order immediately.{% endif %}
+            {% if s.order_lasts_months %}Order should last ~<strong>{{ s.order_lasts_months }} months</strong> from arrival.{% endif %}
+          {% endif %}
+        </div>
+
+        {% endif %}{# end not dead #}
+      </div>
+      {% endwith %}
+
+      {# Graph data passed via data attribute for JS #}
+      <script type="application/json" id="graph-data-{{ forloop.counter }}">
+        {{ p.graph_data_json|safe }}
+      </script>
+      <script type="application/json" id="graph-meta-{{ forloop.counter }}">
+        {{ p.graph_meta_json|safe }}
+      </script>
+    </td>
+  </tr>
+
+  {% empty %}
+  <tr><td colspan="12" style="text-align:center;padding:40px;color:#94a3b8">No products found.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{# ── Legend ────────────────────────────────────────────────────────────── #}
+<div class="legend-section" id="legend">
+  <h2>📖 How to Read This Report</h2>
+  <div class="legend-grid">
+
+    <div class="li-item">
+      <div class="li-icon blue">📊</div>
+      <div class="li-text">
+        <h4>Current Stock &amp; Avg Daily</h4>
+        <p>Live stock quantity from inventory. <em>Avg/day</em> is calculated from Tally TAX INVOICE data starting April 2025 — total qty sold ÷ days since April 1, 2025. This is the most reliable consumption figure.</p>
+      </div>
+    </div>
+
+    <div class="li-item">
+      <div class="li-icon green">📈</div>
+      <div class="li-text">
+        <h4>Growth (1-Year YoY &amp; 3M vs Prev 3M)</h4>
+        <p><strong>1-Year:</strong> total Tally sales last 12 months vs previous 12 months. <strong>3M:</strong> last 3 months vs 3 months before (Tally data). Blended monthly growth rate used in forecasting.</p>
+      </div>
+    </div>
+
+    <div class="li-item">
+      <div class="li-icon purple">🔮</div>
+      <div class="li-text">
+        <h4>Sales Forecast (M+1 / M+2 / M+3)</h4>
+        <p>Monthly growth rate (blended from 1Y + 3M) applied compoundingly to avg daily sales. M+1 = avg × (1+rate), M+2 = avg × (1+rate)², M+3 = avg × (1+rate)³. Shown only for active products.</p>
+      </div>
+    </div>
+
+    <div class="li-item">
+      <div class="li-icon red">💀</div>
+      <div class="li-text">
+        <h4>Dead Stock</h4>
+        <p>No TAX INVOICE sale in the last 90 days. Dead items are excluded from ordering logic. Use "Hide Dead Stock" button to remove them from view.</p>
+      </div>
+    </div>
+
+    <div class="li-item">
+      <div class="li-icon slate">👥</div>
+      <div class="li-text">
+        <h4>Top Customers</h4>
+        <p>Click "View Top 5" to see the top 5 customers by total quantity purchased for that product, with a month-by-month breakdown. Loaded on demand via API.</p>
+      </div>
+    </div>
+
+    <div class="li-item">
+      <div class="li-icon slate">🛒</div>
+      <div class="li-text">
+        <h4>Last Purchase Order &amp; GST Purchases</h4>
+        <p><strong>PO:</strong> PURCHASE ORDER vouchers we made (from Dec 2024). <strong>GST Purchases:</strong> received and booked stock. Click "All X POs/receipts" for full history modal with date and qty.</p>
+      </div>
+    </div>
+
+    <div class="li-item">
+      <div class="li-icon amber">📬</div>
+      <div class="li-text">
+        <h4>Order Recommendation Algorithm</h4>
+        <p>
+          1. Simulate daily stock drawdown with growth-adjusted consumption for 180 days.<br>
+          2. Find the day stock hits zero → <em>runway</em>.<br>
+          3. <em>Reorder point</em> = runway − lead time. If ≤ 0 → order immediately.<br>
+          4. Qty = 3-month growth-adjusted forecast × 1.20 buffer − stock on arrival.<br>
+          5. Round up to MOQ if needed. Click <em>Show working</em> for the full graph.
+        </p>
+      </div>
+    </div>
+
+    <div class="li-item">
+      <div class="li-icon purple">📦</div>
+      <div class="li-text">
+        <h4>Stock Runway</h4>
+        <p>Current stock ÷ (avg/day × 30) = months until stock runs out (flat avg, conservative estimate). Overstocked = 9+ months.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endif %}
+</div>
+
+{# ───────────────────────────────────────────────────────────────────────────
+   MODALS
+─────────────────────────────────────────────────────────────────────────── #}
+
+{# Top Customers Modal #}
+<div class="modal-overlay" id="custModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>👥 Top 5 Customers — <span id="custModalTitle"></span></h3>
+      <button class="modal-close" onclick="closeModal('custModal')">×</button>
+    </div>
+    <div class="modal-body" id="custModalBody">
+      <div class="modal-loading">Loading...</div>
+    </div>
+  </div>
+</div>
+
+{# PO History Modal #}
+<div class="modal-overlay" id="poModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>🛒 Purchase Order History — <span id="poModalTitle"></span></h3>
+      <button class="modal-close" onclick="closeModal('poModal')">×</button>
+    </div>
+    <div class="modal-body" id="poModalBody">
+      <div class="modal-loading">Loading...</div>
+    </div>
+  </div>
+</div>
+
+{# GST Purchase History Modal #}
+<div class="modal-overlay" id="gstModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>📥 GST Purchase History — <span id="gstModalTitle"></span></h3>
+      <button class="modal-close" onclick="closeModal('gstModal')">×</button>
+    </div>
+    <div class="modal-body" id="gstModalBody">
+      <div class="modal-loading">Loading...</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+
+// ── PO / GST data embedded from Django ──────────────────────────────────────
+// We pass all PO and GST rows as JSON so we don't need a separate API call for them
+const ALL_PO_DATA = {
+  {% for p in products %}
+  "{{ p.id }}": {
+    "name": "{{ p.name|escapejs }}",
+    "unit": "{{ p.unit|escapejs }}",
+    "po_rows": [
+      {% for row in p.po_rows %}
+      {"date": "{{ row.date|date:'d M Y' }}", "qty": {{ row.qty|floatformat:0 }}, "voucher_number": "{{ row.voucher_number|default:''|escapejs }}", "party": "{{ row.party|default:''|escapejs }}"},
+      {% endfor %}
+    ],
+    "gst_rows": [
+      {% for row in p.gst_rows %}
+      {"date": "{{ row.date|date:'d M Y' }}", "qty": {{ row.qty|floatformat:0 }}, "voucher_number": "{{ row.voucher_number|default:''|escapejs }}", "party": "{{ row.party|default:''|escapejs }}"},
+      {% endfor %}
+    ]
+  },
+  {% endfor %}
+};
+
+// ── Dead stock filter toggle ─────────────────────────────────────────────────
+function toggleDeadFilter() {
+  const input = document.getElementById("hideDeadInput");
+  const btn   = document.getElementById("deadFilterBtn");
+  const isHiding = input.value === "1";
+  input.value = isHiding ? "0" : "1";
+  btn.textContent = isHiding ? "💀 Hide Dead Stock" : "💀 Show Dead Stock";
+  btn.classList.toggle("active", !isHiding);
+  document.getElementById("filterForm").submit();
+}
+
+// ── Summary counts ───────────────────────────────────────────────────────────
+(function () {
+  let urgent = 0, warn = 0, dead = 0, over = 0, ok = 0;
+  document.querySelectorAll("#poTable tbody tr.data-row").forEach(r => {
+    const u = r.dataset.urgency;
+    if (u === "urgent") urgent++;
+    else if (u === "warn") warn++;
+    else if (u === "dead") dead++;
+    else if (u === "ok")   ok++;
+    if (r.dataset.over === "1") over++;
+  });
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set("urgentCount", urgent); set("warnCount", warn);
+  set("deadCount", dead);     set("overCount", over); set("okCount", ok);
+})();
+
+// ── Select-all checkbox ──────────────────────────────────────────────────────
+document.getElementById("selectAll")?.addEventListener("change", function () {
+  document.querySelectorAll(".row-cb").forEach(cb => cb.checked = this.checked);
+});
+
+// ── Toggle math row + draw chart ─────────────────────────────────────────────
+const drawnCharts = new Set();
+
+function toggleMath(id, btn) {
+  const row  = document.getElementById(id);
+  if (!row) return;
+  const open = row.classList.toggle("open");
+  btn.textContent = open ? "🔼 Hide working" : "🔍 Show working";
+
+  if (open) {
+    // Extract counter from id e.g. "math-3" → "3"
+    const counter = id.replace("math-", "");
+    if (!drawnCharts.has(counter)) {
+      drawnCharts.add(counter);
+      drawStockChart(counter);
+    }
+  }
+}
+
+function drawStockChart(counter) {
+  const canvas = document.getElementById("chart-" + counter);
+  if (!canvas) {
+    console.error("Canvas not found: chart-" + counter);
+    return;
+  }
+
+  const rawData = document.getElementById("graph-data-" + counter);
+  const rawMeta = document.getElementById("graph-meta-" + counter);
+  if (!rawData || !rawMeta) {
+    console.error("Graph data not found for counter: " + counter);
+    return;
+  }
+
+  let graphData, meta;
+  try {
+    graphData = JSON.parse(rawData.textContent.trim());
+    meta      = JSON.parse(rawMeta.textContent.trim());
+  } catch (e) {
+    console.error("JSON parse error for chart-" + counter, e, rawData.textContent);
+    return;
+  }
+
+  if (!graphData || graphData.length === 0) {
+    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:20px">No graph data available.</p>';
+    return;
+  }
+
+  // ── Force explicit pixel dimensions so Chart.js can render in hidden-then-shown row
+  canvas.style.width  = "100%";
+  canvas.style.height = "180px";
+  canvas.width  = canvas.parentElement.offsetWidth || 800;
+  canvas.height = 180;
+
+  const labels     = graphData.map(d => "Day " + d.day);
+  const stockVals  = graphData.map(d => d.stock);
+  const bufferVals = graphData.map(d => d.buffer_line);
+
+  new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Stock Level",
+          data: stockVals,
+          borderColor: "#6366f1",
+          backgroundColor: "rgba(99,102,241,.12)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 2,
+        },
+        {
+          label: "3-Month Buffered Demand",
+          data: bufferVals,
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239,68,68,.05)",
+          fill: false,
+          tension: 0,
+          pointRadius: 0,
+          borderWidth: 1.5,
+          borderDash: [5, 4],
+        },
+      ],
+    },
+    options: {
+      responsive: false,        // ← KEY: turn off responsive so it uses our explicit size
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          callbacks: {
+            label: ctx => ctx.dataset.label + ": " + Math.round(ctx.parsed.y).toLocaleString(),
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 10, font: { size: 10 } },
+          grid:  { display: false },
+        },
+        y: {
+          ticks: { font: { size: 10 }, callback: v => v.toLocaleString() },
+          grid:  { color: "#f1f5f9" },
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add("open"); }
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+// Close on overlay click
+document.querySelectorAll(".modal-overlay").forEach(ov => {
+  ov.addEventListener("click", e => { if (e.target === ov) ov.classList.remove("open"); });
+});
+
+// ── Top Customers Modal ───────────────────────────────────────────────────────
+function openCustomerModal(itemId, itemName) {
+  document.getElementById("custModalTitle").textContent = itemName;
+  document.getElementById("custModalBody").innerHTML = '<div class="modal-loading">⏳ Loading customer data...</div>';
+  openModal("custModal");
+
+  fetch(`/inventory/purchase-order/top-customers/?item_id=${itemId}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.customers || data.customers.length === 0) {
+        document.getElementById("custModalBody").innerHTML = '<p style="color:#94a3b8;text-align:center;padding:30px">No customer data found.</p>';
+        return;
+      }
+      let html = '<table class="cust-table"><thead><tr><th>#</th><th>Customer</th><th>Total Qty</th><th>Monthly Breakdown</th></tr></thead><tbody>';
+      data.customers.forEach((c, i) => {
+        const monthPills = c.monthly.map(m =>
+          `<span class="cust-m-pill">${m.month}: <strong>${m.qty}</strong></span>`
+        ).join("");
+        html += `<tr>
+          <td style="color:#94a3b8">${i + 1}</td>
+          <td class="cust-name">${escHtml(c.name)}</td>
+          <td class="cust-total">${c.total_qty.toLocaleString()}</td>
+          <td><div class="cust-monthly-wrap">${monthPills}</div></td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      document.getElementById("custModalBody").innerHTML = html;
+    })
+    .catch(() => {
+      document.getElementById("custModalBody").innerHTML = '<p style="color:#ef4444;text-align:center;padding:30px">Error loading data. Please try again.</p>';
+    });
+}
+
+// ── PO History Modal ──────────────────────────────────────────────────────────
+function openPOModal(itemId, itemName) {
+  const d = ALL_PO_DATA[itemId];
+  if (!d) return;
+  document.getElementById("poModalTitle").textContent = itemName;
+
+  const rows = d.po_rows;
+  let html = `<p style="margin:0 0 12px;font-size:.82rem;color:#64748b">${rows.length} purchase order${rows.length > 1 ? "s" : ""} found</p>`;
+  html += '<table class="hist-table"><thead><tr><th>Date</th><th>Qty ('+d.unit+')</th><th>Voucher No.</th><th>Supplier</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr>
+      <td style="font-weight:600">${escHtml(r.date)}</td>
+      <td class="po-qty">${Number(r.qty).toLocaleString()}</td>
+      <td style="color:#94a3b8;font-size:.8rem">${escHtml(r.voucher_number)}</td>
+      <td>${escHtml(r.party)}</td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  document.getElementById("poModalBody").innerHTML = html;
+  openModal("poModal");
+}
+
+// ── GST Purchase History Modal ────────────────────────────────────────────────
+function openGSTModal(itemId, itemName) {
+  const d = ALL_PO_DATA[itemId];
+  if (!d) return;
+  document.getElementById("gstModalTitle").textContent = itemName;
+
+  const rows = d.gst_rows;
+  let html = `<p style="margin:0 0 12px;font-size:.82rem;color:#64748b">${rows.length} GST purchase${rows.length > 1 ? "s" : ""} found</p>`;
+  html += '<table class="hist-table"><thead><tr><th>Date</th><th>Qty ('+d.unit+')</th><th>Voucher No.</th><th>Supplier</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr>
+      <td style="font-weight:600">${escHtml(r.date)}</td>
+      <td class="gst-qty">${Number(r.qty).toLocaleString()}</td>
+      <td style="color:#94a3b8;font-size:.8rem">${escHtml(r.voucher_number)}</td>
+      <td>${escHtml(r.party)}</td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  document.getElementById("gstModalBody").innerHTML = html;
+  openModal("gstModal");
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (!s) return "—";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Download CSV ──────────────────────────────────────────────────────────────
+function downloadPO() {
+  const headers = [
+    "Product","Unit","Stock","Avg/day","Growth 1Y","Growth 3M","Monthly Growth%",
+    "M+1","M+2","M+3","Dead?","Latest PO Qty","Latest PO Date",
+    "Latest GST Qty","Latest GST Date","In Transit Qty","In Transit ETA",
+    "Order Qty","Lasts (months)","Runway (months)"
+  ];
+  const rows = document.querySelectorAll("#poTable tbody tr.data-row");
+  const csv  = [headers.join(",")];
+  rows.forEach(row => {
+    const tds  = Array.from(row.querySelectorAll("td")).slice(1);
+    const vals = tds.map(td => `"${td.innerText.replace(/\n/g," ").replace(/"/g,"'").trim()}"`);
+    csv.push(vals.join(","));
+  });
+  const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const a    = document.createElement("a");
+  a.href     = URL.createObjectURL(blob);
+  a.download = "purchase_order_{{ today|date:'Y-m-d' }}.csv";
+  a.click();
+}
+</script>
+{% endblock %}
