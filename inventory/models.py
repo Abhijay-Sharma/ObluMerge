@@ -26,6 +26,15 @@ class InventoryItem(models.Model):
     total_historical_entries=models.IntegerField(null=True, blank=True, default=0)
     expected_delivery = models.DateField(null=True, blank=True)
     expected_quantity = models.IntegerField(null=True, blank=True)
+    expected_delivery_days = models.IntegerField(
+        null=True, blank=True,
+        help_text="Number of days expected for delivery after placing a purchase order"
+    )
+    minimum_order_quantity = models.IntegerField(
+        null=True, blank=True,
+        help_text="Minimum quantity that must be ordered from the supplier in a single batch"
+    )
+
 
     def __str__(self):
         return self.name
