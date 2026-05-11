@@ -1766,13 +1766,18 @@ class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
                 logged_in_user.is_accountant or
                 logged_in_user.groups.filter(name='Accountant').exists()
         )
+        target_rsm_names = ["Ankush", "Bhavya"]
 
         if is_privileged_user:
-            allowed_rsms = SalesPerson.objects.filter(manager__isnull=True).order_by("name")
-        elif user_sp_profile and user_sp_profile.manager is None:
+            allowed_rsms = SalesPerson.objects.filter(
+                name__in=target_rsm_names,
+                manager__isnull=True
+            ).order_by("name")
+        elif user_sp_profile and user_sp_profile.name in target_rsm_names and user_sp_profile.manager is None:
             allowed_rsms = SalesPerson.objects.filter(id=user_sp_profile.id)
         else:
             allowed_rsms = SalesPerson.objects.none()
+
 
         ctx["rsms"] = allowed_rsms
         rsm_id = self.request.GET.get("rsm")
