@@ -159,13 +159,17 @@
         <button id="theme-toggle" onclick="toggleTheme()">Switch Theme</button>
     </div>
 
+
     <!-- 1. FILTERS -->
-    <div class="card">
-        <form class="filter-form">
-            <select name="rsm">
-                <option>{{ selected_rsm.name|default:"Select RSM" }}</option>
+     <div class="card">
+        <form method="get" class="filter-form">
+            <select name="rsm" required>
+                <option value="">-- Select RSM --</option>
+                {% for r in rsms %}
+                <option value="{{ r.id }}" {% if selected_rsm.id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
             </select>
-            <input type="month" value="{{ year }}-{{ month|stringformat:'02d' }}">
+            <input type="month" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}" required>
             <button type="submit">GENERATE REPORT</button>
         </form>
     </div>
