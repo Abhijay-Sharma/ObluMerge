@@ -1763,8 +1763,7 @@ class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
         user_sp_profile = SalesPerson.objects.filter(user=logged_in_user).first()
 
         is_privileged_user = (
-                logged_in_user.is_superuser or
-                logged_in_user.is_staff or
+                logged_in_user.is_accountant or
                 logged_in_user.groups.filter(name='Accountant').exists()
         )
 
