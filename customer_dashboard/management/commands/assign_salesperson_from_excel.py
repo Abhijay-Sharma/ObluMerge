@@ -32,7 +32,8 @@ class Command(BaseCommand):
             invoice = str(row.get("Invoice No.", "")).strip()
             if invoice or invoice != "nan":
                 #OH/2026-27/278    I'm writing code to add 0 after the second '/' because currently system saved invoices has that 0
-                invoice = invoice[:11]+'0'+invoice[12:]
+                copy=invoice
+                invoice = copy[:11]+'0'+copy[12:]
             salesperson_name = str(row.get("Sales Person", "")).strip()
 
             # Skip child rows where invoice is blank
