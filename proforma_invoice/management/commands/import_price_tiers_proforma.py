@@ -11,12 +11,13 @@ from proforma_invoice.models import ProductPrice, ProductPriceTier
 class Command(BaseCommand):
     help = "Import product price tiers from Excel file"
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            'file_path',
-            type=str,
-            help='Path to Excel file (Product_price_tier.xlsx)'
-        )
+    # def add_arguments(self, parser):
+    #     parser.add_argument(
+    #         'file_path',
+    #         type=str,
+    #         help='Path to Excel file (Product_price_tier.xlsx)'
+    #     )
+    #
 
     def clean_price(self, value):
         """
@@ -46,11 +47,13 @@ class Command(BaseCommand):
         return Decimal(value).quantize(Decimal("0.00"))
 
     def handle(self, *args, **options):
-        file_path = options['file_path']
+        # HARDCODED FILE PATH
+        file_path = r"C:\Users\Lenovo\Downloads\Product_price_tier (5).xlsx"
 
         df = pd.read_excel(file_path)
 
-        required_columns = ['Product', 'min_quantity', 'unit_price']
+        # 1. Added MSRP to required columns
+        required_columns = ['Product', 'min_quantity', 'unit_price', 'MSRP']
         for col in required_columns:
             if col not in df.columns:
                 self.stderr.write(self.style.ERROR(f"Missing column: {col}"))
@@ -63,35 +66,43 @@ class Command(BaseCommand):
             product_name = str(row['Product']).strip()
             min_qty = row['min_quantity']
             raw_price = row['unit_price']
+            # 2. Extract raw MSRP
+            raw_msrp = row['MSRP']
 
             if not product_name or pd.isna(min_qty):
                 continue
 
             price = self.clean_price(raw_price)
+            # 3. Clean MSRP
+            msrp = self.clean_price(raw_msrp)
+
             if price is None:
-                self.stderr.write(f"⚠ Skipped row {index+2}: Invalid price")
+                self.stderr.write(f"⚠ Skipped row {index + 2}: Invalid unit price")
                 continue
 
             # 1️⃣ InventoryItem
             try:
                 inventory_item = InventoryItem.objects.get(name=product_name)
             except InventoryItem.DoesNotExist:
-                self.stderr.write(
-                    self.style.ERROR(
-                        f"❌ Row {index+2}: Product '{product_name}' not found in Inventory"
-                    )
-                )
+                self.stderr.write(self.style.ERROR(f"❌ Row {index + 2}: Product '{product_name}' not found"))
                 continue
 
             # 2️⃣ ProductPrice
-            product_price, _ = ProductPrice.objects.get_or_create(
+            # 4. Added msrp to update/defaults
+            product_price, created_pp = ProductPrice.objects.get_or_create(
                 product=inventory_item,
                 defaults={
                     'price': price,
+                    'msrp': msrp,  # Set MSRP if creating
                     'has_dynamic_price': True,
                     'min_requirement': 1
                 }
             )
+
+            # 5. If ProductPrice already existed, update the MSRP from Excel
+            if not created_pp and msrp is not None:
+                product_price.msrp = msrp
+                product_price.save()
 
             # 3️⃣ ProductPriceTier
             tier, created = ProductPriceTier.objects.update_or_create(

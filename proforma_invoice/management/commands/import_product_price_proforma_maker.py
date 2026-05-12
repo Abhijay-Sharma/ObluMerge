@@ -10,7 +10,7 @@ from decimal import Decimal
 class Command(BaseCommand):
     help = "Import Product Prices from Excel with intelligent name matching"
 
-    FILE_PATH = r"C:\Users\Administrator\Desktop\HSN+tally SUMMARY (9).xlsx"
+    FILE_PATH = r"C:\Users\Lenovo\Downloads\HSN+tally SUMMARY (10).xlsx"
     # ---------------- CLEANERS ---------------- #
 
     def clean_decimal(self, value):
@@ -83,9 +83,10 @@ class Command(BaseCommand):
         updated = 0
         skipped = []
 
+        # Load all inventory items once to optimize matching
         inventory_items = list(InventoryItem.objects.all())
 
-        # Pre-normalize inventory names
+        # Pre-normalize inventory names into a lookup map
         inventory_map = {
             self.normalize_name(item.name): item
             for item in inventory_items
@@ -94,6 +95,7 @@ class Command(BaseCommand):
         for index, row in df.iterrows():
             raw_name = row.get("Particulars")
 
+            # Skip empty rows
             if pd.isna(raw_name):
                 continue
 
@@ -102,68 +104,92 @@ class Command(BaseCommand):
 
             inventory_item = None
 
-            # 1️⃣ Exact normalized match
+            # 1️⃣ Step 1: Exact normalized match
             inventory_item = inventory_map.get(normalized_excel)
 
-            # 2️⃣ Contains match fallback
+            # 2️⃣ Step 2: Contains match fallback (if exact match fails)
             if not inventory_item:
                 for norm_name, item in inventory_map.items():
                     if normalized_excel in norm_name or norm_name in normalized_excel:
                         inventory_item = item
                         break
 
+            # If no item found in inventory, skip this row
             if not inventory_item:
                 skipped.append(f"{excel_name} → InventoryItem not found")
                 continue
 
-            price = self.clean_decimal(row.get("Price"))
+            # --- DATA CLEANING & PREPARATION ---
+
+            # 1. Price (Required)
+            price = self.clean_decimal(row.get("New_Price"))
             if price is None:
                 skipped.append(f"{excel_name} → Invalid price")
                 continue
 
+            # 2. Tax Rate
             tax_rate = self.clean_tax_rate(row.get("Tax_Rate"))
+
+            # 3. HSN Number
             hsn_raw = row.get("HSN NO.")
+            hsn = str(int(hsn_raw)) if not pd.isna(hsn_raw) else None
 
-            if pd.isna(hsn_raw):
-                hsn = None
-            else:
-                hsn = str(int(hsn_raw))
-
+            # 4. Minimum Quantity
             min_qty_raw = row.get("Min_Qty")
-
-            if pd.isna(min_qty_raw):
-                min_qty = 1
-            else:
-                min_qty = int(min_qty_raw)
-
             try:
+                # Handle cases where Excel might store numbers as floats (e.g., 20.0)
                 min_qty = int(float(min_qty_raw)) if not pd.isna(min_qty_raw) else 1
             except Exception:
                 min_qty = 1
 
+            # 5. Dynamic Pricing Boolean
             has_dynamic = self.clean_bool(row.get("Dynamic_Prices"))
 
-            obj, is_created = ProductPrice.objects.update_or_create(
-                product=inventory_item,
-                defaults={
-                    "price": price,
-                    "tax_rate": tax_rate,
-                    "min_requirement": min_qty,
-                    "has_dynamic_price": has_dynamic,
-                    "hsn": hsn,
-                }
-            )
+            # 6. MSRP (Conditional: Ignore if empty)
+            msrp_val = self.clean_decimal(row.get("MSRP") if "MSRP" in row else row.get("MSRP "))
 
-            if is_created:
-                created += 1
-            else:
-                updated += 1
+            # --- DEBUG LINE ---
+            if msrp_val:
+                self.stdout.write(f"DEBUG: Found MSRP {msrp_val} for {excel_name}")
 
-        self.stdout.write(self.style.SUCCESS("✔ IMPORT FINISHED"))
+
+            # --- PREPARE THE UPDATE DICTIONARY ---
+
+            # Create the base dictionary with required fields
+            import_defaults = {
+                "price": price,
+                "tax_rate": tax_rate,
+                "min_requirement": min_qty,
+                "has_dynamic_price": has_dynamic,
+                "hsn": hsn,
+            }
+
+            # Only add MSRP to the update dictionary if the cell wasn't empty
+            # This ensures we don't overwrite existing MSRPs with NULL
+            if msrp_val is not None:
+                import_defaults["msrp"] = msrp_val
+
+            # --- DATABASE EXECUTION ---
+
+            try:
+                obj, is_created = ProductPrice.objects.update_or_create(
+                    product=inventory_item,
+                    defaults=import_defaults
+                )
+
+                if is_created:
+                    created += 1
+                else:
+                    updated += 1
+            except Exception as e:
+                skipped.append(f"{excel_name} → Database Error: {str(e)}")
+
+        # --- FINAL CONSOLE REPORTING ---
+        self.stdout.write(self.style.SUCCESS("\n✔ IMPORT FINISHED"))
         self.stdout.write(f"Created: {created}")
         self.stdout.write(f"Updated: {updated}")
 
         if skipped:
-            self.stdout.write("\n⚠ Skipped rows:")
+            self.stdout.write(self.style.WARNING(f"\n⚠ Skipped {len(skipped)} rows:"))
             for s in skipped:
                 self.stdout.write(f"- {s}")
