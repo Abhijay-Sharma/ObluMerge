@@ -48,7 +48,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # HARDCODED FILE PATH
-        file_path = r"C:\Users\Lenovo\Downloads\Product_price_tier (5).xlsx"
+        file_path = r"C:\Users\Administrator\Desktop\Product_price_tier (5) (1).xlsx"
 
         df = pd.read_excel(file_path)
 
