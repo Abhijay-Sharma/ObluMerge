@@ -14,12 +14,20 @@
   <div class="main-container">
     <div class="card">
       <h1>Welcome to Proforma Maker</h1>
+      <a href="{% url 'proforma_new_customer' %}" class="btn"> Register New Customer</a>
       <a href="{% url 'create_proforma' %}" class="btn">Create New Proforma</a>
       <a href="{% url 'proforma_list' %}" class="btn">View My Proformas</a>
       <a href="{% url 'proforma_product_list' %}" class="btn">View Products</a>
       {% if request.user.is_accountant %}
       <a href="{% url 'proforma_price_change_requests' %}" class="btn">Price Change Requests</a>
       {% endif %}
+      {% if request.user.is_accountant %}
+      <a href="{% url 'stock_request_dashboard' %}" class="btn">Stock Qty Request</a>
+      {% endif %}
+      {% if request.user.is_accountant %}
+      <a href="{% url 'proforma_invoice_dispatch' %}" class="btn">Dispatch Dashbaord</a>
+      {% endif %}
+
     </div>
 
   </div>

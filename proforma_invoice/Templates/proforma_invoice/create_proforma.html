@@ -6,11 +6,10 @@
   <title>Create Proforma Invoice</title>
   <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
+<style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -32,9 +31,8 @@
       border-radius: 16px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.15);
       width: 100%;
-      max-width: 1000px;
+      max-width: 1200px;
       animation: fadeIn 0.8s ease-out;
-      overflow-x: auto;
     }
     h1 {
       font-size: 2rem;
@@ -45,7 +43,8 @@
       -webkit-text-fill-color: transparent;
     }
     .form-section { margin-bottom: 30px; }
-    .form-section h3 { margin-bottom: 15px; }
+    .form-section h3 { margin-bottom: 15px; font-size: 1.25rem; }
+
     input[type="text"], input[type="number"], select, textarea {
       width: 100%;
       padding: 10px 12px;
@@ -54,13 +53,22 @@
       border: 1px solid #ccc;
       font-size: 15px;
     }
-    .table-wrapper { width: 100%; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse;   min-width:500px;
-}
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background: #eee; }
+
+    /* Table Styling */
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid #eee;
+        border-radius: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 850px; }
+    th, td { border: 1px solid #eee; padding: 12px 8px; text-align: center; }
+    th { background: #f8f9fa; font-size: 0.75rem; text-transform: uppercase; color: #666; }
+
+    .actual-val-label { display: block; font-size: 0.7rem; color: #999; margin-top: 2px; }
+
     button {
-      padding: 8px 14px;
+      padding: 10px 18px;
       margin: 5px;
       background: #222;
       color: #fff;
@@ -69,97 +77,123 @@
       border: none;
       cursor: pointer;
       transition: all 0.3s ease;
+      font-size: 0.9rem;
     }
-    button:hover {
-      transform: scale(1.05);
-      color: #222;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
-    }
-    .btn-outline-primary {
-      padding: 8px 14px;
-      margin: 5px;
-      background: #222;
-      color: #fff;
-      font-weight: bold;
-      border-radius: 30px;
-      border: none;
-      cursor: pointer;
-    }
-    .btn-outline-primary:hover {
-      transform: scale(1.05);
-      color: #222;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
-    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+    /* Modals */
     .modal {
       display: none;
       position: fixed;
-      z-index: 999;
+      z-index: 9999;
       left:0; top:0; width:100%; height:100%;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.7);
     }
     .modal-content {
       background: #fff;
       color: #000;
-      margin: 5% auto;
-      padding: 20px;
+      margin: 50px auto;
+      padding: 25px;
       border-radius: 16px;
-      width: 95%;
+      width: 90%;
       max-width: 450px;
+      position: relative;
     }
-    .close { float:right; cursor:pointer; font-size:20px; }
+    .close { position: absolute; right: 20px; top: 15px; cursor:pointer; font-size:24px; color: #999; }
+
+    /* Search Lists */
+    #customer-suggestions, #shipping-suggestions, #product-suggestions {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      margin-top: 5px;
+      max-height: 250px;
+      overflow-y: auto;
+      list-style: none;
+    }
+    .suggest-item, .shipping-item, .product-item {
+        padding: 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f9f9f9;
+        color: #333;
+        font-size: 0.9rem;
+    }
+    .suggest-item:hover, .product-item:hover { background: #f8f9fa; }
+
+    /* Courier Buttons */
+    .courier-btn {
+      padding: 12px 25px;
+      border-radius: 30px;
+      border: 2px solid #222;
+      background: transparent;
+      color: #222;
+      font-weight: bold;
+      margin: 5px;
+    }
+    .courier-btn.active { background: #222; color: #fff; }
+
+    .button-group { display: flex; justify-content: center; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
+    .submit-btn { min-width: 220px; padding: 14px; }
+    .btn-request { background: #e67e22 !important; }
+
+    /* Tooltip */
+    .tooltip-wrapper { position: relative; display: inline-block; }
+    .tooltip-wrapper .tooltip-box {
+        visibility: hidden; width: 220px; background-color: #333; color: #fff;
+        text-align: center; border-radius: 8px; padding: 10px;
+        position: absolute; z-index: 100; bottom: 125%; left: 50%;
+        transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 0.8rem;
+    }
+    .tooltip-wrapper:hover .tooltip-box { visibility: visible; opacity: 1; }
+
     @keyframes fadeIn {
-      from { opacity:0; transform: translateY(30px); }
+      from { opacity:0; transform: translateY(20px); }
       to { opacity:1; transform: translateY(0); }
     }
-  .courier-btn {
-  padding: 10px 22px;
-  border-radius: 30px;
-  border: 2px solid #222;
-  background: transparent;
-  color: #222;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
+    // Disable mouse wheel changing numbers
+$(document).on('wheel', 'input[type=number]', function (e) {
+    $(this).blur();
+});
 
-.courier-btn.active {
-  background: #222;
-  color: #fff;
-  transform: scale(1.05);
-}
+// Optional: Prevent accidental changes with arrow keys
+$(document).on('keydown', 'input[type=number]', function (e) {
+    if (e.which === 38 || e.which === 40) {
+        e.preventDefault();
+    }
+});
 
-.highlight{
-  background: yellow;
-  font-weight: bold;
-}
+    /* =============================================
+       MOBILE RESPONSIVE OVERRIDES
+       ============================================= */
+    @media (max-width: 768px) {
+      .main-container { padding: 15px 10px; }
+      .card { padding: 25px 15px; border-radius: 12px; }
+      h1 { font-size: 1.6rem; }
 
-#customer-suggestions,
-#shipping-suggestions{
-  border:1px solid #ddd;
-  border-radius:8px;
-  background:#fff;
-  max-height:200px;
-  overflow-y:auto;
-}
+      .form-section { margin-bottom: 20px; }
 
-.suggest-item,
-.shipping-item{
-  padding:8px;
-}
+      /* Stack Customer Info */
+      #selected-customer-name, #selected-shipping-name { display: block; margin-top: 5px; }
 
-.suggest-item:hover,
-.shipping-item:hover{
-  background:#f2f2f2;
-}
+      /* Modals on mobile */
+      .modal-content { margin: 20px auto; width: 95%; padding: 20px 15px; }
 
-.shipping-text{
-  margin-top:-29px;
-}
+      /* Buttons on mobile */
+      .button-group { flex-direction: column; width: 100%; gap: 10px; }
+      .submit-btn, .tooltip-wrapper { width: 100%; }
+      .tooltip-wrapper button { width: 100%; margin: 0; }
 
+      .courier-btn { width: 45%; padding: 10px 5px; font-size: 0.85rem; }
 
+      /* Courier Mode Row */
+      #actual-courier-display { font-size: 1rem; }
+    }
 
+    @media (max-width: 480px) {
+      .card { box-shadow: none; border: 1px solid #eee; }
+      h1 { font-size: 1.4rem; }
+      .submit-btn { font-size: 0.85rem; padding: 12px; }
+    }
   </style>
-
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
@@ -169,7 +203,6 @@
 
 <div class="main-container">
   <div class="card">
-
     <h1>Create Proforma Invoice</h1>
 
     {% if messages %}
@@ -181,571 +214,420 @@
     <form method="post">
       {% csrf_token %}
 
-      <!-- REQUIRED FIXED FIELD -->
       <input type="hidden" name="customer" id="id_customer" value="{% if selected_customer %}{{ selected_customer.id }}{% endif %}">
 
-      <!-- ================= SHOW FORM ERRORS ================= -->
-      {% if invoice_form.errors %}
-      <div style="background:#ffdddd; padding:10px; border-left:4px solid red; margin-bottom:15px;">
-        <strong>Invoice Errors:</strong>
+      <!-- FORM ERRORS -->
+      {% if invoice_form.errors or formset.non_form_errors %}
+      <div style="background:#ffdddd; padding:10px; border-left:4px solid red; margin-bottom:15px; color:#000;">
         {{ invoice_form.errors }}
-      </div>
-      {% endif %}
-
-      {% if formset.non_form_errors %}
-      <div style="background:#ffdddd; padding:10px; border-left:4px solid red; margin-bottom:15px;">
-        <strong>Item Errors:</strong>
         {{ formset.non_form_errors }}
       </div>
       {% endif %}
 
-      <!-- ================= SHIPPING CUSTOMER SECTION ================= -->
+      <!-- CUSTOMER SECTION -->
       <div class="form-section">
-<!--        <h3>Customer</h3>-->
         <button type="button" id="select-customer-btn">Select Customer</button>
+        <p><strong>Selected:</strong> <span id="selected-customer-name">{% if selected_customer %}{{ selected_customer.name }}{% else %}None{% endif %}</span></p>
 
-        <p><strong>Selected:</strong>
-          <span id="selected-customer-name">
-            {% if selected_customer %}
-                {{ selected_customer.name }}
-            {% else %}
-                None
-            {% endif %}
-        </span>
-
-        </p>
-
-        <input type="hidden" name="customer_name" id="id_customer_name">
-        <input type="hidden" name="customer_address" id="id_customer_address">
-        <input type="hidden" name="customer_city" id="id_customer_city">
-        <input type="hidden" name="customer_state" id="id_customer_state">
-        <input type="hidden" name="customer_pincode" id="id_customer_pincode">
-        <input type="hidden" name="customer_phone" id="id_customer_phone">
-        <input type="hidden" name="customer_email" id="id_customer_email">
+        <p class="shipping-text"><strong>Selected Shipping:</strong> <span id="selected-shipping-name">{{ shipping_customer.name|default:"None" }}
+</span></p>
+        <input type="hidden" name="shipping_customer" id="id_shipping_customer">
       </div>
 
-
-
-
-      <!-- ================= ITEMS SECTION ================= -->
-        <div class="form-section">
-<!--          <h3>Shipping Address (Optional)</h3>-->
-
-
-
-          <p class="shipping-text" >
-            <strong>Selected Shipping:</strong>
-            <span id="selected-shipping-name">None</span>
-          </p>
-
-          <input type="hidden" name="shipping_customer" id="id_shipping_customer">
-        </div>
-
-
+      <!-- ITEMS SECTION -->
       <div class="form-section">
         <h3>Proforma Items</h3>
-
         {{ formset.management_form }}
+
+        <div id="stock-warning-banner" class="alert alert-danger" style="display:none; margin-bottom: 20px;">
+          <strong>📢 Stock Warning:</strong> One or more products are <strong>Out of Stock</strong>.
+          Saving will send a request to <strong>Accounts</strong>.
+        </div>
 
         <div class="table-wrapper">
           <table id="items-table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Quantity</th>
-                <th>Action</th>
+                <th style="width: 25%;">Product</th>
+                <th style="width: 12%;">Order Qty</th>
+                <th style="width: 15%;">Stock Available</th>
+                <th style="width: 18%;">System Price (Inc. GST)</th>
+                <th style="width: 20%;">Requested Price</th>
+                <th style="width: 10%;">Action</th>
               </tr>
             </thead>
-
             <tbody>
             {% for form in formset %}
-
-              <!-- SHOW PER-FORM ERRORS -->
-              {% if form.errors %}
-              <tr>
-                <td colspan="3">
-                  <div style="background:#fff3cd; padding:8px; border-left:4px solid #ffcc00;">
-                    {{ form.errors }}
-                  </div>
-                </td>
-              </tr>
-              {% endif %}
-
-              <tr class="item-form">
+              <tr class="item-form" {% if form.instance.product %}data-current-stock="{{ form.instance.product.quantity }}"{% endif %}>
                 <td>
-                    <span class="product-label">
-                    {% if form.instance.product %}
-                    {{ form.instance.product.name }}
-                    {% elif form.data.product %}
-                    {{ form.data.product }}
-                    {% else %}
-                    None
-                    {% endif %}
-                    </span>
-                    <button type="button" class="select-product-btn">Select Product</button>
+                  <span class="product-label" style="display:block; font-weight: bold; margin-bottom: 5px;">
+                    {% if form.instance.product %}{{ form.instance.product.name }}{% else %}None{% endif %}
+                  </span>
+                  <button type="button" class="select-product-btn" style="font-size: 0.75rem;">Change Product</button>
                   {{ form.product }}
                 </td>
-
                 <td>{{ form.quantity }}</td>
-
+                <td>
+                    <span class="available-stock-display" style="font-weight: bold; font-size: 1.1rem; color:green;">0</span>
+                    <small class="actual-val-label">In Inventory</small>
+                </td>
+                <td>
+                    <span class="actual-unit-price-display" style="font-weight: bold;">₹0.00</span>
+                    <small class="actual-val-label">Based on Tiers</small>
+                </td>
+                <td>
+                  <input type="number" step="0.01" name="requested_unit_price"   value="{{ form.manual_price|default:'' }}"
+                     placeholder="Default" style="margin-bottom:0;">
+                </td>
                 <td>
                   {% if forloop.first %}
-                    <button type="button" id="add-item">Add</button>
+                    <button type="button" class="add-item-btn">Add</button>
                   {% else %}
                     <button type="button" class="remove-item">Remove</button>
                   {% endif %}
                 </td>
               </tr>
-
             {% endfor %}
             </tbody>
-
           </table>
-            <!-- ================= COURIER MODE ================= -->
-<div class="form-section" style="text-align:center; margin-top:25px;">
-  <h3>Courier Mode</h3>
-
-  <!-- Hidden field bound to model -->
-<!--  {{ invoice_form.courier_mode }}-->
-<input type="hidden" name="courier_mode" id="id_courier_mode" value="surface">
-
-  <button type="button"
-          class="courier-btn active"
-          data-mode="surface">
-<!--          id="btn-surface">-->
-    🚚 Surface
-  </button>
-
-  <button type="button"
-          class="courier-btn"
-          data-mode="air">
-<!--          id="btn-air">-->
-    ✈️ Air
-  </button>
-
-</div>
-
         </div>
       </div>
 
-      {% if invoice_form.created_by %}
-        {{ invoice_form.created_by }}
-      {% endif %}
+      <!-- COURIER SECTION -->
+      <div class="form-section" style="text-align:center; margin-top:25px;">
+        <h3>Courier Mode</h3>
+        <input type="hidden" name="courier_mode" id="id_courier_mode" value="surface">
 
-      <button type="submit">Save Proforma Invoice</button>
+        <button type="button" class="courier-btn active" data-mode="surface">🚚 Surface</button>
+        <button type="button" class="courier-btn" data-mode="air">✈️ Air</button>
+      </div>
+
+      <div class="form-section" style="background: #f9f9f9; padding: 20px; border-radius: 12px; color: #333;">
+        <h4 style="color: #222;">Price & Courier Request (Optional)</h4>
+
+        <div class="row">
+          <div class="col-md-6">
+            <label><strong>Approximate Courier:</strong> <span id="actual-courier-display" style="font-weight: bold; color: #27ae60; font-size: 1.2rem;">₹0.00</span></label>
+            <br>
+            <small style="color:#888;">(Amount may vary based on courier selection)</small>
+            <br><br>
+            <label><strong>Requested Courier Charge</strong></label>
+            <input type="number" step="0.01" name="requested_courier_charge" value="{{ requested_courier }}"  placeholder="Leave empty for Actual" class="form-control">
+          </div>
+          <div class="col-md-12" style="margin-top:15px;">
+            <label><strong>Reason for Price/Courier Change</strong></label>
+            <textarea name="request_reason" rows="2"  placeholder="Explain why you are changing prices..." class="form-control">{{ request_reason }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button type="submit" id="main-save-btn" name="action" value="save" class="submit-btn">Save Proforma Invoice</button>
+
+        <div class="tooltip-wrapper">
+          <button type="submit" id="request-accounts-btn" name="action" value="request_accounts" class="submit-btn btn-request">Send Request to Accounts</button>
+          <div class="tooltip-box">If due to less qty or price changes you can't create proforma, send request to accounts</div>
+        </div>
+      </div>
     </form>
-
   </div>
 </div>
 
-<!-- CUSTOMER MODAL -->
+<!-- MODALS -->
 <div id="customerModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
-
     <h3>Select Customer</h3>
-
-    <!-- BILLING CUSTOMER -->
-    <label><strong>Billing Customer</strong></label>
-    <input type="text" id="customer-search"
-           placeholder="Search billing customer..."
-           style="width:100%; padding:8px; margin-bottom:10px;">
-
-    <ul id="customer-suggestions"
-        style="list-style:none; padding:0; max-height:150px; overflow-y:auto;">
-    </ul>
-
-    <p>
-      Selected Billing:
-      <strong id="billing-selected-name">None</strong>
-    </p>
-
-    <hr style="margin:20px 0">
-
-    <!-- SHIPPING CUSTOMER -->
-    <label><strong>Shipping Address (Optional)</strong></label>
-    <input type="text" id="shipping-search"
-           placeholder="Search shipping customer..."
-           style="width:100%; padding:8px; margin-bottom:10px;">
-
-    <ul id="shipping-suggestions"
-        style="list-style:none; padding:0; max-height:150px; overflow-y:auto;">
-    </ul>
-
-    <p>
-      Selected Shipping:
-      <strong id="shipping-selected-name">None</strong>
-    </p>
-
-    <br>
-
+    <label>Billing Customer</label>
+    <input type="text" id="customer-search" placeholder="Search billing customer...">
+    <ul id="customer-suggestions"></ul>
+    <p>Selected Billing: <strong id="billing-selected-name">None</strong></p>
+    <hr>
+    <label>Shipping (Optional)</label>
+    <input type="text" id="shipping-search" placeholder="Search shipping customer...">
+    <ul id="shipping-suggestions"></ul>
+    <p>Selected Shipping: <strong id="shipping-selected-name">None</strong></p>
     <button id="confirm-customer">Confirm</button>
-
   </div>
 </div>
-<!--SHIPPING MODAL -->
 
-
-<!-- PRODUCT MODAL -->
 <div id="productModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
     <h3>Select Product</h3>
-    <input type="text"
-       id="product-search"
-       placeholder="Search product..."
-       style="width:100%; padding:8px; margin-bottom:10px;">
-
-        <ul id="product-suggestions"
-            style="list-style:none; padding:0; max-height:200px; overflow-y:auto;">
-        </ul>
-
-        <hr>
-
-
-
-    <label>Category</label>
-    <select id="category-select">
-      <option value="">-- Select Category --</option>
-      {% for cat in categories %}
-      <option value="{{ cat.id }}">{{ cat.name }}</option>
-      {% endfor %}
-    </select><br><br>
-
-    <label>Product</label>
-    <select id="product-select">
-      <option value="">-- Select Product --</option>
-    </select><br><br>
-
-    <button id="confirm-product">Confirm</button>
+    <input type="text" id="product-search" placeholder="Search product...">
+    <ul id="product-suggestions" style="list-style:none; padding:0; max-height:300px; overflow-y:auto;"></ul>
   </div>
 </div>
 
 <script>
 $(function () {
+    /* ================= DATA PRE-LOAD ================= */
+    const customers = [
+        {% for customer in customers %}
+        { id: "{{ customer.id }}", name: "{{ customer.name|escapejs }}" },
+        {% endfor %}
+    ];
+    // Disable mouse wheel changing numbers
+$(document).on('wheel', 'input[type=number]', function (e) {
+    $(this).blur();
+});
 
-  /* ================= CUSTOMER MODAL ================= */
-  var customerModal = $("#customerModal");
-  $("#select-customer-btn").click(() => customerModal.show());
-  $("#customerModal .close").click(() => customerModal.hide());
-
-  $("#confirm-customer").click(function () {
-    let s = $("#modal-customer-select option:selected");
-
-    if (s.val()) {
-      $("#id_customer").val(s.val());  // <-- IMPORTANT
-      $("#id_customer_name").val(s.data("name"));
-      $("#id_customer_address").val(s.data("address"));
-      $("#id_customer_city").val(s.data("city"));
-      $("#id_customer_state").val(s.data("state"));
-      $("#id_customer_pincode").val(s.data("pincode"));
-      $("#id_customer_phone").val(s.data("phone"));
-      $("#id_customer_email").val(s.data("email"));
-      $("#selected-customer-name").text(s.data("name"));
+// Optional: Prevent accidental changes with arrow keys
+$(document).on('keydown', 'input[type=number]', function (e) {
+    if (e.which === 38 || e.which === 40) {
+        e.preventDefault();
     }
-    customerModal.hide();
-  });
-
-  /* ================= LIVE CUSTOMER SEARCH ================= */
-
-const customers = [
-{% for customer in customers %}
-{
-    id: "{{ customer.id }}",
-    name: "{{ customer.name }}"
-},
-{% endfor %}
-];
-
-$("#customer-search").on("input", function(){
-
-    let query = $(this).val().toLowerCase();
-
-    let list = $("#customer-suggestions");
-
-    list.empty();
-
-    if(query.length === 0) return;
-
-    customers.forEach(function(c){
-
-        let nameLower = c.name.toLowerCase();
-
-        if(nameLower.includes(query)){
-
-            let regex = new RegExp("("+query+")","gi");
-
-            let highlighted = c.name.replace(regex,'<span class="highlight">$1</span>');
-
-            list.append(`
-                <li class="suggest-item"
-                    data-id="${c.id}"
-                    data-name="${c.name}"
-                    style="padding:6px; cursor:pointer; border-bottom:1px solid #eee;">
-                    ${highlighted}
-                </li>
-            `);
-
-        }
-
-    });
-
 });
 
+    const products = [
+        {% for p in items %}
+        {
+            id: "{{ p.id }}",
+            name: "{{ p.name|escapejs }}",
+            category: "{{ p.category.name|upper|escapejs }}",
+            stock: parseInt("{{ p.quantity|default:0 }}"),
+            base_price: parseFloat("{{ p.proforma_price.price|default:0 }}"),
+            tiers: [
+                {% if p.proforma_price.has_dynamic_price %}
+                    {% for tier in p.proforma_price.price_tiers.all %}
+                    { min_qty: {{ tier.min_quantity|default:0 }}, price: {{ tier.unit_price|default:0 }} },
+                    {% endfor %}
+                {% endif %}
+            ].sort((a, b) => b.min_qty - a.min_qty),
+            // 🔥 Map Nested CourierCharge -> CourierChargeTier
+            courier: {
+                "surface": [
+                    {% for sheet in p.courier_sheets.all %}{% if sheet.mode == 'surface' %}
+                        {% for tier in sheet.tiers.all %}
+                        { min: {{ tier.min_quantity }}, max: {{ tier.max_quantity|default:99999 }}, charge: {{ tier.charge }} },
+                        {% endfor %}
+                    {% endif %}{% endfor %}
+                ],
+                "air": [
+                    {% for sheet in p.courier_sheets.all %}{% if sheet.mode == 'air' %}
+                        {% for tier in sheet.tiers.all %}
+                        { min: {{ tier.min_quantity }}, max: {{ tier.max_quantity|default:99999 }}, charge: {{ tier.charge }} },
+                        {% endfor %}
+                    {% endif %}{% endfor %}
+                ]
+            }
+        },
+        {% endfor %}
+    ];
 
-/* ================= SHIPPING CUSTOMER LIVE SEARCH ================= */
+    /* ================= CORE CALCULATION LOGIC (Matched to Python Model) ================= */
+    const SHEET_CATEGORIES = ["THERMOFORMING SHEETS", "BAY MATERIALS"];
+    const PER_UNIT_KEYWORDS = ["PRINTER", "RESIN", "ANYCUBIC", "FILAMENT", "MACHINE"];
 
+    function calculateLiveValues() {
+        let grandCourier = 0;
+        let mode = $("#id_courier_mode").val();
 
+        let totalSheetQty = 0;
+        let sheetRuleProduct = null;
 
-$("#shipping-search").on("input", function(){
+        $('#items-table tbody tr').each(function() {
+            let row = $(this);
+            let productId = row.find('input[name$="-product"], select[name$="-product"]').val();
+            let qty = parseInt(row.find('input[name$="-quantity"]').val()) || 0;
+            let product = products.find(p => p.id == productId);
 
-    let query = $(this).val().toLowerCase();
+            if (product) {
+                // Update Stock Available Display
+                row.find('.available-stock-display').text(product.stock);
+                row.find('.available-stock-display').css('color', product.stock <= 0 ? 'red' : 'green');
 
-    let list = $("#shipping-suggestions");
+                // 1. Determine Unit Price (Tiered)
+                let unitPrice = product.base_price;
+                for (let tier of product.tiers) {
+                    if (qty >= tier.min_qty) {
+                        unitPrice = tier.price;
+                        break;
+                    }
+                }
+                row.find('.actual-unit-price-display').text('₹' + unitPrice.toFixed(2));
 
-    list.empty();
-
-    if(query.length === 0) return;
-
-    customers.forEach(function(c){
-
-        let nameLower = c.name.toLowerCase();
-
-        if(nameLower.includes(query)){
-
-            let regex = new RegExp("(" + query + ")", "gi");
-
-            let highlighted = c.name.replace(regex,'<span class="highlight">$1</span>');
-
-            list.append(`
-                <li class="shipping-item"
-                    data-id="${c.id}"
-                    data-name="${c.name}"
-                    style="padding:6px; cursor:pointer; border-bottom:1px solid #eee;">
-                    ${highlighted}
-                </li>
-            `);
-
-        }
-
-    });
-
-});
-
-  /* ================= PRODUCT MODAL ================= */
-  var productModal = $("#productModal");
-  var currentProductInput = null;
-  var currentProductLabel = null;
-
-  $(document).on("click", ".select-product-btn", function () {
-    currentProductInput = $(this).siblings("input[type=hidden]");
-    currentProductLabel = $(this).siblings(".product-label");
-    productModal.show();
-  });
-
-  $("#productModal .close").click(() => productModal.hide());
-
-  $("#category-select").change(function () {
-    let categoryId = $(this).val();
-    $("#product-select").empty().append('<option value="">-- Select Product --</option>');
-    if (categoryId) {
-      $.get("{% url 'get_inventory_by_category' %}", { category_id: categoryId }, function (data) {
-        data.products.forEach(function (p) {
-          $("#product-select").append(`<option value="${p.id}">${p.name}</option>`);
+                // 2. Logic Part A: Handle Grouped Sheets
+                if (SHEET_CATEGORIES.includes(product.category)) {
+                    totalSheetQty += qty;
+                    if (!sheetRuleProduct) sheetRuleProduct = product;
+                }
+                // 2. Logic Part B: Handle Per Unit items & others individually
+                else {
+                    let tiers = product.courier[mode] || [];
+                    // Find matching slab
+                    let tier = tiers.find(t => qty >= t.min && qty <= t.max);
+                    if (tier) {
+                        let isPerUnit = PER_UNIT_KEYWORDS.some(k => product.category.includes(k));
+                        grandCourier += isPerUnit ? (tier.charge * qty) : tier.charge;
+                    }
+                }
+            } else {
+                row.find('.available-stock-display').text('0');
+                row.find('.actual-unit-price-display').text('₹0.00');
+            }
         });
-      });
-    }
-  });
 
-  $("#confirm-product").click(function () {
-    let id = $("#product-select").val();
-    let name = $("#product-select option:selected").text();
-    if (id && currentProductInput) {
-      currentProductInput.val(id);
-      currentProductLabel.text(name);
-    }
-    productModal.hide();
-  });
-
-const products = [
-{% for p in items %}
-{
-    id: "{{ p.id }}",
-    name: "{{ p.name|escapejs }}",
-    category: "{{ p.category.name|escapejs }}"
-},
-{% endfor %}
-];
-
-  /* ================= PRODUCT SEARCHING  ================= */
-
-$("#product-search").on("input", function(){
-
-    let query = $(this).val().toLowerCase();
-    let list = $("#product-suggestions");
-
-    list.empty();
-
-    if(query.length === 0) return;
-
-    products.forEach(function(p){
-
-        if(p.name.toLowerCase().includes(query)){
-
-            let regex = new RegExp("(" + query + ")", "gi");
-            let highlighted = p.name.replace(regex,'<span class="highlight">$1</span>');
-
-            list.append(`
-                <li class="product-item"
-                    data-id="${p.id}"
-                    data-name="${p.name}"
-                    style="padding:6px; cursor:pointer; border-bottom:1px solid #eee;">
-                    ${highlighted}
-                    <small style="color:#888"> (${p.category})</small>
-                </li>
-            `);
-
+        // 3. Final Step: Apply Sheet Slab once for the summed quantity
+        if (totalSheetQty > 0 && sheetRuleProduct) {
+            let tiers = sheetRuleProduct.courier[mode] || [];
+            let tier = tiers.find(t => totalSheetQty >= t.min && totalSheetQty <= t.max);
+            if (tier) grandCourier += tier.charge;
         }
 
+        $("#actual-courier-display").text('₹' + grandCourier.toFixed(2));
+    }
+
+    function checkStockLevels() {
+        let hasZeroStock = false;
+        $('#items-table tbody tr').each(function() {
+            let stock = parseInt($(this).attr('data-current-stock')) || 0;
+            let qty = parseInt($(this).find('input[name$="-quantity"]').val()) || 0;
+            if (stock <= 0 || qty > stock) {
+                hasZeroStock = true;
+                $(this).css('background-color', '#fff3f3');
+            } else { $(this).css('background-color', 'transparent'); }
+        });
+        if (hasZeroStock) $('#stock-warning-banner').slideDown();
+        else $('#stock-warning-banner').slideUp();
+    }
+
+    /* ================= DYNAMIC TABLE ACTIONS ================= */
+    function reIndexRows() {
+        $('#items-table tbody tr').each(function(index) {
+            $(this).find('input, select, textarea').each(function() {
+                if ($(this).attr('name')) {
+                    let name = $(this).attr('name').replace(/form-\d+-/, 'form-' + index + '-');
+                    $(this).attr('name', name).attr('id', 'id_' + name);
+                }
+            });
+        });
+        $("#id_form-TOTAL_FORMS").val($('#items-table tbody tr').length);
+    }
+
+    $(document).on("click", ".add-item-btn", function() {
+        let newForm = $(".item-form:first").clone();
+        newForm.find("input").val("");
+        newForm.find(".product-label").text("None");
+        newForm.find(".available-stock-display").text("0").css('color', 'black');
+        newForm.find(".actual-unit-price-display").text("₹0.00");
+        newForm.removeAttr('data-current-stock').css('background-color', 'transparent');
+        newForm.find("td:last").html('<button type="button" class="remove-item">Remove</button>');
+        $("#items-table tbody").append(newForm);
+        reIndexRows();
     });
 
-});
+    $(document).on("click", ".remove-item", function() {
+        if($('#items-table tbody tr').length > 1) {
+            $(this).closest("tr").remove();
+            reIndexRows();
+            calculateLiveValues();
+            checkStockLevels();
+        }
+    });
 
+    /* ================= PRODUCT SELECTION ================= */
+    var currentProductInput, currentProductLabel, currentProductRow;
+    $(document).on("click", ".select-product-btn", function () {
+        let td = $(this).closest('td');
+        currentProductInput = td.find('input[type=hidden], select');
+        currentProductLabel = td.find(".product-label");
+        currentProductRow = $(this).closest('tr');
+        $("#productModal").show();
+    });
 
-/* ===== CLICK PRODUCT FROM SEARCH ===== */
-
-$(document).on("click",".product-item",function(){
-
-    let id = $(this).data("id");
-    let name = $(this).data("name");
-
-    if(currentProductInput){
+    $(document).on("click", ".product-item", function(){
+        let id = $(this).data("id");
+        let p = products.find(prod => prod.id == id);
         currentProductInput.val(id);
-    }
-
-    if(currentProductLabel){
-        currentProductLabel.text(name);
-    }
-
-    $("#product-search").val("");
-    $("#product-suggestions").empty();
-
-    $("#productModal").hide();
-
-});
-
-
-
-  /* ================= ADD/REMOVE ITEMS ================= */
-  $("#add-item").click(function () {
-    let totalForms = $("#id_form-TOTAL_FORMS");
-    let formCount = parseInt(totalForms.val());
-    let newForm = $(".item-form:first").clone(true);
-
-    newForm.find("input, select").each(function () {
-      let name = $(this).attr("name").replace("-0-", "-" + formCount + "-");
-      let id = "id_" + name;
-      $(this).attr({ name: name, id: id }).val("");
+        currentProductRow.attr('data-current-stock', p.stock);
+        currentProductLabel.text(p.name + (p.stock <= 0 ? " (OUT OF STOCK)" : ""));
+        $("#productModal").hide();
+        calculateLiveValues();
+        checkStockLevels();
     });
 
-    newForm.find(".product-label").text("None");
-    newForm.find("input[type=hidden]").val("");
-    newForm.find("td:last").html('<button type="button" class="remove-item">Remove</button>');
+    /* ================= SEARCH & MODALS ================= */
+    $(".close").click(() => $(".modal").hide());
 
-    $("#items-table tbody").append(newForm);
-    totalForms.val(formCount + 1);
-  });
+    $("#product-search").on("input", function(){
+        let query = $(this).val().toLowerCase();
+        let list = $("#product-suggestions").empty();
+        products.forEach(p => {
+            if(p.name.toLowerCase().includes(query)){
+                list.append(`<li class="product-item" data-id="${p.id}" style="padding:12px; cursor:pointer; border-bottom:1px solid #eee; display: flex; justify-content: space-between; align-items:center; color:#000;">
+                    <div><b>${p.name}</b><br><small>${p.category}</small></div>
+                    <div style="text-align:right;"><b>₹${p.base_price}</b><br><small style="color:${p.stock > 0 ? '#27ae60' : '#e74c3c'}">Stock: ${p.stock}</small></div>
+                </li>`);
+            }
+        });
+    });
 
-  $(document).on("click", ".remove-item", function () {
-    $(this).closest("tr").remove();
-    let totalForms = $("#id_form-TOTAL_FORMS");
-    totalForms.val(parseInt(totalForms.val()) - 1);
-  });
+    $("#customer-search, #shipping-search").on("input", function(){
+        let isShipping = $(this).attr('id') === 'shipping-search';
+        let query = $(this).val().toLowerCase();
+        let list = (isShipping ? $("#shipping-suggestions") : $("#customer-suggestions")).empty();
+        customers.forEach(c => {
+            if(c.name.toLowerCase().includes(query))
+                list.append(`<li class="${isShipping ? 'shipping-item' : 'suggest-item'}" data-id="${c.id}" data-name="${c.name}" style="color:#000;">${c.name}</li>`);
+        });
+    });
 
+    $(document).on("click", ".suggest-item", function(){
+        $("#id_customer").val($(this).data("id"));
+        $("#billing-selected-name").text($(this).data("name"));
+    });
+    $(document).on("click", ".shipping-item", function(){
+        $("#id_shipping_customer").val($(this).data("id"));
+        $("#shipping-selected-name").text($(this).data("name"));
+    });
+    $("#confirm-customer").click(() => {
+        $("#selected-customer-name").text($("#billing-selected-name").text());
+        $("#selected-shipping-name").text($("#shipping-selected-name").text());
+        $("#customerModal").hide();
+    });
+    $("#select-customer-btn").click(() => $("#customerModal").show());
+
+    /* ================= INITIALIZATION ================= */
+    $(document).on("input", 'input[name$="-quantity"]', () => { calculateLiveValues(); checkStockLevels(); });
+    $(".courier-btn").click(function() {
+        $(".courier-btn").removeClass("active");
+        $(this).addClass("active");
+        $("#id_courier_mode").val($(this).data("mode"));
+        calculateLiveValues();
+    });
+
+    calculateLiveValues();
+    checkStockLevels();
 });
-    /* ================= COURIER MODE TOGGLE ================= */
-const courierInput = $("#id_courier_mode");
 
-// Default
-courierInput.val("surface");
-
-$(".courier-btn").click(function () {
-  $(".courier-btn").removeClass("active");
-  $(this).addClass("active");
-
-  const mode = $(this).data("mode");
-  $("#id_courier_mode").val(mode);
-
-  console.log("Courier mode set to:", mode); // DEBUG
+// Add this to your script in create_proforma.html
+$('form').on('submit', function() {
+    // Get which button was clicked
+    var action = $(document.activeElement).val();
+    // Add a hidden input so the server definitely gets the action
+    $(this).append('<input type="hidden" name="action" value="' + action + '">');
+    // Now disable
+    $(this).find('button[type="submit"]').prop('disabled', true);
 });
 
-
-/* ================= SHIPPING MODAL ================= */
-
-var shippingModal = $("#shippingModal");
-
-$("#select-shipping-btn").click(function(){
-    shippingModal.show();
+// Re-enable buttons when the page is shown (handles Back button / Cache)
+window.addEventListener("pageshow", function (event) {
+    $('button[type="submit"]').prop('disabled', false);
 });
 
-$("#shippingModal .close").click(function(){
-    shippingModal.hide();
-});
-
-$("#confirm-shipping").click(function () {
-
-    let id = $("#id_shipping_customer").val();
-    let name = $("#selected-shipping-name").text();
-
-    if (!id) {
-        alert("Please select shipping address");
-        return;
+// Improve your submit handler
+$('form').on('submit', function() {
+    var action = $(document.activeElement).val();
+    if (action) {
+        $(this).append('<input type="hidden" name="action" value="' + action + '">');
     }
-
-    $("#shippingModal").hide();
-
+    // Only disable after a tiny delay so the form actually submits
+    setTimeout(() => {
+        $(this).find('button[type="submit"]').prop('disabled', true);
+    }, 50);
 });
-
-$(document).on("click",".suggest-item",function(){
-
-    let id = $(this).data("id");
-    let name = $(this).data("name");
-
-    $("#id_customer").val(id);
-    $("#billing-selected-name").text(name);
-
-});
-
-  $(document).on("click",".shipping-item",function(){
-
-    let id = $(this).data("id");
-    let name = $(this).data("name");
-
-    $("#id_shipping_customer").val(id);
-    $("#shipping-selected-name").text(name);
-
-});
-
- $("#confirm-customer").click(function(){
-
-    let billingName = $("#billing-selected-name").text();
-    let shippingName = $("#shipping-selected-name").text();
-
-    if($("#id_customer").val() === ""){
-        alert("Please select billing customer");
-        return;
-    }
-
-    $("#selected-customer-name").text(billingName);
-
-    if($("#id_shipping_customer").val()){
-        $("#selected-shipping-name").text(shippingName);
-    }
-
-    $("#customerModal").hide();
-
-});
-
 </script>
 
 </body>

@@ -3,231 +3,423 @@
 {% block content %}
 
 <style>
-    h2 { color:white; font-size: 1.8rem; margin-top:20px; margin-left:40px;}
-
-    /* Table Wrapper for Horizontal Scroll on Mobile */
-    .table-container {
-      width: 95%;
-      margin: 20px auto;
-      overflow-x: auto;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    :root {
+        --primary: #ffc107; --bg-body: #121212; --bg-card: #1e1e1e;
+        --bg-header: #2d2d2d; --text-main: #e0e0e0; --border-color: #333;
+        --success: #28a745; --danger: #dc3545; --info: #17a2b8;
     }
 
-    table { width: 100%; min-width: 900px; border-collapse: collapse; }
+    .pi-main-container { font-family: 'Inter', sans-serif; background-color: var(--bg-body); color: var(--text-main); padding: 15px; min-height: 100vh; }
 
-    /* Theme Colors */
-    .bg-custom-dark { background-color: #595555 !important; color: white !important; }
-    .main-row td { color: white !important; border-bottom: 1px solid #444; padding: 12px 8px; }
-
-    /* Header Filter Styling */
-    th { position: relative; color: #fff; background-color: #212529 !important; padding: 12px 8px !important; }
-    .filter-symbol { cursor: pointer; padding-left: 5px; color: #ffc107; font-size: 1rem; }
-
-    .filter-popup {
-        display: none; position: absolute; background: #333; border: 1px solid #777;
-        padding: 8px; z-index: 100; top: 100%; left: 0; min-width: 160px;
+    /* --- FILTERS --- */
+    .filters-section {
+        background: var(--bg-card); padding: 15px; border-radius: 12px; margin-bottom: 20px;
+        display: flex; flex-wrap: wrap; gap: 10px; border: 1px solid var(--border-color); align-items: flex-end;
     }
-    .filter-popup.show { display: block; }
-    .filter-popup input, .filter-popup select {
-        width: 100%; background: #222; color: white; border: 1px solid #555; padding: 4px; font-size: 0.85rem;
+    .filter-item { display: flex; flex-direction: column; gap: 4px; }
+    .filter-item label { font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: bold; }
+    .filter-item input, .filter-item select {
+        background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 6px; outline: none; font-size: 0.8rem;
     }
 
-    .clear-btn { font-size: 0.8rem; color: #ff6b6b; text-decoration: none; margin-left: 20px; }
+    /* --- TABLE UI --- */
+    .table-responsive-wrapper { background: var(--bg-card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); }
+    .table-scroll { overflow-x: auto; width: 100%; }
+    table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+    th { background: var(--bg-header); color: #888; text-align: left; padding: 12px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
+    tr.row-main { border-bottom: 1px solid var(--border-color); transition: 0.3s; }
+    tr.row-main:hover { background-color: rgba(255, 193, 7, 0.05); }
+    td { padding: 12px; vertical-align: middle; font-size: 0.85rem; }
 
-    /* Reason Cell Logic */
-    .reason-cell { max-width: 250px; vertical-align: top; }
-    .text-content { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
-    .text-content.expanded { -webkit-line-clamp: unset; }
-    .read-more-text { font-size: 11px; color: #ffc107; cursor: pointer; margin-top: 2px; }
+    /* --- ACTIONS --- */
+    .btn-group { display: flex; gap: 5px; }
+    .btn-core { padding: 6px 12px; border-radius: 5px; font-size: 0.7rem; font-weight: 700; cursor: pointer; border: none; color: white; text-decoration: none; display: inline-flex; align-items: center; transition: 0.2s; }
+    .btn-appr { background: var(--success); }
+    .btn-rejt { background: var(--danger); }
+    .btn-remk { background: var(--info); }
+    .btn-detl { background: #444; }
+    .btn-core:hover { transform: translateY(-1px); filter: brightness(1.1); }
 
-    /* Action Buttons Mobile Fix */
-    .action-btns { display: flex; gap: 5px; }
+    /* --- NESTED TABLE --- */
+    .expand-row { display: none; background: #181818; }
+    .expand-row.active { display: table-row; }
+    .nested-container { padding: 20px; border-left: 3px solid var(--primary); margin: 10px; background: #111; border-radius: 0 8px 8px 0; }
+    .inner-table { width: 100%; background: #222; border-collapse: collapse; }
+    .inner-table th { background: #333; color: #aaa; padding: 10px; font-size: 0.75rem; text-transform: none; }
+    .inner-table td { padding: 10px; border-bottom: 1px solid #333; font-size: 0.8rem; }
 
-    @media (max-width: 768px) {
-      h2 { font-size: 1.4rem; margin-left: 15px; }
-      .table-container { width: 100%; border-radius: 0; }
-    }
+    /* Highlighted Courier Row */
+    .row-courier { background: rgba(23, 162, 184, 0.05); font-weight: bold; border-top: 2px solid #333; }
+
+    /* --- MODALS --- */
+/* Unified Modal Background */
+.custom-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+/* Triggered by JS */
+.custom-overlay.active { display: flex; }
+
+/* Communication Bubbles */
+.bubble { padding: 10px 14px; border-radius: 12px; font-size: 13px; color: #fff; line-height: 1.4; max-width: 85%; margin-bottom: 8px; }
+.rtag { font-size: 9px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; display: block; letter-spacing: 0.5px; }
+
+.b-sales { background: #1e3a8a; border-left: 4px solid #3b82f6; align-self: flex-start; }
+.b-accounts { background: #064e3b; border-left: 4px solid #10b981; align-self: flex-start; }
+.b-admin { background: #450a0a; border-left: 4px solid #ef4444; align-self: flex-start; }
+
+/* Notification Dot Styling */
+.btn-blue { position: relative; } /* Needed for absolute positioning of dot */
+
+.notification-dot {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    background-color: #ff4d4d; /* Bright Red */
+    border: 2px solid white;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 5px rgba(255, 77, 77, 0.8);
+    animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+    70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+}
+
 </style>
 
-<div class="d-flex align-items-center flex-wrap">
-    <h2>All Proforma Price Change Requests</h2>
-    <a href="{{ request.path }}" class="clear-btn">[Clear All Filters]</a>
-</div>
+<div class="pi-main-container">
+    <div class="top-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-weight: 700; border-left: 4px solid var(--primary); padding-left: 15px; margin: 0;">Price Change Dashboard</h2>
+        <a href="{{ request.path }}" class="clear-btn" style="color: #888; text-decoration: none; font-size: 0.75rem; border: 1px solid #444; padding: 5px 10px; border-radius: 4px;">Reset Filters</a>
+    </div>
 
-<!-- Hidden Main Filter Form -->
-<form method="get" id="filterForm" action=""></form>
-
-<div class="table-container">
-<table>
-  <thead>
-    <tr class="table-dark">
-      <th>ID <span class="filter-symbol" onclick="toggleFilter(event, 'f-id')">≡</span>
-        <div class="filter-popup" id="f-id">
-            <input type="text" name="f_id" form="filterForm" value="{{ request.GET.f_id }}" placeholder="ID..." onchange="this.form.submit()">
-        </div>
-      </th>
-      <th>Invoice <span class="filter-symbol" onclick="toggleFilter(event, 'f-inv')">≡</span>
-        <div class="filter-popup" id="f-inv">
-            <input type="text" name="f_inv" form="filterForm" value="{{ request.GET.f_inv }}" placeholder="Inv #" onchange="this.form.submit()">
-        </div>
-      </th>
-      <th>Requested By <span class="filter-symbol" onclick="toggleFilter(event, 'f-user')">≡</span>
-        <div class="filter-popup" id="f-user">
-            <!-- Datalist for Salesperson suggestions -->
-            <input type="text" name="f_user" form="filterForm" list="salespersons" value="{{ request.GET.f_user }}" placeholder="Name..." onchange="this.form.submit()">
-            <datalist id="salespersons">
-                {% for name in salespersons %}<option value="{{ name }}">{% endfor %}
-            </datalist>
-        </div>
-      </th>
-      <th>Status <span class="filter-symbol" onclick="toggleFilter(event, 'f-stat')">≡</span>
-        <div class="filter-popup" id="f-stat">
-            <select name="f_status" form="filterForm" onchange="this.form.submit()">
+    <!-- ---------------- FILTERS ---------------- -->
+    <form method="get" class="filters-section">
+        <div class="filter-item"><label>Invoice #</label><input type="text" name="f_inv" value="{{ request.GET.f_inv }}"></div>
+        <div class="filter-item"><label>User</label><input type="text" name="f_user" value="{{ request.GET.f_user }}"></div>
+        <div class="filter-item">
+            <label>Status</label>
+            <select name="f_status" onchange="this.form.submit()">
                 <option value="">All</option>
                 <option value="pending" {% if request.GET.f_status == 'pending' %}selected{% endif %}>Pending</option>
                 <option value="approved" {% if request.GET.f_status == 'approved' %}selected{% endif %}>Approved</option>
                 <option value="rejected" {% if request.GET.f_status == 'rejected' %}selected{% endif %}>Rejected</option>
             </select>
         </div>
-      </th>
-      <th>Reason</th>
-      <th>Date <span class="filter-symbol" onclick="toggleFilter(event, 'f-date')">≡</span>
-        <div class="filter-popup" id="f-date">
-            <input type="date" name="f_date" form="filterForm" value="{{ request.GET.f_date }}" onchange="this.form.submit()">
-        </div>
-      </th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for req in requests %}
-    <tr class="main-row bg-custom-dark">
-      <td>{{ req.id }}</td>
-      <td>#{{ req.invoice.id }}</td>
-      <td>{{ req.requested_by.username }}</td>
-      <td>
-        {% if req.status == 'pending' %}
-          <span class="badge bg-warning text-dark">Pending</span>
-        {% elif req.status == 'approved' %}
-          <span class="badge bg-success">Approved</span>
-        {% else %}
-          <span class="badge bg-danger">Rejected</span>
-        {% endif %}
-      </td>
-      <td class="reason-cell">
-        <div class="reason-wrapper">
-            <span class="text-content">{{ req.reason|default:"-" }}</span>
-            {% if req.reason|length > 40 %}
-                <span class="read-more-text">read more</span>
-            {% endif %}
-        </div>
-      </td>
-      <td>{{ req.created_at|date:"d M Y, H:i" }}</td>
-      <td>
-        {% if req.status == "pending" %}
-          <div class="action-btns">
-            <!-- Separate POST forms for Approve/Reject to prevent CSRF conflict -->
-            <form action="{% url 'proforma_price_change_approve' req.id %}" method="post">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm">Approve</button>
-            </form>
-            <form action="{% url 'proforma_price_change_reject' req.id %}" method="post">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
-            </form>
-          </div>
-        {% else %}
-          <div style="line-height:1.2">
-            <small>By: <b>{{ req.reviewed_by.username }}</b></small><br>
-            <small style="font-size: 0.75rem; opacity: 0.8;">{{ req.reviewed_at|date:"d M, H:i" }}</small>
-          </div>
-        {% endif %}
-      </td>
-    </tr>
+        <button type="submit" class="btn-core btn-appr" style="background: var(--primary); color: #000; height: 36px; margin-left: 10px; padding: 0 20px;">Apply</button>
+    </form>
 
-    <!-- Expandable Row -->
-    <tr class="table-light">
-      <td colspan="7" class="p-0">
-        <div class="p-2 border-bottom">
-            <button class="btn btn-sm btn-outline-secondary" type="button" style="background-color: #fff !important;"
-                    data-bs-toggle="collapse" data-bs-target="#details-{{ req.id }}">
-              View Requested Changes
-            </button>
-        </div>
-        <div class="collapse" id="details-{{ req.id }}">
-          <div class="p-3">
-            <table class="table table-sm table-bordered bg-white mb-0">
-                <thead class="table-secondary">
-                  <tr>
-                    <th>Item ID</th>
-                    <th>Product</th>
-                    <th>Old Price</th>
-                    <th>Requested Price</th>
-                  </tr>
+    <div class="table-responsive-wrapper">
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Inv # / Customer</th>
+                        <th>Courier Charge</th>
+                        <th>Requested By</th>
+                        <th>Status</th>
+                        <th>Duration</th>
+                        <th>Reviewed By</th>
+                        <th>Actions</th>
+                    </tr>
                 </thead>
-                <tbody>
-              {% for item in req.invoice.items.all %}
-                {% with new_price=req.requested_product_prices|get_item:item.id|stringformat:"s" %}
-                  {% if new_price %}
-                        <tr>
-                          <td style="background-color: white; color:black;">{{ item.id }}</td>
-                          <td style="background-color: white; color:black;">{{ item.product.name }}</td>
-                          <td style="background-color: white; color:black;">₹{{ item.unit_price|floatformat:2 }}</td>
-                          <td class="text-primary fw-bold" style="background-color: white; color:black;">₹{{ new_price|floatformat:2 }}</td>
-                        </tr>
-                      {% endif %}
-                    {% endwith %}
-                  {% endfor %}
+<tbody>
+    {% regroup requests by invoice as requests_by_invoice %}
 
-                  {% if req.requested_courier_charge is not None %}
-                  <tr class="table-info">
-                    <td colspan="2" style="background-color: white; color:black;"><strong>Courier Charge</strong></td>
-                    <td style="background-color: white; color:black;">₹{{ req.invoice.courier_charge|floatformat:2 }}</td>
-                    <td class="text-primary fw-bold" style="background-color: white; color:black;">₹{{ req.requested_courier_charge|floatformat:2 }}</td>
-                  </tr>
-                  {% endif %}
-                </tbody>
-            </table>
-          </div>
-        </div>
-      </td>
-    </tr>
+    {% for group in requests_by_invoice %}
+        {% with invoice=group.grouper requests_in_group=group.list first_req=group.list.0 %}
+
+        <!-- ---------------- MAIN ROW (PER INVOICE) ---------------- -->
+        <tr class="row-main">
+            <td style="color: var(--primary); font-weight: bold;">#{{ invoice.id }}</td>
+            <td>
+                <div style="font-weight: 700;">#{{ invoice.id }}</div>
+                <div style="font-size: 0.7rem; color: #888;">{{ invoice.customer.name }}</div>
+
+                <div style="font-size: 0.72rem; color: #aaa; margin-top: 4px;">
+                    📋 Includes {{ requests_in_group|length }} change request(s)
+                </div>
+            </td>
+            <td>
+                {% for r in requests_in_group %}
+                    {% if not r.is_product_request and r.requested_courier_charge is not None %}
+                        <div style="margin-bottom: 2px;">
+                            <span style="text-decoration: line-through; opacity: 0.4; font-size: 0.75rem;">₹{{ r.invoice.courier_charge|floatformat:0 }}</span>
+                            <b style="color: var(--info); font-size: 0.8rem;"> → ₹{{ r.requested_courier_charge|floatformat:0 }}</b>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </td>
+            <td>{{ first_req.requested_by.username }}</td>
+            <td>
+                <!-- Group Status: Shows Pending if any item is pending -->
+                <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 3px 8px; border-radius: 50px; color: var(--primary); border-color: var(--primary);">
+                    PENDING
+                </span>
+
+                {% if invoice.has_msrp_warning %} <!-- Logic check if any item is below MSRP -->
+                    <br><small style="color: var(--danger); font-size: 0.6rem;">⚠️ CONTAINS BELOW MSRP</small>
+                {% endif %}
+            </td>
+            <td>
+                <small style="color: var(--primary); font-weight: bold;">⏳ {{ first_req.created_at|timesince }} (Running)</small>
+            </td>
+            <td>
+                <span style="color: #444; font-size: 0.7rem; font-style: italic;">Pending Review</span>
+            </td>
+            <td>
+                <div class="btn-group">
+                    <!-- Note: Approval buttons moved inside Details for individual control -->
+                    <button class="btn-core btn-remk" onclick="openRemarkModal('{{ invoice.id }}')">
+                        Remark
+                        {% with last_remark=invoice.remarks.last %}
+                            {% if last_remark and last_remark.user != request.user %}
+                                <span class="notification-dot" id="dot-{{ invoice.id }}"></span>
+                            {% endif %}
+                        {% endwith %}
+                    </button>
+                    <button class="btn-core btn-detl" onclick="toggleDetails('det-inv-{{ invoice.id }}')">Details</button>
+                </div>
+            </td>
+        </tr>
+
+        <!-- ---------------- NESTED DETAILS ROW (SHOWS ALL ITEMS) ---------------- -->
+        <tr id="det-inv-{{ invoice.id }}" class="expand-row">
+            <td colspan="8">
+                <div class="nested-container">
+                    <table class="inner-table">
+                        <thead>
+                            <tr>
+                                <th>Requested Item</th>
+                                <th style="text-align: center;">Decision</th>
+                                <th style="text-align: right;">Recommended</th>
+                                <th style="text-align: right;">Requested</th>
+                                <th style="text-align: right;">MSRP</th>
+                                <th style="text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in requests_in_group %}
+                            <tr>
+                                <td>
+                                    {% if req.is_product_request %}
+                                        <strong>📦 Product:</strong> {{ req.product.name }}
+                                    {% else %}
+                                        <strong>🚚 Courier:</strong> Courier Charge Change
+                                    {% endif %}
+                                    <div style="font-size: 0.7rem; color: #888; font-style: italic; margin-top: 4px;">
+                                        Reason: {{ req.reason|default:"No reason provided." }}
+                                    </div>
+                                </td>
+                                <td style="text-align: center;">
+                                    {% if req.status == 'pending' %}
+                                        <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="form-{{ req.id }}">
+                                            {% csrf_token %}
+                                            <input type="radio" name="status_{{ req.id }}" value="approved" checked> Appr
+                                            <input type="radio" name="status_{{ req.id }}" value="rejected"> Reject
+                                        </form>
+                                    {% else %}
+                                        <span style="font-weight: bold; color: {% if req.status == 'approved' %}var(--success){% else %}var(--danger){% endif %};">
+                                            {{ req.status|upper }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right; opacity: 0.5;">₹{{ req.recommended_price|default:invoice.courier_charge }}</td>
+                                <td style="text-align: right; color: var(--info); font-weight: bold;">₹{{ req.requested_price|default:req.requested_courier_charge }}</td>
+                                <td style="text-align: right; {% if req.is_under_msrp %}color: var(--danger); font-weight: bold;{% endif %}">
+                                    {% if req.msrp_snapshot %}₹{{ req.msrp_snapshot }}{% else %}-{% endif %}
+                                </td>
+                                <td style="text-align: center;">
+                                    {% if req.status == 'pending' %}
+                                        <div class="btn-group">
+                                            {% if req.is_under_msrp and not user.is_superuser %}
+                                                <button type="submit" form="form-{{ req.id }}" class="btn-core" style="background: var(--warning); padding: 2px 8px; font-size: 0.6rem;">Notify Nitin</button>
+                                            {% else %}
+                                                <button type="submit" form="form-{{ req.id }}" class="btn-core btn-appr" style="padding: 2px 8px; font-size: 0.6rem;">SUBMIT</button>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </td>
+        </tr>
+        {% endwith %}
     {% endfor %}
-  </tbody>
-</table>
+</tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
+
+     UNIFIED REMARK MODAL (Add to all 3 files)
+     ========================================== -->
+<div id="globalRemarkModal" class="custom-overlay">
+    <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            <h5 style="margin:0; color: #ffc107;">💬 Communication Hub</h5>
+            <button onclick="closeRemarkModal()" style="background:none; border:none; color:#888; cursor:pointer; font-size:24px;">&times;</button>
+        </div>
+
+        <div id="modalChatHistory" style="height:320px; overflow-y:auto; background:#111; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; flex-direction:column; border:1px solid #333;">
+            <!-- History loads here -->
+        </div>
+
+        <input type="hidden" id="modalInvoiceId">
+        <textarea id="modalRemarkInput" style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; border-radius:8px; padding:10px; outline:none; resize:none;" rows="3" placeholder="Message Sales or Accounts..."></textarea>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="closeRemarkModal()">Cancel</button>
+            <button type="button" class="btn btn-sm btn-warning fw-bold" id="sendBtn" onclick="submitGlobalRemark()">Send Message</button>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- REJECT MODAL -->
+<div id="rejectOverlay" class="custom-overlay">
+    <div class="modal-box" style="border-color: var(--danger);">
+        <h3 style="color: var(--danger);">Reject Request</h3>
+        <p id="rejectInfo" style="font-size: 0.8rem; color: #888; margin-bottom: 10px;"></p>
+        <form id="rejectForm" method="post">
+            {% csrf_token %}
+            <textarea name="review_remark" id="rejectInput" class="remark-textarea" rows="4" required placeholder="Enter rejection reason..."></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn-core btn-detl" onclick="closeReject()">Cancel</button>
+                <button type="submit" class="btn-core btn-rejt">Confirm Reject</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+
 <script>
-// Filter Popups Logic
-function toggleFilter(event, elementId) {
-    event.stopPropagation();
-    document.querySelectorAll('.filter-popup').forEach(el => {
-        if (el.id !== elementId) el.classList.remove('show');
-    });
-    document.getElementById(elementId).classList.toggle('show');
+// --- PREVIOUS LOGIC (KEEP) ---
+function toggleDetails(id) { document.getElementById(id).classList.toggle('active'); }
+
+function triggerReject(reqId, invId) {
+    document.getElementById('rejectForm').action = "{% url 'proforma_price_change_reject' 0 %}".replace('0', reqId);
+    document.getElementById('rejectInfo').innerHTML = "Rejecting Request for <b>Invoice #" + invId + "</b>";
+    document.getElementById('rejectInput').value = "";
+    document.getElementById('rejectOverlay').classList.add('active'); // Changed to use .active class
 }
 
-// Close popups on click outside
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.filter-popup')) {
-        document.querySelectorAll('.filter-popup').forEach(el => el.classList.remove('show'));
-    }
-});
+function closeReject() {
+    document.getElementById('rejectOverlay').classList.remove('active');
+}
 
-// Reason Text Expansion
-document.querySelectorAll(".reason-cell").forEach(function(cell) {
-    let text = cell.querySelector(".text-content");
-    let readMore = cell.querySelector(".read-more-text");
-    if(readMore){
-        const toggle = () => {
-            text.classList.toggle("expanded");
-            readMore.textContent = text.classList.contains("expanded") ? "read less" : "read more";
-        };
-        text.addEventListener("click", toggle);
-        readMore.addEventListener("click", toggle);
+// --- NEW UNIFIED REMARK LOGIC ---
+function openRemarkModal(invoiceId) {
+    document.getElementById('modalInvoiceId').value = invoiceId;
+    document.getElementById('globalRemarkModal').classList.add('active');
+    document.getElementById('modalChatHistory').innerHTML = '<div style="color:#666; text-align:center; padding-top:50px;">Loading...</div>';
+        // --- NEW: Hide the notification dot when opened ---
+    const dot = document.getElementById('dot-' + invoiceId);
+    if (dot) {
+        dot.style.display = 'none';
     }
-});
+    // --------------------------------------------------
+
+    loadRemarks(invoiceId);
+}
+
+function closeRemarkModal() {
+    document.getElementById('globalRemarkModal').classList.remove('active');
+}
+
+function loadRemarks(invoiceId) {
+    // Generate the correct URL using Django's URL tag
+    const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
+
+    fetch(getUrl)
+        .then(r => r.json())
+        .then(data => {
+            const historyBox = document.getElementById('modalChatHistory');
+            historyBox.innerHTML = "";
+
+            if (data.remarks.length === 0) {
+                historyBox.innerHTML = '<div style="color:#444; text-align:center; padding-top:50px;">No conversation yet.</div>';
+            }
+
+            data.remarks.forEach(r => {
+                const bClass = `b-${r.role}`;
+                historyBox.innerHTML += `
+                    <div class="bubble ${bClass}">
+                        <span class="rtag">${r.role} • ${r.time}</span>
+                        <strong>${r.user}:</strong> ${r.text}
+                    </div>`;
+            });
+            historyBox.scrollTop = historyBox.scrollHeight;
+        });
+}
+
+function submitGlobalRemark() {
+    const invId = document.getElementById('modalInvoiceId').value;
+    const text = document.getElementById('modalRemarkInput').value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('invoice_id', invId);
+    formData.append('remark', text);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    // Generate the correct URL using Django's URL tag
+    const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
+
+    fetch(postUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('404 or 500 error');
+        return r.json();
+    })
+    .then(data => {
+        if(data.status === 'ok') {
+            document.getElementById('modalRemarkInput').value = "";
+            loadRemarks(invId);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("Check if URL is correct in urls.py");
+    })
+    .finally(() => btn.disabled = false);
+}
+
+
+// Close modals when clicking outside
+window.onclick = function(e) {
+    const remarkModal = document.getElementById('globalRemarkModal');
+    const rejectModal = document.getElementById('rejectOverlay');
+    if (e.target == remarkModal) closeRemarkModal();
+    if (e.target == rejectModal) closeReject();
+}
+
 </script>
-
-{% endblock %}
+{% endblock %} <!-- 👈 ADD THIS AT THE VERY BOTTOM -->

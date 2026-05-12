@@ -304,21 +304,34 @@ Contact : {{ invoice.customer.phone }}
 </div>
 
 <div>
-<b>Shipping Address<br><br>
-{% if invoice.customer.shipping_address %}
-{{ invoice.customer.name }}<br>
-{{ invoice.customer.shipping_address }}<br>
-{{ invoice.customer.city }} - {{ invoice.customer.pin_code }}<br>
-{{ invoice.customer.state }}<br>
-Contact : {{ invoice.customer.phone }}
-{% else %}
-{{ invoice.customer.name }}<br>
-{{ invoice.customer.address }}<br>
-{{ invoice.customer.city }} - {{ invoice.customer.pin_code }}<br>
-{{ invoice.customer.state }}<br>
-Contact : {{ invoice.customer.phone }}
-{% endif %}
-</b>
+    <b>Ship To<br><br>
+
+    {% if invoice.shipping_customer and invoice.shipping_customer.id != invoice.customer.id %}
+        <!-- CASE 1: A completely different Customer profile was selected -->
+        {{ invoice.shipping_customer.name }}<br>
+        {{ invoice.shipping_customer.address }}<br>
+        {{ invoice.shipping_customer.district }} - {{ invoice.shipping_customer.pincode }}<br>
+        {{ invoice.shipping_customer.state }}<br>
+        Mob : {{ invoice.shipping_customer.phone }}
+
+    {% elif invoice.customer.shipping_address and invoice.customer.shipping_address != "N/A" %}
+        <!-- CASE 2: Same customer, but we use the specific Shipping Fields -->
+        {{ invoice.customer.name }}<br>
+        {{ invoice.customer.shipping_address }}<br>
+        {{ invoice.customer.district }} - {{ invoice.customer.shipping_pincode }}<br>
+        {{ invoice.customer.state }}<br>
+        Mob : {{ invoice.customer.shipping_phone }}
+
+    {% else %}
+        <!-- CASE 3: No special shipping info - Use Billing Address -->
+        {{ invoice.customer.name }}<br>
+        {{ invoice.customer.address }}<br>
+        {{ invoice.customer.district }} - {{ invoice.customer.pincode }}<br>
+        {{ invoice.customer.state }}<br>
+        Mob : {{ invoice.customer.phone }}
+    {% endif %}
+
+    </b>
 </div>
 
 <div>
@@ -367,7 +380,6 @@ Place of Supply : Delhi-34
 </tbody>
 </table>
 
-{% with courier_charge=approved_request.requested_courier_charge|default_if_none:invoice.courier_charge %}
 
 <div class="totals-wrapper">
 <table>
@@ -434,7 +446,6 @@ Place of Supply : Delhi-34
 </table>
 </div>
 
-{% endwith %}
 
 <div style="margin-top:10px;">
 <b>Amount in Words:</b><br><br>

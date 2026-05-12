@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispatch Management | Admin</title>
+<style>
+    /* --- CSS VARIABLES & BASE --- */
+    :root {
+        --primary: #ffc107;
+        --dark: #1a1a1a;
+        --light: #f4f7f6;
+        --success: #28a745;
+        --danger: #dc3545;
+        --info: #0d6efd;
+        --warning: #fd7e14;
+        --border: #eee;
+        --text-muted: #666;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        background-color: var(--light);
+        color: #333;
+        line-height: 1.5;
+    }
+
+    .container {
+        width: 95%;
+        max-width: 1500px;
+        margin: 20px auto;
+    }
+
+    /* --- HEADER --- */
+    .header {
+        background-color: var(--dark);
+        color: white;
+        padding: 1rem 5%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .btn-home {
+        color: white; text-decoration: none; border: 1px solid white;
+        padding: 5px 15px; border-radius: 4px; font-size: 0.9rem; transition: 0.3s;
+    }
+    .btn-home:hover { background: white; color: var(--dark); }
+
+
+    /* --- FILTERS --- */
+    .filters-container {
+        background: white; padding: 20px; border-radius: 8px;
+        margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .filters-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .filters-form select, .filters-form input {
+        padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; min-width: 150px;
+    }
+    .btn-apply {
+        background-color: var(--dark); color: white; border: none;
+        padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;
+    }
+
+    /* --- TABLE DESIGN --- */
+    .table-responsive {
+        width: 100%; overflow-x: auto; background: white;
+        border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    th {
+        background-color: #f8f9fa; color: var(--text-muted); text-transform: uppercase;
+        font-size: 0.7rem; padding: 15px; text-align: left; border-bottom: 2px solid var(--border); letter-spacing: 1px;
+    }
+    td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: middle; }
+
+    /* --- STATUS & TIMER --- */
+    .status-pill {
+        padding: 4px 12px; border-radius: 20px; font-size: 0.7rem;
+        font-weight: bold; display: inline-block; text-transform: uppercase;
+    }
+    .status-dispatched { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .status-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .status-requested { background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
+
+    .timer-box { font-family: monospace; font-weight: bold; font-size: 0.9rem; }
+    .timer-running { color: var(--warning); }
+    .timer-done { color: var(--success); }
+
+    /* --- ACTION BUTTONS --- */
+    .actions-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn-action {
+        text-decoration: none; font-size: 0.75rem; font-weight: bold;
+        padding: 6px 12px; border-radius: 4px; color: white; transition: 0.2s;
+    }
+    .btn-view { background-color: #6c757d; }
+    .btn-yes { background-color: var(--success); }
+    .btn-no { background-color: var(--danger); }
+    .btn-blue { background-color: var(--info); border: none; cursor: pointer; }
+    .btn-action:hover { opacity: 0.8; transform: translateY(-1px); }
+
+    /* --- COMMUNICATION MODAL (REMARKS) --- */
+    .custom-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85); z-index: 99999; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-content {
+        background: #1e1e1e; width: 100%; max-width: 450px; padding: 20px;
+        border-radius: 12px; border: 1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    #modalChatHistory {
+        height: 320px; overflow-y: auto; background: #111; padding: 15px;
+        border-radius: 8px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #333;
+    }
+    .bubble { padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.4; max-width: 85%; color: #fff; }
+    .rtag { font-size: 9px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; display: block; }
+
+    .b-sales { background: #1e3a8a; border-left: 4px solid #3b82f6; align-self: flex-start; }
+    .b-accounts { background: #064e3b; border-left: 4px solid #10b981; align-self: flex-start; }
+    .b-admin { background: #450a0a; border-left: 4px solid #ef4444; align-self: flex-start; }
+
+    /* --- RESPONSIVENESS --- */
+    @media (max-width: 768px) {
+        .header { flex-direction: column; gap: 10px; text-align: center; }
+        .filters-form { flex-direction: column; align-items: stretch; }
+        .filters-form select, .filters-form input { width: 100%; }
+        .actions-group { justify-content: center; }
+        .modal-content { width: 95%; height: auto; }
+    }
+</style>
+
+</head>
+<body>
+
+    <header class="header">
+        <h1>Dispatch Management</h1>
+        <a href="{% url 'home' %}" class="btn btn-home">Home</a>
+    </header>
+
+    <div class="container">
+            <!-- REUSABLE REMARK MODAL FOR ADMIN/ACCOUNTANT -->
+
+
+        <!-- ---------------- FILTER BAR ---------------- -->
+        <div class="filters-container">
+            <form method="get" class="filters-form">
+
+                {% if request.user.is_accountant %}
+                <select name="created_by">
+                    <option value="">Created By</option>
+                    {% for u in users %}
+                        <option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>
+                            {{ u.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+
+                <select name="customer">
+                    <option value="">Customer</option>
+                    {% for c in customers %}
+                        <option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>
+                            {{ c.customer__name }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <input type="date" name="start_date" value="{{ request.GET.start_date }}">
+                <input type="date" name="end_date" value="{{ request.GET.end_date }}">
+
+                <select name="sort_by">
+                    <option value="">Sort By</option>
+                    <option value="date_desc" {% if request.GET.sort_by == "date_desc" %}selected{% endif %}>Latest</option>
+                    <option value="date_asc" {% if request.GET.sort_by == "date_asc" %}selected{% endif %}>Oldest</option>
+                    <option value="customer" {% if request.GET.sort_by == "customer" %}selected{% endif %}>Customer</option>
+                </select>
+
+                <button type="submit" class="btn-apply">Apply Filters</button>
+                <a href="{% url 'proforma_invoice_dispatch' %}" style="font-size: 0.8rem; color: #888; margin-left: 10px;">Reset</a>
+            </form>
+        </div>
+
+        <p class="scroll-hint">↔ Scroll table horizontally to view all columns</p>
+
+        <!-- ---------------- MAIN TABLE ---------------- -->
+
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Inv # / Customer</th>
+                        <th>Created By</th>
+                        <th>Grand Total</th>
+                        <th>Courier Mode</th>
+                        <th>Status</th>
+                        <th>Duration (Wait Time)</th>
+                        <th>Action</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in invoices %}
+                    <tr>
+                        <td>#{{ inv.id }}</td>
+                        <td>
+                            <strong>#{{ inv.id }}</strong><br>
+                            <span style="color: #666; font-size: 0.75rem;">{{ inv.customer.name }}</span>
+                        </td>
+                        <td>{{ inv.created_by }}</td>
+                        <td><strong>₹{{ inv.grand_total|floatformat:2 }}</strong></td>
+                        <td>{{ inv.get_courier_mode_display }}</td>
+
+                        <!-- Status Badge -->
+                        <td>
+                            {% if inv.dispatch_status == 'dispatched' %}
+                                <span class="status-pill status-dispatched">✔ Dispatched</span>
+                            {% elif inv.dispatch_status == 'requested' %}
+                                <span class="status-pill status-requested">🚀 Requested</span>
+                            {% elif inv.dispatch_status == 'pending' %}
+                                <span class="status-pill status-pending">⏳ Hold / Pending</span>
+                            {% else %}
+                                <span class="status-pill status-processing">Processing</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- 🕒 Duration Timer Logic -->
+                        <td class="timer-box">
+                            {% if inv.dispatch_requested_at %}
+                                {% if inv.dispatch_status == 'dispatched' and inv.dispatched_at %}
+                                    <span class="timer-done">{{ inv.dispatch_requested_at|timesince:inv.dispatched_at }}</span>
+                                {% else %}
+                                    <span class="timer-running">⏳ {{ inv.dispatch_requested_at|timesince }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #ccc;">Not Requested</span>
+                            {% endif %}
+
+
+                        </td>
+
+                        <td>
+                            <div class="actions-group">
+                                <a href="{{ inv.get_absolute_url }}" class="btn-action btn-view" target="_blank">View</a>
+
+                                {% if inv.dispatch_status != 'dispatched' %}
+                                    <!-- YES Button: Approves dispatch and stops clock -->
+                                    <a href="{% url 'set_dispatch' inv.id 'yes' %}" class="btn-action btn-yes"
+                                       onclick="return confirm('Confirm DISPATCH? This will finalize the invoice and stop the timer.')">YES</a>
+
+                                    {% if inv.dispatch_status != 'pending' %}
+                                        <!-- NO Button: Puts on hold but clock keeps running -->
+                                        <a href="{% url 'set_dispatch' inv.id 'no' %}" class="btn-action btn-no"
+                                           onclick="return confirm('Put this on PENDING (Hold)?')">NO</a>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="locked-text">Locked</span>
+                                {% endif %}
+                                <button class="btn-pro-action btn-blue"  onclick="openRemarkModal('{{ inv.id }}')"    style="
+                                                                background:#4FC3F7;
+                                                                border:none;
+                                                                color:white;
+                                                                padding:2px ;
+                                                                border-radius:5px;
+                                                                font-size:12px;
+                                                                font-weight:200;
+                                                                cursor:pointer;
+                                                                box-shadow:0 2px 6px rgba(0,0,0,0.15); ">
+                                    💬 Remarks
+                                </button>
+
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 50px; color: #888;">No invoices found matching your filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<!-- ==========================================
+     UNIFIED REMARK MODAL (Add to all 3 files)
+     ========================================== -->
+<div id="globalRemarkModal" class="custom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; padding: 20px;">
+    <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            <h5 style="margin:0; color: #ffc107;">💬 Communication Hub</h5>
+            <button onclick="closeRemarkModal()" style="background:none; border:none; color:#888; cursor:pointer; font-size:24px;">&times;</button>
+        </div>
+
+        <div id="modalChatHistory" style="height:320px; overflow-y:auto; background:#111; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; flex-direction:column; gap:10px; border:1px solid #333;">
+            <!-- History loads here -->
+        </div>
+
+        <input type="hidden" id="modalInvoiceId">
+        <textarea id="modalRemarkInput" style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; border-radius:8px; padding:10px; outline:none; resize:none; font-size: 14px;" rows="3" placeholder="Write to other departments..."></textarea>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="closeRemarkModal()">Cancel</button>
+            <button type="button" class="btn btn-sm btn-warning fw-bold" id="sendBtn" onclick="submitGlobalRemark()">Send Message</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRemarkModal(invoiceId) {
+    document.getElementById('modalInvoiceId').value = invoiceId;
+    document.getElementById('globalRemarkModal').style.display = 'flex';
+    document.getElementById('modalChatHistory').innerHTML = '<div style="color:#666; text-align:center; padding-top:50px;">Loading conversation...</div>';
+    loadRemarks(invoiceId);
+}
+
+function loadRemarks(invoiceId) {
+    // Generate the correct URL using Django's URL tag
+    const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
+
+    fetch(getUrl)
+        .then(r => r.json())
+        .then(data => {
+            const historyBox = document.getElementById('modalChatHistory');
+            historyBox.innerHTML = "";
+
+            if (data.remarks.length === 0) {
+                historyBox.innerHTML = '<div style="color:#444; text-align:center; padding-top:50px;">No conversation yet.</div>';
+            }
+
+            data.remarks.forEach(r => {
+                const bClass = `b-${r.role}`;
+                historyBox.innerHTML += `
+                    <div class="bubble ${bClass}">
+                        <span class="rtag">${r.role} • ${r.time}</span>
+                        <strong>${r.user}:</strong> ${r.text}
+                    </div>`;
+            });
+            historyBox.scrollTop = historyBox.scrollHeight;
+        });
+}
+
+function submitGlobalRemark() {
+    const invId = document.getElementById('modalInvoiceId').value;
+    const text = document.getElementById('modalRemarkInput').value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('invoice_id', invId);
+    formData.append('remark', text);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    // Generate the correct URL using Django's URL tag
+    const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
+
+    fetch(postUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('404 or 500 error');
+        return r.json();
+    })
+    .then(data => {
+        if(data.status === 'ok') {
+            document.getElementById('modalRemarkInput').value = "";
+            loadRemarks(invId);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("Check if URL is correct in urls.py");
+    })
+    .finally(() => btn.disabled = false);
+}
+
+
+function closeRemarkModal() {
+    document.getElementById('globalRemarkModal').style.display = 'none';
+}
+
+// Add this at the bottom of your script
+window.onclick = function(e) {
+    const modal = document.getElementById('globalRemarkModal');
+    if (e.target == modal) {
+        closeRemarkModal();
+    }
+}
+
+</script>
+
+
+</body>
+
+</html>

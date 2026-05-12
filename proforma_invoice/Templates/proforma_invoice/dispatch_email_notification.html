@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .header { background-color: #0d6efd; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; font-family: Arial, sans-serif; line-height: 1.6; }
+        .status-dispatched { color: green; font-weight: bold; }
+        .status-pending { color: #856404; font-weight: bold; }
+        .footer { font-size: 12px; color: #777; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Order Status Update</h2>
+    </div>
+    <div class="content">
+        <p>Hello <strong>{{ sp_name }}</strong>,</p>
+
+        <p>The status of Proforma Invoice <strong>#{{ invoice.id }}</strong> for customer <strong>{{ invoice.customer.name }}</strong> has been updated.</p>
+
+        <p>Current Status:
+            {% if status == 'dispatched' %}
+                <span class="status-dispatched">✔ DISPATCHED</span>
+            {% else %}
+                <span class="status-pending">⏳ PENDING</span>
+            {% endif %}
+        </p>
+
+        <p>You can view the details here:
+            <a href="{{ site_url }}{% url 'proforma_detail' invoice.id %}">View Proforma</a>
+        </p>
+    </div>
+    <div class="footer">
+        <p>This is an automated notification from Oblu Tools Proforma System.</p>
+    </div>
+</body>
+</html>

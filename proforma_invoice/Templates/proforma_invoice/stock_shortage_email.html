@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <h2 style="color: #d9534f;">🚨 Stock Shortage Notification</h2>
+    <p>A new Proforma Invoice has been created with items that are <strong>Out of Stock</strong>.</p>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr style="background: #f8f8f8;">
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Detail</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Value</th>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border: 1px solid #ddd;">Invoice ID</td>
+            <td style="padding: 10px; border: 1px solid #ddd;">#{{ invoice.id }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border: 1px solid #ddd;">Customer</td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{ invoice.customer.name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border: 1px solid #ddd;">Requested By</td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{ requested_by.username }}</td>
+        </tr>
+    </table>
+
+    <h3>Items with Shortage:</h3>
+    <ul>
+        {% for product, detail in shortage_details.items %}
+            <li><strong>{{ product }}:</strong> {{ detail }}</li>
+        {% endfor %}
+    </ul>
+
+    <p style="margin-top: 30px;">
+        <a href="{{ review_url }}" style="background: #222; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Go to Stock Dashboard
+        </a>
+    </p>
+</body>
+</html>

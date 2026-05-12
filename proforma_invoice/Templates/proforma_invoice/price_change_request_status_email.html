@@ -1,27 +1,51 @@
-<h2>
-    {% if status == "approved" %}
-        ✅ Your Price Change Request has been Approved
-    {% else %}
-        ❌ Your Price Change Request has been Rejected
-    {% endif %}
-</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Proforma Price Change Update</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px;">
 
-<p>Hi {{ user.username }},</p>
+    <div style="max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
 
-<p>
-    Your request for <strong>Proforma Invoice #{{ invoice.id }}</strong> has been
-    <strong>{{ status|upper }}</strong>.
-</p>
+        <!-- HEADER: Dynamic Color based on Status -->
+        <div style="background-color: {% if status == 'approved' %}#28a745{% else %}#dc3545{% endif %}; color: white; padding: 20px; text-align: center;">
+            <h2 style="margin: 0; text-transform: uppercase;">
+                Price Change {{ status|upper }}
+            </h2>
+            <p style="margin: 5px 0 0 0;">Proforma Invoice #{{ invoice.id }}</p>
+        </div>
 
-{% if status == "approved" %}
-    <p>The updated prices have been applied to the invoice.</p>
-{% else %}
-    <p>No changes were made to the invoice.</p>
-{% endif %}
+        <div style="padding: 30px;">
+            <p>Hello <strong>{{ user.username }}</strong>,</p>
 
-<p>
-    👉 <a href="{{ invoice_url }}">Click here to view the invoice</a>
-</p>
+            <p>Your price change request for <strong>{{ invoice.customer.name }}</strong> has been reviewed.</p>
 
-<br>
-<p>Regards,<br>Oblu Tools Team</p>
+            <!-- REMARK SECTION -->
+            <div style="background-color: #f8f9fa; border-left: 5px solid {% if status == 'approved' %}#28a745{% else %}#dc3545{% endif %}; padding: 15px; margin: 20px 0;">
+                <strong style="color: #555; display: block; margin-bottom: 5px;">Admin's Remark:</strong>
+                <p style="margin: 0; font-style: italic; font-size: 1.1rem; color: #000;">
+                    {% if remark %}
+                        "{{ remark }}"
+                    {% else %}
+                        No specific remark provided.
+                    {% endif %}
+                </p>
+            </div>
+
+            <p>Status: <span style="font-weight: bold; color: {% if status == 'approved' %}#28a745{% else %}#dc3545{% endif %};">{{ status|title }}</span></p>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="{{ invoice_url }}" style="background-color: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                    View Updated Proforma
+                </a>
+            </div>
+        </div>
+
+        <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #777;">
+            <p style="margin: 0;">This is an automated notification from Oblu Tools.</p>
+        </div>
+    </div>
+
+</body>
+</html>

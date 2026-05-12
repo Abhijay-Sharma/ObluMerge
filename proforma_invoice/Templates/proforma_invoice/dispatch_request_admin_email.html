@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #0d6efd;">🔔 New Dispatch Request Raised</h2>
+        <p>Hello Accounts Team,</p>
+        <p>A new dispatch request has been submitted by <b>{{ requested_by }}</b>.</p>
+        <hr>
+        <p><b>Proforma ID:</b> #{{ invoice.id }}</p>
+        <p><b>Customer:</b> {{ invoice.customer.name }}</p>
+        <p><b>Grand Total:</b> ₹{{ invoice.grand_total }}</p>
+        <hr>
+        <p>Please review and process the dispatch here:</p>
+        <a href="{{ site_url }}{% url 'proforma_invoice_dispatch' %}"
+           style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+           Open Dispatch Management
+        </a>
+        <p style="font-size: 12px; color: #777; margin-top: 20px;">Automated notification from Oblu Tools.</p>
+    </div>
+</body>
+</html>

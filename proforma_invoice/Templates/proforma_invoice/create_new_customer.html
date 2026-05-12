@@ -1,0 +1,80 @@
+{% extends "proforma_invoice/base.html" %}
+{% load crispy_forms_filters %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="mb-0">ADD NEW CUSTOMER / LEDGER</h4>
+                </div>
+                <div class="card-body p-4" style="background-color: #f9f9f9;">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Accountant Section -->
+                        {% if user.is_accountant %}
+                        <div class="alert alert-info border-info mb-4">
+                            <h6 class="fw-bold">Accountant Action: Assign Salesperson</h6>
+                            {{ form.sp_assigned|as_crispy_field }}
+                        </div>
+                        {% else %}
+                            {{ form.sp_assigned }}
+                        {% endif %}
+
+                        <!-- Main Details -->
+                        <div class="mb-4">
+                            {{ form.name|as_crispy_field }}
+
+                            {# ONLY SHOW THIS IF THERE IS A VALIDATION ERROR ON THE NAME FIELD #}
+                            {% if form.name.errors %}
+                                <small class="text-danger fw-bold">
+                                    * This name is used to make the ledger so please fill the exact name
+                                </small>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <!-- Billing Section -->
+                            <div class="col-md-6 border-end">
+                                <h5 class="text-primary border-bottom pb-2 mb-3">BILLING ADDRESS</h5>
+                                {{ form.address|as_crispy_field }}
+                                <div class="row">
+                                    <div class="col-6">{{ form.dci_no|as_crispy_field }}</div>
+                                    <div class="col-6">{{ form.md42|as_crispy_field }}</div>
+                                </div>
+                                {{ form.phone|as_crispy_field }}
+                                {{ form.email|as_crispy_field }}
+                                {{ form.pincode|as_crispy_field }}
+                            </div>
+
+                            <!-- Shipping Section -->
+                            <div class="col-md-6 ps-md-4">
+                                <h5 class="text-info border-bottom pb-2 mb-3">SHIPPING ADDRESS</h5>
+                                {{ form.shipping_address|as_crispy_field }}
+                                {{ form.shipping_phone|as_crispy_field }}
+                                {{ form.shipping_email|as_crispy_field }}
+                                {{ form.shipping_pincode|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="row bg-white p-3 rounded border mx-0 shadow-sm">
+                            <div class="col-md-6">{{ form.gst_number|as_crispy_field }}</div>
+                            <div class="col-md-6">{{ form.state|as_crispy_field }}</div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{% url 'create_proforma' %}" class="btn btn-secondary me-2 px-4">Cancel</a>
+                            <button type="submit" class="btn btn-success px-5 fw-bold shadow">SAVE CUSTOMER</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

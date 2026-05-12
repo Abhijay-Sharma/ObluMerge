@@ -323,25 +323,37 @@ State : 07-Delhi
     Contact : {{ invoice.customer.phone }} </b>
   </div>
 
-  <div>
-    <b>Ship To<br><br>
+    <div>
+        <b>Ship To<br><br>
 
-    {% if invoice.shipping_customer %}
-        {{ invoice.shipping_customer.name }}<br>
-        {{ invoice.shipping_customer.address }}<br>
-        {{ invoice.shipping_customer.city }} - {{ invoice.shipping_customer.pincode }}<br>
-        {{ invoice.shipping_customer.state }}<br>
-        Mob : {{ invoice.shipping_customer.phone }}
-    {% else %}
-        {{ invoice.customer.name }}<br>
-        {{ invoice.customer.address }}<br>
-        {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
-        {{ invoice.customer.state }}<br>
-        Mob : {{ invoice.customer.phone }}
-    {% endif %}
+        {% if invoice.shipping_customer and invoice.shipping_customer.id != invoice.customer.id %}
+            <!-- CASE 1: A completely different Customer profile was selected -->
+            {{ invoice.shipping_customer.name }}<br>
+            {{ invoice.shipping_customer.address }}<br>
+            {{ invoice.shipping_customer.district }} - {{ invoice.shipping_customer.pincode }}<br>
+            {{ invoice.shipping_customer.state }}<br>
+            Mob : {{ invoice.shipping_customer.phone }}
 
-    </b>
+        {% elif invoice.customer.shipping_address and invoice.customer.shipping_address != "N/A" %}
+            <!-- CASE 2: Same customer, but we use the specific Shipping Fields -->
+            {{ invoice.customer.name }}<br>
+            {{ invoice.customer.shipping_address }}<br>
+            {{ invoice.customer.district }} - {{ invoice.customer.shipping_pincode }}<br>
+            {{ invoice.customer.state }}<br>
+            Mob : {{ invoice.customer.shipping_phone }}
+
+        {% else %}
+            <!-- CASE 3: No special shipping info - Use Billing Address -->
+            {{ invoice.customer.name }}<br>
+            {{ invoice.customer.address }}<br>
+            {{ invoice.customer.district }} - {{ invoice.customer.pincode }}<br>
+            {{ invoice.customer.state }}<br>
+            Mob : {{ invoice.customer.phone }}
+        {% endif %}
+
+        </b>
     </div>
+
   <div>
     <b>Order Details<br><br>
     Order No. : {{ invoice.id }}<br>
@@ -369,23 +381,26 @@ State : 07-Delhi
 </thead>
 
 <tbody>
-{% for item in items %}
-{% widthratio item.total_price 100 item.taxrate as item_gst %}
-{% widthratio item.unit_price 100 item.taxrate as unit_gst %}
-{% with item.unit_price|add:unit_gst as rate_incl_tax %}
+<!-- 🔥 CHANGE 1: Use recalculated_items instead of items -->
+{% for row in recalculated_items %}
 <tr>
   <td class="center">{{ forloop.counter }}</td>
-  <td class="item-name">{{ item.product.name }}</td>
-  <td class="center">{{ item.hsn }}</td>
-  <td class="center">{{ item.quantity }}</td>
-  <td class="right">₹ {{ item.unit_price|floatformat:2 }}</td>
-  <td class="right">₹ {{ item.unit_price_excl_tax|floatformat:2 }}</td>
-  <td class="right">₹ {{ item.total_price_excl_tax|floatformat:2 }}</td>
-  <td class="center">{{ item.taxrate }}%</td>
-  <td class="right">₹ {{ item.total_price|floatformat:2 }}</td>
 
+  <!-- 🔥 CHANGE 2: Use row.item to access the product name -->
+  <td class="item-name">{{ row.item.product.name }}</td>
+
+  <td class="center">{{ row.item.hsn|default:"-" }}</td>
+  <td class="center">{{ row.item.quantity }}</td>
+
+  <!-- 🔥 CHANGE 3: Use the keys from the recalculated dictionary -->
+  <!-- This ensures that 174 or 150 shows up instead of 180 -->
+  <td class="right">₹ {{ row.unit_price_incl|floatformat:2 }}</td>
+  <td class="right">₹ {{ row.unit_price_excl|floatformat:2 }}</td>
+  <td class="right">₹ {{ row.taxable_value|floatformat:2 }}</td>
+  <td class="center">{{ row.gst_rate }}%</td>
+  <td class="right">₹ {{ row.amount_incl|floatformat:2 }}</td>
 </tr>
-{% endwith %}
+
 {% endfor %}
 </tbody>
 </table>

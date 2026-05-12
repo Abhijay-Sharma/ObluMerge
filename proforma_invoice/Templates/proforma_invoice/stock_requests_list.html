@@ -1,0 +1,281 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Approval Dashboard</title>
+    <!-- Using Bootswatch Minty or standard Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .table thead { background-color: #212529; color: white; }
+        .status-badge { width: 100px; display: inline-block; text-align: center; }
+        .shortage-list { font-size: 0.85rem; padding-left: 1.2rem; }
+        .history-row { opacity: 0.85; background-color: #fcfcfc; }
+
+
+
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-dark">📦 Stock Approval Dashboard</h2>
+        <a href="{% url 'proforma_list' %}" class="btn btn-outline-secondary btn-sm">Back to Invoices</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Invoice / Customer</th>
+                        <th>Requested By</th>
+                        <th>Shortage Details</th>
+                        <th>Created At</th>
+                        <th>Status</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr class="{% if req.status != 'pending' %}history-row{% endif %}">
+                        <td class="ps-4">
+                            <span class="fw-bold text-primary">#{{ req.invoice.id }}</span><br>
+                            <small class="text-muted">{{ req.invoice.customer.name }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light rounded-circle p-2 me-2" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                    {{ req.requested_by.username|slice:":1"|upper }}
+                                </div>
+                                <span>{{ req.requested_by.username }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <ul class="mb-0 shortage-list text-danger">
+                            {% for product, detail in req.shortage_details.items %}
+                                <li><strong>{{ product }}:</strong> {{ detail }}</li>
+                            {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ req.created_at|date:"d M Y" }}</small><br>
+                            <small class="text-muted">{{ req.created_at|date:"H:i" }}</small>
+                        </td>
+
+                                <!-- New Time Duration Column Logic -->
+                        <td>
+                            {% if req.status == 'pending' %}
+                                <small class="text-warning">Running: {{ req.created_at|timesince }}</small>
+                            {% else %}
+                                {% if req.reviewed_at %}
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="bi bi-clock"></i>
+                                        {{ req.created_at|timesince:req.reviewed_at }}
+                                    </span>
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+
+
+
+                        <td>
+                            {% if req.status == 'pending' %}
+                                <span class="badge bg-warning text-dark rounded-pill status-badge">Pending</span>
+                            {% elif req.status == 'approved' %}
+                                <span class="badge bg-success rounded-pill status-badge">Approved</span>
+                            {% elif req.status == 'rejected' %}
+                                <span class="badge bg-danger rounded-pill status-badge">Rejected</span>
+                            {% endif %}
+                            <button class="btn btn-outline-info btn-sm" onclick="openRemarkModal('{{ req.invoice.id }}')">
+                                💬 Remarks
+                            </button>
+                        </td>
+                        <td class="text-center pe-4">
+                            {% if req.status == 'pending' %}
+                                <div class="btn-group shadow-sm">
+                                    <form method="post" action="{% url 'approve_stock_request' req.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button name="action" value="approve" class="btn btn-success btn-sm px-3" onclick="return confirm('Approve this stock request?')">Approve</button>
+                                        <button name="action" value="reject" class="btn btn-danger btn-sm px-3" onclick="return confirm('Reject this stock request?')">Reject</button>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <div class="text-muted small">
+                                    Reviewed by: <strong>{{ req.reviewed_by.username|default:"System" }}</strong><br>
+                                    {{ req.reviewed_at|date:"d M" }}
+                                </div>
+                            {% endif %}
+                            <div class="mt-2">
+                                <a href="{% url 'proforma_detail' req.invoice.id %}" class="text-decoration-none small">View Invoice →</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <img src="https://cdn-icons-png.flaticon.com/512/5058/5058046.png" width="60" class="mb-3 opacity-25"><br>
+                            No stock requests found in history.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- ==========================================
+     UNIFIED REMARK MODAL (Add to all 3 files)
+     ========================================== -->
+<div id="globalRemarkModal" class="custom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; padding: 20px;">
+    <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            <h5 style="margin:0; color: #ffc107;">💬 Communication Hub</h5>
+            <button onclick="closeRemarkModal()" style="background:none; border:none; color:#888; cursor:pointer; font-size:24px;">&times;</button>
+        </div>
+
+        <div id="modalChatHistory" style="height:320px; overflow-y:auto; background:#111; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; flex-direction:column; gap:10px; border:1px solid #333;">
+            <!-- History loads here -->
+        </div>
+
+        <input type="hidden" id="modalInvoiceId">
+        <textarea id="modalRemarkInput" style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; border-radius:8px; padding:10px; outline:none; resize:none; font-size: 14px;" rows="3" placeholder="Write to other departments..."></textarea>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="closeRemarkModal()">Cancel</button>
+            <button type="button" class="btn btn-sm btn-warning fw-bold" id="sendBtn" onclick="submitGlobalRemark()">Send Message</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .custom-overlay {
+        display: none; position: fixed; top: 0; left: 0;
+        width: 100%; height: 100%; background: rgba(0,0,0,0.85);
+        z-index: 99999; align-items: center; justify-content: center;
+    }
+    #modalChatHistory {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .bubble {
+        padding: 10px 14px; border-radius: 12px; font-size: 13px; color: #fff;
+        line-height: 1.4; max-width: 85%; margin-bottom: 5px;
+    }
+    .rtag { font-size: 9px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; display: block; }
+
+    .b-sales { background: #1e3a8a; border-left: 4px solid #3b82f6; align-self: flex-start; }
+    .b-accounts { background: #064e3b; border-left: 4px solid #10b981; align-self: flex-end; } /* Accounts on right */
+    .b-admin { background: #450a0a; border-left: 4px solid #ef4444; align-self: flex-start; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"> </script>
+<script>
+function openRemarkModal(invoiceId) {
+    document.getElementById('modalInvoiceId').value = invoiceId;
+    document.getElementById('globalRemarkModal').style.display = 'flex';
+    document.getElementById('modalChatHistory').innerHTML = '<div style="color:#666; text-align:center; padding-top:50px;">Loading conversation...</div>';
+    loadRemarks(invoiceId);
+}
+
+function loadRemarks(invoiceId) {
+    // Generate the correct URL using Django's URL tag
+    const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
+
+    fetch(getUrl)
+        .then(r => r.json())
+        .then(data => {
+            const historyBox = document.getElementById('modalChatHistory');
+            historyBox.innerHTML = "";
+
+            if (data.remarks.length === 0) {
+                historyBox.innerHTML = '<div style="color:#444; text-align:center; padding-top:50px;">No conversation yet.</div>';
+            }
+
+            data.remarks.forEach(r => {
+                const bClass = `b-${r.role}`;
+                historyBox.innerHTML += `
+                    <div class="bubble ${bClass}">
+                        <span class="rtag">${r.role} • ${r.time}</span>
+                        <strong>${r.user}:</strong> ${r.text}
+                    </div>`;
+            });
+            historyBox.scrollTop = historyBox.scrollHeight;
+        });
+}
+
+function submitGlobalRemark() {
+    const invId = document.getElementById('modalInvoiceId').value;
+    const text = document.getElementById('modalRemarkInput').value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('invoice_id', invId);
+    formData.append('remark', text);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    // Generate the correct URL using Django's URL tag
+    const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
+
+    fetch(postUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('404 or 500 error');
+        return r.json();
+    })
+    .then(data => {
+        if(data.status === 'ok') {
+            document.getElementById('modalRemarkInput').value = "";
+            loadRemarks(invId);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("Check if URL is correct in urls.py");
+    })
+    .finally(() => btn.disabled = false);
+}
+
+
+function closeRemarkModal() {
+    document.getElementById('globalRemarkModal').style.display = 'none';
+}
+
+// Add this at the bottom of your script
+window.onclick = function(e) {
+    const modal = document.getElementById('globalRemarkModal');
+    if (e.target == modal) {
+        closeRemarkModal();
+    }
+}
+
+</script>
+
+
+<!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>-->
+</body>
+</html>

@@ -1,112 +1,443 @@
 {% extends "proforma_invoice/base.html" %}
+{% load quotation_extras %}
 {% block content %}
 
 <style>
-  @media (max-width: 600px) {
-    table th, table td {
-      padding: 8px;
-      font-size: 0.85rem;
+    /* --- CSS VARIABLES & ROOT --- */
+    :root {
+        --primary: #ffc107;
+        --dark: #212529;
+        --blue: #0d6efd;
+        --info: #17a2b8;
+        --success: #27ae60;
+        --danger: #e74c3c;
+        --grey: #6c757d;
+        --light-bg: #f8f9fa;
+        --border: #eee;
     }
-    h1 {
-      font-size: 1.6rem;
+
+    /* --- PROFESSIONAL ACTION BUTTONS --- */
+    .btn-pro-action {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 8px 16px; border-radius: 8px; font-size: 0.75rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none !important;
+        border: none; cursor: pointer; transition: all 0.2s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 5px; width: 100%;
+        color: white !important;
     }
-  }
+    .btn-pro-action:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); filter: brightness(1.1); }
+    .btn-pro-action:active { transform: translateY(1px); }
+
+    .btn-yellow { background: var(--primary); color: #000 !important; }
+    .btn-dark   { background: var(--dark); }
+    .btn-blue   { background: var(--blue); }
+    .btn-grey   { background: var(--grey); cursor: not-allowed; opacity: 0.7; }
+    .btn-info-custom { background: var(--info); font-size: 11px; padding: 6px; }
+
+    /* --- STATUS BADGES --- */
+    .status-badge {
+        display: inline-block; padding: 5px 12px; border-radius: 20px;
+        font-size: 0.72rem; font-weight: bold; text-transform: uppercase;
+    }
+    .st-dispatched { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .st-pending    { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .st-processing { background-color: #e9ecef; color: #495057; border: 1px solid #dee2e6; }
+
+    /* --- APPROVAL JOURNEY (TRAIN UI) --- */
+    .approval-tracker {
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 12px; background: var(--light-bg); padding: 12px 8px;
+        border-radius: 10px; border: 1px solid var(--border); width: 100%;
+    }
+    .station { display: flex; flex-direction: column; align-items: center; font-size: 9px; font-weight: 800; color: #ccc; width: 65px; }
+    .station .icon { font-size: 16px; margin-bottom: 2px; filter: grayscale(1); transition: all 0.3s; }
+    .station.active { color: var(--primary); }
+    .station.active .icon { filter: grayscale(0); transform: scale(1.1); }
+    .station.completed { color: var(--success); }
+    .station.completed .icon { filter: grayscale(0); }
+    .station.rejected { color: var(--danger); }
+    .station.rejected .icon { filter: grayscale(0); }
+
+    .connector { height: 3px; width: 30px; background: var(--border); margin-top: -22px; position: relative; }
+    .connector.done { background: var(--success); }
+
+    /* --- UNIFIED COMMUNICATION MODAL --- */
+    .custom-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center;
+    }
+    .custom-overlay.active { display: flex; } /* For Rejection/Price modals */
+
+    #modalChatHistory { display: flex; flex-direction: column; gap: 10px; }
+
+    .bubble { padding: 10px 14px; border-radius: 12px; font-size: 13px; color: #fff; line-height: 1.4; max-width: 85%; margin-bottom: 4px; }
+    .rtag { font-size: 9px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; display: block; letter-spacing: 0.5px; }
+
+    .b-sales { background: #1e3a8a; border-left: 4px solid #3b82f6; align-self: flex-start; }
+    .b-accounts { background: #064e3b; border-left: 4px solid #10b981; align-self: flex-start; }
+    .b-admin { background: #450a0a; border-left: 4px solid #ef4444; align-self: flex-start; }
+
+
+/* Notification Dot Styling */
+.btn-blue { position: relative; } /* Needed for absolute positioning of dot */
+
+.notification-dot {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    background-color: #ff4d4d; /* Bright Red */
+    border: 2px solid white;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 5px rgba(255, 77, 77, 0.8);
+    animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+    70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+}
+
+    /* --- LAYOUT HELPERS --- */
+    .action-container { display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 160px; padding: 10px !important; }
+    .table-container { background: #fff; border-radius: 12px; }
+
+    /* --- RESPONSIVENESS --- */
+    @media (max-width: 768px) {
+        .station { width: 55px; }
+        .station .icon { font-size: 14px; }
+        .connector { width: 20px; }
+        .table-responsive { border-radius: 8px; border: 1px solid var(--border); }
+    }
 </style>
 
-<div class="container">
-  <div class="table-container">
+<div class="container py-4">
+    <div class="table-container bg-white p-4 shadow-sm rounded">
+        <h1 class="mb-4">Proforma Invoices</h1>
 
-    <h1>Proforma Invoices</h1>
+        <div class="top-actions mb-3">
+            <a href="{% url 'home' %}" class="btn btn-sm btn-outline-dark">Home</a>
+            <a href="{% url 'create_proforma' %}" class="btn btn-sm btn-dark">+ Create Proforma</a>
+        </div>
 
-    <div class="top-actions">
-      <a href="{% url 'home' %}" class="btn-secondary">Back to Home</a>
-      <a href="{% url 'create_proforma' %}" class="btn-secondary">+ Create Proforma</a>
+        <!-- ---------------- FILTER BAR ---------------- -->
+        <form method="get" class="filters mb-4 d-flex flex-wrap gap-2">
+            {% if request.user.is_accountant %}
+            <select name="created_by" class="form-control w-auto">
+                <option value="">Created By</option>
+                {% for u in users %}<option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>{{ u.username }}</option>{% endfor %}
+            </select>
+            {% endif %}
+
+            <select name="customer" class="form-control w-auto">
+                <option value="">Customer</option>
+                {% for c in customers %}<option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>{{ c.customer__name }}</option>{% endfor %}
+            </select>
+
+            <input type="date" name="start_date" class="form-control w-auto" value="{{ request.GET.start_date }}">
+            <button type="submit" class="btn btn-primary btn-sm px-4">Apply</button>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer / Created By</th>
+                        <th>Date</th>
+                        <th>Grand Total</th>
+                       <th>Courier Mode</th>
+                        <th>Status</th>
+                        <th>Approval Journey & Actions</th>
+                        <th>Communication History & Reply</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in invoices %}
+                    <tr>
+                        {% with stock_req=inv.stock_request %}
+                        {% with price_req=inv.price_requests.all|dictsort:"id"|last %}
+                        {% with stock_status=stock_req.status|default:"none" %}
+                        {% with price_status=price_req.status|default:"none" %}
+
+                        <!-- 1. ID -->
+                        <td>#{{ inv.id }}</td>
+
+                        <!-- 2. Customer / Created By -->
+                        <td>
+                            <div class="fw-bold">{{ inv.customer.name }}</div>
+                            <small class="text-muted">By: {{ inv.created_by }}</small>
+                        </td>
+
+                        <!-- 3. Date -->
+                        <td>{{ inv.date_created|date:"d M Y" }}</td>
+
+                        <!-- 4. Grand Total -->
+                        <td class="fw-bold">₹{{ inv.grand_total|floatformat:2 }}</td>
+<!--                        <td class="fw-bold">₹{{ recalculated_grand_total|floatformat:2 }}</td>-->
+                        <td>{{ inv.get_courier_mode_display }}</td>
+
+                        <!-- 5. STATUS & VIEW PERMISSIONS (Fixed Logic) -->
+                        <td>
+                            {% if request.user.is_superuser  %}
+                                <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">Admin View</a>
+                            {% else %}
+
+                                {# Priority 1: Shipped #}
+                                {% if inv.dispatch_status == 'dispatched' %}
+                                    <div class="badge bg-success text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">✅ DISPATCHED</div>
+                                    <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-blue" target="_blank">👁️ View Final PI</a>
+
+                                {# Priority 2: Stock Pending Blocker #}
+                                {% elif stock_status == 'pending' %}
+                                    <div class="badge bg-warning text-dark w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ STOCK REVIEW</div>
+                                    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Warehouse is reviewing stock. Locked.');">🔒 Reviewing...</button>
+
+                                {# Priority 3: Stock Rejected Blocker (Only if price request also exists) #}
+                                {% elif stock_status == 'rejected' and price_req %}
+                                    <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">❌ STOCK REJECTED</div>
+                                    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Stock request rejected. Access denied.');">🔒 Locked</button>
+
+                                {# Priority 4: All Unlocked Cases (Stock is Approved or None) #}
+                                {% else %}
+                                    {% if price_status == 'rejected' %}
+                                        <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">❌ PRICE REJECTED</div>
+                                        <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">View Proforma</a>
+
+                                    {% elif price_status == 'pending' %}
+                                        <div class="badge bg-info text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">📦 STOCK READY</div>
+                                        <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-blue" target="_blank">View Draft PI</a>
+
+                                    {% else %}
+                                        <div class="badge bg-primary text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">READY</div>
+                                        <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">View Proforma</a>
+                                    {% endif %}
+                                {% endif %}
+
+                            {% endif %}
+                        </td>
+
+                        <!-- 6. APPROVAL JOURNEY & ACTIONS -->
+                        <td class="action-container">
+                            <!-- PROGRESS TRACKER (Shows duration/time taken even after shipping) -->
+                            <div class="approval-tracker mb-1">
+                                <!-- Station 1: Stock -->
+                                <div class="station {% if stock_status == 'pending' %}active{% elif stock_status == 'approved' %}completed{% elif stock_status == 'rejected' %}rejected{% endif %}">
+                                    <span class="icon">📦</span><span>Stock</span>
+                                    {% if stock_status != 'none' %}
+                                        <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
+                                            {% if stock_status == 'pending' %}
+                                                ⌛ {{ stock_req.created_at|timesince }}
+                                            {% elif stock_req.reviewed_at %}
+                                                {# Calculates time from request to approval #}
+                                                ✔ {{ stock_req.created_at|timesince:stock_req.reviewed_at }}
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                </div>
+
+                                <div class="connector {% if stock_status == 'approved' or stock_status == 'none' %}done{% endif %}"></div>
+
+                                <!-- Station 2: Price -->
+                                <div class="station {% if price_status == 'pending' %}active{% elif price_status == 'approved' %}completed{% elif price_status == 'rejected' %}rejected{% endif %}">
+                                    <span class="icon">⚖️</span><span>Price</span>
+                                    {% if price_status != 'none' %}
+                                        <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
+                                            {% if price_status == 'pending' %}
+                                                ⌛ {{ price_req.created_at|timesince }}
+                                            {% elif price_req.reviewed_at %}
+                                                {# Calculates time from request to approval #}
+                                                ✔ {{ price_req.created_at|timesince:price_req.reviewed_at }}
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- DISPATCH BUTTONS -->
+                            <div class="w-100 mt-2">
+                                {% if inv.dispatch_status == 'processing' %}
+                                    {% if stock_status == 'approved' or stock_status == 'none' %}
+                                        {% if price_status == 'approved' or price_status == 'none' or request.user.is_superuser %}
+                                            <a href="{% url 'request_dispatch' inv.id %}" class="btn-pro-action btn-yellow">🚀 Dispatch PI</a>
+                                        {% else %}
+                                            <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Admin</button>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Stock</button>
+                                    {% endif %}
+                                {% elif inv.dispatch_status == 'dispatched' %}
+                                    <div class="badge bg-light text-success border w-100 p-2" style="font-size: 0.65rem; font-weight: 800;">✅ SHIPPED</div>
+                                {% elif inv.dispatch_requested_at %}
+                                    <div class="text-center p-1 border rounded bg-light w-100">
+                                        <small class="text-primary fw-bold">⌛ WAIT: {{ inv.dispatch_requested_at|timesince }}</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            {% if not request.user.is_superuser and inv.dispatch_status != 'dispatched' %}
+                                <a href="{% url 'proforma_price_change_request_create' inv.id %}" class="btn-pro-action btn-info-custom mt-1">✎ Request Price Change</a>
+                            {% endif %}
+                        </td>
+
+                        <!--                        <td>-->
+<!--                            <div class="communication-area">-->
+<!--                                &lt;!&ndash; History Box &ndash;&gt;-->
+<!--                                <div id="history-box-{{ inv.id }}" class="history-box">-->
+<!--                                    {% for r in inv.remarks.all %}-->
+<!--                                        <div class="chat-bubble {% if r.user.is_superuser or r.user.is_accountant %}bubble-adm{% else %}bubble-sp{% endif %}">-->
+<!--                                            <span class="time-meta">{{ r.created_at|date:"d M, H:i" }}</span>-->
+<!--                                            <div style="white-space: pre-wrap;"><strong>{{ r.user.username }}:</strong> {{ r.remark }}</div>-->
+<!--                                        </div>-->
+<!--                                    {% endfor %}-->
+<!--                                </div>-->
+
+<!--                                &lt;!&ndash; Input Area &ndash;&gt;-->
+<!--                                <div class="reply-area">-->
+<!--                                    <textarea id="input-{{ inv.id }}" class="reply-input" placeholder="Type message..."></textarea>-->
+<!--                                    <button class="btn-ok" onclick="submitRemark({{ inv.id }})" id="btn-{{ inv.id }}">OK</button>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </td>-->
+                        <td>
+                            <button class="btn-pro-action btn-blue" onclick="openRemarkModal('{{ inv.id }}')">
+                                💬 Message Hub
+
+                                {% with last_remark=inv.remarks.last %}
+                                    {# If there is a remark and the sender is NOT you, show the dot #}
+                                    {% if last_remark and last_remark.user != request.user %}
+                                        <span class="notification-dot" id="dot-{{ inv.id }}"></span>
+                                    {% endif %}
+                                {% endwith %}
+                            </button>
+                        </td>
+                        {% endwith %}{% endwith %}{% endwith %}{% endwith %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-
-    <!-- ---------------- FILTER BAR ---------------- -->
-    <form method="get" class="filters" style="margin-bottom: 15px; display:flex; gap:10px; flex-wrap:wrap;">
-
-      {% if request.user.is_accountant %}
-        <select name="created_by">
-          <option value="">Created By</option>
-          {% for u in users %}
-            <option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>
-              {{ u.username }}
-            </option>
-          {% endfor %}
-        </select>
-      {% endif %}
-
-      <select name="customer">
-        <option value="">Customer</option>
-        {% for c in customers %}
-          <option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>
-            {{ c.customer__name }}
-          </option>
-        {% endfor %}
-      </select>
-
-      <input type="date" name="start_date" value="{{ request.GET.start_date }}">
-      <input type="date" name="end_date" value="{{ request.GET.end_date }}">
-
-      <select name="sort_by">
-        <option value="">Sort By</option>
-        <option value="date_desc" {% if request.GET.sort_by == "date_desc" %}selected{% endif %}>Latest</option>
-        <option value="date_asc" {% if request.GET.sort_by == "date_asc" %}selected{% endif %}>Oldest</option>
-        <option value="customer" {% if request.GET.sort_by == "customer" %}selected{% endif %}>Customer</option>
-      </select>
-
-      <button type="submit" class="btn-secondary">Apply</button>
-    </form>
-
-    <!-- ---------------- TABLE ---------------- -->
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Customer</th>
-          <th>Created By</th>
-          <th>Date</th>
-          <th>Total Qty</th>
-          <th>Grand Total</th>
-          <th>Courier Mode</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {% for inv in invoices %}
-          <tr>
-            <td>#{{ inv.id }}</td>
-            <td>{{ inv.customer.name }}</td>
-            <td>{{ inv.created_by }}</td>
-            <td>{{ inv.date_created|date:"d M Y" }}</td>
-            <td>{{ inv.total_quantity }}</td>
-            <td>₹{{ inv.grand_total|floatformat:2 }}</td>
-            <td>{{ inv.get_courier_mode_display }}</td>
-            <td>
-              <a href="{{ inv.get_absolute_url }}" class="btn-secondary" target="_blank">
-                View
-              </a>
-               {% if request.user.is_viewer %}
-                    <a href="{% url 'proforma_price_change_request_create' inv.id %}"
-                       class="btn-secondary">
-                       Request Price Change
-                    </a>
-                {% endif %}
-            </td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="8" style="text-align:center; padding:20px;">
-              No proforma invoices found.
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-  </div>
 </div>
 
+<!-- ==========================================
+     UNIFIED REMARK MODAL (Add to all 3 files)
+     ========================================== -->
+<div id="globalRemarkModal" class="custom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; padding: 20px;">
+    <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            <h5 style="margin:0; color: #ffc107;">💬 Communication Hub</h5>
+            <button onclick="closeRemarkModal()" style="background:none; border:none; color:#888; cursor:pointer; font-size:24px;">&times;</button>
+        </div>
+
+        <div id="modalChatHistory" style="height:320px; overflow-y:auto; background:#111; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; flex-direction:column; gap:10px; border:1px solid #333;">
+            <!-- History loads here -->
+        </div>
+
+        <input type="hidden" id="modalInvoiceId">
+        <textarea id="modalRemarkInput" style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; border-radius:8px; padding:10px; outline:none; resize:none; font-size: 14px;" rows="3" placeholder="Write to other departments..."></textarea>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="closeRemarkModal()">Cancel</button>
+            <button type="button" class="btn btn-sm btn-warning fw-bold" id="sendBtn" onclick="submitGlobalRemark()">Send Message</button>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+
+function openRemarkModal(invoiceId) {
+    document.getElementById('modalInvoiceId').value = invoiceId;
+    document.getElementById('globalRemarkModal').style.display = 'flex';
+    document.getElementById('modalChatHistory').innerHTML = '<div style="color:#666; text-align:center; padding-top:50px;">Loading conversation...</div>';
+        // --- NEW: Hide the notification dot when opened ---
+    const dot = document.getElementById('dot-' + invoiceId);
+    if (dot) {
+        dot.style.display = 'none';
+    }
+    // --------------------------------------------------
+
+    loadRemarks(invoiceId);
+}
+
+function loadRemarks(invoiceId) {
+    // Generate the correct URL using Django's URL tag
+    const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
+
+    fetch(getUrl)
+        .then(r => r.json())
+        .then(data => {
+            const historyBox = document.getElementById('modalChatHistory');
+            historyBox.innerHTML = "";
+
+            if (data.remarks.length === 0) {
+                historyBox.innerHTML = '<div style="color:#444; text-align:center; padding-top:50px;">No conversation yet.</div>';
+            }
+
+            data.remarks.forEach(r => {
+                const bClass = `b-${r.role}`;
+                historyBox.innerHTML += `
+                    <div class="bubble ${bClass}">
+                        <span class="rtag">${r.role} • ${r.time}</span>
+                        <strong>${r.user}:</strong> ${r.text}
+                    </div>`;
+            });
+            historyBox.scrollTop = historyBox.scrollHeight;
+        });
+}
+
+function submitGlobalRemark() {
+    const invId = document.getElementById('modalInvoiceId').value;
+    const text = document.getElementById('modalRemarkInput').value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('invoice_id', invId);
+    formData.append('remark', text);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    // Generate the correct URL using Django's URL tag
+    const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
+
+    fetch(postUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('404 or 500 error');
+        return r.json();
+    })
+    .then(data => {
+        if(data.status === 'ok') {
+            document.getElementById('modalRemarkInput').value = "";
+            loadRemarks(invId);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("Check if URL is correct in urls.py");
+    })
+    .finally(() => btn.disabled = false);
+}
+
+
+function closeRemarkModal() {
+    document.getElementById('globalRemarkModal').style.display = 'none';
+}
+
+window.onclick = function(e) {
+    const modal = document.getElementById('globalRemarkModal');
+    if (e.target == modal) closeRemarkModal();
+}
+
+</script>
 {% endblock %}

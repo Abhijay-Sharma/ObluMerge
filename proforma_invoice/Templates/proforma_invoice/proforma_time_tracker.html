@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proforma Time Tracker | OBLU</title>
+    <style>
+        /* --- RESET & BASE --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #fcfcfc;
+            color: #1a1c21;
+            line-height: 1.4;
+        }
+
+        /* --- STICKY NAVBAR --- */
+        .navbar {
+            background: #ffffff;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 2000;
+            flex-wrap: wrap; /* Fix for mobile overlapping links */
+            gap: 10px;
+        }
+        .nav-logo { font-weight: 800; font-size: 18px; color: #1a1c21; text-decoration: none; }
+        .nav-links { display: flex; gap: 15px; }
+        .nav-links a { text-decoration: none; color: #555; font-size: 13px; font-weight: 600; }
+
+        /* --- DASHBOARD WRAPPER --- */
+        .dashboard-wrapper { width: 100%; padding-top: 20px; }
+
+        .header-area {
+            padding: 0 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .page-title { font-weight: 800; color: #1a1c21; font-size: 28px; letter-spacing: -1px; }
+        .invoice-badge { background: #1a1c21; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+        /* --- RESPONSIVE FILTERS --- */
+        .filter-card {
+            background: #fff; padding: 20px; margin: 0 20px 25px 20px;
+            border-radius: 10px; display: flex; flex-wrap: wrap; gap: 15px;
+            align-items: flex-end; border: 1px solid #eee;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 150px; }
+        .filter-group label { font-size: 10px; font-weight: 800; color: #aaa; text-transform: uppercase; }
+        .filter-input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; width: 100%; }
+
+        .btn-apply {
+            background: #1a1c21; color: white; border: none; padding: 12px 25px;
+            border-radius: 6px; font-weight: 700; cursor: pointer; flex-grow: 0;
+        }
+
+        /* --- THE RESPONSIVE TABLE (THE CRITICAL FIX) --- */
+        .table-outer-container {
+            width: 100%;
+            overflow-x: auto; /* This enables horizontal scroll on mobile */
+            -webkit-overflow-scrolling: touch;
+            border-top: 1px solid #eee;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1000px; /* Prevents text overlapping by forcing a minimum width */
+            table-layout: auto;
+        }
+
+        /* STICKY HEADER */
+        thead th {
+            position: sticky;
+            top: 0; /* Note: If navbar is sticky, you may need JS or higher offset, but 0 works for the container */
+            background: #2d3436;
+            color: #fff;
+            padding: 15px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 1000;
+        }
+
+        /* Apply sticky to TH even when scrolling horizontally */
+        .table-outer-container thead th { top: 0; }
+
+        td { padding: 15px; border-bottom: 1px solid #f2f2f2; font-size: 13px; vertical-align: middle; background: #fff; }
+        tr:hover td { background-color: #f9f9f9; }
+
+        /* DATA STYLING */
+        .pi-id { font-weight: 800; color: #1a1c21; font-size: 14px; }
+        .cust-name { color: #999; font-size: 10px; font-weight: 700; text-transform: uppercase; display: block; }
+
+        .status-tag { font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+        .tag-approved { background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
+        .tag-rejected { background: #ffebe6; color: #bf2600; border: 1px solid #ffbdad; }
+        .tag-waiting { color: #f39c12; font-weight: 800; }
+
+        .col-acc { background: #f0f7ff !important; font-weight: 700; color: #0052cc; text-align: center; }
+        .col-cycle { background: #f2faf5 !important; font-weight: 800; text-align: center; }
+
+        /* --- FOOTER --- */
+        tfoot td { background: #1a1c21 !important; color: white !important; padding: 30px 20px; border: none; }
+        .footer-content {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+            text-align: center;
+        }
+        .footer-box { min-width: 200px; }
+        .footer-label { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 700; margin-bottom: 5px; }
+        .footer-value { font-size: 22px; font-weight: 900; }
+
+        /* --- MOBILE MEDIA QUERIES --- */
+        @media (max-width: 600px) {
+            .navbar { justify-content: center; text-align: center; }
+            .nav-links { width: 100%; justify-content: center; }
+            .header-area { flex-direction: column; align-items: center; text-align: center; }
+            .filter-card { margin: 0 10px 20px 10px; }
+            .filter-group { min-width: 100%; } /* Stacks filters on tiny screens */
+            .btn-apply { width: 100%; }
+            .page-title { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/" class="nav-logo">OBLU | WORKFLOW</a>
+        <div class="nav-links">
+            <a href="/proforma/">List</a>
+            <a href="/proforma/create/">+ Create</a>
+            <a href="/logout/" style="color: #e74c3c;">Logout</a>
+        </div>
+    </nav>
+
+    <div class="dashboard-wrapper">
+        <div class="header-area">
+            <div>
+                <h1 class="page-title">Time Tracker</h1>
+            </div>
+            <div class="invoice-badge">Analyzing {{ all_invoices.count }} Invoices</div>
+        </div>
+
+        <form method="get" class="filter-card">
+            <div class="filter-group">
+                <label>Owner</label>
+                <select name="f_user" class="filter-input">
+                    <option value="">All Users</option>
+                    {% for username in user_dropdown_list %}
+                    <option value="{{ username }}" {% if request.GET.f_user == username %}selected{% endif %}>{{ username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>From</label>
+                <input type="date" name="f_start" value="{{ request.GET.f_start }}" class="filter-input">
+            </div>
+            <div class="filter-group">
+                <label>To</label>
+                <input type="date" name="f_end" value="{{ request.GET.f_end }}" class="filter-input">
+            </div>
+            <button type="submit" class="btn-apply">Filter</button>
+        </form>
+
+        <div class="table-outer-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Invoice / Customer</th>
+                        <th>Created</th>
+                        <th>Owner</th>
+                        <th>Price Approval</th>
+                        <th>Stock Approval</th>
+                        <th>Dispatch Action</th>
+                        <th style="background:#111; text-align:center;">Avg Acc.</th>
+                        <th style="background:#111; text-align:center;">Total Time Cycle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in dashboard_rows %}
+                    <tr>
+                        <td>
+                            <span class="pi-id">#{{ row.invoice_data.id }}</span>
+                            <span class="cust-name">{{ row.invoice_data.customer.name|truncatechars:25 }}</span>
+                        </td>
+                        <td>
+                            <div style="font-weight: 700;">{{ row.invoice_data.date_created|date:"d M" }}</div>
+                            <div style="color:#bbb; font-size:11px;">{{ row.invoice_data.date_created|date:"H:i" }}</div>
+                        </td>
+                        <td style="font-weight: 600;">{{ row.invoice_data.created_by }}</td>
+
+                       <td>
+    {% if row.price_request_obj %}
+        {% if row.price_request_obj.status != 'pending' %}
+            <!-- If it's Approved or Rejected, show the time if we have it, else just the status -->
+            <div style="font-weight:800;">{{ row.price_approval_time|default:"0s" }}</div>
+            <span class="status-tag {% if row.price_request_obj.status == 'approved' %}tag-approved{% else %}tag-rejected{% endif %}">
+                {{ row.price_request_obj.status }}
+            </span>
+        {% else %}
+            <!-- Truly Pending -->
+            <span class="tag-waiting">⌛ Pending</span>
+        {% endif %}
+    {% else %}
+        <span style="color:#222;">N/A</span>
+    {% endif %}
+</td>
+
+                        <td>
+                            {% if row.stock_request_obj %}
+                                {% if row.stock_approval_time %}
+                                       <div style="font-weight:800;">{{ row.stock_approval_time }}</div>
+                                    <span class="status-tag {% if row.stock_request_obj.status == 'approved' %}tag-approved{% else %}tag-rejected{% endif %}">{{ row.stock_request_obj.status }}</span>
+                                {% else %}
+                                    <span class="tag-waiting">⌛ Checking</span>
+                                {% endif %}
+                            {% else %}<span style="color:#222;">N/A</span>{% endif %}
+                        </td>
+
+                        <td>
+                            {% if row.invoice_data.dispatched_at %}
+                                <div style="font-weight:800;">{{ row.dispatch_action_time }}</div>
+                                <span class="status-tag tag-approved">Dispatched</span>
+                            {% elif row.invoice_data.dispatch_requested_at %}
+                                <span class="tag-waiting">🚀 Requested</span>
+                            {% else %}<span style="color:#222;">N/A</span>{% endif %}
+                        </td>
+
+                        <td class="col-acc">{{ row.row_accounts_average }}</td>
+                        <td class="col-cycle">
+                            {% if row.total_invoice_lifetime %}
+                                <span style="color: #22863a;">{{ row.total_invoice_lifetime }}</span>
+                            {% else %}
+                                <span style="color: #f39c12; font-weight:900; font-size:10px;">LIVE</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="8">
+                            <div class="footer-content">
+                                <div class="footer-box">
+                                    <div class="footer-label">Price Approval Avg</div>
+                                    <div class="footer-value" style="color: #00d4ff;">{{ overall_price_avg }}</div>
+                                </div>
+                                <div class="footer-box">
+                                    <div class="footer-label">Accounts Team Avg</div>
+                                    <div class="footer-value" style="color: #ffc107;">{{ overall_team_avg }}</div>
+                                </div>
+                                <div class="footer-box">
+                                    <div class="footer-label">Total Time Cycle Avg</div>
+                                    <div class="footer-value" style="color: #ffc107;">{{ overall_time_avg }}</div>
+
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
