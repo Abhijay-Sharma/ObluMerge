@@ -4,7 +4,6 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
-
 # Import existing models
 from customer_dashboard.models import Customer
 from inventory.models import InventoryItem
@@ -14,6 +13,7 @@ from num2words import num2words
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
+from decimal import Decimal
 # 🧾 1. Product Pricing
 class ProductPrice(models.Model):
     """
@@ -25,6 +25,14 @@ class ProductPrice(models.Model):
         related_name="proforma_price"
     )
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    # NEW: The Maximum Selling Price / Manufacturer Suggested Price
+    msrp = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00, null=True,blank=True,
+        help_text="The ceiling price. Requests above this are auto-approved."
+    )
+
     has_dynamic_price = models.BooleanField(default=False)
     min_requirement = models.PositiveIntegerField(default=1)
     tax_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
@@ -39,6 +47,7 @@ class ProductPrice(models.Model):
         return f"{self.product.name} - ₹{self.price}"
 
 
+
 class ProductPriceTier(models.Model):
     """
     Quantity-based dynamic pricing tiers for a product.
@@ -51,6 +60,16 @@ class ProductPriceTier(models.Model):
     )
     min_quantity = models.PositiveIntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # ------add field---------
+    msrp = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00, null=True,blank=True,
+        help_text="The ceiling price. Requests above this are auto-approved."
+    )
+
+
 
     class Meta:
         ordering = ["min_quantity"]
@@ -88,6 +107,18 @@ class ProformaInvoice(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     validity = models.DateTimeField(default=validity_default)
     created_by = models.CharField(max_length=255, default="Oblu")
+    DISPATCH_CHOICES = [
+        ('processing', 'Still Processing'),
+        ('pending', 'Pending'),
+        ('dispatched', 'Dispatched'),
+    ]
+    dispatch_status = models.CharField(
+        max_length=20,
+        choices=DISPATCH_CHOICES,
+        default='processing'
+    )
+    dispatch_requested_at = models.DateTimeField(null=True, blank=True)
+    dispatched_at = models.DateTimeField(null=True, blank=True)
 
     is_price_altered = models.BooleanField(default=False)
 
@@ -95,6 +126,12 @@ class ProformaInvoice(models.Model):
         max_length=10,
         choices=CourierMode.choices,
         default=CourierMode.SURFACE)
+
+    # 🔥 NEW FIELD  (Converted-pi)
+    is_converted_to_pi = models.BooleanField(default=False, help_text="Converted-pi")
+
+
+
 
     def is_intra_state(self):
         """
@@ -149,10 +186,10 @@ class ProformaInvoice(models.Model):
         # category -> {"qty": int, "product": InventoryItem}
         category_data = {}
 
-        print("\n========== COURIER CHARGE DEBUG ==========")
-        print("INVOICE:", self.id)
-        print("MODE:", self.courier_mode)
-
+        # print("\n========== COURIER CHARGE DEBUG ==========")
+        # print("INVOICE:", self.id)
+        # print("MODE:", self.courier_mode)
+        #
         # 🔹 Group quantities by category
         for item in self.items.all():
             category = item.product.category
@@ -170,15 +207,15 @@ class ProformaInvoice(models.Model):
             total_qty = data["qty"]
             product = data["product"]
 
-            print(f"\nCATEGORY: {category.name}")
-            print("TOTAL QTY:", total_qty)
-
+            # print(f"\nCATEGORY: {category.name}")
+            # print("TOTAL QTY:", total_qty)
+            #
             sheet = product.courier_sheets.filter(
                 mode=self.courier_mode
             ).first()
 
             if not sheet:
-                print("❌ NO COURIER SHEET FOUND")
+                # print("❌ NO COURIER SHEET FOUND")
                 continue
 
             tier = (
@@ -192,14 +229,14 @@ class ProformaInvoice(models.Model):
                 .first()
             )
 
-            print("MATCHED TIER:", tier)
+            # print("MATCHED TIER:", tier)
 
             if tier:
                 total_courier += tier.charge
-                print("ADDED CHARGE:", tier.charge)
+                # print("ADDED CHARGE:", tier.charge)
 
-        print("\nTOTAL COURIER CHARGE:", total_courier)
-        print("========================================\n")
+        # print("\nTOTAL COURIER CHARGE:", total_courier)
+        # print("========================================\n")
 
         return total_courier
 
@@ -247,7 +284,7 @@ class ProformaInvoice(models.Model):
                 if product.category else ""
             )
 
-            print("CATEGORY:", category_name)
+            # print("CATEGORY:", category_name)
 
             if category_name in SHEET_CATEGORIES:
 
@@ -256,7 +293,7 @@ class ProformaInvoice(models.Model):
                 if not sheet_product:
                     sheet_product = product
 
-        print("TOTAL SHEET QTY:", total_sheet_qty)
+        # print("TOTAL SHEET QTY:", total_sheet_qty)
 
         # -------------------------
         # STEP 2 — APPLY SHEET SLAB ONCE
@@ -289,7 +326,7 @@ class ProformaInvoice(models.Model):
                 )
 
                 if tier:
-                    print("SHEET CHARGE:", tier.charge)
+                    # print("SHEET CHARGE:", tier.charge)
 
                     total_courier += tier.charge
 
@@ -353,17 +390,17 @@ class ProformaInvoice(models.Model):
 
                 charge = tier.charge
 
-            print(
-                "PRODUCT:", product.name,
-                "| CATEGORY:", category_name,
-                "| QTY:", qty,
-                "| RATE:", tier.charge,
-                "| CHARGE:", charge
-            )
-
+            # print(
+            #     "PRODUCT:", product.name,
+            #     "| CATEGORY:", category_name,
+            #     "| QTY:", qty,
+            #     "| RATE:", tier.charge,
+            #     "| CHARGE:", charge
+            # )
+            #
             total_courier += charge
 
-        print("FINAL COURIER:", total_courier)
+        # print("FINAL COURIER:", total_courier)
 
         return total_courier
 
@@ -516,6 +553,66 @@ class ProformaInvoiceItem(models.Model):
     product = models.ForeignKey(InventoryItem, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
 
+    # 🔥 NEW FIELDS  (# added section)
+    customer_name_snapshot = models.CharField(max_length=255, blank=True, null=True, help_text="customer")
+
+    current_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Price at time of creation"
+    )
+    requested_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Price requested by user"
+    )
+
+    current_courier_charge = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Current - courier"
+    )
+    requested_courier_charge = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Requested - courier"
+    )
+
+    current_msrp = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Current - MSRP"
+    )
+
+    stock_requested = models.IntegerField(
+        default=0,
+        help_text="Stock-requested (Integer)"
+    )
+
+    made_by = models.CharField(
+        max_length=255, null=True, blank=True,
+        help_text="made-by"
+    )
+
+    # =====================================================
+    # 🔥 LOGIC UPDATES
+    # =====================================================
+
+    def save(self, *args, **kwargs):
+        """
+        Auto-populate snapshot fields from the product/invoice
+        on first save if not provided.
+        """
+        if not self.pk:
+            # Snapshot the current values from the ProductPrice model
+            price_obj = getattr(self.product, "proforma_price", None)
+            if price_obj:
+                self.current_price = self.get_unit_price_incl_tax()
+                self.current_msrp = price_obj.msrp
+
+            self.customer_name_snapshot = self.invoice.customer.name
+
+            # Initial stock requested equals current quantity
+            if not self.stock_requested:
+                self.stock_requested = self.quantity
+
+        super().save(*args, **kwargs)
+
     # =====================================================
     # 🔥 SINGLE SOURCE OF TRUTH FOR UNIT PRICE (INC GST)
     # =====================================================
@@ -525,6 +622,12 @@ class ProformaInvoiceItem(models.Model):
         - Applies dynamic tier pricing if enabled
         - Falls back to base price
         """
+        try:
+            if not self.product: return Decimal("0.00")
+            p = self.product
+        except:
+            return Decimal("0.00")
+
         price_obj = getattr(self.product, "proforma_price", None)
         if not price_obj:
             return Decimal("0.00")
@@ -603,6 +706,13 @@ class ProformaInvoiceItem(models.Model):
         - ensure minimum order quantity
         - ensure stock availability
         """
+        try:
+            if not self.product: return
+            p = self.product
+        except:
+            return
+
+
         price_obj = getattr(self.product, "proforma_price", None)
         if not price_obj:
             raise ValidationError(
@@ -617,12 +727,35 @@ class ProformaInvoiceItem(models.Model):
             )
 
         # Stock check
-        available_qty = getattr(self.product, "quantity", 0)
-        if self.quantity > available_qty:
-            raise ValidationError(
-                f"Only {available_qty} units available in stock "
-                f"for {self.product.name}."
-            )
+        # available_qty = getattr(self.product, "quantity", 0)
+        # if self.quantity > available_qty:
+        #     raise ValidationError(
+        #         f"Only {available_qty} units available in stock "
+        #         f"for {self.product.name}."
+        #     )
+        #
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            # ONLY snapshot from master if the field is currently empty
+            if not self.current_price or self.current_price == 0:
+                price_obj = getattr(self.product, "proforma_price", None)
+                if price_obj:
+                    # This is where 180 was coming from
+                    self.current_price = self.get_unit_price_incl_tax()
+
+            if not self.current_msrp:
+                price_obj = getattr(self.product, "proforma_price", None)
+                if price_obj:
+                    self.current_msrp = price_obj.msrp
+
+            self.customer_name_snapshot = self.invoice.customer.name
+            if not self.stock_requested:
+                self.stock_requested = self.quantity
+
+        super().save(*args, **kwargs)
+
+
 
     def __str__(self):
         return f"{self.product.name} ({self.quantity})"
@@ -674,16 +807,13 @@ class CourierChargeTier(models.Model):
 
 
 class ProformaPriceChangeRequest(models.Model):
-    """
-    Stores a request to change product prices and/or courier charge
-    in a Proforma Invoice.
-    """
-
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
     ]
+    # True = Product Price Request, False = Courier Request
+    is_product_request = models.BooleanField(default=True)
 
     invoice = models.ForeignKey(
         ProformaInvoice,
@@ -691,48 +821,163 @@ class ProformaPriceChangeRequest(models.Model):
         related_name="price_requests"
     )
 
+    # --- NEW: Link Customer directly for easier filtering/memory check ---
+    customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True)
+    # If is_product_request is True, we need to know which product
+    product = models.ForeignKey(
+        InventoryItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Only required if is_product_request is True")
+
+
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="proforma_price_requests_made"
+        related_name="proforma_price_requests_made" )
+
+
+    # --- UPDATED: JSON Structure will now store: --- ❌
+    # { "item_id": {"req_price": 60, "rec_price": 100, "msrp": 70, "under_msrp": true} } ❌
+    #removed JSON PATTERN
+
+# -----product fields --------
+    requested_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    recommended_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    msrp_snapshot = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+
+# -------For courier-------
+    requested_courier_charge = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    recommended_courier_charge = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+
+    # NEW: Track courier status specifically
+    COURIER_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+    courier_status = models.CharField(
+        max_length=10,
+        choices=COURIER_STATUS_CHOICES,
+        default="pending"
     )
 
-    # 🔥 Product price overrides
-    # { "invoice_item_id": "new_unit_price_incl_gst" }
-    requested_product_prices = models.JSONField(
-        encoder=DjangoJSONEncoder,
-        blank=True,
-        null=True
-    )
+    # Note: requested_product_prices will now look like this:
+    # {
+    #   "101": {"requested_price": 500, "recommended_price": 600, "status": "approved"},
+    #   "102": {"requested_price": 400, "recommended_price": 600, "status": "rejected"}
+    # }
 
-    # 🔥 Courier charge override
-    requested_courier_charge = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True
-    )
+
 
     reason = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="pending"
+    # --- NEW: Approval Logic Fields ---
+    is_under_msrp = models.BooleanField(
+        default=False,
+        help_text="True if ANY item in this request is priced below its MSRP"
+    )
+
+    # Tracks which role has signed off
+    accountant_approved = models.BooleanField(default=False)
+    superuser_approved = models.BooleanField(default=False)
+
+    # --- NEW: Permitted Field (Auto-unlock) ---
+    is_permitted = models.BooleanField(
+        default=False,
+        help_text="Ticked if this price/customer combo was already approved in the past"
     )
 
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
         on_delete=models.SET_NULL,
         related_name="proforma_price_requests_reviewed"
     )
 
     reviewed_at = models.DateTimeField(null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
+    recommended_price= models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    is_this_product_price = models.BooleanField(
+        default=False,
+    )
+
+    def save(self, *args, **kwargs):
+        # 1. Logic for Product Requests
+        if self.is_product_request:
+            # Clear courier fields to ensure data integrity
+            self.requested_courier_charge = None
+
+            # Auto-calculate MSRP status
+            if self.requested_price and self.msrp_snapshot:
+                self.is_under_msrp = self.requested_price < self.msrp_snapshot
+
+        # 2. Logic for Courier Requests
+        else:
+            # Clear product fields
+            self.product = None
+            self.requested_price = None
+            self.msrp_snapshot = None
+            self.is_under_msrp = False
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"ProformaPriceChangeRequest #{self.id} - Invoice #{self.invoice.id} ({self.status})"
+        req_type = "Product" if self.is_product_request else "Courier"
+        return f"{req_type} Request #{self.id} (Inv: {self.invoice_id}) - MSRP Status: {self.is_under_msrp}"
+
+class ApprovedPriceMemory(models.Model):
+    """
+    Stores previously approved prices for a specific Customer + Product combination.
+    Used to implement the 'is_permitted' logic.
+    """
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    product = models.ForeignKey(InventoryItem, on_delete=models.CASCADE)
+    min_approved_price = models.DecimalField(max_digits=10, decimal_places=2)
+    # If the base price (recommended price) changes, this memory becomes invalid
+    base_price_at_approval = models.DecimalField(max_digits=10, decimal_places=2)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('customer', 'product')
+
+    def __str__(self):
+        return f"{self.customer.name} | {self.product.name} | Min: ₹{self.min_approved_price}"
+
+class ProformaStockShortageRequest(models.Model):
+    """Handles requests where quantity ordered > warehouse stock."""
+    STATUS_CHOICES = [("pending", "Pending Approval"), ("approved", "Stock Confirmed"), ("rejected", "Unavailable")]
+
+    invoice = models.OneToOneField(ProformaInvoice, on_delete=models.CASCADE, related_name="stock_request")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    shortage_details = models.JSONField(encoder=DjangoJSONEncoder)  # { "Product Name": "Requested: 10, Available: 2" }
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name="stock_reviewed")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class ProformaRemark(models.Model):
+    # 1. Links
+    invoice = models.ForeignKey('ProformaInvoice', on_delete=models.CASCADE, related_name="remarks")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    # 2. Content
+    remark = models.TextField()
+
+    # 3. Metadata
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def str(self):
+        return f"{self.user.username} - {self.created_at.strftime('%d %b, %H:%M')}"
+
 
