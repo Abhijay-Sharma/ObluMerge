@@ -1422,7 +1422,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         if price_request.is_under_msrp and not request.user.is_superuser:
             try:
                 subject = f"🚨 Approval Needed: Below MSRP Request (Inv #{invoice.id})"
-                to_email = ["swasti.obluhc@gmail.com"]
+                to_email = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]
                 context = {
                     "price_request": price_request,
                     "accountant": request.user.username,
