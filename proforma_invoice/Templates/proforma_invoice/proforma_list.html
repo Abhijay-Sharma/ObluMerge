@@ -94,6 +94,19 @@
     box-shadow: 0 0 5px rgba(255, 77, 77, 0.8);
     animation: pulse-dot 1.5s infinite;
 }
+    .modal-custom-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;
+    }
+    .modal-custom-overlay.active { display: flex; }
+    .modal-custom-content { background: #1e1e1e; color: white; width: 90%; max-width: 600px; border-radius: 8px; overflow: hidden; border: 1px solid #444; }
+    .modal-custom-header { padding: 15px; background: #2d2d2d; border-bottom: 1px solid #444; display: flex; justify-content: space-between; }
+    .modal-custom-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+    .close-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+    .rej-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .rej-table th, .rej-table td { padding: 10px; border-bottom: 1px solid #333; font-size: 0.85rem; }
+    .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+
 
 @keyframes pulse-dot {
     0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
@@ -177,15 +190,13 @@
 
                         <!-- 4. Grand Total -->
                         <td class="fw-bold">₹{{ inv.grand_total|floatformat:2 }}</td>
-<!--                        <td class="fw-bold">₹{{ recalculated_grand_total|floatformat:2 }}</td>-->
                         <td>{{ inv.get_courier_mode_display }}</td>
 
-                        <!-- 5. STATUS & VIEW PERMISSIONS (Fixed Logic) -->
+                        <!-- 5. STATUS & VIEW PERMISSIONS -->
                         <td>
-                            {% if request.user.is_superuser  %}
+                            {% if request.user.is_superuser %}
                                 <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">Admin View</a>
                             {% else %}
-
                                 {# Priority 1: Shipped #}
                                 {% if inv.dispatch_status == 'dispatched' %}
                                     <div class="badge bg-success text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">✅ DISPATCHED</div>
@@ -196,72 +207,60 @@
                                     <div class="badge bg-warning text-dark w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ STOCK REVIEW</div>
                                     <button type="button" class="btn-pro-action btn-grey" onclick="alert('Warehouse is reviewing stock. Locked.');">🔒 Reviewing...</button>
 
-                                {# Priority 3: Stock Rejected Blocker (Only if price request also exists) #}
+                                {# Priority 3: Stock Rejected Blocker #}
                                 {% elif stock_status == 'rejected' and price_req %}
                                     <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">❌ STOCK REJECTED</div>
                                     <button type="button" class="btn-pro-action btn-grey" onclick="alert('Stock request rejected. Access denied.');">🔒 Locked</button>
 
-                                {# Priority 4: All Unlocked Cases (Stock is Approved or None) #}
+                                {# Priority 4: All Unlocked Cases #}
                                 {% else %}
                                     {% if price_status == 'rejected' %}
                                         <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">❌ PRICE REJECTED</div>
                                         <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">View Proforma</a>
-
                                     {% elif price_status == 'pending' %}
-                                        <div class="badge bg-info text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">📦 STOCK READY</div>
+                                        <div class="badge bg-info text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ PRICE PENDING</div>
                                         <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-blue" target="_blank">View Draft PI</a>
-
                                     {% else %}
                                         <div class="badge bg-primary text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">READY</div>
                                         <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">View Proforma</a>
                                     {% endif %}
                                 {% endif %}
-
                             {% endif %}
+
+                            <!-- NEW SEPARATE TRACK PROGRESS BUTTON (Always Visible) -->
+                            <button type="button" class="btn-pro-action btn-light border w-100 mt-1"
+                                    style="font-size: 0.65rem; font-weight: bold; background: #fffff; color: #333;"
+                                    onclick="openRejectedModal('{{ inv.id }}')">
+                                📊 Track Progress Details
+                            </button>
                         </td>
 
                         <!-- 6. APPROVAL JOURNEY & ACTIONS -->
                         <td class="action-container">
-                            <!-- PROGRESS TRACKER (Shows duration/time taken even after shipping) -->
                             <div class="approval-tracker mb-1">
-                                <!-- Station 1: Stock -->
                                 <div class="station {% if stock_status == 'pending' %}active{% elif stock_status == 'approved' %}completed{% elif stock_status == 'rejected' %}rejected{% endif %}">
                                     <span class="icon">📦</span><span>Stock</span>
                                     {% if stock_status != 'none' %}
                                         <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
-                                            {% if stock_status == 'pending' %}
-                                                ⌛ {{ stock_req.created_at|timesince }}
-                                            {% elif stock_req.reviewed_at %}
-                                                {# Calculates time from request to approval #}
-                                                ✔ {{ stock_req.created_at|timesince:stock_req.reviewed_at }}
-                                            {% endif %}
+                                            {% if stock_status == 'pending' %}⌛ {{ stock_req.created_at|timesince }}{% elif stock_req.reviewed_at %}✔ {{ stock_req.created_at|timesince:stock_req.reviewed_at }}{% endif %}
                                         </small>
                                     {% endif %}
                                 </div>
-
                                 <div class="connector {% if stock_status == 'approved' or stock_status == 'none' %}done{% endif %}"></div>
-
-                                <!-- Station 2: Price -->
                                 <div class="station {% if price_status == 'pending' %}active{% elif price_status == 'approved' %}completed{% elif price_status == 'rejected' %}rejected{% endif %}">
                                     <span class="icon">⚖️</span><span>Price</span>
                                     {% if price_status != 'none' %}
                                         <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
-                                            {% if price_status == 'pending' %}
-                                                ⌛ {{ price_req.created_at|timesince }}
-                                            {% elif price_req.reviewed_at %}
-                                                {# Calculates time from request to approval #}
-                                                ✔ {{ price_req.created_at|timesince:price_req.reviewed_at }}
-                                            {% endif %}
+                                            {% if price_status == 'pending' %}⌛ {{ price_req.created_at|timesince }}{% elif price_req.reviewed_at %}✔ {{ price_req.created_at|timesince:price_req.reviewed_at }}{% endif %}
                                         </small>
                                     {% endif %}
                                 </div>
                             </div>
 
-                            <!-- DISPATCH BUTTONS -->
                             <div class="w-100 mt-2">
                                 {% if inv.dispatch_status == 'processing' %}
                                     {% if stock_status == 'approved' or stock_status == 'none' %}
-                                        {% if price_status == 'approved' or price_status == 'none' or request.user.is_superuser %}
+                                        {% if price_status == 'approved' or price_status == 'rejected' or price_status == 'none' or request.user.is_superuser %}
                                             <a href="{% url 'request_dispatch' inv.id %}" class="btn-pro-action btn-yellow">🚀 Dispatch PI</a>
                                         {% else %}
                                             <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Admin</button>
@@ -283,31 +282,11 @@
                             {% endif %}
                         </td>
 
-                        <!--                        <td>-->
-<!--                            <div class="communication-area">-->
-<!--                                &lt;!&ndash; History Box &ndash;&gt;-->
-<!--                                <div id="history-box-{{ inv.id }}" class="history-box">-->
-<!--                                    {% for r in inv.remarks.all %}-->
-<!--                                        <div class="chat-bubble {% if r.user.is_superuser or r.user.is_accountant %}bubble-adm{% else %}bubble-sp{% endif %}">-->
-<!--                                            <span class="time-meta">{{ r.created_at|date:"d M, H:i" }}</span>-->
-<!--                                            <div style="white-space: pre-wrap;"><strong>{{ r.user.username }}:</strong> {{ r.remark }}</div>-->
-<!--                                        </div>-->
-<!--                                    {% endfor %}-->
-<!--                                </div>-->
-
-<!--                                &lt;!&ndash; Input Area &ndash;&gt;-->
-<!--                                <div class="reply-area">-->
-<!--                                    <textarea id="input-{{ inv.id }}" class="reply-input" placeholder="Type message..."></textarea>-->
-<!--                                    <button class="btn-ok" onclick="submitRemark({{ inv.id }})" id="btn-{{ inv.id }}">OK</button>-->
-<!--                                </div>-->
-<!--                            </div>-->
-<!--                        </td>-->
+                        <!-- 7. MESSAGE HUB -->
                         <td>
                             <button class="btn-pro-action btn-blue" onclick="openRemarkModal('{{ inv.id }}')">
                                 💬 Message Hub
-
                                 {% with last_remark=inv.remarks.last %}
-                                    {# If there is a remark and the sender is NOT you, show the dot #}
                                     {% if last_remark and last_remark.user != request.user %}
                                         <span class="notification-dot" id="dot-{{ inv.id }}"></span>
                                     {% endif %}
@@ -323,9 +302,9 @@
     </div>
 </div>
 
-<!-- ==========================================
-     UNIFIED REMARK MODAL (Add to all 3 files)
-     ========================================== -->
+<!--; ==========================================-->
+<!--     UNIFIED REMARK MODAL (Add to all 3 files)-->
+<!--     ========================================== &ndash;&gt;-->
 <div id="globalRemarkModal" class="custom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; padding: 20px;">
     <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
@@ -347,6 +326,18 @@
     </div>
 </div>
 
+<!-- UPDATED REQUEST DETAILS MODAL -->
+<div id="detailsModal" class="modal-custom-overlay">
+    <div class="modal-custom-content" style="max-width: 700px;"> <!-- Increased width for more data -->
+        <div class="modal-custom-header">
+            <h5 class="m-0">Request Tracking - Invoice #<span id="detInvId"></span></h5>
+            <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
+        </div>
+        <div class="modal-custom-body" id="detailsContent">
+            <div class="text-center p-5">Loading details...</div>
+        </div>
+    </div>
+</div>
 
 
 <script>
@@ -439,5 +430,92 @@ window.onclick = function(e) {
     if (e.target == modal) closeRemarkModal();
 }
 
+<!--; prices Update-->
+
+// Helper for Status Badge colors
+function getStatusBadge(status) {
+    status = status.toLowerCase();
+    if (status === 'approved') return 'bg-success';
+    if (status === 'rejected') return 'bg-danger';
+    return 'bg-warning text-dark'; // Pending
+}
+
+function openRejectedModal(invoiceId) { // Keeping the name same so you don't have to change your button onclick
+    const modal = document.getElementById('detailsModal');
+    const content = document.getElementById('detailsContent');
+    document.getElementById('detInvId').innerText = invoiceId;
+
+    modal.classList.add('active');
+    content.innerHTML = '<div class="text-center p-5"><p>Fetching all request statuses...</p></div>';
+
+    // Update this URL to match your new API path
+    fetch(`/proforma/api/proforma/request-details/${invoiceId}/`)
+        .then(response => {
+            if (!response.ok) throw new Error('Request Failed');
+            return response.json();
+        })
+        .then(data => {
+            let html = '';
+
+            // 1. Courier Requests Section
+            if (data.courier_history && data.courier_history.length > 0) {
+                html += `<h6 class="fw-bold mb-2 text-secondary">🚚 Courier Change History</h6>
+                <table class="rej-table border mb-4">
+                    <thead><tr><th>Requested</th><th>Reason</th><th>Reviewer</th><th>Status</th></tr></thead>
+                    <tbody>`;
+                data.courier_history.forEach(c => {
+                    html += `
+                        <tr>
+                            <td class="fw-bold">₹${c.requested}</td>
+                            <td class="small">${c.reason}</td>
+                            <td class="small">${c.reviewed_by}</td>
+                            <td><span class="badge ${getStatusBadge(c.status)}">${c.status}</span></td>
+                        </tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+
+            // 2. Product Decisions Section
+            html += `<h6 class="fw-bold mb-2 text-secondary">📦 Product Price Tracking</h6>
+            <table class="rej-table border">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Requested</th>
+                        <th>Reviewer</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            data.products.forEach(p => {
+                html += `
+                    <tr>
+                        <td style="font-size: 0.75rem;">
+                            ${p.name}<br>
+                            <small class="text-muted">MSRP: ₹${p.msrp} | Reason: ${p.reason}</small>
+                        </td>
+                        <td class="text-primary fw-bold">₹${p.requested_price}</td>
+                        <td class="small">${p.reviewed_by}</td>
+                        <td><span class="badge ${getStatusBadge(p.status)}">${p.status}</span></td>
+                    </tr>`;
+            });
+
+            if(data.products.length === 0 && (!data.courier_history || data.courier_history.length === 0)) {
+                html = '<div class="alert alert-info">No product or courier requests found for this invoice.</div>';
+            } else {
+                html += `</tbody></table>`;
+            }
+
+            content.innerHTML = html;
+        })
+        .catch(err => {
+            content.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        });
+}
+
+function closeDetailsModal() {
+    document.getElementById('detailsModal').classList.remove('active');
+}
 </script>
 {% endblock %}
