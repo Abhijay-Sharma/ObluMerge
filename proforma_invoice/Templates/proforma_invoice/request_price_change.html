@@ -1,121 +1,144 @@
-{% extends 'quotations/base.html' %}
+{% extends 'proforma_invoice/base.html' %}
 {% block content %}
 
 <style>
-  h2 {
-    text-align: center;
-    margin-bottom: 30px;
+  .pi-req-container {
+    max-width: 1000px;
+    margin: 40px auto;
+    background: #2d2d2d;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     color: white;
   }
 
-  form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    width: 100%;
-  }
+  h2 { text-align: center; margin-bottom: 30px; font-weight: 700; color: var(--primary); }
 
-  .table-wrapper {
-    width: 90%;
-    max-width: 900px;
-    overflow-x: auto;
-  }
+  .table-wrapper { width: 100%; overflow-x: auto; margin-bottom: 30px; }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    color: white;
-  }
+  table { width: 100%; border-collapse: collapse; background: #3d3d3d; border-radius: 8px; overflow: hidden; }
 
-  th, td {
-    padding: 10px;
-    text-align: center;
-  }
+  th { backgxround-color: #1a1a1a; color: #aaa; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; padding: 15px 10px; }
 
-  th {
-    background-color: #595555;
-  }
-
-  td {
-    background-color: #595555;
-  }
+  td { padding: 12px 10px; border-bottom: 1px solid #4d4d4d; vertical-align: middle; }
 
   input, textarea {
     width: 100%;
-    padding: 6px;
-    border-radius: 5px;
-    border: none;
-  }
-
-  .courier-section {
-    width: 90%;
-    max-width: 600px;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #1a1a1a;
     color: white;
+    transition: border 0.3s;
   }
 
-  button {
-    padding: 8px 20px;
+  input:focus { border-color: var(--primary); outline: none; }
+
+  .info-tag { font-size: 0.7rem; display: block; color: #888; margin-top: 4px; }
+  .msrp-tag { color: #ff6b6b; font-weight: bold; }
+
+  .section-box {
+    background: #3d3d3d;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
   }
 
-  @media (max-width: 768px) {
-    table {
-      font-size: 0.9rem;
-    }
+  .submit-btn {
+    width: 100%;
+    padding: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
+
+  /* Fix: Prevent rows from turning white on hover */
+  table tr:hover td {
+    background-color: inherit !important;
+    color: white !important;
+  }
+
+  /* Optional: If you want a subtle dark hover instead */
+  table tr:hover td {
+    background-color: #444 !important;
+  }
+
 </style>
 
-<h2>Request Price Change for Proforma Invoice #{{ invoice.id }}</h2>
+<div class="pi-req-container">
+    <h2>Request Price Change <br><small style="font-size: 1rem; color: #888;">Invoice #{{ invoice.id }} | {{ invoice.customer.name }}</small></h2>
 
-<form method="post">
-  {% csrf_token %}
+    <form method="post">
+        {% csrf_token %}
 
-  <!-- PRODUCT TABLE -->
-  <div class="table-wrapper">
-    <table>
-      <tr>
-        <th>Product</th>
-        <th>Current Price</th>
-        <th>Requested New Price</th>
-      </tr>
+        <!-- PRODUCT TABLE -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Product Details</th>
+                        <th>Current PI Price</th>
+                        <th>System / MSRP</th>
+                        <th style="width: 200px;">New Requested Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td style="text-align: left;">
+                            <strong>{{ item.product.name }}</strong>
+                            <span class="info-tag">Code: {{ item.product.product_code }}</span>
+                        </td>
+                        <td class="text-center">₹{{ item.current_price|floatformat:2 }}</td>
+                        <td class="text-center">
+                            <span class="info-tag" style="color: white !important;">System: ₹{{ item.product.proforma_price.price }}</span>
+                            <span class="info-tag msrp-tag">MSRP: ₹{{ item.product.proforma_price.msrp }}</span>
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" name="new_price_{{ item.id }}" placeholder="0.00">
+                            <small class="info-tag">Leave blank for no change</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-      {% for item in items %}
-      <tr>
-        <td>{{ item.product.name }}</td>
-        <td>₹{{ item.unit_price|floatformat:2 }}</td>
+        <div class="row">
+            <!-- COURIER SECTION -->
+            <div class="col-md-6">
+                <div class="section-box">
+                    <h6 class="text-primary mb-3">🚚 Courier Charge</h6>
+                    <label class="info-tag">Current Charge:</label>
+                    <div class="mb-3">₹{{ invoice.courier_charge }}</div>
 
-        <td>
-          <input type="number"
-                 step="0.01"
-                 name="new_price_{{ item.id }}"
-                 placeholder="Enter new price">
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
+                    <label class="info-tag">Requested New Charge:</label>
+                    <input type="number" step="0.01" name="new_courier_charge" placeholder="Enter amount">
+                </div>
+            </div>
 
-  <!-- COURIER SECTION -->
-  <div class="courier-section">
-    <label><strong>Current Courier Charge:</strong></label>
-    <p>₹{{ invoice.courier_charge }}</p>
+            <!-- REASON SECTION -->
+            <div class="col-md-6">
+                <div class="section-box">
+                    <h6 class="text-primary mb-3">📝 Justification</h6>
+                    <label class="info-tag">Reason for Request:</label>
+                    {{ form.reason }}
+                </div>
+            </div>
+        </div>
 
-    <label><strong>Requested New Courier Charge:</strong></label>
-    <input type="number"
-           step="0.01"
-           name="new_courier_charge"
-           placeholder="Enter new courier charge">
-  </div>
+        <button type="submit" class="btn btn-primary submit-btn">
+            🚀 Submit Request to Admin
+        </button>
 
-  <!-- REASON -->
-  <div class="courier-section">
-    <label><strong>Reason:</strong></label>
-    {{ form.reason }}
-  </div>
-
-  <button type="submit" class="btn btn-primary">
-    Submit Request
-  </button>
-</form>
+        <div class="text-center mt-3">
+        {% if invoice.id %}
+            <a href="{% url 'proforma_detail' pk=invoice.id %}" style="color: #aaa; text-decoration: none; font-size: 0.8rem;">Cancel and Go Back</a>
+        {% else %}
+            <a href="{% url 'proforma_list' %}" style="color: #aaa; text-decoration: none; font-size: 0.8rem;">Back to List</a>
+        {% endif %}
+        </div>
+    </form>
+</div>
 
 {% endblock %}
