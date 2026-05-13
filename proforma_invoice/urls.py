@@ -49,4 +49,5 @@ urlpatterns = [
     path('time-tracker/', views.ProformaTimeTrackerDashboardView.as_view(), name='proforma_time_tracker'),
 
     path('invoice/remark/manage/<int:pk>/', views.ManageInvoiceRemarkView.as_view(), name='manage_invoice_remark'),
+    path('api/proforma/request-details/<int:invoice_id>/', views.ProformaRequestDetailsApiView.as_view(), name='proforma_request_details_api'),
 ]

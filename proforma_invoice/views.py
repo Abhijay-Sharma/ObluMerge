@@ -2374,3 +2374,64 @@ class ManageInvoiceRemarkView(LoginRequiredMixin, View):
                 'role': role
             })
         return JsonResponse({'status': 'ok', 'remarks': remarks})
+
+
+
+class ProformaRequestDetailsApiView(LoginRequiredMixin, View):  # Renamed for clarity
+    def get_value(self, obj, field_name):
+        val = getattr(obj, field_name, 0)
+        if callable(val):
+            try:
+                val = val()
+            except:
+                val = 0
+        return float(val) if val is not None else 0
+
+    def get(self, request, invoice_id, *args, **kwargs):
+        invoice = get_object_or_404(ProformaInvoice, id=invoice_id)
+
+        # 1. Fetch ALL requests (Pending, Approved, Rejected)
+        all_requests = ProformaPriceChangeRequest.objects.filter(
+            invoice=invoice
+        ).select_related('product', 'reviewed_by').order_by('-created_at')
+
+        if not all_requests.exists():
+            return JsonResponse({'status': 'error', 'message': 'No requests found.'}, status=404)
+
+        product_list = []
+        courier_requests = []  # Changed to list to show history of courier requests if multiple exist
+
+        for req in all_requests:
+            # 2. Handle Product Requests
+            if req.is_product_request and req.product:
+                product_list.append({
+                    'name': req.product.name,
+                    'requested_price': self.get_value(req, 'requested_price'),
+                    'msrp': self.get_value(req, 'msrp_snapshot') or self.get_value(req, 'product.msrp'),
+                    'status': req.status.upper(),
+                    'reason': req.reason or "N/A",
+                    'reviewed_by': req.reviewed_by.username if req.reviewed_by else "Pending",
+                    'reviewed_at': req.reviewed_at.strftime('%d-%m-%Y %H:%M') if req.reviewed_at else None
+                })
+
+            # 3. Handle Courier Requests
+            if not req.is_product_request and req.requested_courier_charge is not None:
+                courier_requests.append({
+                    'original': self.get_value(invoice, 'courier_charge'),
+                    'requested': self.get_value(req, 'requested_courier_charge'),
+                    'status': req.status.upper(),
+                    'reason': req.reason or "N/A",
+                    'reviewed_by': req.reviewed_by.username if req.reviewed_by else "Pending"
+                })
+
+        # 4. Final data structure
+        data = {
+            'invoice_id': invoice.id,
+            'customer_name': invoice.customer.name if invoice.customer else "Unknown",
+            'products': product_list,
+            'courier_history': courier_requests,
+            # Show overall summary status
+            'is_fully_reviewed': not all_requests.filter(status='pending').exists()
+        }
+
+        return JsonResponse(data)
