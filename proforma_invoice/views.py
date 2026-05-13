@@ -1812,7 +1812,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
             }
             html_content = render_to_string("proforma_invoice/price_change_request_status_email.html", email_context)
             subject = f"✅ Price Request Decision (Proforma #{invoice.id})"
-            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", [price_request.requested_by.email])
+            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", [price_request.requested_by.email,'abhijay.obluhc@gmail.com'])
             msg.attach_alternative(html_content, "text/html")
             msg.send()
         except Exception as e:

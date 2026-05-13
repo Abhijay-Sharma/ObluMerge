@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 600px; }
+        .header { background: #fff3cd; padding: 10px; border-left: 5px solid #ffc107; margin-bottom: 20px; }
+        .details { margin-bottom: 20px; border-collapse: collapse; width: 100%; }
+        .details td { padding: 8px; border: 1px solid #ddd; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h3>⚖️ MSRP Approval Required</h3>
+        </div>
+        <p>Hi Nitin Sir,</p>
+
+        <p>I am <strong>{{ requested_by.username }}</strong>. There is a price change request for <strong>Invoice #{{ invoice.id }}</strong> that is currently priced <strong>below MSRP</strong>.</p>
+
+        <p>Kindly review and approve accordingly.</p>
+
+        <table class="details">
+            <tr><td><strong>Customer</strong></td><td>{{ invoice.customer.name }}</td></tr>
+            <tr><td><strong>Item</strong></td><td>{{ price_request.product.name|default:"Courier Charge" }}</td></tr>
+            <tr><td><strong>Requested Price</strong></td><td style="color: #dc3545; font-weight: bold;">₹{{ price_request.requested_price|default:price_request.requested_courier_charge }}</td></tr>
+            <tr><td><strong>MSRP Value</strong></td><td>₹{{ price_request.msrp_snapshot|default:"N/A" }}</td></tr>
+        </table>
+
+        <div style="margin-top: 30px;">
+            <a href="{{ review_url }}" class="btn">View on Dashboard</a>
+        </div>
+
+        <p style="font-size: 0.8rem; color: #888; margin-top: 40px;">This is an automated notification from Oblu Tools Proforma System.</p>
+    </div>
+</body>
+</html>

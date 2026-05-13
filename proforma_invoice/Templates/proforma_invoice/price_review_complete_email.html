@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 650px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .header { background: #2c3e50; color: #ffffff; padding: 20px; text-align: center; }
+        .content { padding: 25px; }
+        .status-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .status-table th { background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; text-align: left; font-size: 13px; }
+        .status-table td { border: 1px solid #dee2e6; padding: 12px; font-size: 13px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; text-transform: uppercase; }
+        .approved { background: #d4edda; color: #155724; }
+        .rejected { background: #f8d7da; color: #721c24; }
+        .footer { background: #f1f1f1; padding: 15px; text-align: center; font-size: 11px; color: #777; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 style="margin:0;">Price Review Complete</h2>
+            <p style="margin:5px 0 0; opacity:0.8;">Proforma Invoice #{{ invoice.id }}</p>
+        </div>
+        <div class="content">
+            <p>Hi <strong>{{ requested_by.username }}</strong>,</p>
+            <p>All price change requests for <strong>{{ invoice.customer.name }}</strong> have been reviewed by <strong>{{ reviewed_by.username }}</strong>.</p>
+
+            <table class="status-table">
+                <thead>
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Requested</th>
+                        <th>Decision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr>
+                        <td>
+                            {% if req.is_product_request %}
+                                {{ req.product.name }}
+                            {% else %}
+                                Courier Charge Change
+                            {% endif %}
+                        </td>
+                        <td>₹{{ req.requested_price|default:req.requested_courier_charge }}</td>
+                        <td>
+                            <span class="badge {% if req.status == 'approved' %}approved{% else %}rejected{% endif %}">
+                                {{ req.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="text-align: center;">
+                <a href="{{ review_url }}" class="btn">View Updated Proforma</a>
+            </div>
+        </div>
+        <div class="footer">
+            This is an automated notification from the Oblu Tools Proforma System.<br>
+            © 2024 Oblu Healthcare
+        </div>
+    </div>
+</body>
+</html>
