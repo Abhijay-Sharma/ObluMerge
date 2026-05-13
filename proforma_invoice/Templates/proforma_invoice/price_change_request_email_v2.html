@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif;">
+
+    <h2>💰 Price Change Request Submitted</h2>
+
+    <p><strong>Requested By:</strong> {{ requested_by }}</p>
+
+    <p><strong>Customer:</strong> {{ customer.name }}</p>
+
+    <p><strong>Proforma ID:</strong> #{{ invoice.id }}</p>
+
+    {% if any_under_msrp %}
+        <div style="background:#ffdddd;padding:12px;border:1px solid red;margin-bottom:15px;">
+            <strong>⚠ One or more items are BELOW MSRP</strong>
+        </div>
+    {% endif %}
+
+    <h3>Requested Price Changes</h3>
+
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width:100%;">
+        <tr>
+            <th>Product</th>
+            <th>Recommended Price</th>
+            <th>Requested Price</th>
+            <th>MSRP</th>
+            <th>Status</th>
+        </tr>
+
+        {% for req in price_requests %}
+        <tr>
+            <td>{{ req.product.name }}</td>
+            <td>₹{{ req.recommended_price }}</td>
+            <td>₹{{ req.requested_price }}</td>
+            <td>₹{{ req.msrp }}</td>
+
+            <td>
+                {% if req.is_under_msrp %}
+                    <span style="color:red;font-weight:bold;">
+                        BELOW MSRP
+                    </span>
+                {% else %}
+                    OK
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+
+    <h3>All Products in Proforma</h3>
+
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width:100%;">
+        <tr>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Current Price</th>
+        </tr>
+
+        {% for item in all_items %}
+        <tr>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₹{{ item.current_price }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+
+    <p>
+        <strong>Reason:</strong><br>
+        {{ reason }}
+    </p>
+
+    <br>
+
+    <a href="{{ review_url }}"
+       style="background:#198754;color:white;padding:10px 18px;text-decoration:none;border-radius:6px;">
+        Review Price Requests
+    </a>
+
+</body>
+</html>
+```

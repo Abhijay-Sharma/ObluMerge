@@ -221,7 +221,9 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                     req_prices_list = request.POST.getlist("requested_unit_price")
                     req_courier = request.POST.get("requested_courier_charge", "").strip()
                     req_reason = request.POST.get("request_reason", "").strip()
-
+                    #abhijay code start
+                    price_change_requests_for_email = []
+                    #abhijay code end
                     for index, f in enumerate(valid_forms):
                         product_obj = f.cleaned_data.get('product')
                         qty = f.cleaned_data.get('quantity')
@@ -286,6 +288,15 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                                 )
                                 # 3. Revert item price to standard until approved
                                 item.current_price = standard_price
+                                # Abhijay code starts
+                                price_change_requests_for_email.append({
+                                    "product": product_obj,
+                                    "requested_price": user_val,
+                                    "recommended_price": standard_price,
+                                    "msrp": msrp,
+                                    "is_under_msrp": is_under_msrp,
+                                })
+                                # Abhijay code ends
 
 
                         else:
@@ -308,7 +319,56 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                             reason=req_reason,
                             status="pending"
                         )
+                    #abhijay code starts
+                    # ================= PRICE CHANGE CONSOLIDATED EMAIL =================
 
+                    if price_change_requests_for_email:
+
+                        to_emails = ["abhijay.obluhc@gmail.com"]
+                        cc_emails = ["swasti.obluhc@gmail.com"]
+
+                        all_items = invoice.items.select_related("product")
+
+                        any_under_msrp_email = any(
+                            x["is_under_msrp"] for x in price_change_requests_for_email
+                        )
+
+                        email_context = {
+                            "invoice": invoice,
+                            "requested_by": request.user,
+                            "customer": selected_customer,
+                            "price_requests": price_change_requests_for_email,
+                            "reason": req_reason,
+                            "all_items": all_items,
+                            "any_under_msrp": any_under_msrp_email,
+                            "review_url": "https://oblutools.com/proforma/price-change-requests/"
+                        }
+
+                        html_content = render_to_string(
+                            "proforma_invoice/price_change_request_email_v2.html",
+                            email_context
+                        )
+
+                        subject = f"💰 Price Change Request Submitted (Proforma #{invoice.id})"
+
+                        if any_under_msrp_email:
+                            subject = f"🚨 UNDER MSRP Price Request (Proforma #{invoice.id})"
+
+                        from_email = "proforma@oblutools.com"
+
+                        msg = EmailMultiAlternatives(
+                            subject,
+                            "",
+                            from_email,
+                            to_emails,
+                            cc=cc_emails
+                        )
+
+                        msg.attach_alternative(html_content, "text/html")
+                        msg.send()
+
+                    # ===============================================================
+                    # abhijay code ends
                     needs_request = (
                                 action == "request_accounts" or has_stock_issue or has_price_issue or has_courier_issue)
 
@@ -321,6 +381,38 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                                 invoice=invoice, requested_by=request.user,
                                 shortage_details=shortage_details, status="pending"
                             )
+                            # Abhijay Chnage starts
+                            # ---------------- STOCK REQUEST EMAIL ----------------
+                            to_emails = ["abhijay.obluhc@gmail.com"]
+                            cc_emails = ["swasti.obluhc@gmail.com"]
+
+                            email_context = {
+                                "invoice": invoice,
+                                "requested_by": request.user,
+                                "shortage_details": shortage_details,
+                                "review_url": "https://oblutools.com/proforma/stock-requests/",
+                            }
+
+                            html_content = render_to_string(
+                                "proforma_invoice/stock_request_email.html",
+                                email_context
+                            )
+
+                            subject = f"📦 Stock Request Submitted (Proforma #{invoice.id})"
+                            from_email = "proforma@oblutools.com"
+
+                            msg = EmailMultiAlternatives(
+                                subject,
+                                "",
+                                from_email,
+                                to_emails,
+                                cc=cc_emails
+                            )
+
+                            msg.attach_alternative(html_content, "text/html")
+                            msg.send()
+                            # -----------------------------------------------------
+                            # Abhijay Chnage ends
 
                         # if has_price_issue or req_courier != "":
                         #     # ProformaPriceChangeRequest.objects.get_or_create(
