@@ -106,6 +106,18 @@
         <a href="{{ request.path }}" class="clear-btn" style="color: #888; text-decoration: none; font-size: 0.75rem; border: 1px solid #444; padding: 5px 10px; border-radius: 4px;">Reset Filters</a>
     </div>
 
+        <!-- ADD MESSAGES SECTION HERE -->
+    {% if messages %}
+        <div class="messages-container" style="margin-bottom: 20px;">
+            {% for message in messages %}
+                <div class="alert" style="padding: 12px 20px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 10px;">
+                    <span>⚠️</span> {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+
     <!-- ---------------- FILTERS ---------------- -->
     <form method="get" class="filters-section">
         <div class="filter-item"><label>Invoice #</label><input type="text" name="f_inv" value="{{ request.GET.f_inv }}"></div>
@@ -137,141 +149,175 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-<tbody>
-    {% regroup requests by invoice as requests_by_invoice %}
+                <tbody>
+                    <!-- Use 'grouped_requests' from the View instead of regrouping in template -->
+                    {% for group in grouped_requests %}
+                        {% with invoice=group.invoice requests_in_group=group.requests first_req=group.requests.0 %}
 
-    {% for group in requests_by_invoice %}
-        {% with invoice=group.grouper requests_in_group=group.list first_req=group.list.0 %}
+                        <!-- ---------------- MAIN ROW (PER INVOICE) ---------------- -->
+                        <tr class="row-main">
+                            <td style="color: var(--primary); font-weight: bold;">#{{ invoice.id }}</td>
+                            <td>
+                                <div style="font-weight: 700;">#{{ invoice.id }}</div>
+                                <div style="font-size: 0.7rem; color: #888;">{{ invoice.customer.name }}</div>
 
-        <!-- ---------------- MAIN ROW (PER INVOICE) ---------------- -->
-        <tr class="row-main">
-            <td style="color: var(--primary); font-weight: bold;">#{{ invoice.id }}</td>
-            <td>
-                <div style="font-weight: 700;">#{{ invoice.id }}</div>
-                <div style="font-size: 0.7rem; color: #888;">{{ invoice.customer.name }}</div>
-
-                <div style="font-size: 0.72rem; color: #aaa; margin-top: 4px;">
-                    📋 Includes {{ requests_in_group|length }} change request(s)
-                </div>
-            </td>
-            <td>
-                {% for r in requests_in_group %}
-                    {% if not r.is_product_request and r.requested_courier_charge is not None %}
-                        <div style="margin-bottom: 2px;">
-                            <span style="text-decoration: line-through; opacity: 0.4; font-size: 0.75rem;">₹{{ r.invoice.courier_charge|floatformat:0 }}</span>
-                            <b style="color: var(--info); font-size: 0.8rem;"> → ₹{{ r.requested_courier_charge|floatformat:0 }}</b>
-                        </div>
-                    {% endif %}
-                {% endfor %}
-            </td>
-            <td>{{ first_req.requested_by.username }}</td>
-            <td>
-                <!-- Group Status: Shows Pending if any item is pending -->
-                <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 3px 8px; border-radius: 50px; color: var(--primary); border-color: var(--primary);">
-                    PENDING
-                </span>
-
-                {% if invoice.has_msrp_warning %} <!-- Logic check if any item is below MSRP -->
-                    <br><small style="color: var(--danger); font-size: 0.6rem;">⚠️ CONTAINS BELOW MSRP</small>
-                {% endif %}
-            </td>
-            <td>
-                <small style="color: var(--primary); font-weight: bold;">⏳ {{ first_req.created_at|timesince }} (Running)</small>
-            </td>
-            <td>
-                <span style="color: #444; font-size: 0.7rem; font-style: italic;">Pending Review</span>
-            </td>
-            <td>
-                <div class="btn-group">
-                    <!-- Note: Approval buttons moved inside Details for individual control -->
-                    <button class="btn-core btn-remk" onclick="openRemarkModal('{{ invoice.id }}')">
-                        Remark
-                        {% with last_remark=invoice.remarks.last %}
-                            {% if last_remark and last_remark.user != request.user %}
-                                <span class="notification-dot" id="dot-{{ invoice.id }}"></span>
-                            {% endif %}
-                        {% endwith %}
-                    </button>
-                    <button class="btn-core btn-detl" onclick="toggleDetails('det-inv-{{ invoice.id }}')">Details</button>
-                </div>
-            </td>
-        </tr>
-
-        <!-- ---------------- NESTED DETAILS ROW (SHOWS ALL ITEMS) ---------------- -->
-        <tr id="det-inv-{{ invoice.id }}" class="expand-row">
-            <td colspan="8">
-                <div class="nested-container">
-                    <table class="inner-table">
-                        <thead>
-                            <tr>
-                                <th>Requested Item</th>
-                                <th style="text-align: center;">Decision</th>
-                                <th style="text-align: right;">Recommended</th>
-                                <th style="text-align: right;">Requested</th>
-                                <th style="text-align: right;">MSRP</th>
-                                <th style="text-align: center;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for req in requests_in_group %}
-                            <tr>
-                                <td>
-                                    {% if req.is_product_request %}
-                                        <strong>📦 Product:</strong> {{ req.product.name }}
-                                    {% else %}
-                                        <strong>🚚 Courier:</strong> Courier Charge Change
-                                    {% endif %}
-                                    <div style="font-size: 0.7rem; color: #888; font-style: italic; margin-top: 4px;">
-                                        Reason: {{ req.reason|default:"No reason provided." }}
-                                    </div>
-                                </td>
-                                <td style="text-align: center;">
-                                    {% if req.status == 'pending' %}
-                                        <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="form-{{ req.id }}">
-                                            {% csrf_token %}
-                                            <input type="radio" name="status_{{ req.id }}" value="approved" checked> Appr
-                                            <input type="radio" name="status_{{ req.id }}" value="rejected"> Reject
-                                        </form>
-                                    {% else %}
-                                        <span style="font-weight: bold; color: {% if req.status == 'approved' %}var(--success){% else %}var(--danger){% endif %};">
-                                            {{ req.status|upper }}
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td style="text-align: right; opacity: 0.5;">₹{{ req.recommended_price|default:invoice.courier_charge }}</td>
-                                <td style="text-align: right; color: var(--info); font-weight: bold;">₹{{ req.requested_price|default:req.requested_courier_charge }}</td>
-                                <td style="text-align: right; {% if req.is_under_msrp %}color: var(--danger); font-weight: bold;{% endif %}">
-                                    {% if req.msrp_snapshot %}₹{{ req.msrp_snapshot }}{% else %}-{% endif %}
-                                </td>
-                                <td style="text-align: center;">
-                                    {% if req.status == 'pending' %}
-                                        <div class="btn-group">
-                                            {% if req.is_under_msrp and not user.is_superuser %}
-                                                <button type="submit" form="form-{{ req.id }}" class="btn-core" style="background: var(--warning); padding: 2px 8px; font-size: 0.6rem;">Notify Nitin</button>
-                                            {% else %}
-                                                <button type="submit" form="form-{{ req.id }}" class="btn-core btn-appr" style="padding: 2px 8px; font-size: 0.6rem;">SUBMIT</button>
-                                            {% endif %}
+                                <div style="font-size: 0.72rem; color: #aaa; margin-top: 4px;">
+                                    📋 Includes {{ requests_in_group|length }} change request(s)
+                                </div>
+                            </td>
+                            <td>
+                                {% for r in requests_in_group %}
+                                    {% if not r.is_product_request and r.requested_courier_charge is not None %}
+                                        <div style="margin-bottom: 2px;">
+                                            <span style="text-decoration: line-through; opacity: 0.4; font-size: 0.75rem;">₹{{ invoice.courier_charge|floatformat:0 }}</span>
+                                            <b style="color: var(--info); font-size: 0.8rem;"> → ₹{{ r.requested_courier_charge|floatformat:0 }}</b>
                                         </div>
                                     {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </td>
-        </tr>
-        {% endwith %}
-    {% endfor %}
-</tbody>
+                                {% endfor %}
+                            </td>
+                            <td>{{ first_req.requested_by.username }}</td>
+
+                            <td>
+                                <!-- 1. AGGREGATE STATUS LOGIC -->
+                                {% if group.is_pending %}
+                                    <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 3px 8px; border-radius: 50px; color: #ffc107; border-color: #ffc107;">
+                                        PENDING
+                                    </span>
+                                {% else %}
+                                    <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 3px 8px; border-radius: 50px; color: #28a745; border-color: #28a745;">
+                                        REVIEWED
+                                    </span>
+                                {% endif %}
+
+                                {% if invoice.has_msrp_warning %}
+                                    <br><small style="color: var(--danger); font-size: 0.6rem;">⚠️ CONTAINS BELOW MSRP</small>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <!-- 2. DURATION: (Last Decision - Creation) -->
+                                <small style="color: {% if group.is_running %}var(--primary){% else %}#888{% endif %}; font-weight: bold;">
+                                    {{ group.duration_display }} {% if group.is_running %}(Running){% endif %}
+                                </small>
+                            </td>
+
+                            <td>
+                                <!-- 3. REVIEWED BY: List of Unique names -->
+                                {% if group.unique_reviewers %}
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        {% for name in group.unique_reviewers %}
+                                            <span style="color: #eee; font-size: 0.75rem; font-weight: bold;">
+                                                👤 {{ name }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span style="color: #444; font-size: 0.7rem; font-style: italic;">Pending Review</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn-core btn-remk" onclick="openRemarkModal('{{ invoice.id }}')">
+                                        Remark
+                                        {% with last_remark=invoice.remarks.last %}
+                                            {% if last_remark and last_remark.user != request.user %}
+                                                <span class="notification-dot" id="dot-{{ invoice.id }}"></span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </button>
+                                    <button class="btn-core btn-detl" onclick="toggleDetails('det-inv-{{ invoice.id }}')">Details</button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- ---------------- NESTED DETAILS ROW ---------------- -->
+                        <tr id="det-inv-{{ invoice.id }}" class="expand-row">
+                            <td colspan="8">
+                                <div class="nested-container">
+                                    <table class="inner-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Requested Item</th>
+                                                <th style="text-align: center;">Decision</th>
+                                                <th style="text-align: right;">Recommended</th>
+                                                <th style="text-align: right;">Requested</th>
+                                                <th style="text-align: right;">MSRP</th>
+                                                <th style="text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for req in requests_in_group %}
+                                            <tr>
+                                                <td>
+                                                    {% if req.is_product_request %}
+                                                        <strong>📦 Product:</strong> {{ req.product.name }}
+                                                    {% else %}
+                                                        <strong>🚚 Courier:</strong> Courier Charge Change
+                                                    {% endif %}
+                                                    <div style="font-size: 0.7rem; color: #888; font-style: italic; margin-top: 4px;">
+                                                        Reason: {{ req.reason|default:"No reason provided." }}
+                                                    </div>
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    {% if req.status == 'pending' %}
+                                                        {# IF ACCOUNTANT ALREADY SENT MAIL AND IS NOT A SUPERUSER #}
+                                                        {% if req.accountant_approved and not user.is_superuser %}
+                                                            <div style="color: #ffc107; font-weight: bold; font-size: 0.7rem;">
+                                                                ⏳ SENT TO ADMIN<br>FOR MSRP REVIEW
+                                                            </div>
+                                                        {% else %}
+                                                            {# Normal Radio Buttons for Admin or New Requests #}
+                                                            <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="form-{{ req.id }}">
+                                                                {% csrf_token %}
+                                                                <label style="font-size: 0.7rem;"><input type="radio" name="status_{{ req.id }}" value="approved" checked> Appr</label>
+                                                                <label style="font-size: 0.7rem;"><input type="radio" name="status_{{ req.id }}" value="rejected"> Rej</label>
+                                                            </form>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span style="font-weight: bold; color: {% if req.status == 'approved' %}#28a745{% else %}#dc3545{% endif %};">
+                                                            {{ req.status|upper }}
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td style="text-align: right; opacity: 0.5;">₹{{ req.recommended_price|default:invoice.courier_charge }}</td>
+                                                <td style="text-align: right; color: var(--info); font-weight: bold;">₹{{ req.requested_price|default:req.requested_courier_charge }}</td>
+                                                <td style="text-align: right; {% if req.is_under_msrp %}color: var(--danger); font-weight: bold;{% endif %}">
+                                                    {% if req.msrp_snapshot %}₹{{ req.msrp_snapshot }}{% else %}-{% endif %}
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    {% if req.status == 'pending' %}
+                                                        {# DISABLE BUTTON AFTER SUBMISSION #}
+                                                        {% if req.accountant_approved and not user.is_superuser %}
+                                                            <button class="btn-core" style="background: #444; color: #888; cursor: not-allowed; border: 1px solid #555; width: 80px;" disabled>
+                                                                NOTIFIED
+                                                            </button>
+                                                        {% else %}
+                                                            <button type="submit" form="form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem;">
+                                                                SUBMIT
+                                                            </button>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                    {% endfor %}
+                </tbody>
+
             </table>
         </div>
     </div>
 </div>
 
 
-     UNIFIED REMARK MODAL (Add to all 3 files)
-     ========================================== -->
+<!--     UNIFIED REMARK MODAL (Add to all 3 files)-->
+<!--     ========================================== &ndash;&gt;-->
 <div id="globalRemarkModal" class="custom-overlay">
     <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
