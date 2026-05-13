@@ -551,6 +551,42 @@ class ApproveStockRequestView(LoginRequiredMixin, AccountantRequiredMixin, View)
         req.reviewed_by = request.user
         req.reviewed_at = timezone.now()
         req.save()
+        # abhijay changes start
+        # ---------------- STOCK APPROVAL EMAIL ----------------
+        try:
+            requester_email = req.requested_by.email
+
+            if requester_email:
+                email_context = {
+                    "request_obj": req,
+                    "invoice": req.invoice,
+                    "reviewed_by": request.user,
+                    "review_url": f"https://oblutools.com/proforma/{req.invoice.id}/"
+                }
+
+                html_content = render_to_string(
+                    "proforma_invoice/stock_request_approved_email.html",
+                    email_context
+                )
+
+                subject = f"✅ Stock Available - Request Approved (Proforma #{req.invoice.id})"
+
+                msg = EmailMultiAlternatives(
+                    subject,
+                    "",
+                    "proforma@oblutools.com",
+                    [requester_email],
+                    cc=["abhijay.obluhc@gmail.com"]
+                )
+
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+
+        except Exception as e:
+            print(f"Stock Approval Mail Failed: {e}")
+
+        # -----------------------------------------------------
+        # abhijay changes ends
         return redirect("stock_request_dashboard")
 
 # ----------------------------------------------------------------------------------------------------
