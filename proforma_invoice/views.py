@@ -324,8 +324,10 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
 
                     if price_change_requests_for_email:
 
-                        to_emails = ["abhijay.obluhc@gmail.com"]
-                        cc_emails = ["swasti.obluhc@gmail.com"]
+                        to_emails = ["bhavya@obluhc.com"]
+                        cc_emails = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]
+                        if request.user.email:
+                            cc_emails.append(request.user.email)
 
                         all_items = invoice.items.select_related("product")
 
@@ -383,8 +385,10 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                             )
                             # Abhijay Chnage starts
                             # ---------------- STOCK REQUEST EMAIL ----------------
-                            to_emails = ["abhijay.obluhc@gmail.com"]
-                            cc_emails = ["swasti.obluhc@gmail.com"]
+                            to_emails = ["accounts@obluhc.com"]
+                            cc_emails = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]
+                            if request.user.email:
+                                cc_emails.append(request.user.email)
 
                             email_context = {
                                 "invoice": invoice,
