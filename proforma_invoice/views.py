@@ -1014,7 +1014,7 @@ def request_dispatch(request, pk):
         accountant_emails = ["accounts@obluhc.com"]
 
         # CC emails
-        cc_emails = ["abhijay.obluhc@gmail.com","swasti.obluhc@gmail.com"]
+        cc_emails = ["abhijay.obluhc@gmail.com","swasti.obluhc@gmail.com","nitin.a@obluhc.com","akshay@obluhc.com"]
 
         # Add requester email
         if request.user.email:
