@@ -998,31 +998,33 @@ def request_dispatch(request, pk):
 
         User = get_user_model()
 
-        # Get all accountant emails
-        accountant_emails = list(
-            User.objects.filter(
-                is_accountant=True,
-                is_active=True
-            )
-            .exclude(email="")
-            .values_list("email", flat=True)
-        )
-
-        # Fallback email
-        if not accountant_emails:
-            accountant_emails = ["accounts@obluhc.com"]
+        # # Get all accountant emails
+        # accountant_emails = list(
+        #     User.objects.filter(
+        #         is_accountant=True,
+        #         is_active=True
+        #     )
+        #     .exclude(email="")
+        #     .values_list("email", flat=True)
+        # )
+        #
+        # # Fallback email
+        # if not accountant_emails:
+        #     accountant_emails = ["accounts@obluhc.com"]
+        accountant_emails = ["accounts@obluhc.com"]
 
         # CC emails
-        cc_emails = ["abhijay.obluhc@gmail.com"]
+        cc_emails = ["abhijay.obluhc@gmail.com","swasti.obluhc@gmail.com"]
 
         # Add requester email
         if request.user.email:
             cc_emails.append(request.user.email)
 
-        # Generate PI URL
-        proforma_url = request.build_absolute_uri(
-            reverse("proforma_detail", args=[invoice.id])
-        )
+        # # Generate PI URL
+        # proforma_url = request.build_absolute_uri(
+        #     reverse("proforma_detail", args=[invoice.id])
+        # )
+        proforma_url="https://oblutools.com/proforma/"+str(invoice.id)
 
         subject = f"🚀 Dispatch Request: PI #{invoice.id} - {invoice.customer.name}"
 
