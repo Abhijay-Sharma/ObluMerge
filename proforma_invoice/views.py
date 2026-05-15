@@ -974,6 +974,115 @@ def request_dispatch(request, pk):
     return redirect('proforma_list')
 
 @login_required
+def request_dispatch(request, pk):
+    """View for SP to raise dispatch request and notify Accounts"""
+
+    invoice = get_object_or_404(ProformaInvoice, pk=pk)
+
+    # Prevent duplicate requests
+    if invoice.dispatch_status != 'processing':
+        messages.warning(request, "Dispatch request already raised.")
+        return redirect('proforma_list')
+
+    # Update dispatch status
+    invoice.dispatch_status = 'requested'
+    invoice.dispatch_requested_at = timezone.now()
+    invoice.save()
+
+    # ================= EMAIL SECTION =================
+    try:
+        from django.contrib.auth import get_user_model
+        from django.core.mail import EmailMultiAlternatives
+        from django.template.loader import render_to_string
+        from django.urls import reverse
+
+        User = get_user_model()
+
+        # Get all accountant emails
+        accountant_emails = list(
+            User.objects.filter(
+                is_accountant=True,
+                is_active=True
+            )
+            .exclude(email="")
+            .values_list("email", flat=True)
+        )
+
+        # Fallback email
+        if not accountant_emails:
+            accountant_emails = ["accounts@obluhc.com"]
+
+        # CC emails
+        cc_emails = ["abhijay.obluhc@gmail.com"]
+
+        # Add requester email
+        if request.user.email:
+            cc_emails.append(request.user.email)
+
+        # Generate PI URL
+        proforma_url = request.build_absolute_uri(
+            reverse("proforma_detail", args=[invoice.id])
+        )
+
+        subject = f"🚀 Dispatch Request: PI #{invoice.id} - {invoice.customer.name}"
+
+        context = {
+            "requested_by": request.user.get_full_name() or request.user.username,
+            "invoice": invoice,
+            "proforma_url": proforma_url,
+        }
+
+        # Render HTML template
+        html_content = render_to_string(
+            "proforma_invoice/dispatch_request_admin_email.html",
+            context
+        )
+
+        # Plain text fallback
+        plain_message = f"""
+Dispatch Request Raised
+
+Proforma ID: #{invoice.id}
+Customer: {invoice.customer.name}
+Grand Total: ₹{invoice.grand_total}
+
+Requested By:
+{request.user.get_full_name() or request.user.username}
+
+Open Proforma:
+{proforma_url}
+"""
+
+        # Create email
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_message,
+            from_email="proforma@oblutools.com",
+            to=accountant_emails,
+            cc=cc_emails
+        )
+
+        # Attach HTML
+        msg.attach_alternative(html_content, "text/html")
+
+        # Send email
+        msg.send(fail_silently=False)
+
+        print(f"✅ Dispatch email sent for PI #{invoice.id}")
+
+    except Exception as e:
+        print("❌ Dispatch email failed")
+        print(str(e))
+
+    # ================= SUCCESS MESSAGE =================
+    messages.success(
+        request,
+        f"Dispatch request raised for Proforma #{invoice.id}. Accounts has been notified."
+    )
+
+    return redirect('proforma_list')
+
+@login_required
 def set_dispatch_status(request, pk, status):
     if not request.user.is_accountant:
         return redirect('home')
