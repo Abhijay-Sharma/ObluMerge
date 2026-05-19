@@ -189,7 +189,7 @@
                         <td>{{ inv.date_created|date:"d M Y" }}</td>
 
                         <!-- 4. Grand Total -->
-                        <td class="fw-bold">₹{{ inv.grand_total|floatformat:2 }}</td>
+                        <td class="fw-bold">₹{{ inv.calculate_final_total|floatformat:2 }}</td>
                         <td>{{ inv.get_courier_mode_display }}</td>
 
                         <!-- 5. STATUS & VIEW PERMISSIONS -->
