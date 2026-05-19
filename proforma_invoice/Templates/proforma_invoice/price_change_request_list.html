@@ -227,6 +227,14 @@
                                         {% endwith %}
                                     </button>
                                     <button class="btn-core btn-detl" onclick="toggleDetails('det-inv-{{ invoice.id }}')">Details</button>
+                                    {% if user.is_superuser or user.is_accountant %} <!-- Optional extra check -->
+                                    <button
+                                        class="btn-core"
+                                        style="background: var(--secondary); color: white;"
+                                        onclick="window.location.href='{% url 'proforma_detail' invoice.id %}'">
+                                        View Invoice
+                                    </button>
+                                            {% endif %}
                                 </div>
                             </td>
                         </tr>
