@@ -1046,7 +1046,7 @@ Dispatch Request Raised
 
 Proforma ID: #{invoice.id}
 Customer: {invoice.customer.name}
-Grand Total: ₹{invoice.grand_total}
+Grand Total: ₹{invoice.calculate_final_total}
 
 Requested By:
 {request.user.get_full_name() or request.user.username}
