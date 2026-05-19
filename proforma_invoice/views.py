@@ -166,6 +166,17 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
             for f in valid_forms:
                 p = f.cleaned_data['product']
                 qty = f.cleaned_data['quantity']
+                # min qty check logic starts here
+                pricing_config = ProductPrice.objects.filter(product=p).first()
+                if pricing_config:
+                    min_required = pricing_config.min_requirement
+                    if qty < min_required:
+                        # This adds the error to the top of the form
+                        invoice_form.add_error(None,
+                                               f"❌ '{p.name}' requires a minimum quantity of {min_required}. (You entered: {qty})")
+                        # This 'return' is the most important part; it stops the code from reaching Section 4
+                        return self._render_error(request, invoice_form, formset, selected_customer)
+                # min qty check logic ends here
                 cat_name = p.category.name.upper()
 
                 if cat_name in RESTRICTED_CATEGORIES:
