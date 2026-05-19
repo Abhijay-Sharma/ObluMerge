@@ -13,7 +13,7 @@ from num2words import num2words
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 # 🧾 1. Product Pricing
 class ProductPrice(models.Model):
     """
@@ -536,6 +536,65 @@ class ProformaInvoice(models.Model):
         """
         product_gst = self.items_total() - self.taxable_total()
         return product_gst + self.courier_gst()
+
+    def calculate_final_total(self):
+        """Standardized calculation logic used by API and Emails"""
+        # 1. Resolve Approved Prices
+        altered_prices = {}
+        approved_price_reqs = self.price_requests.filter(status="approved", is_product_request=True)
+        for req in approved_price_reqs:
+            if req.product:
+                altered_prices[str(req.product.id)] = Decimal(str(req.requested_price))
+
+        # 2. Calculate Products
+        items_qs = self.items.all()
+        subtotal_excl = Decimal("0.00")
+        total_product_gst = Decimal("0.00")
+
+        for item in items_qs:
+            qty = Decimal(str(item.quantity or 0))
+            gst_rate = Decimal(str(item.taxrate() or 0))
+
+            if str(item.product.id) in altered_prices:
+                unit_price_incl = altered_prices[str(item.product.id)]
+            elif item.current_price:
+                unit_price_incl = item.current_price
+            else:
+                unit_price_incl = Decimal(str(item.unit_price()))
+
+            divisor = Decimal("1.00") + (gst_rate / Decimal("100"))
+            unit_price_excl = (unit_price_incl / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            taxable_value = (unit_price_excl * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            product_gst = (taxable_value * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            subtotal_excl += taxable_value
+            total_product_gst += product_gst
+
+        # 3. Courier Charges
+        courier_req = self.price_requests.filter(
+            requested_courier_charge__isnull=False,
+            status="approved"
+        ).first()
+
+        if courier_req:
+            courier_charge = Decimal(str(courier_req.requested_courier_charge))
+        else:
+            raw_courier = self.courier_charge() if callable(self.courier_charge) else self.courier_charge
+            courier_charge = Decimal(str(raw_courier or 0))
+
+        # 4. GST & Rounding
+        if subtotal_excl > 0:
+            combined_gst_rate = (total_product_gst / subtotal_excl * Decimal("100")).quantize(Decimal("0.01"),
+                                                                                              rounding=ROUND_HALF_UP)
+        else:
+            combined_gst_rate = Decimal("0.00")
+
+        courier_gst = (courier_charge * combined_gst_rate / Decimal("100")).quantize(Decimal("0.01"),
+                                                                                     rounding=ROUND_HALF_UP)
+        total_gst = (total_product_gst + courier_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        gross_total = (subtotal_excl + courier_charge + total_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return gross_total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
     def __str__(self):
         return f"Proforma #{self.id} - {self.customer.name}"
