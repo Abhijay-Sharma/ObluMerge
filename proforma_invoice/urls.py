@@ -50,4 +50,5 @@ urlpatterns = [
 
     path('invoice/remark/manage/<int:pk>/', views.ManageInvoiceRemarkView.as_view(), name='manage_invoice_remark'),
     path('api/proforma/request-details/<int:invoice_id>/', views.ProformaRequestDetailsApiView.as_view(), name='proforma_request_details_api'),
+    path('api/proforma/final-total/<int:pk>/', views.ProformaGrandTotalAPIView.as_view(), name='api_proforma_final_total'),
 ]

@@ -2661,3 +2661,13 @@ class ProformaRequestDetailsApiView(LoginRequiredMixin, View):  # Renamed for cl
         }
 
         return JsonResponse(data)
+
+
+class ProformaGrandTotalAPIView(LoginRequiredMixin, View):
+    def get(self, request, pk, *args, **kwargs):
+        invoice = get_object_or_404(ProformaInvoice, pk=pk)
+        final_total = invoice.calculate_final_total()
+        return JsonResponse({
+            "status": "success",
+            "grand_total": float(final_total)
+        })
