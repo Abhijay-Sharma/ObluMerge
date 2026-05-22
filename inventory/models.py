@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 import calendar
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
+from decimal import Decimal
+from django.utils import timezone
 # Create your models here.
 
 class User(AbstractUser):
@@ -150,6 +152,187 @@ class DailyStockData(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.date.strftime('%B %d, %Y')} - {dict(self.PRODUCT_UNITS).get(self.unit)}"
 
+
+
+class PurchaseOrderTracking(models.Model):
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("arrived", "Arrived"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    tally_voucher = models.OneToOneField(
+        "tally_voucher.Voucher",
+        on_delete=models.CASCADE,
+        related_name="purchase_order_tracking"
+    )
+
+    order_date = models.DateField()
+    arrival_datetime = models.DateTimeField(null=True, blank=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="active"
+    )
+
+    created_by = models.ForeignKey(
+        "inventory.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_purchase_order_trackings"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    remarks = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"PO Tracking - {self.tally_voucher.voucher_number}"
+
+    @property
+    def party_name(self):
+        return self.tally_voucher.party_name
+
+    @property
+    def voucher_number(self):
+        return self.tally_voucher.voucher_number
+
+    @property
+    def total_days_taken(self):
+        if self.arrival_datetime:
+            return (self.arrival_datetime.date() - self.order_date).days
+        return None
+
+    def mark_arrived_if_final_stage_done(self):
+        final_stage = self.stage_logs.filter(stage__is_final_stage=True).order_by("-exit_datetime").first()
+
+        if final_stage and final_stage.exit_datetime and self.status != "arrived":
+            self.status = "arrived"
+            self.arrival_datetime = final_stage.exit_datetime
+            self.save(update_fields=["status", "arrival_datetime", "updated_at"])
+
+
+class PurchaseOrderTrackingItem(models.Model):
+    purchase_order = models.ForeignKey(
+        PurchaseOrderTracking,
+        on_delete=models.CASCADE,
+        related_name="items"
+    )
+
+    voucher_stock_item = models.OneToOneField(
+        "tally_voucher.VoucherStockItem",
+        on_delete=models.CASCADE,
+        related_name="purchase_order_tracking_item"
+    )
+
+    inventory_item = models.ForeignKey(
+        "inventory.InventoryItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    item_name_text = models.CharField(max_length=255, blank=True, null=True)
+
+    ordered_quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    arrived_quantity = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    is_fully_arrived = models.BooleanField(default=False)
+
+    remarks = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.item_name_text or self.inventory_item} - {self.ordered_quantity}"
+
+    def save(self, *args, **kwargs):
+        if self.arrived_quantity is None:
+            self.arrived_quantity = self.ordered_quantity
+
+        self.is_fully_arrived = Decimal(self.arrived_quantity) >= Decimal(self.ordered_quantity)
+
+        super().save(*args, **kwargs)
+
+
+class PurchaseOrderStage(models.Model):
+    name = models.CharField(max_length=150, unique=True)
+
+    estimated_days = models.PositiveIntegerField(
+        default=0,
+        help_text="Expected number of days order usually stays in this stage"
+    )
+
+    is_final_stage = models.BooleanField(
+        default=False,
+        help_text="If this stage is completed, PO will be marked as arrived"
+    )
+
+    sort_order = models.PositiveIntegerField(default=0)
+
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+
+class PurchaseOrderStageLog(models.Model):
+    purchase_order = models.ForeignKey(
+        PurchaseOrderTracking,
+        on_delete=models.CASCADE,
+        related_name="stage_logs"
+    )
+
+    stage = models.ForeignKey(
+        PurchaseOrderStage,
+        on_delete=models.PROTECT,
+        related_name="po_logs"
+    )
+
+    entered_at = models.DateTimeField(default=timezone.now)
+    exit_datetime = models.DateTimeField(null=True, blank=True)
+
+    manual_days_at_stage = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Optional manual duration. If blank, duration is calculated from entered/exited datetime."
+    )
+
+    remarks = models.TextField(blank=True, null=True)
+
+    created_by = models.ForeignKey(
+        "inventory.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        ordering = ["entered_at"]
+
+    def __str__(self):
+        return f"{self.purchase_order} - {self.stage.name}"
+
+    @property
+    def days_at_stage(self):
+        if self.manual_days_at_stage is not None:
+            return self.manual_days_at_stage
+
+        end_time = self.exit_datetime or timezone.now()
+        diff = end_time - self.entered_at
+        return round(Decimal(diff.total_seconds()) / Decimal(86400), 2)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        if self.stage.is_final_stage and self.exit_datetime:
+            self.purchase_order.mark_arrived_if_final_stage_done()
 
 
 
