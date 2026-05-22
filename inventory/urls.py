@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from .views import Index  , SignUpView , LogoutView , Dashboard, Dashboard2 , AddItem , EditItem, DeleteItem , stock_chart_view, predict_min_stock_view, ShowProductData, stock_chart_view_2, predict_min_stock_2, ShowProductStockHistory, stock_chart_view_3 , predict_min_stock_from_daily , CategoryDashboard , CategoryListView, search_items, InventoryReportView, MonthlyStockChartView, PredictMinStockView, LowStockReportView, DailyStockChartView, DeadStockDashboardView, SalesComparisonDashboardView, get_inventory_by_category, PurchaseOrderView , TopCustomersAPIView #this Index is name of the class we created in views
 from django.contrib.auth import views as auth_views
-
+from . import views
 
 urlpatterns = [
     path('', Index.as_view(), name="index"),
@@ -28,4 +28,17 @@ urlpatterns = [
     path("api/inventory_by_category/", get_inventory_by_category, name="get_inventory_by_category"),
     path('purchase-order/', PurchaseOrderView.as_view(), name='purchase_order'),
     path("purchase-order/top-customers/", TopCustomersAPIView.as_view(), name="po_top_customers"),
+    path("purchase-orders/tally/", views.TallyPurchaseOrderListView.as_view(), name="tally_po_list"),
+    path("purchase-orders/tally/<int:voucher_id>/track/", views.create_po_tracking, name="create_po_tracking"),
+
+    path("purchase-orders/tracked/", views.PurchaseOrderTrackingListView.as_view(), name="po_tracking_list"),
+    path("purchase-orders/tracked/<int:pk>/", views.PurchaseOrderTrackingDetailView.as_view(), name="po_tracking_detail"),
+    path("purchase-orders/tracked/<int:pk>/quantities/", views.update_arrived_quantities, name="update_arrived_quantities"),
+
+    path("purchase-orders/stages/", views.PurchaseOrderStageListView.as_view(), name="po_stage_list"),
+    path("purchase-orders/stages/add/", views.PurchaseOrderStageCreateView.as_view(), name="po_stage_create"),
+    path("purchase-orders/stages/<int:pk>/edit/", views.PurchaseOrderStageUpdateView.as_view(), name="po_stage_update"),
+
+    path("purchase-orders/tracked/<int:po_pk>/stage/add/", views.PurchaseOrderStageLogCreateView.as_view(), name="po_stage_log_create"),
+    path("purchase-orders/stage-log/<int:pk>/edit/", views.PurchaseOrderStageLogUpdateView.as_view(), name="po_stage_log_update"),
 ]
