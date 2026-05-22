@@ -35,11 +35,10 @@
 
         /* DASHBOARD CARD */
         .sheets-outer-wrapper { padding: 30px; }
-         .sheets-card {
+        .sheets-card {
             background: white; border: 1px solid #dadce0; border-radius: 8px;
-            width: 1450px;
-            margin: 0 auto; box-shadow: 0 1px 3px rgba(60,64,67, 0.3); overflow: hidden;
-         }
+            width: 1250px; margin: 0 auto; box-shadow: 0 1px 3px rgba(60,64,67, 0.3); overflow: hidden;
+        }
 
         .sheets-toolbar {
             padding: 15px 20px; border-bottom: 1px solid #e0e0e0;
@@ -64,8 +63,6 @@
         }
 
         .cust-cell { font-weight: 600; color: #1a73e8; display: block; }
-        .cust-cell:hover { text-decoration: underline !important; }
-        .voucher-sub:hover { color: #1a73e8 !important; text-decoration: underline !important; }
         .amt-red { color: #d93025; font-weight: 700; text-align: right; }
 
         /* Status Colors */
@@ -93,43 +90,6 @@
         .drawer-h { font-weight: 700; font-size: 11px; color: #1a73e8; margin-bottom: 10px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
         .log-item { font-size: 12px; margin-bottom: 8px; border-bottom: 1px solid #f1f1f1; padding-bottom: 6px; }
         .log-meta { color: #888; font-size: 10px; margin-top: 2px; }
-
-        /* Autocomplete Container */
-        .search-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        .suggestions-list {
-            position: absolute;
-            top: 100%; /* Exactly below the input */
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #dadce0;
-            border-top: none;
-            z-index: 1001;
-            max-height: 250px;
-            overflow-y: auto;
-            box-shadow: 0 4px 6px rgba(32,33,36,0.28);
-            border-bottom-left-radius: 4px;
-            border-bottom-right-radius: 4px;
-        }
-
-        .suggestion-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 13px;
-            color: #3c4043;
-            border-bottom: 1px solid #f1f3f4;
-        }
-
-        .suggestion-item:last-child { border-bottom: none; }
-
-        .suggestion-item:hover {
-            background-color: #f8f9fa;
-            color: #1a73e8;
-        }
     </style>
 </head>
 <body>
@@ -148,122 +108,44 @@
     <div class="sheets-outer-wrapper">
         <div class="sheets-card">
 
-            <!-- TOOLBAR SECTION -->
             <div class="sheets-toolbar">
                 <div style="display:flex; align-items:center; gap:25px;">
                     <h1 class="toolbar-title">Payment Follow-Ups</h1>
-
-                    <form method="get" style="display:flex; align-items:center; gap:15px;">
-
-                        <!-- 1. SALESPERSON DROPDOWN  -->
-                        {% if is_accountant %}
-                        <div style="display:flex; align-items:center; gap:5px;">
-                            <span style="font-size:13px; color:#5f6368;">Salesperson:</span>
-                            <select name="salesperson" onchange="this.form.submit()" style="padding:4px 8px; border-radius:4px; border:1px solid #dadce0; font-size:13px;">
-                                <option value="">-- Show All --</option>
-                                {% for sp in salespersons %}
-                                <option value="{{ sp.id }}" {% if selected_salesperson == sp.id|stringformat:"s" %}selected{% endif %}>{{ sp.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-
-                        <!-- 2. NEW CUSTOMER SEARCH  -->
-                        <div class="search-wrapper">
-                            <div style="display:flex; align-items:center; gap:5px;">
-                                <span style="font-size:13px; color:#5f6368;">Find Customer:</span>
-                                <input type="text" id="cust-search" name="q" value="{{ search_query }}"
-                                       placeholder="Search Customer..." autocomplete="off"
-                                       style="padding:4px 8px; border:1px solid #dadce0; border-radius:4px; font-size:13px; width: 250px;">
-
-                                <button type="submit" class="btn-sheet btn-blue">Search</button>
-                            </div>
-
-                            <div id="suggestions-box" class="suggestions-list" style="display:none;"></div>
-                        </div>
-
-                        {% if selected_salesperson or search_query %}
-                            <a href="." style="font-size:12px; color:#1a73e8; text-decoration:none;">Clear All</a>
-                        {% endif %}
-
-                        {% if selected_salesperson or search_query or selected_customer_id %}
-                            <a href="." style="font-size:12px; color:#1a73e8; text-decoration:none; margin-left: 10px;">
-                                Show All Records
-                            </a>
-                        {% endif %}
+                    {% if is_staff %}
+                    <form method="get" style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:13px;">Salesperson:</span>
+                        <select name="salesperson" onchange="this.form.submit()" style="padding:5px; border-radius:4px; border:1px solid #ccc; font-size:13px;">
+                            <option value="">-- Select --</option>
+                            {% for sp in salespersons %}
+                            <option value="{{ sp.id }}" {% if selected_salesperson == sp.id|stringformat:"s" %}selected{% endif %}>{{ sp.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if selected_salesperson %}<a href="." style="font-size:12px; color:#1a73e8; text-decoration:none;">Reset</a>{% endif %}
                     </form>
+                    {% endif %}
                 </div>
-
-                <div style="display:flex; align-items:center; gap:10px; margin-left: 20px;">
-                    <!-- Excel Download -->
-                    <a id="btn-excel" href="#" class="btn-sheet" style="background: #1d6f42; color: white; border-color: #1d6f42; text-decoration: none;">
-                        Download Excel
-                    </a>
-
-                    <!-- PDF Download -->
-                    <a id="btn-pdf" href="#" class="btn-sheet" style="background: #d93025; color: white; border-color: #d93025; text-decoration: none;">
-                        Download PDF
-                    </a>
-                </div>
-
-                <div class="user-pill">User: {{ request.user.username }}</div>
             </div>
 
             <table class="table-sheets">
                 <thead>
                     <tr>
-                        <th style="width:50px;">S.No.</th>
-                        <th style="width: 290px;">Customer / Voucher</th>
+                        <th style="width: 250px;">Customer / Voucher</th>
                         <th style="width: 100px;">Date</th>
                         <th style="width: 150px;">Credit Status</th>
-                        <th style="width: 110px;">Total Amount</th> <!-- New Column -->
                         <th style="width: 100px;">Pending</th>
-                        <th style="width: 220px;">Remark</th>
+                        <th style="width: 240px;">Remark</th>
                         <th style="width: 210px;">Expected Date</th>
-                        <th style="width: 90px;">Ticket</th>
-                        <th style="width: 90px; text-align: center;">History</th>
+                        <th style="width: 100px;">Ticket</th>
+                        <th style="width: 100px; text-align: center;">History</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for vs in voucher_statuses %}
                     <tr>
-                        <td>{{ forloop.counter }}</td>
                         <td>
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                                <div style="flex: 1; min-width: 0; white-space: normal;">
-
-                                    <a href="{% url 'customers:customerpaymentstatus' vs.customer.pk %}"
-                                       class="cust-cell"
-                                       style="white-space: normal; word-break: break-word; line-height: 1.3; display: inline-block;">
-                                        {{ vs.customer.name }}
-                                    </a>
-
-                                    <!-- State -->
-                                    <div style="font-size: 10px; color: #666; margin-top: 2px;">{{ vs.customer.state|default:"" }}</div>
-
-                                    <!-- Voucher Link -->
-                                    <a href="{% url 'voucher_detail' vs.voucher.pk %}" class="voucher-sub"
-                                       style="text-decoration: none; white-space: nowrap; display: block; margin-top: 4px;">
-                                        {{ vs.voucher.voucher_number }}
-                                    </a>
-
-                                    {% if not selected_salesperson %}
-                                        <div style="font-size: 9px; color: #1a73e8; font-weight: bold; margin-top: 3px; text-transform: uppercase;">
-                                            SP: {{ vs.customer.salesperson.name }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-
-                                <!-- SELECT Button  -->
-                                <div style="flex-shrink: 0;">
-                                    <a href="?customer_id={{ vs.customer.id }}" class="btn-sheet"
-                                       style="background: #f8f9fa; border: 1px solid #dadce0; padding: 2px 6px; font-size: 9px; text-decoration: none; color: #3c4043; display: inline-block;">
-                                        SELECT
-                                    </a>
-                                </div>
-                            </div>
+                            <span class="cust-cell">{{ vs.customer.name }}</span>
+                            <span style="font-size:11px; color:#777;">{{ vs.voucher.voucher_number }}</span>
                         </td>
-
                         <td>{{ vs.voucher_date|date:"d M Y" }}</td>
 
                         <td>
@@ -272,15 +154,7 @@
                             </span>
                         </td>
 
-                        <!-- New Total Amount Column -->
-                         <td style="font-weight: 600; text-align: right; color: #3c4043;">
-                            {{ vs.total_invoice_amt|default:"0.00" }}
-                         </td>
-
-                        <td class="amt-red">
-                            {{ vs.unpaid_amount }}
-                        </td>
-
+                        <td class="amt-red">{{ vs.unpaid_amount }}</td>
                         <td>
                             <div style="display: flex; gap: 5px;">
                                 <input type="text" id="rem-{{vs.id}}" class="cell-input" placeholder="Add note...">
@@ -314,7 +188,7 @@
                     </tr>
 
                     <tr id="drawer-{{vs.id}}" style="display:none;" class="drawer">
-                        <td colspan="10">
+                        <td colspan="8">
                             <div class="drawer-content">
                                 <div class="drawer-col" style="flex: 2;">
                                     <div class="drawer-h">REMARKS LOG</div>
@@ -355,53 +229,6 @@
     </div>
 
     <script>
-        // 1. Pass the Django list to JavaScript safely
-        const customerNames = [
-            {% for name in customer_suggestions %}"{{ name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}
-        ];
-
-        const searchInput = document.getElementById('cust-search');
-        const suggestionsBox = document.getElementById('suggestions-box');
-
-        searchInput.addEventListener('input', function() {
-            const val = this.value.toLowerCase();
-            suggestionsBox.innerHTML = '';
-
-            if (!val) {
-                suggestionsBox.style.display = 'none';
-                return;
-            }
-
-            // Filter names that contain the typed letters
-            const matches = customerNames.filter(name => name.toLowerCase().includes(val));
-
-            if (matches.length > 0) {
-                matches.forEach(name => {
-                    const div = document.createElement('div');
-                    div.classList.add('suggestion-item');
-                    div.innerText = name;
-
-                    // When user clicks a suggestion
-                    div.addEventListener('click', function() {
-                        searchInput.value = name;
-                        suggestionsBox.style.display = 'none';
-                        searchInput.form.submit(); // Automatically search on click
-                    });
-
-                    suggestionsBox.appendChild(div);
-                });
-                suggestionsBox.style.display = 'block';
-            } else {
-                suggestionsBox.style.display = 'none';
-            }
-        });
-
-        // Close suggestions if user clicks outside
-        document.addEventListener('click', function(e) {
-            if (e.target !== searchInput) {
-                suggestionsBox.style.display = 'none';
-            }
-        });
         function showLoad() { document.getElementById("loader-top").style.display = "block"; }
         function hideLoad() { document.getElementById("loader-top").style.display = "none"; }
         function postData(data) {
@@ -428,24 +255,6 @@
             let el = document.getElementById("drawer-" + id);
             el.style.display = (el.style.display === "none") ? "table-row" : "none";
         }
-
-        // Dynamically update the download links with current search/filter parameters
-        function updateDownloadLinks() {
-            const params = new URLSearchParams(window.location.search);
-            const baseUrl = "{% url 'customers:export_payment_followup' %}"; // Ensure this matches your URL name
-
-            const excelBtn = document.getElementById('btn-excel');
-            const pdfBtn = document.getElementById('btn-pdf');
-
-            params.set('type', 'excel');
-            excelBtn.href = baseUrl + '?' + params.toString();
-
-            params.set('type', 'pdf');
-            pdfBtn.href = baseUrl + '?' + params.toString();
-        }
-
-        // Call on load
-        updateDownloadLinks();
     </script>
 </body>
 </html>

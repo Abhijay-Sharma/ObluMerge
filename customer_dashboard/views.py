@@ -45,6 +45,11 @@ from django.db.models import Avg, F, ExpressionWrapper, fields
 from collections import defaultdict
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, timedelta, datetime
+from django.http import HttpResponse
+import openpyxl
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from datetime import date
 
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
@@ -1245,6 +1250,187 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
         ctx["is_staff"] = is_power_user
 
         return ctx
+
+#kashish version
+class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
+
+    template_name = "customers/payment_followup_dashboard.html"
+
+    def get_queryset(self):
+
+        user = self.request.user
+        salesperson_id = self.request.GET.get("salesperson")
+        search_query = self.request.GET.get("q")
+        customer_id = self.request.GET.get("customer_id")
+        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
+
+        qs = (CustomerVoucherStatus.objects.filter(
+            Q(is_unpaid=True) | Q(is_partially_paid=True)
+        )
+        .select_related(
+            "customer",
+            "voucher",
+            "customer__salesperson",
+            "customer__credit_profile"
+        )
+        .prefetch_related(
+            "voucher__rows",
+            "payment_thread__remarks",
+            "payment_thread__expected_date_history",
+            "payment_thread__ticket_events"
+        ))
+
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+
+        elif is_power_user:
+            if salesperson_id:
+                qs = qs.filter(customer__salesperson_id=salesperson_id)
+        else:
+            qs = qs.filter(customer__salesperson__user=user)
+
+        if search_query:
+            qs = qs.filter(customer__name__icontains=search_query)
+
+        return qs.order_by("customer__name")
+
+    def get_context_data(self, **kwargs):
+
+        ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
+        qs = self.get_queryset()
+        today = date.today()
+        exclude_list = [
+            "Nimit", "Jackson", "Akshay", "Nitin", "online Order",
+            "Vibhuti", "Raman", "Abhijay", "Danish", "Mukesh", "Online", "test1", "Aryan",
+        ]
+        if qs.exists():
+            for vs in qs:
+                PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
+
+                # --- NEW: PASS TOTAL AMOUNT ---
+                # We fetch this from the related voucher object
+                party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
+                vs.total_invoice_amt = party_entry.amount if party_entry else 0
+
+                # 2. CREDIT PERIOD CALCULATION
+                credit_period = 0
+                if hasattr(vs.customer, "credit_profile") and vs.customer.credit_profile:
+                    credit_period = vs.customer.credit_profile.credit_period_days
+
+                days_elapsed = (today - vs.voucher_date).days
+
+                if days_elapsed > credit_period:
+                    vs.credit_display_text = f"Crossed by {days_elapsed} days"
+                    vs.credit_display_color = "status-crossed"
+                else:
+                    remaining = max(credit_period - days_elapsed, 0)
+                    vs.credit_display_text = f"{remaining} days remaining"
+                    if remaining <= 10:
+                        vs.credit_display_color = "status-warning"
+                    else:
+                        vs.credit_display_color = "status-remaining"
+
+        ctx["voucher_statuses"] = qs
+        ctx["customer_suggestions"] = qs.values_list('customer__name', flat=True).distinct()
+        ctx["search_query"] = self.request.GET.get("q", "")
+        ctx["salespersons"] = SalesPerson.objects.exclude(
+            name__in=exclude_list
+        ).order_by('name')
+        ctx["selected_customer_id"] = self.request.GET.get("customer_id")
+        ctx["selected_salesperson"] = self.request.GET.get("salesperson")
+        ctx["is_accountant"] = is_power_user
+
+        return ctx
+
+def export_payment_followup(request):
+        # 1. REUSE FILTERING LOGIC
+        user = request.user
+        salesperson_id = request.GET.get("salesperson")
+        search_query = request.GET.get("q")
+        customer_id = request.GET.get("customer_id")
+        export_type = request.GET.get("type")  # 'excel' or 'pdf'
+
+        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
+
+        qs = CustomerVoucherStatus.objects.filter(
+            Q(is_unpaid=True) | Q(is_partially_paid=True)
+        ).select_related("customer", "voucher", "customer__salesperson", "customer__credit_profile")
+
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        elif is_power_user:
+            if salesperson_id:
+                qs = qs.filter(customer__salesperson_id=salesperson_id)
+        else:
+            qs = qs.filter(customer__salesperson__user=user)
+
+        if search_query:
+            qs = qs.filter(customer__name__icontains=search_query)
+
+        qs = qs.order_by("customer__name")
+        today = date.today()
+
+        # 2. PREPARE DATA
+        data_list = []
+        for vs in qs:
+            credit_period = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
+                                                                                     'credit_profile') and vs.customer.credit_profile else 0
+            days_elapsed = vs.credit_days_elapsed or 0
+
+            if vs.is_credit_period_crossed:
+                c_status = f"Crossed by {days_elapsed} days"
+            else:
+                c_status = f"{max(credit_period - days_elapsed, 0)} days remaining"
+
+            # Find total amount (using the ledger logic from previous step)
+            party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
+            total_amt = party_entry.amount if party_entry else 0
+
+            data_list.append({
+                'customer': vs.customer.name,
+                'voucher': vs.voucher.voucher_number,
+                'date': vs.voucher_date.strftime('%d-%m-%Y'),
+                'credit': c_status,
+                'total': total_amt,
+                'pending': vs.unpaid_amount,
+                'sp': vs.customer.salesperson.name
+            })
+
+        # 3. EXPORT EXCEL
+        if export_type == 'excel':
+            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.xlsx"'
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Payment FollowUp"
+            headers = ['Customer', 'Voucher', 'Date', 'Credit Status', 'Total Amount', 'Pending', 'Salesperson']
+            ws.append(headers)
+
+            for item in data_list:
+                ws.append(
+                    [item['customer'], item['voucher'], item['date'], item['credit'], item['total'], item['pending'],
+                     item['sp']])
+
+            wb.save(response)
+            return response
+
+        # 4. EXPORT PDF
+        elif export_type == 'pdf':
+            template_path = 'customers/export_pdf_template.html'
+            context = {'data': data_list, 'today': today}
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.pdf"'
+
+            template = get_template(template_path)
+            html = template.render(context)
+            pisa_status = pisa.CreatePDF(html, dest=response)
+
+            if pisa_status.err:
+                return HttpResponse('We had some errors <pre>' + html + '</pre>')
+            return response
 
 @require_POST
 def payment_followup_action(request):
