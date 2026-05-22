@@ -1,0 +1,27 @@
+<h2>Tracked Purchase Orders</h2>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Order Date</th>
+        <th>Voucher No</th>
+        <th>Party</th>
+        <th>Status</th>
+        <th>Arrival</th>
+        <th>Days Taken</th>
+        <th>Action</th>
+    </tr>
+
+    {% for po in tracked_orders %}
+    <tr>
+        <td>{{ po.order_date }}</td>
+        <td>{{ po.voucher_number }}</td>
+        <td>{{ po.party_name }}</td>
+        <td>{{ po.get_status_display }}</td>
+        <td>{{ po.arrival_datetime|default:"-" }}</td>
+        <td>{{ po.total_days_taken|default:"-" }}</td>
+        <td>
+            <a href="{% url 'inventory:po_tracking_detail' po.pk %}">Open</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>

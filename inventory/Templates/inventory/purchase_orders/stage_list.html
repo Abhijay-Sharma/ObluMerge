@@ -1,0 +1,25 @@
+<h2>Purchase Order Stages</h2>
+
+<a href="{% url 'po_stage_create' %}">Add Stage</a>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Name</th>
+        <th>Estimated Days</th>
+        <th>Final Stage?</th>
+        <th>Active?</th>
+        <th>Action</th>
+    </tr>
+
+    {% for stage in stages %}
+    <tr>
+        <td>{{ stage.name }}</td>
+        <td>{{ stage.estimated_days }}</td>
+        <td>{{ stage.is_final_stage }}</td>
+        <td>{{ stage.is_active }}</td>
+        <td>
+            <a href="{% url 'po_stage_update' stage.pk %}">Edit</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>

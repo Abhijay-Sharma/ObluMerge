@@ -1,0 +1,35 @@
+<h2>Tally Purchase Orders</h2>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Date</th>
+        <th>Voucher No</th>
+        <th>Party</th>
+        <th>Items</th>
+        <th>Action</th>
+    </tr>
+
+    {% for po in purchase_orders %}
+    <tr>
+        <td>{{ po.date }}</td>
+        <td>{{ po.voucher_number }}</td>
+        <td>{{ po.party_name }}</td>
+        <td>
+            {% for row in po.stock_rows.all %}
+                {{ row.item|default:row.item_name_text }} - {{ row.quantity }}<br>
+            {% endfor %}
+        </td>
+        <td>
+            {% if po.purchase_order_tracking %}
+                <a href="{% url 'po_tracking_detail' po.purchase_order_tracking.pk %}">View Tracking</a>
+            {% else %}
+                <a href="{% url 'create_po_tracking' po.id %}">Start Tracking</a>
+            {% endif %}
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="5">No purchase orders found.</td>
+    </tr>
+    {% endfor %}
+</table>

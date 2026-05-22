@@ -1,0 +1,11 @@
+<h2>Add / Edit PO Stage</h2>
+
+{% if po %}
+<p><b>PO:</b> {{ po.voucher_number }} - {{ po.party_name }}</p>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save Stage Log</button>
+</form>

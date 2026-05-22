@@ -1,0 +1,70 @@
+<h2>PO Tracking Detail</h2>
+
+<p><b>Voucher:</b> {{ po.voucher_number }}</p>
+<p><b>Party:</b> {{ po.party_name }}</p>
+<p><b>Order Date:</b> {{ po.order_date }}</p>
+<p><b>Status:</b> {{ po.get_status_display }}</p>
+<p><b>Arrival:</b> {{ po.arrival_datetime|default:"Not arrived yet" }}</p>
+<p><b>Total Days Taken:</b> {{ po.total_days_taken|default:"-" }}</p>
+
+<hr>
+
+<h3>Items</h3>
+
+<a href="{% url 'update_arrived_quantities' po.pk %}">Update Arrived Quantities</a>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Item</th>
+        <th>Ordered Qty</th>
+        <th>Arrived Qty</th>
+        <th>Fully Arrived?</th>
+        <th>Remarks</th>
+    </tr>
+
+    {% for item in po.items.all %}
+    <tr>
+        <td>{{ item.inventory_item|default:item.item_name_text }}</td>
+        <td>{{ item.ordered_quantity }}</td>
+        <td>{{ item.arrived_quantity }}</td>
+        <td>{{ item.is_fully_arrived }}</td>
+        <td>{{ item.remarks|default:"-" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<hr>
+
+<h3>Stages</h3>
+
+<a href="{% url 'po_stage_log_create' po.pk %}">Add Stage</a>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Stage</th>
+        <th>Estimated Days</th>
+        <th>Entered</th>
+        <th>Exited</th>
+        <th>Actual Days</th>
+        <th>Remarks</th>
+        <th>Action</th>
+    </tr>
+
+    {% for log in po.stage_logs.all %}
+    <tr>
+        <td>{{ log.stage.name }}</td>
+        <td>{{ log.stage.estimated_days }}</td>
+        <td>{{ log.entered_at }}</td>
+        <td>{{ log.exit_datetime|default:"Still here" }}</td>
+        <td>{{ log.days_at_stage }}</td>
+        <td>{{ log.remarks|default:"-" }}</td>
+        <td>
+            <a href="{% url 'po_stage_log_update' log.pk %}">Edit</a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="7">No stages added yet.</td>
+    </tr>
+    {% endfor %}
+</table>
