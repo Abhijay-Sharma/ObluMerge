@@ -1,25 +1,213 @@
-<h2>Purchase Order Stages</h2>
+{% block extra_head %}
+<!-- Google Fonts & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<a href="{% url 'po_stage_create' %}">Add Stage</a>
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --success: #10b981;
+        --slate-50: #f8fafc;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-600: #475569;
+        --slate-900: #0f172a;
+    }
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Name</th>
-        <th>Estimated Days</th>
-        <th>Final Stage?</th>
-        <th>Active?</th>
-        <th>Action</th>
-    </tr>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f1f5f9;
+        color: var(--slate-900);
+        margin: 0;
+        padding: 2rem;
+    }
 
-    {% for stage in stages %}
-    <tr>
-        <td>{{ stage.name }}</td>
-        <td>{{ stage.estimated_days }}</td>
-        <td>{{ stage.is_final_stage }}</td>
-        <td>{{ stage.is_active }}</td>
-        <td>
-            <a href="{% url 'po_stage_update' stage.pk %}">Edit</a>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+    .container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    /* ── Card & Table ── */
+    .table-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        border: 1px solid var(--slate-200);
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th {
+        background: var(--slate-50);
+        padding: 1rem 1.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--slate-600);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--slate-200);
+    }
+
+    td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--slate-100);
+        vertical-align: middle;
+        font-size: 0.9375rem;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover {
+        background-color: #fbfcfe;
+    }
+
+    /* ── Badges ── */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-success { background-color: #dcfce7; color: #166534; }
+    .badge-neutral { background-color: var(--slate-100); color: var(--slate-600); }
+    .badge-info { background-color: #e0e7ff; color: #3730a3; }
+
+    /* ── Buttons ── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+    }
+
+    .btn-edit {
+        color: var(--primary);
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .btn-edit:hover {
+        background-color: var(--slate-100);
+        border-radius: 4px;
+    }
+
+    /* ── Typography ── */
+    .stage-name {
+        font-weight: 600;
+        color: var(--slate-900);
+    }
+    
+    .est-days {
+        font-weight: 500;
+        color: var(--slate-600);
+    }
+</style>
+{% endblock %}
+
+<div class="container">
+    <div class="page-header">
+        <h2>Purchase Order Stages</h2>
+        <a href="{% url 'po_stage_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Stage
+        </a>
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Estimated Days</th>
+                    <th>Final Stage?</th>
+                    <th>Active?</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stage in stages %}
+                <tr>
+                    <td>
+                        <span class="stage-name">{{ stage.name }}</span>
+                    </td>
+                    <td>
+                        <div class="est-days">
+                            <i class="far fa-clock" style="margin-right: 4px; opacity: 0.6;"></i>
+                            {{ stage.estimated_days }} days
+                        </div>
+                    </td>
+                    <td>
+                        {% if stage.is_final_stage %}
+                            <span class="badge badge-info">
+                                <i class="fas fa-flag-checkered" style="margin-right: 4px;"></i> Final
+                            </span>
+                        {% else %}
+                            <span class="badge badge-neutral">Standard</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if stage.is_active %}
+                            <span class="badge badge-success">
+                                <i class="fas fa-check" style="margin-right: 4px;"></i> Active
+                            </span>
+                        {% else %}
+                            <span class="badge badge-neutral">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'po_stage_update' stage.pk %}" class="btn-edit">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if not stages %}
+<div style="text-align: center; padding: 3rem; color: var(--slate-600);">
+    <p>No stages have been created yet. Click "Add Stage" to get started.</p>
+</div>
+{% endif %}

@@ -1,27 +1,243 @@
-<h2>Tracked Purchase Orders</h2>
+{% block extra_head %}
+<!-- Google Fonts & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Order Date</th>
-        <th>Voucher No</th>
-        <th>Party</th>
-        <th>Status</th>
-        <th>Arrival</th>
-        <th>Days Taken</th>
-        <th>Action</th>
-    </tr>
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --slate-50: #f8fafc;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-600: #475569;
+        --slate-900: #0f172a;
+        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
 
-    {% for po in tracked_orders %}
-    <tr>
-        <td>{{ po.order_date }}</td>
-        <td>{{ po.voucher_number }}</td>
-        <td>{{ po.party_name }}</td>
-        <td>{{ po.get_status_display }}</td>
-        <td>{{ po.arrival_datetime|default:"-" }}</td>
-        <td>{{ po.total_days_taken|default:"-" }}</td>
-        <td>
-            <a href="{% url 'inventory:po_tracking_detail' po.pk %}">Open</a>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f5f7fb;
+        color: var(--slate-900);
+        margin: 0;
+        padding: 40px 20px;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* ── Page Header ── */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h2 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.025em;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .order-count {
+        font-size: 0.875rem;
+        background: var(--slate-200);
+        color: var(--slate-600);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    /* ── Table Card ── */
+    .table-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--slate-200);
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th {
+        background: var(--slate-50);
+        padding: 16px 24px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--slate-600);
+        border-bottom: 1px solid var(--slate-200);
+    }
+
+    td {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--slate-100);
+        vertical-align: middle;
+        font-size: 0.9375rem;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover {
+        background-color: #fbfcfe;
+    }
+
+    /* ── Column Specifics ── */
+    .voucher-cell {
+        font-family: 'JetBrains Mono', monospace; /* Fallback to monospace */
+        font-weight: 600;
+        color: var(--slate-600);
+        background: var(--slate-100);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+    }
+
+    .party-cell {
+        font-weight: 700;
+        color: var(--slate-900);
+    }
+
+    .days-cell {
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    /* ── Status Badges ── */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Dynamic Logic based on Status Name */
+    .status-arrived { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-default { background: #e0e7ff; color: #3730a3; }
+
+    /* ── Actions ── */
+    .btn-open {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        border: 1px solid var(--slate-200);
+        border-radius: 8px;
+        color: var(--slate-900);
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-open:hover {
+        background: var(--slate-50);
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+        padding: 80px 24px;
+        text-align: center;
+        color: var(--slate-600);
+    }
+</style>
+{% endblock %}
+
+<div class="container">
+    <div class="page-header">
+        <h2>
+            <i class="fas fa-route" style="color:var(--primary)"></i>
+            Tracked Purchase Orders
+            <span class="order-count">{{ tracked_orders|length }} Active</span>
+        </h2>
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order Date</th>
+                    <th>Voucher No</th>
+                    <th>Party Name</th>
+                    <th>Tracking Status</th>
+                    <th>Arrival Date</th>
+                    <th>Time Elapsed</th>
+                    <th style="text-align: right;">Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for po in tracked_orders %}
+                <tr>
+                    <td style="color: var(--slate-600);">
+                        <i class="far fa-calendar-alt" style="margin-right: 6px; opacity: 0.5;"></i>
+                        {{ po.order_date }}
+                    </td>
+                    <td>
+                        <span class="voucher-cell">{{ po.voucher_number }}</span>
+                    </td>
+                    <td class="party-cell">{{ po.party_name }}</td>
+                    <td>
+                        <span class="badge
+                            {% if 'Arrived' in po.get_status_display %}status-arrived
+                            {% elif 'Pending' in po.get_status_display %}status-pending
+                            {% else %}status-default{% endif %}">
+                            <i class="fas fa-circle" style="font-size: 6px;"></i>
+                            {{ po.get_status_display }}
+                        </span>
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--slate-600);">
+                        {{ po.arrival_datetime|default:"—" }}
+                    </td>
+                    <td class="days-cell">
+                        {% if po.total_days_taken %}
+                            {{ po.total_days_taken }} <small style="font-weight: 400;">days</small>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'po_tracking_detail' po.pk %}" class="btn-open">
+                            Open <i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <i class="fas fa-search-location" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
+                            <p style="font-weight: 500;">No tracked orders found.</p>
+                            <p style="font-size: 0.875rem; margin-top: 4px;">Orders appear here once tracking has started.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

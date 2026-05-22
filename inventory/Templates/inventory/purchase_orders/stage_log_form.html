@@ -1,11 +1,227 @@
-<h2>Add / Edit PO Stage</h2>
+{% block extra_head %}
+<!-- Google Fonts & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-{% if po %}
-<p><b>PO:</b> {{ po.voucher_number }} - {{ po.party_name }}</p>
-{% endif %}
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --slate-50: #f8fafc;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-300: #cbd5e1;
+        --slate-700: #334155;
+        --slate-900: #0f172a;
+        --danger: #ef4444;
+    }
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save Stage Log</button>
-</form>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f1f5f9;
+        color: var(--slate-900);
+        margin: 0;
+        padding: 2rem;
+    }
+
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .page-header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* ── PO Context Card ── */
+    .po-context {
+        background: white;
+        padding: 1rem 1.25rem;
+        border-radius: 10px;
+        border: 1px solid var(--slate-200);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .po-badge {
+        background: var(--slate-100);
+        color: var(--slate-700);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    /* ── Main Form Card ── */
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--slate-200);
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--slate-700);
+        margin-bottom: 0.5rem;
+    }
+
+    /* Target Django's default widgets */
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border-radius: 8px;
+        border: 1px solid var(--slate-300);
+        font-family: inherit;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    /* Specific height for text areas */
+    .form-group textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    /* Error Styling */
+    .error-list {
+        color: var(--danger);
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+        list-style: none;
+        padding: 0;
+    }
+
+    /* ── Action Buttons ── */
+    .form-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--slate-700);
+        border: 1px solid var(--slate-200);
+    }
+
+    .btn-ghost:hover {
+        background: var(--slate-50);
+    }
+</style>
+{% endblock %}
+
+<div class="form-container">
+
+    <div class="page-header">
+        <h2>
+            <i class="fas fa-history" style="color: var(--primary)"></i>
+            Add / Edit PO Stage Log
+        </h2>
+    </div>
+
+    {% if po %}
+    <div class="po-context">
+        <i class="fas fa-file-contract" style="color: var(--slate-300)"></i>
+        <div>
+            <span class="po-badge">{{ po.voucher_number }}</span>
+            <span style="margin-left: 8px; font-weight: 500; color: var(--slate-700)">{{ po.party_name }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="form-card">
+        <form method="post">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <small style="color: var(--slate-700); display: block; margin-top: 4px;">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="error-list">
+                        {{ field.errors }}
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Stage Log
+                </button>
+                <a href="javascript:history.back()" class="btn btn-ghost">
+                    Cancel and Return
+                </a>
+            </div>
+        </form>
+    </div>
+</div>

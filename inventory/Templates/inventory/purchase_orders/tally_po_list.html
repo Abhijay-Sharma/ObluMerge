@@ -1,35 +1,220 @@
-<h2>Tally Purchase Orders</h2>
+<!-- Add Google Font & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Date</th>
-        <th>Voucher No</th>
-        <th>Party</th>
-        <th>Items</th>
-        <th>Action</th>
-    </tr>
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --success: #10b981;
+        --slate-50: #f8fafc;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-600: #475569;
+        --slate-900: #0f172a;
+    }
 
-    {% for po in purchase_orders %}
-    <tr>
-        <td>{{ po.date }}</td>
-        <td>{{ po.voucher_number }}</td>
-        <td>{{ po.party_name }}</td>
-        <td>
-            {% for row in po.stock_rows.all %}
-                {{ row.item|default:row.item_name_text }} - {{ row.quantity }}<br>
-            {% endfor %}
-        </td>
-        <td>
-            {% if po.purchase_order_tracking %}
-                <a href="{% url 'po_tracking_detail' po.purchase_order_tracking.pk %}">View Tracking</a>
-            {% else %}
-                <a href="{% url 'create_po_tracking' po.id %}">Start Tracking</a>
-            {% endif %}
-        </td>
-    </tr>
-    {% empty %}
-    <tr>
-        <td colspan="5">No purchase orders found.</td>
-    </tr>
-    {% endfor %}
-</table>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f5f7fb;
+        padding: 40px 20px;
+        color: var(--slate-900);
+    }
+
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .header {
+        margin-bottom: 24px;
+    }
+
+    .header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* Table Card */
+    .po-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+        border: 1px solid var(--slate-200);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th {
+        background: var(--slate-50);
+        padding: 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--slate-600);
+        border-bottom: 1px solid var(--slate-200);
+    }
+
+    td {
+        padding: 16px;
+        border-bottom: 1px solid var(--slate-100);
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover {
+        background-color: #fbfcfe;
+    }
+
+    /* Column Styles */
+    .date-cell { font-weight: 500; color: var(--slate-900); }
+    .voucher-no { font-family: monospace; color: var(--slate-600); background: var(--slate-100); padding: 2px 6px; border-radius: 4px; }
+    .party-name { font-weight: 600; color: var(--primary); }
+
+    /* Items Styling */
+    .item-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .item-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f0f4ff;
+        color: #312e81;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        border: 1px solid #e0e7ff;
+    }
+
+    .item-qty {
+        font-weight: 700;
+        margin-left: 8px;
+        color: var(--primary);
+    }
+
+    /* Button Styling */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-size: 0.85rem;
+    }
+
+    .btn-start {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .btn-start:hover { background-color: var(--primary-hover); }
+
+    .btn-view {
+        background-color: white;
+        color: var(--slate-600);
+        border: 1px solid var(--slate-200);
+    }
+
+    .btn-view:hover {
+        background-color: var(--slate-50);
+        border-color: var(--slate-600);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--slate-600);
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.3;
+    }
+</style>
+
+<div class="container">
+    <div class="header">
+        <h2><i class="fas fa-file-invoice-dollar" style="color: var(--primary);"></i> Tally Purchase Orders</h2>
+    </div>
+
+    <div class="po-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Voucher Info</th>
+                    <th>Party</th>
+                    <th>Inventory Items</th>
+                    <th>Tracking Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for po in purchase_orders %}
+                <tr>
+                    <td class="date-cell">
+                        <i class="far fa-calendar-alt" style="margin-right: 6px; opacity: 0.5;"></i>
+                        {{ po.date }}
+                    </td>
+                    <td>
+                        <span class="voucher-no">{{ po.voucher_number }}</span>
+                    </td>
+                    <td class="party-name">{{ po.party_name }}</td>
+                    <td>
+                        <div class="item-list">
+                            {% for row in po.stock_rows.all %}
+                            <div class="item-badge">
+                                <span>{{ row.item|default:row.item_name_text }}</span>
+                                <span class="item-qty">x {{ row.quantity }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if po.purchase_order_tracking %}
+                        <a href="{% url 'po_tracking_detail' po.purchase_order_tracking.pk %}" class="btn btn-view">
+                            <i class="fas fa-eye"></i> View Tracking
+                        </a>
+                        {% else %}
+                        <a href="{% url 'create_po_tracking' po.id %}" class="btn btn-start">
+                            <i class="fas fa-plus"></i> Start Tracking
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <i class="fas fa-box-open"></i>
+                            <p>No purchase orders found at this time.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

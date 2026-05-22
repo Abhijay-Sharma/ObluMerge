@@ -1,70 +1,302 @@
-<h2>PO Tracking Detail</h2>
+{% block extra_head %}
+<!-- Google Fonts & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<p><b>Voucher:</b> {{ po.voucher_number }}</p>
-<p><b>Party:</b> {{ po.party_name }}</p>
-<p><b>Order Date:</b> {{ po.order_date }}</p>
-<p><b>Status:</b> {{ po.get_status_display }}</p>
-<p><b>Arrival:</b> {{ po.arrival_datetime|default:"Not arrived yet" }}</p>
-<p><b>Total Days Taken:</b> {{ po.total_days_taken|default:"-" }}</p>
+<style>
+    :root {
+        --primary: #4f46e5;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --slate-50: #f8fafc;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-700: #334155;
+        --slate-900: #0f172a;
+    }
 
-<hr>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f1f5f9;
+        color: var(--slate-900);
+        margin: 0;
+        padding: 2rem;
+    }
 
-<h3>Items</h3>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
 
-<a href="{% url 'update_arrived_quantities' po.pk %}">Update Arrived Quantities</a>
+    /* ── Header & Breadcrumbs ── */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Item</th>
-        <th>Ordered Qty</th>
-        <th>Arrived Qty</th>
-        <th>Fully Arrived?</th>
-        <th>Remarks</th>
-    </tr>
+    .page-header h2 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -0.025em;
+    }
 
-    {% for item in po.items.all %}
-    <tr>
-        <td>{{ item.inventory_item|default:item.item_name_text }}</td>
-        <td>{{ item.ordered_quantity }}</td>
-        <td>{{ item.arrived_quantity }}</td>
-        <td>{{ item.is_fully_arrived }}</td>
-        <td>{{ item.remarks|default:"-" }}</td>
-    </tr>
-    {% endfor %}
-</table>
+    /* ── Summary Card ── */
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--slate-200);
+    }
 
-<hr>
+    .info-group label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
 
-<h3>Stages</h3>
+    .info-group div {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--slate-900);
+    }
 
-<a href="{% url 'po_stage_log_create' po.pk %}">Add Stage</a>
+    /* ── Status Badges ── */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .badge-primary { background: #e0e7ff; color: #4338ca; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Stage</th>
-        <th>Estimated Days</th>
-        <th>Entered</th>
-        <th>Exited</th>
-        <th>Actual Days</th>
-        <th>Remarks</th>
-        <th>Action</th>
-    </tr>
+    /* ── Section Cards ── */
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--slate-200);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
 
-    {% for log in po.stage_logs.all %}
-    <tr>
-        <td>{{ log.stage.name }}</td>
-        <td>{{ log.stage.estimated_days }}</td>
-        <td>{{ log.entered_at }}</td>
-        <td>{{ log.exit_datetime|default:"Still here" }}</td>
-        <td>{{ log.days_at_stage }}</td>
-        <td>{{ log.remarks|default:"-" }}</td>
-        <td>
-            <a href="{% url 'po_stage_log_update' log.pk %}">Edit</a>
-        </td>
-    </tr>
-    {% empty %}
-    <tr>
-        <td colspan="7">No stages added yet.</td>
-    </tr>
-    {% endfor %}
-</table>
+    .section-header {
+        padding: 1.25rem 1.5rem;
+        background: var(--slate-50);
+        border-bottom: 1px solid var(--slate-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+
+    /* ── Tables ── */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th {
+        background: var(--slate-50);
+        padding: 0.75rem 1.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--slate-200);
+    }
+
+    td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--slate-100);
+        font-size: 0.9375rem;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    /* ── Buttons ── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #4338ca; }
+
+    .btn-ghost { color: var(--primary); background: transparent; }
+    .btn-ghost:hover { background: var(--slate-100); }
+
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+
+    /* ── Tooltips/Remarks ── */
+    .remarks { color: #64748b; font-size: 0.8125rem; font-style: italic; }
+
+</style>
+{% endblock %}
+
+<div class="dashboard-container">
+
+    <div class="page-header">
+        <h2>PO Tracking Detail</h2>
+        <div class="actions">
+            <a href="javascript:history.back()" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> Back</a>
+        </div>
+    </div>
+
+    <!-- PO Summary Header -->
+    <div class="summary-card">
+        <div class="info-group">
+            <label>Voucher</label>
+            <div><i class="fas fa-file-invoice" style="color:var(--primary); margin-right:5px"></i> {{ po.voucher_number }}</div>
+        </div>
+        <div class="info-group">
+            <label>Party</label>
+            <div>{{ po.party_name }}</div>
+        </div>
+        <div class="info-group">
+            <label>Order Date</label>
+            <div><i class="far fa-calendar" style="margin-right:5px"></i> {{ po.order_date }}</div>
+        </div>
+        <div class="info-group">
+            <label>Status</label>
+            <div><span class="badge badge-primary">{{ po.get_status_display }}</span></div>
+        </div>
+        <div class="info-group">
+            <label>Arrival</label>
+            <div style="color: {% if po.arrival_datetime %}var(--success){% else %}var(--slate-700){% endif %}">
+                {{ po.arrival_datetime|default:"Not arrived yet" }}
+            </div>
+        </div>
+        <div class="info-group">
+            <label>Days Taken</label>
+            <div style="font-size: 1.25rem; font-weight: 700;">{{ po.total_days_taken|default:"-" }} <small style="font-size:0.7rem">days</small></div>
+        </div>
+    </div>
+
+    <!-- Items Section -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3><i class="fas fa-boxes" style="margin-right:8px"></i> Items</h3>
+            <a href="{% url 'update_arrived_quantities' po.pk %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-sync-alt"></i> Update Arrived Quantities
+            </a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Ordered Qty</th>
+                    <th>Arrived Qty</th>
+                    <th>Fully Arrived?</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in po.items.all %}
+                <tr>
+                    <td style="font-weight: 600;">{{ item.inventory_item|default:item.item_name_text }}</td>
+                    <td>{{ item.ordered_quantity }}</td>
+                    <td><span style="font-weight: 700; color: var(--primary)">{{ item.arrived_quantity }}</span></td>
+                    <td>
+                        {% if item.is_fully_arrived %}
+                            <span class="badge badge-success"><i class="fas fa-check-circle" style="margin-right:4px"></i> Yes</span>
+                        {% else %}
+                            <span class="badge badge-warning">No</span>
+                        {% endif %}
+                    </td>
+                    <td class="remarks">{{ item.remarks|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Stages Section -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3><i class="fas fa-route" style="margin-right:8px"></i> Stages</h3>
+            <a href="{% url 'po_stage_log_create' po.pk %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Add Stage
+            </a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Stage</th>
+                    <th>Est. Days</th>
+                    <th>Entered</th>
+                    <th>Exited</th>
+                    <th>Actual Days</th>
+                    <th>Remarks</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in po.stage_logs.all %}
+                <tr>
+                    <td style="font-weight: 600;">
+                        {% if not log.exit_datetime %}
+                            <i class="fas fa-circle-notch fa-spin" style="color:var(--primary); margin-right:5px"></i>
+                        {% endif %}
+                        {{ log.stage.name }}
+                    </td>
+                    <td>{{ log.stage.estimated_days }}</td>
+                    <td style="font-size: 0.8rem;">{{ log.entered_at }}</td>
+                    <td style="font-size: 0.8rem;">
+                        {% if log.exit_datetime %}
+                            {{ log.exit_datetime }}
+                        {% else %}
+                            <span class="badge badge-warning">Still here</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 700; color: {% if log.days_at_stage > log.stage.estimated_days %}var(--danger){% else %}var(--slate-900){% endif %};">
+                        {{ log.days_at_stage }}
+                    </td>
+                    <td class="remarks">{{ log.remarks|default:"-" }}</td>
+                    <td>
+                        <a href="{% url 'po_stage_log_update' log.pk %}" class="btn btn-ghost btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 3rem; color: #64748b;">
+                        <i class="fas fa-info-circle" style="display:block; font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                        No stages added yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
