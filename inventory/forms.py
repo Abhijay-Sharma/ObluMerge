@@ -19,3 +19,41 @@ class InventoryItemForm(forms.ModelForm):
     class Meta:
         model=InventoryItem
         fields=['name','quantity','category','min_quantity']
+
+
+
+from django import forms
+from .models import (
+    PurchaseOrderTracking,
+    PurchaseOrderTrackingItem,
+    PurchaseOrderStage,
+    PurchaseOrderStageLog,
+)
+
+
+class PurchaseOrderTrackingForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrderTracking
+        fields = ["remarks"]
+
+
+class PurchaseOrderTrackingItemForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrderTrackingItem
+        fields = ["arrived_quantity", "remarks"]
+
+
+class PurchaseOrderStageForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrderStage
+        fields = ["name", "estimated_days", "is_final_stage", "sort_order", "is_active"]
+
+
+class PurchaseOrderStageLogForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrderStageLog
+        fields = ["stage", "entered_at", "exit_datetime", "manual_days_at_stage", "remarks"]
+        widgets = {
+            "entered_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+            "exit_datetime": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+        }
