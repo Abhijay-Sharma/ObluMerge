@@ -2024,3 +2024,184 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
             "today":                today,
             "hide_dead":            hide_dead,
         })
+
+
+
+
+
+
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse_lazy
+from django.views.generic import ListView, DetailView, CreateView, UpdateView
+from django.forms import modelformset_factory
+from django.db import transaction
+
+from tally_voucher.models import Voucher
+
+from .models import (
+    PurchaseOrderTracking,
+    PurchaseOrderTrackingItem,
+    PurchaseOrderStage,
+    PurchaseOrderStageLog,
+)
+from .forms import (
+    PurchaseOrderStageForm,
+    PurchaseOrderStageLogForm,
+    PurchaseOrderTrackingItemForm,
+)
+
+
+class TallyPurchaseOrderListView(LoginRequiredMixin, ListView):
+    model = Voucher
+    template_name = "inventory/purchase_orders/tally_po_list.html"
+    context_object_name = "purchase_orders"
+
+    def get_queryset(self):
+        print(Voucher.objects
+            .filter(voucher_category__iexact="Purchase Order")
+            .prefetch_related("stock_rows")
+            .order_by("-date"))
+        return (
+            Voucher.objects
+            .filter(voucher_category__iexact="Purchase Order")
+            .prefetch_related("stock_rows")
+            .order_by("-date")
+        )
+
+
+@login_required
+@transaction.atomic
+def create_po_tracking(request, voucher_id):
+    voucher = get_object_or_404(
+        Voucher,
+        id=voucher_id,
+        voucher_category__iexact="Purchase Order"
+    )
+
+    tracking, created = PurchaseOrderTracking.objects.get_or_create(
+        tally_voucher=voucher,
+        defaults={
+            "order_date": voucher.date,
+            "created_by": request.user,
+        }
+    )
+
+    if created:
+        for stock_row in voucher.stock_rows.all():
+            PurchaseOrderTrackingItem.objects.create(
+                purchase_order=tracking,
+                voucher_stock_item=stock_row,
+                inventory_item=stock_row.item,
+                item_name_text=stock_row.item_name_text,
+                ordered_quantity=stock_row.quantity,
+                arrived_quantity=stock_row.quantity,
+            )
+
+        messages.success(request, "Purchase order tracking created successfully.")
+    else:
+        messages.info(request, "This purchase order is already being tracked.")
+
+    return redirect("po_tracking_detail", pk=tracking.pk)
+
+
+class PurchaseOrderTrackingListView(LoginRequiredMixin, ListView):
+    model = PurchaseOrderTracking
+    template_name = "inventory/purchase_orders/tracked_po_list.html"
+    context_object_name = "tracked_orders"
+
+    def get_queryset(self):
+        return (
+            PurchaseOrderTracking.objects
+            .select_related("tally_voucher")
+            .prefetch_related("items", "stage_logs")
+            .order_by("-order_date")
+        )
+
+
+class PurchaseOrderTrackingDetailView(LoginRequiredMixin, DetailView):
+    model = PurchaseOrderTracking
+    template_name = "inventory/purchase_orders/po_tracking_detail.html"
+    context_object_name = "po"
+
+
+@login_required
+def update_arrived_quantities(request, pk):
+    po = get_object_or_404(PurchaseOrderTracking, pk=pk)
+
+    ItemFormSet = modelformset_factory(
+        PurchaseOrderTrackingItem,
+        form=PurchaseOrderTrackingItemForm,
+        extra=0
+    )
+
+    queryset = po.items.all()
+
+    if request.method == "POST":
+        formset = ItemFormSet(request.POST, queryset=queryset)
+
+        if formset.is_valid():
+            formset.save()
+            messages.success(request, "Arrived quantities updated.")
+            return redirect("po_tracking_detail", pk=po.pk)
+    else:
+        formset = ItemFormSet(queryset=queryset)
+
+    return render(request, "inventory/purchase_orders/update_arrived_quantities.html", {
+        "po": po,
+        "formset": formset,
+    })
+
+
+class PurchaseOrderStageListView(LoginRequiredMixin, ListView):
+    model = PurchaseOrderStage
+    template_name = "inventory/purchase_orders/stage_list.html"
+    context_object_name = "stages"
+
+
+class PurchaseOrderStageCreateView(LoginRequiredMixin, CreateView):
+    model = PurchaseOrderStage
+    form_class = PurchaseOrderStageForm
+    template_name = "inventory/purchase_orders/stage_form.html"
+    success_url = reverse_lazy("po_stage_list")
+
+
+class PurchaseOrderStageUpdateView(LoginRequiredMixin, UpdateView):
+    model = PurchaseOrderStage
+    form_class = PurchaseOrderStageForm
+    template_name = "inventory/purchase_orders/stage_form.html"
+    success_url = reverse_lazy("po_stage_list")
+
+
+class PurchaseOrderStageLogCreateView(LoginRequiredMixin, CreateView):
+    model = PurchaseOrderStageLog
+    form_class = PurchaseOrderStageLogForm
+    template_name = "inventory/purchase_orders/stage_log_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.po = get_object_or_404(PurchaseOrderTracking, pk=self.kwargs["po_pk"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.purchase_order = self.po
+        form.instance.created_by = self.request.user
+        messages.success(self.request, "Stage added to purchase order.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy("po_tracking_detail", kwargs={"pk": self.po.pk})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["po"] = self.po
+        return context
+
+
+class PurchaseOrderStageLogUpdateView(LoginRequiredMixin, UpdateView):
+    model = PurchaseOrderStageLog
+    form_class = PurchaseOrderStageLogForm
+    template_name = "inventory/purchase_orders/stage_log_form.html"
+
+    def get_success_url(self):
+        return reverse_lazy("po_tracking_detail", kwargs={"pk": self.object.purchase_order.pk})
