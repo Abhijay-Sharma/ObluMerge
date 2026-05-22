@@ -7,231 +7,226 @@
 
     <style>
         :root {
-            --bg: #fff;
-            --panel: #908f8f;
+            --bg: #3f3f3f;
+            --panel: #ffffff;
             --text: #111;
-            --shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-            --radius: 10px;
-            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+            --header-bg: #2e2d2d;
+            --border-color: #d1d1d1;
+            --radius: 12px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         body {
             margin: 0;
-            padding: 40px;
-            background: #3f3f3f;
+            padding: 40px 20px;
+            background: var(--bg);
             font-family: var(--font);
             color: var(--text);
             display: flex;
             justify-content: center;
+            /* CRITICAL: align-items flex-start allows the page to grow
+               naturally and scroll if the content is longer than the screen */
+            align-items: flex-start;
+            min-height: 100vh;
         }
 
         .wrap {
             width: 100%;
-            max-width: 900px;
-            background: var(--bg);
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
+            max-width: 950px;
+            background: var(--panel);
+            border-radius: var(--radius);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            /* Ensure the wrap grows with content */
+            display: block;
+            height: auto;
+            min-height: 100px;
+            overflow: visible; /* Allows the shadow to show and content to flow */
+            margin-bottom: 40px; /* Space at the very bottom of the page */
         }
 
         /* HEADER */
         .header {
-            background: linear-gradient(#2e2d2d, #615f5f);
+            background: var(--header-bg);
             color: #fff;
-            padding: 22px;
+            padding: 35px 30px;
+            border-top-left-radius: var(--radius);
+            border-top-right-radius: var(--radius);
         }
 
-        h3 {
-            font-size: 20px;
-            font-weight: 200;
-            color: #aca8a8;
-            margin: 0;
+        .header h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #aaa;
+            margin: 0 0 10px 0;
         }
 
-        .divider {
-            height: 1px;
-            margin: 20px 0;
-            background: white;
-        }
-
-        .header-row {
-            display: flex;
-            align-items: center;
-        }
-
-        .title {
-            font-size: 30px;
+        .header .title {
+            font-size: 28px;
             font-weight: 700;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 15px;
         }
 
-        .voucher-entry {
-            margin-top: 10px;
-            line-height: 1.6;
-            font-size: 15px;
+        .info-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px 40px;
         }
 
+        .info-item {
+            font-size: 14px;
+        }
+
+        .info-item strong {
+            color: #aaa;
+            margin-right: 5px;
+        }
+
+        /* SECTION STYLING */
         .section {
-            padding: 22px;
+            padding: 35px 30px;
         }
 
         .section-title {
             font-weight: 700;
-            margin-bottom: 10px;
-            font-size: 17px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            border-left: 5px solid #2e2d2d;
+            padding-left: 12px;
         }
 
-        ul {
-            margin: 0;
-            padding-left: 20px;
+        /* TABLE DESIGN */
+        .table-container {
+            width: 100%;
+            overflow-x: auto; /* For mobile responsiveness */
         }
 
-        li {
-            margin-bottom: 6px;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--border-color);
+            background-color: white;
         }
 
-        hr {
-            border: none;
-            border-top: 8px solid #ddd;
-            margin: 0;
+        th {
+            background-color: #f8f9fa;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #555;
+            padding: 14px 12px;
+            border: 1px solid var(--border-color);
         }
 
-        a.back-btn {
-            display: inline-block;
-            margin: 20px 22px;
-            text-decoration: none;
-            color: black;
-            font-weight: 600;
-            padding: 8px 14px;
-            border: 2px solid black;
-            border-radius: 8px;
+        td {
+            padding: 14px 12px;
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+            color: #333;
+            vertical-align: top;
         }
 
-        a.back-btn:hover {
-            background-color: black;
-            color: white;
+        .text-right {
+            text-align: right;
         }
 
+        .amount-cell {
+            font-weight: 700;
+            white-space: nowrap;
+        }
 
-        @media (max-width: 480px) {
-
-            body {
-                padding: 10px;
-            }
-
-            .wrap {
-                border-radius: 10px;
-                box-shadow: none;
-            }
-
-            .header {
-                padding: 16px;
-            }
-
-            h3 {
-                font-size: 16px;
-            }
-
-            .title {
-                font-size: 22px;
-            }
-
-            .divider {
-                margin: 12px 0;
-            }
-
-            .voucher-entry {
-                font-size: 14px;
-                line-height: 1.4;
-            }
-
-            .section {
-                padding: 16px;
-            }
-
-            .section-title {
-                font-size: 15px;
-            }
-
-            hr {
-                border-top-width: 5px;
-            }
-
-            a.back-btn {
-                width: 90%;
-                text-align: center;
-                margin: 16px auto;
-                display: block;
-            }
+        /* Responsive */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .header, .section { padding: 20px; }
         }
     </style>
-
 </head>
 
 <body>
 
-<div class="wrap">
+    <div class="wrap">
+        <!-- HEADER -->
+        <div class="header">
+            <h3>Voucher Details</h3>
+            <div class="title">Voucher {{ voucher.voucher_type }}</div>
 
-    <!-- HEADER -->
-    <div class="header">
-        <h3>Voucher Details</h3>
-        <div class="divider"></div>
-
-        <div class="header-row">
-            <span class="title">Voucher {{ voucher.voucher_type }}</span>
+            <div class="info-container">
+                <div class="info-item"><strong>Date:</strong> {{ voucher.date }}</div>
+                <div class="info-item"><strong>Number:</strong> {{ voucher.voucher_number }}</div>
+                <div class="info-item"><strong>Party:</strong> {{ voucher.party_name }}</div>
+                <div class="info-item"><strong>Category:</strong> {{ voucher.voucher_category }}</div>
+            </div>
         </div>
 
-        <div class="voucher-entry">
-            <div><strong>Date:</strong> {{ voucher.date }}</div>
-            <div><strong>Type:</strong> {{ voucher.voucher_type }}</div>
-            <div><strong>Number:</strong> {{ voucher.voucher_number }}</div>
-            <div><strong>Party:</strong> {{ voucher.party_name }}</div>
-            <div><strong>Category:</strong> {{ voucher.voucher_category }}</div>
+        <!-- LEDGER ENTRIES -->
+        <div class="section">
+            <div class="section-title">Ledger Entries</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ledger Name</th>
+                            <th class="text-right" style="width: 150px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in voucher.rows.all %}
+                        <tr>
+                            <td>{{ row.ledger }}</td>
+                            <td class="text-right amount-cell">₹{{ row.amount }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" style="text-align: center; color: #999; padding: 20px;">No ledger entries</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+
+        <!-- STOCK ITEMS -->
+        <div class="section">
+            <div class="section-title">Stock Items</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Godown</th>
+                            <th class="text-right">Quantity</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in voucher.stock_rows.all %}
+                        <tr>
+                            <td>
+                                {% if item.item %}
+                                    {{ item.item.name }}
+                                {% else %}
+                                    {{ item.item_name_text }}
+                                {% endif %}
+                            </td>
+                            <td>{{ item.godown|default:"—" }}</td>
+                            <td class="text-right">{{ item.quantity }}</td>
+                            <td class="text-right amount-cell">₹{{ item.amount }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #999; padding: 20px;">No stock items</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="height: 40px;"></div>
     </div>
-
-    <hr>
-
-    <!-- LEDGER ENTRIES -->
-    <div class="section">
-        <div class="section-title">Ledger Entries</div>
-        <ul>
-            {% for row in voucher.rows.all %}
-                <li>{{ row.ledger }} — ₹{{ row.amount }}</li>
-            {% empty %}
-                <li>No ledger rows</li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <hr>
-
-    <!-- STOCK ITEMS -->
-    <div class="section">
-        <div class="section-title">Stock Items</div>
-        <ul>
-            {% for item in voucher.stock_rows.all %}
-                <li>
-                    {% if item.item %}
-                        {{ item.item.name }}
-                    {% else %}
-                        {{ item.item_name_text }}
-                    {% endif %}
-                    — Qty: {{ item.quantity }} — ₹{{ item.amount }}
-                    {% if item.godown %}
-                        (Godown: {{ item.godown }})
-                    {% endif %}
-                </li>
-            {% empty %}
-                <li>No stock items</li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <hr>
-
-    <a href="javascript:history.back()" class="back-btn">⬅ Back</a>
-
-</div>
 
 </body>
 </html>
