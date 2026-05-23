@@ -336,7 +336,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                     if price_change_requests_for_email:
 
                         to_emails = ["bhavya@obluhc.com"]
-                        cc_emails = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]
+                        cc_emails = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]
                         if request.user.email:
                             cc_emails.append(request.user.email)
 
@@ -397,7 +397,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                             # Abhijay Chnage starts
                             # ---------------- STOCK REQUEST EMAIL ----------------
                             to_emails = ["accounts@obluhc.com"]
-                            cc_emails = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]
+                            cc_emails = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]
                             if request.user.email:
                                 cc_emails.append(request.user.email)
 
@@ -1808,7 +1808,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         if price_request.is_under_msrp and not request.user.is_superuser:
             try:
                 subject = f"🚨 Approval Needed: Below MSRP Request (Inv #{invoice.id})"
-                to_email = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]
+                to_email = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]
                 context = {
                     "price_request": price_request,
                     "accountant": request.user.username,
@@ -1942,7 +1942,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
             # CASE A: Accountant (Non-Admin) approving Under-MSRP
             if not request.user.is_superuser and price_request.is_under_msrp:
                 try:
-                    to_emails = ["abhijay.obluhc@gmail.com"]  # Add Nitin Sir's email here
+                    to_emails = ["abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]  # Add Nitin Sir's email here
                     email_context = {
                         "invoice": invoice,
                         "price_request": price_request,
