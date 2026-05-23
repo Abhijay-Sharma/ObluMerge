@@ -301,7 +301,6 @@
       <th>Product</th>
       <th>Current Stock<br><small style="font-weight:400;opacity:.7">Avg / day (Tally)</small></th>
       <th>Growth<br><small style="font-weight:400;opacity:.7">1-Year / Last 3M</small></th>
-      <th>Sales History</th>
       <th>Sales Forecast<br><small style="font-weight:400;opacity:.7">M+1 / M+2 / M+3</small></th>
       <th>Dead Stock?</th>
       <th>Top Customers</th>
@@ -356,12 +355,7 @@
         {% endif %}
       </div>
     </td>
-    <td>
-      <button class="btn btn-sm btn-outline-info"
-              onclick="openSalesModal('{{ p.name|escapejs }}', {{ p.monthly_sales_json }}, {{ p.daily_sales_json }})">
-        📈 Sales
-      </button>
-    </td>
+
     {# 4 — Forecast #}
     <td>
       {% if p.pred_m1 is not None %}
@@ -769,44 +763,6 @@
     </div>
   </div>
 </div>
-<!--modal for showing product monthly sales-->
-<div class="modal-overlay" id="salesModal">
-  <div class="modal-box" style="width:min(750px,94vw)">
-    <div class="modal-header">
-      <h3>📈 <span id="salesModalTitle"></span></h3>
-      <button class="modal-close" onclick="closeModal('salesModal')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="chart-wrap">
-        <canvas id="salesChart" height="180"></canvas>
-      </div>
-      <table class="hist-table" style="margin-top:16px">
-        <thead><tr><th>Month</th><th>Qty Sold</th></tr></thead>
-        <tbody id="salesTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-<div class="modal-overlay" id="dailySalesModal">
-  <div class="modal-box" style="width:min(700px,94vw)">
-    <div class="modal-header">
-      <h3>📅 <span id="dailySalesModalTitle"></span></h3>
-      <button class="modal-close" onclick="closeModal('dailySalesModal')">×</button>
-    </div>
-    <div class="modal-body">
-      <table class="hist-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Customer</th>
-            <th>Qty</th>
-          </tr>
-        </thead>
-        <tbody id="dailySalesTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
 {% endblock %}
 
@@ -1093,93 +1049,6 @@ function downloadPO() {
   a.href     = URL.createObjectURL(blob);
   a.download = "purchase_order_{{ today|date:'Y-m-d' }}.csv";
   a.click();
-}
-
-let _currentDailyData = {};  // store daily data for the currently open product
-
-function openSalesModal(productName, monthlyData, dailyData) {
-  _currentDailyData = dailyData || {};
-
-  document.getElementById('salesModalTitle').textContent = 'Monthly Sales — ' + productName;
-
-  const tbody = document.getElementById('salesTableBody');
-  tbody.innerHTML = '';
-  if (!monthlyData || monthlyData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="2" style="color:#94a3b8;text-align:center;padding:20px">No sales data</td></tr>';
-  } else {
-    [...monthlyData].reverse().forEach(row => {
-      const hasDrill = _currentDailyData[row.month] && _currentDailyData[row.month].length > 0;
-      tbody.innerHTML += `<tr>
-        <td style="font-weight:600">${row.month}</td>
-        <td style="color:#6366f1;font-weight:700">${row.qty}</td>
-        <td>${hasDrill ? `<button class="btn-link" onclick="openDailySalesModal('${row.month}')">🔍 Details</button>` : '—'}</td>
-      </tr>`;
-    });
-  }
-
-  const canvas = document.getElementById('salesChart');
-  canvas.style.width  = "100%";
-  canvas.style.height = "180px";
-  canvas.width  = canvas.parentElement.offsetWidth || 700;
-  canvas.height = 180;
-
-  if (window._salesChartInstance) window._salesChartInstance.destroy();
-  window._salesChartInstance = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: monthlyData.map(r => r.month),
-      datasets: [{
-        label: 'Qty Sold',
-        data: monthlyData.map(r => r.qty),
-        backgroundColor: 'rgba(99,102,241,0.6)',
-        borderColor: 'rgba(99,102,241,1)',
-        borderWidth: 1,
-      }]
-    },
-    options: {
-      responsive: false,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => 'Qty: ' + ctx.parsed.y } }
-      },
-      scales: { y: { beginAtZero: true, grid: { color: "#f1f5f9" } } },
-      onClick: (evt, elements) => {
-        if (elements.length > 0) {
-          const month = monthlyData[elements[0].index].month;
-          openDailySalesModal(month);
-        }
-      },
-      onHover: (evt, elements) => {
-        evt.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-      }
-    }
-  });
-
-  openModal('salesModal');
-}
-
-function openDailySalesModal(month) {
-  const rows = _currentDailyData[month] || [];
-  document.getElementById('dailySalesModalTitle').textContent = 'Daily Sales — ' + month;
-
-  const tbody = document.getElementById('dailySalesTableBody');
-  tbody.innerHTML = '';
-
-  if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="color:#94a3b8;text-align:center;padding:20px">No data</td></tr>';
-  } else {
-    rows.forEach(r => {
-      tbody.innerHTML += `<tr>
-        <td style="font-weight:600">${r.date}</td>
-        <td>${escHtml(r.party)}</td>
-        <td style="color:#6366f1;font-weight:700">${r.qty}</td>
-      </tr>`;
-    });
-  }
-
-  openModal('dailySalesModal');
 }
 </script>
 {% endblock %}
