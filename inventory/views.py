@@ -2231,6 +2231,9 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
             monthly_growth = rate_1y  # only 1y available
         else:
             monthly_growth = 0.0
+        # adding max 40% growth to
+        monthly_growth = min(monthly_growth, 0.40)
+        # ---------
         base_monthly = avg_daily * 30
         m1 = max(0, round(base_monthly * (1 + monthly_growth)))
         m2 = max(0, round(base_monthly * (1 + monthly_growth) ** 2))
@@ -2529,6 +2532,9 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
                 monthly_growth_rate = rate_1y  # only 1y available
             else:
                 monthly_growth_rate = 0.0
+            # adding 40% cap on growth
+            monthly_growth_rate = min(monthly_growth_rate, 0.4)
+            # -------
             # ── Forecast
             pred_m1, pred_m2, pred_m3 = PurchaseOrderView._forecast_next_3_months(
                 avg_daily, growth_1y, growth_3m, is_dead
