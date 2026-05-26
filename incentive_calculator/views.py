@@ -27,6 +27,10 @@ from merger.settings import LOGIN_REDIRECT_URL
 
 # Create your views here.
 
+class IncentiveCalculatorWelcomeView(TemplateView):
+    template_name = "incentive_calculator/welcome.html"
+
+
 class IncentiveCalculatorView(TemplateView):
     template_name = 'incentive_calculator/incentive_calculator.html'
 

@@ -5,7 +5,7 @@ from . import views
 app_name = "incentive_calculator"
 
 urlpatterns = [
-    path("", views.IncentiveCalculatorView.as_view(), name="incentive_calculator"),
+    path("", views.IncentiveCalculatorWelcomeView.as_view(), name="incentive_calculator_welcome"),
     path(
         "asm/",
         views.ASMIncentiveCalculatorView.as_view(),

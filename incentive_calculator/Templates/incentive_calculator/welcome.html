@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .oblu-welcome-wrapper {
+        min-height: calc(100vh - 90px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #eef7f6 0%, #ffffff 45%, #e7f4f2 100%);
+        padding: 40px 20px;
+    }
+
+    .oblu-welcome-card {
+        max-width: 850px;
+        width: 100%;
+        background: #ffffff;
+        border-radius: 28px;
+        padding: 50px;
+        box-shadow: 0 18px 45px rgba(0, 80, 75, 0.12);
+        border: 1px solid rgba(0, 128, 120, 0.12);
+        text-align: center;
+    }
+
+    .oblu-badge {
+        display: inline-block;
+        background: #e6f4f1;
+        color: #00796b;
+        padding: 8px 18px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+
+    .oblu-title {
+        font-size: 42px;
+        font-weight: 800;
+        color: #063f3a;
+        margin-bottom: 16px;
+    }
+
+    .oblu-subtitle {
+        font-size: 18px;
+        color: #5f6f6d;
+        max-width: 650px;
+        margin: 0 auto 35px;
+        line-height: 1.6;
+    }
+
+    .oblu-btn {
+        display: inline-block;
+        background: linear-gradient(135deg, #009688, #00695c);
+        color: white;
+        padding: 15px 34px;
+        border-radius: 14px;
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: 700;
+        box-shadow: 0 10px 24px rgba(0, 150, 136, 0.28);
+        transition: all 0.2s ease;
+    }
+
+    .oblu-btn:hover {
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 14px 30px rgba(0, 150, 136, 0.36);
+        text-decoration: none;
+    }
+
+    .oblu-note {
+        margin-top: 24px;
+        font-size: 14px;
+        color: #78908c;
+    }
+</style>
+
+<div class="oblu-welcome-wrapper">
+    <div class="oblu-welcome-card">
+        <div class="oblu-badge">
+            Incentive Calculator
+        </div>
+
+        <h1 class="oblu-title">
+            Welcome to the ASM Incentive Calculator
+        </h1>
+
+        <p class="oblu-subtitle">
+            Calculate ASM incentives quickly using paid invoice data.
+            Start by opening the paid-only incentive calculator.
+        </p>
+
+        <a href="{% url 'asm_incentive_paid_only' %}" class="oblu-btn">
+            Open Paid-Only Calculator
+        </a>
+
+        <div class="oblu-note">
+            This calculator is based only on paid entries.
+        </div>
+    </div>
+</div>
+
+{% endblock %}
