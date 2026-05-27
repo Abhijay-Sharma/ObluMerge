@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import ProformaInvoice, ProformaInvoiceItem , ProformaPriceChangeRequest,ProformaStockShortageRequest,ProformaRemark
+from .models import ProformaInvoice, ProformaInvoiceItem , ProformaPriceChangeRequest,ProformaStockShortageRequest,ProformaRemark, CourierMode, CourierCharge
 from .models import ApprovedPriceMemory, ProformaPriceChangeRequest # Ensure these are imported
 
 from .forms import ProformaInvoiceForm, ProformaItemFormSet, ProformaPriceChangeRequestForm,NewProformaCustomerForm
@@ -2267,31 +2267,48 @@ class CourierPricingView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Fetch data
+        # 1. Get unique product IDs from all Proforma Invoice Items
+        # Use exclude to avoid errors with deleted products
+        proforma_product_ids = ProformaInvoiceItem.objects.exclude(product__isnull=True).values_list('product_id', flat=True).distinct()
+
+        # 2. Sync Logic: Ensure Air/Surface rows exist for every product
+        with transaction.atomic():
+            for p_id in proforma_product_ids:
+                for mode_code, _ in CourierMode.choices:
+                    # Create the Header (CourierCharge) if missing
+                    charge_obj, _ = CourierCharge.objects.get_or_create(
+                        product_id=p_id,
+                        mode=mode_code
+                    )
+
+                    # Create the Slab (Tier) if missing
+                    if not charge_obj.tiers.exists():
+                        CourierChargeTier.objects.create(
+                            courier_product=charge_obj,
+                            min_quantity=1, # Start at 1
+                            max_quantity=None,
+                            charge=Decimal("0.00")
+                        )
+
+        # 3. Fetch only tiers for products found in Proformas
+        # We order by Product Name then Mode (Air/Surface) to keep the list organized
         tiers = CourierChargeTier.objects.select_related(
             'courier_product__product'
-        ).all()
+        ).filter(
+            courier_product__product_id__in=proforma_product_ids
+        ).order_by('courier_product__product__name', 'courier_product__mode')
 
-        # DEBUG: Check your terminal!
-        print(f"DEBUG: Found {tiers.count()} slabs in database")
-
+        # 4. Prepare JSON for the Jspreadsheet frontend
         courier_data = []
         for t in tiers:
-            # Safely get product name
-            p_name = "Unknown Product"
-            if t.courier_product and t.courier_product.product:
-                p_name = t.courier_product.product.name
-
-            # Safely get mode
-            mode = "N/A"
-            if t.courier_product:
-                mode = t.courier_product.get_mode_display()
+            p_name = t.courier_product.product.name if t.courier_product.product else "Unknown"
+            mode = t.courier_product.get_mode_display()
 
             courier_data.append([
                 int(t.id),
                 str(p_name),
                 str(mode),
-                int(t.min_quantity or 0),
+                int(t.min_quantity or 1),
                 int(t.max_quantity) if t.max_quantity is not None else "",
                 float(t.charge or 0)
             ])
