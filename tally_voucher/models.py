@@ -76,5 +76,13 @@ class VoucherStockItem(models.Model):
 
         super().save(*args, **kwargs)
 
-    def __str__(self):
-        return f"{self.item or self.item_name_text} - {self.quantity}"
+    def str(self):
+        return f"{self.voucher.party_name} | No: {self.voucher.voucher_number} | {self.voucher.date} | {self.item or self.item_name_text}"
+
+
+class VoucherEmiPaymentAllocation(models.Model):
+    voucher = models.ForeignKey(VoucherStockItem, on_delete=models.CASCADE)
+    amount_received = models.DecimalField(max_digits=14, decimal_places=2)
+
+    def str(self):
+        return f"{self.voucher} - {self.amount_received}"
