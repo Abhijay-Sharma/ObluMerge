@@ -76,7 +76,7 @@ class VoucherStockItem(models.Model):
 
         super().save(*args, **kwargs)
 
-    def str(self):
+    def __str__(self):
         return f"{self.voucher.party_name} | No: {self.voucher.voucher_number} | {self.voucher.date} | {self.item or self.item_name_text}"
 
 
