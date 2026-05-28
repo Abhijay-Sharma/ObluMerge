@@ -21,3 +21,4 @@ class VoucherStockItemAdmin(admin.ModelAdmin):
     list_display = ('voucher','item','quantity','date_created')
     search_fields = ['date_created']
 
+admin.site.register(VoucherEmiPaymentAllocation)
