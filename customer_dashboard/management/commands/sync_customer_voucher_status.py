@@ -1,13 +1,14 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from decimal import Decimal
+from django.db.models import Sum
 
 from customer_dashboard.models import Customer, CustomerVoucherStatus
-from tally_voucher.models import Voucher
+from tally_voucher.models import Voucher, VoucherEmiPaymentAllocation
 
 
 class Command(BaseCommand):
-    help = "Sync CustomerVoucherStatus and populate voucher amount for all vouchers"
+    help = "Sync CustomerVoucherStatus with Manual EMI Differentiation"
 
     def handle(self, *args, **options):
         today = timezone.now().date()
@@ -24,13 +25,43 @@ class Command(BaseCommand):
             except Exception:
                 continue
 
-            remaining_balance = Decimal(credit_profile.outstanding_balance)
+            # 1. GET TOTAL BALANCE FROM TALLY
+            total_tally_balance = Decimal(str(credit_profile.outstanding_balance))
             credit_days = credit_profile.credit_period_days
 
+            # 2. CALCULATE RESERVED MACHINE DEBT
+            # Get all manual allocations for this specific customer
+            manual_allocations = VoucherEmiPaymentAllocation.objects.filter(
+                voucher__voucher__party_name__iexact=customer.name
+            ).select_related('voucher', 'voucher__voucher')
+
+            total_machine_unpaid = Decimal("0.00")
+            emi_voucher_map = {}  # To quickly find manual data inside the loop
+
+            for allocation in manual_allocations:
+                item_price = Decimal(str(allocation.voucher.amount))
+                received_so_far = Decimal(str(allocation.amount_received))
+
+                # Debt remaining on this machine
+                net_unpaid = item_price - received_so_far
+                total_machine_unpaid += net_unpaid
+
+                # Store the manual 'received' amount for the loop below
+                emi_voucher_map[allocation.voucher.voucher.id] = received_so_far
+
+            # 3. CALCULATE STOCK BUCKET
+            # The money available for regular stock is Total Balance minus Machine Debt
+            remaining_stock_balance = total_tally_balance - total_machine_unpaid
+            if total_tally_balance < total_machine_unpaid:
+                remaining_stock_balance = total_tally_balance
+            if remaining_stock_balance < 0:
+                remaining_stock_balance = Decimal("0.00")
+
+            # 4. FETCH VOUCHERS (Newest First)
             vouchers = (
                 Voucher.objects
                 .filter(party_name__iexact=customer.name)
-                .order_by("-date")
+                .order_by("-date", "-id")
             )
 
             for voucher in vouchers:
@@ -44,7 +75,7 @@ class Command(BaseCommand):
                     skipped_no_party_row += 1
                     continue
 
-                voucher_amount = Decimal(party_row.amount)
+                voucher_amount = Decimal(str(party_row.amount))
 
                 base_defaults = {
                     "voucher_type": voucher.voucher_type,
@@ -54,7 +85,7 @@ class Command(BaseCommand):
                 }
 
                 # ----------------------------
-                # NON–TAX INVOICE
+                # NON–TAX INVOICE (Receipts etc)
                 # ----------------------------
                 if voucher.voucher_type != "TAX INVOICE":
                     CustomerVoucherStatus.objects.update_or_create(
@@ -73,31 +104,40 @@ class Command(BaseCommand):
                     continue
 
                 # ----------------------------
-                # TAX INVOICE PAYMENT LOGIC
+                # TAX INVOICE LOGIC (Two-Track)
                 # ----------------------------
-                if remaining_balance >= voucher_amount:
-                    unpaid_amount = voucher_amount
-                    remaining_balance -= voucher_amount
 
-                    is_unpaid = True
-                    is_partially_paid = False
-                    is_fully_paid = False
+                # TRACK A: IF VOUCHER IS MANUALLY MARKED AS EMI
+                if voucher.id in emi_voucher_map:
+                    received_amount = emi_voucher_map[voucher.id]
+                    unpaid_amount = voucher_amount - received_amount
 
-                elif remaining_balance > 0:
-                    unpaid_amount = remaining_balance
-                    remaining_balance = Decimal("0.00")
+                    is_unpaid = (unpaid_amount == voucher_amount)
+                    is_partially_paid = (0 < unpaid_amount < voucher_amount)
+                    is_fully_paid = (unpaid_amount <= 0)
 
-                    is_unpaid = False
-                    is_partially_paid = True
-                    is_fully_paid = False
+                    # Note: We do NOT subtract from remaining_stock_balance here
+                    # because EMI debt is handled separately.
 
+                # TRACK B: REGULAR STOCK INVOICE (FIFO)
                 else:
-                    unpaid_amount = Decimal("0.00")
+                    if remaining_stock_balance >= voucher_amount:
+                        unpaid_amount = voucher_amount
+                        remaining_stock_balance -= voucher_amount
+                        is_unpaid, is_partially_paid, is_fully_paid = True, False, False
 
-                    is_unpaid = False
-                    is_partially_paid = False
-                    is_fully_paid = True
+                    elif remaining_stock_balance > 0:
+                        unpaid_amount = remaining_stock_balance
+                        remaining_stock_balance = Decimal("0.00")
+                        is_unpaid, is_partially_paid, is_fully_paid = False, True, False
 
+                    else:
+                        unpaid_amount = Decimal("0.00")
+                        is_unpaid, is_partially_paid, is_fully_paid = False, False, True
+
+                # ----------------------------
+                # COMMON CREDIT LOGIC
+                # ----------------------------
                 if is_fully_paid:
                     credit_days_elapsed = 0
                     is_credit_crossed = False
