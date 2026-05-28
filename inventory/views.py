@@ -2300,7 +2300,7 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
             }
 
         # ── Step 1: daily growth-adjusted demand projection (180 days horizon)
-        horizon = 30
+        horizon = 180
         daily_demand = []
         for day in range(horizon):
             month_offset = day // 30
