@@ -2416,6 +2416,8 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
             total_after = stock_at_arrival + order_final + incoming_after_new_batch
             order_lasts_months = round(total_after / (avg_daily * 30), 1)
 
+        order_lasts_months = 1
+
         # ── Runway in months (current trajectory)
         runway_months = round(runway_days / 30, 1) if runway_days < horizon else None
 
