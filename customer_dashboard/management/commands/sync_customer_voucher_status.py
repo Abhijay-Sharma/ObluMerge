@@ -39,7 +39,17 @@ class Command(BaseCommand):
             emi_voucher_map = {}  # To quickly find manual data inside the loop
 
             for allocation in manual_allocations:
-                item_price = Decimal(str(allocation.voucher.amount))
+                # going to parent voucher to get invoice price not item price
+                parent_voucher = allocation.voucher.voucher
+
+                party_row = parent_voucher.rows.filter(
+                    ledger__iexact=parent_voucher.party_name
+                ).first()
+
+                if party_row:
+                    item_price = Decimal(str(party_row.amount))
+                else:
+                    item_price = Decimal(str(allocation.voucher.amount))
                 received_so_far = Decimal(str(allocation.amount_received))
 
                 # Debt remaining on this machine
@@ -52,9 +62,8 @@ class Command(BaseCommand):
             # 3. CALCULATE STOCK BUCKET
             # The money available for regular stock is Total Balance minus Machine Debt
             remaining_stock_balance = total_tally_balance - total_machine_unpaid
-            # i dont know the reason for why this condition was added by kashish
-            # if total_tally_balance < total_machine_unpaid:
-            #     remaining_stock_balance = total_tally_balance
+            if total_tally_balance < total_machine_unpaid:
+                remaining_stock_balance = total_tally_balance
             if remaining_stock_balance < 0:
                 remaining_stock_balance = Decimal("0.00")
 
