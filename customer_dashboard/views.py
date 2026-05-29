@@ -1320,9 +1320,9 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
                     credit_period = vs.customer.credit_profile.credit_period_days
 
                 days_elapsed = (today - vs.voucher_date).days
-
+                    #abj fix
                 if days_elapsed > credit_period:
-                    vs.credit_display_text = f"Crossed by {days_elapsed} days"
+                    vs.credit_display_text = f"Crossed by {days_elapsed - credit_period} days"
                     vs.credit_display_color = "status-crossed"
                 else:
                     remaining = max(credit_period - days_elapsed, 0)
