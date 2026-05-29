@@ -52,8 +52,9 @@ class Command(BaseCommand):
             # 3. CALCULATE STOCK BUCKET
             # The money available for regular stock is Total Balance minus Machine Debt
             remaining_stock_balance = total_tally_balance - total_machine_unpaid
-            if total_tally_balance < total_machine_unpaid:
-                remaining_stock_balance = total_tally_balance
+            # i dont know the reason for why this condition was added by kashish
+            # if total_tally_balance < total_machine_unpaid:
+            #     remaining_stock_balance = total_tally_balance
             if remaining_stock_balance < 0:
                 remaining_stock_balance = Decimal("0.00")
 
