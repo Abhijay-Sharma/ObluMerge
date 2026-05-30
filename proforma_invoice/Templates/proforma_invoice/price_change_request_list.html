@@ -293,20 +293,34 @@
                                                 <td style="text-align: right; {% if req.is_under_msrp %}color: var(--danger); font-weight: bold;{% endif %}">
                                                     {% if req.msrp_snapshot %}₹{{ req.msrp_snapshot }}{% else %}-{% endif %}
                                                 </td>
-                                                <td style="text-align: center;">
-                                                    {% if req.status == 'pending' %}
-                                                        {# DISABLE BUTTON AFTER SUBMISSION #}
-                                                        {% if req.accountant_approved and not user.is_superuser %}
-                                                            <button class="btn-core" style="background: #444; color: #888; cursor: not-allowed; border: 1px solid #555; width: 80px;" disabled>
-                                                                NOTIFIED
-                                                            </button>
+                                            <td style="text-align: center;">
+                                                {% if req.status == 'pending' %}
+                                                    {% if not user.is_superuser %}
+                                                        {% if req.accountant_approved %}
+                                                            <!-- Case 1: Already Notified -->
+                                                            <button class="btn-core" style="background: #444; color: #888; cursor: not-allowed; border: 1px solid #555; width: 100px;" disabled>NOTIFIED</button>
                                                         {% else %}
-                                                            <button type="submit" form="form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem;">
+                                                            <!-- Case 2: Check for violations to show Notify Admin -->
+                                                            {% if req.is_product_request and req.requested_price < req.msrp_snapshot or not req.is_product_request and req.requested_courier_charge < req.recommended_price|default:invoice.courier_charge|divide:2 %}
+                                                                <button type="submit" form="form-{{ req.id }}" class="btn-core" style="background: green; color: white; border: none; width: 60px; font-size: 0.6rem; font-weight: 800;">
+                                                                    NOTIFY ADMIN
+                                                                </button>
+                                                            {% else %}
+                                                                <!-- Case 3: Safe price, standard submit -->
+                                                                <button type="submit" form="form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <!-- Case 4: Superuser always sees Submit -->
+                                                        <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="form-{{ req.id }}" style="display: inline;">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn-core btn-appr" style="width: 100px; font-size: 0.65rem;">
                                                                 SUBMIT
                                                             </button>
-                                                        {% endif %}
+                                                        </form>
                                                     {% endif %}
-                                                </td>
+                                                {% endif %}
+                                            </td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>

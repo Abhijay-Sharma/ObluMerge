@@ -2101,6 +2101,135 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         messages.success(request, f"Decisions finalized for Invoice #{invoice.id}")
         return redirect("proforma_price_change_requests")
 
+
+#stock under 50% not allowed to non super user
+class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"])
+        parent_obj = price_request.invoice or price_request.quotation
+
+        if price_request.status != "pending":
+            messages.warning(request, "Request already processed.")
+            return redirect("proforma_price_change_requests")
+
+        decision = request.POST.get(f'status_{price_request.id}', 'approved')
+
+        # --- 1. REJECT LOGIC ---
+        if decision == 'rejected':
+            price_request.status = 'rejected'
+            price_request.reviewed_by = request.user
+            price_request.reviewed_at = timezone.now()
+            price_request.save()
+            self.check_and_send_final_email(request, parent_obj, price_request)
+            return redirect("proforma_price_change_requests")
+
+        # --- 2. STRICT ACCOUNTANT BLOCK (FOR COURIER AND MSRP) ---
+        if decision == 'approved' and not request.user.is_superuser:
+
+            # --- COURIER CHECK ---
+            if not price_request.is_product_request:
+                # Get values and ensure they are Decimals
+                req_amt = Decimal(str(price_request.requested_courier_charge or 0))
+                rec_amt = Decimal(str(price_request.recommended_courier_charge or 0))
+
+                # If rec_amt is 0, try to get it from the parent object directly
+                if rec_amt == 0:
+                    rec_amt = Decimal(str(parent_obj.courier_charge()))
+
+
+                # CALCULATE: Is 200 < (1800 / 2)?
+                if rec_amt > 0 and req_amt < (rec_amt / 2):
+                    # print("DEBUG: DEEP DISCOUNT DETECTED - FORCING ADMIN NOTIFICATION")
+                    return self.trigger_admin_notification(request, parent_obj, price_request,
+                                                           "DEEP COURIER DISCOUNT (>50%)")
+
+            # --- PRODUCT MSRP CHECK ---
+            elif price_request.is_product_request:
+                if price_request.is_under_msrp:
+                    # print("DEBUG: UNDER MSRP DETECTED - FORCING ADMIN NOTIFICATION")
+                    return self.trigger_admin_notification(request, parent_obj, price_request, "BELOW MSRP")
+
+        # --- 3. FINAL PROCESSING (Only reached if Admin or Safe Discount) ---
+        with transaction.atomic():
+            if price_request.is_product_request:
+                item = parent_obj.items.filter(product=price_request.product).first()
+                if item:
+                    item.requested_price = price_request.requested_price
+                    if hasattr(item, 'current_price'):
+                        item.current_price = price_request.requested_price
+                    item.save()
+
+            price_request.status = 'approved'
+            price_request.reviewed_by = request.user
+            price_request.reviewed_at = timezone.now()
+
+            if request.user.is_superuser:
+                price_request.superuser_approved = True
+            else:
+                price_request.accountant_approved = True
+
+            price_request.save()
+            parent_obj.is_price_altered = True
+            parent_obj.save()
+
+        self.check_and_send_final_email(request, parent_obj, price_request)
+        messages.success(request, "Request approved successfully.")
+        return redirect("proforma_price_change_requests")
+
+    # HELPER METHOD TO SEND TO NITIN SIR
+    def trigger_admin_notification(self, request, parent_obj, price_request, violation_type):
+        try:
+            to_emails = ["abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]  # Nitin Sir
+            email_context = {
+                "invoice": parent_obj,
+                "price_request": price_request,
+                "accountant_name": request.user.username,
+                "violation_type": violation_type,
+                "review_url": "https://oblutools.com/proforma/price-change-requests/"
+            }
+            html_content = render_to_string("proforma_invoice/msrp_notification_email.html", email_context)
+            subject = f"🚨 Admin Review Required ({violation_type}): #{parent_obj.id}"
+
+            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails)
+            msg.attach_alternative(html_content, "text/html")
+            msg.send()
+
+            price_request.accountant_approved = True
+            price_request.is_under_msrp = True  # Mark it true so template shows "Sent to Admin"
+            price_request.save()
+
+            messages.warning(request, f"⚠️ {violation_type}: Nitin Sir notified for final approval.")
+        except Exception as e:
+            messages.error(request, f"Error notifying Admin: {str(e)}")
+
+        return redirect("proforma_price_change_requests")
+
+
+    def check_and_send_final_email(self, request, parent_obj, price_request):
+        """ Indented correctly inside the class """
+        any_pending = parent_obj.price_requests.filter(status='pending').exists()
+        if not any_pending:
+            try:
+                to_emails = [price_request.requested_by.email]
+                cc_emails = ["swasti.obluhc@gmail.com"]
+                all_requests = parent_obj.price_requests.select_related('product').all()
+                email_context = {
+                    "invoice": parent_obj,
+                    "customer_name": parent_obj.customer.name,
+                    "requested_by": price_request.requested_by.username,
+                    "reviewed_by": request.user.username,
+                    "requests": all_requests,
+                    "proforma_url": f"https://oblutools.com/proforma/{parent_obj.id}/",
+                }
+                html_content = render_to_string("proforma_invoice/q.html", email_context)
+                subject = f"✅ Reviewed: #{parent_obj.id} ({parent_obj.customer.name})"
+                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+            except Exception as e:
+                print(f"Summary Email Error: {e}")
+        pass
+
 class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"], status="pending")
