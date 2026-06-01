@@ -2258,7 +2258,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
             self.check_and_send_final_email(request, parent_obj, price_request)
             # ajax implementation
             if is_ajax:
-                return JsonResponse({"status": "error", "message": "Already processed"})
+                return JsonResponse({"status": "ok", "decision": "rejected"})
             return redirect("proforma_price_change_requests")
 
         # --- 2. STRICT ACCOUNTANT BLOCK (FOR COURIER AND MSRP) ---
@@ -2313,7 +2313,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         self.check_and_send_final_email(request, parent_obj, price_request)
         # ajax implementation
         if is_ajax:
-            return JsonResponse({"status": "error", "message": "Already processed"})
+            return JsonResponse({"status": "ok", "decision": "approved"})
         messages.success(request, "Request approved successfully.")
         return redirect("proforma_price_change_requests")
 
