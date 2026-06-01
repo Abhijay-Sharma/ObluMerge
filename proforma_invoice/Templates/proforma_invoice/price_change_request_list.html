@@ -486,7 +486,6 @@ window.onclick = function(e) {
     if (e.target == remarkModal) closeRemarkModal();
     if (e.target == rejectModal) closeReject();
 }
-<!--ajax script to prevent reloading-->
 document.addEventListener('submit', function(e) {
     if (e.target.classList.contains('ajax-form')) {
         e.preventDefault();
@@ -508,16 +507,16 @@ document.addEventListener('submit', function(e) {
             return response.json();
         })
         .then(data => {
-            const decisionCell = document.getElementById(decision-cell-${reqId});
-            const actionCell = document.getElementById(action-cell-${reqId});
+            const decisionCell = document.getElementById(`decision-cell-${reqId}`);
+            const actionCell = document.getElementById(`action-cell-${reqId}`);
 
             if (data.status === 'ok') {
                 const color = data.decision === 'approved' ? '#28a745' : '#dc3545';
-                decisionCell.innerHTML = <span style="font-weight:bold; color:${color}">${data.decision.toUpperCase()}</span>;
-                actionCell.innerHTML = <span style="color:#888; font-size:0.7rem;">PROCESSED</span>;
+                decisionCell.innerHTML = `<span style="font-weight:bold; color:${color}">${data.decision.toUpperCase()}</span>`;
+                actionCell.innerHTML = `<span style="color:#888; font-size:0.7rem;">PROCESSED</span>`;
             } else if (data.status === 'admin_notified') {
-                decisionCell.innerHTML = <div style="color: #ffc107; font-weight: bold; font-size: 0.7rem;">⏳ SENT TO ADMIN</div>;
-                actionCell.innerHTML = <button class="btn-core" style="background:#444; color:#888;" disabled>NOTIFIED</button>;
+                decisionCell.innerHTML = `<div style="color: #ffc107; font-weight: bold; font-size: 0.7rem;">⏳ SENT TO ADMIN</div>`;
+                actionCell.innerHTML = `<button class="btn-core" style="background:#444; color:#888;" disabled>NOTIFIED</button>`;
             } else {
                 alert("Error: " + (data.message || "Unknown error"));
             }
