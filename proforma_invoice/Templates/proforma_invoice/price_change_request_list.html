@@ -302,12 +302,12 @@
                                                         {% else %}
                                                             <!-- Case 2: Check for violations to show Notify Admin -->
                                                             {% if req.is_product_request and req.requested_price < req.msrp_snapshot or not req.is_product_request and req.requested_courier_charge < req.recommended_price|default:invoice.courier_charge|divide:2 %}
-                                                                <button type="submit" form="form-{{ req.id }}" class="btn-core" style="background: green; color: white; border: none; width: 60px; font-size: 0.6rem; font-weight: 800;">
+                                                                <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core" style="background: green; color: white; border: none; width: 60px; font-size: 0.6rem; font-weight: 800;">
                                                                     NOTIFY ADMIN
                                                                 </button>
                                                             {% else %}
                                                                 <!-- Case 3: Safe price, standard submit -->
-                                                                <button type="submit" form="form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
+                                                                <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
                                                             {% endif %}
                                                         {% endif %}
                                                     {% else %}
