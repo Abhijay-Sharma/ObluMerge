@@ -267,7 +267,7 @@
                                                         Reason: {{ req.reason|default:"No reason provided." }}
                                                     </div>
                                                 </td>
-                                                <td style="text-align: center;">
+                                                <td style="text-align: center;" id="decision-cell-{{ req.id }}">
                                                     {% if req.status == 'pending' %}
                                                         {# IF ACCOUNTANT ALREADY SENT MAIL AND IS NOT A SUPERUSER #}
                                                         {% if req.accountant_approved and not user.is_superuser %}
@@ -276,7 +276,7 @@
                                                             </div>
                                                         {% else %}
                                                             {# Normal Radio Buttons for Admin or New Requests #}
-                                                            <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="form-{{ req.id }}">
+                                                            <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="ajax-form-{{ req.id }}" class="ajax-form">
                                                                 {% csrf_token %}
                                                                 <label style="font-size: 0.7rem;"><input type="radio" name="status_{{ req.id }}" value="approved" checked> Appr</label>
                                                                 <label style="font-size: 0.7rem;"><input type="radio" name="status_{{ req.id }}" value="rejected"> Rej</label>
@@ -293,7 +293,7 @@
                                                 <td style="text-align: right; {% if req.is_under_msrp %}color: var(--danger); font-weight: bold;{% endif %}">
                                                     {% if req.msrp_snapshot %}₹{{ req.msrp_snapshot }}{% else %}-{% endif %}
                                                 </td>
-                                            <td style="text-align: center;">
+                                            <td style="text-align: center;" id="action-cell-{{ req.id }}">
                                                 {% if req.status == 'pending' %}
                                                     {% if not user.is_superuser %}
                                                         {% if req.accountant_approved %}
@@ -314,9 +314,7 @@
                                                         <!-- Case 4: Superuser always sees Submit -->
                                                         <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="form-{{ req.id }}" style="display: inline;">
                                                             {% csrf_token %}
-                                                            <button type="submit" class="btn-core btn-appr" style="width: 100px; font-size: 0.65rem;">
-                                                                SUBMIT
-                                                            </button>
+                                                            <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
                                                         </form>
                                                     {% endif %}
                                                 {% endif %}
@@ -488,6 +486,47 @@ window.onclick = function(e) {
     if (e.target == remarkModal) closeRemarkModal();
     if (e.target == rejectModal) closeReject();
 }
+<!--ajax script to prevent reloading-->
+document.addEventListener('submit', function(e) {
+    if (e.target.classList.contains('ajax-form')) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
 
+        // Correct way to get the ID from ajax-form-123
+        const reqId = form.id.replace('ajax-form-', '');
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            // If the server redirects (302) or errors, response.json() will fail.
+            // We need to catch that.
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            const decisionCell = document.getElementById(decision-cell-${reqId});
+            const actionCell = document.getElementById(action-cell-${reqId});
+
+            if (data.status === 'ok') {
+                const color = data.decision === 'approved' ? '#28a745' : '#dc3545';
+                decisionCell.innerHTML = <span style="font-weight:bold; color:${color}">${data.decision.toUpperCase()}</span>;
+                actionCell.innerHTML = <span style="color:#888; font-size:0.7rem;">PROCESSED</span>;
+            } else if (data.status === 'admin_notified') {
+                decisionCell.innerHTML = <div style="color: #ffc107; font-weight: bold; font-size: 0.7rem;">⏳ SENT TO ADMIN</div>;
+                actionCell.innerHTML = <button class="btn-core" style="background:#444; color:#888;" disabled>NOTIFIED</button>;
+            } else {
+                alert("Error: " + (data.message || "Unknown error"));
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Error: Server didn't respond correctly. Is your View updated?");
+        });
+    }
+});
 </script>
 {% endblock %} <!-- 👈 ADD THIS AT THE VERY BOTTOM -->
