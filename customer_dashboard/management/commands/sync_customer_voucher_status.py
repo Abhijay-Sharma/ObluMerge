@@ -16,8 +16,8 @@ class Command(BaseCommand):
         total_customers = 0
         total_vouchers_processed = 0
         skipped_no_party_row = 0
-        for customer in Customer.objects.filter(name__icontains="Aline Dent LLP"):
-        # for customer in Customer.objects.all():
+        # for customer in Customer.objects.filter(name__icontains="Aline Dent LLP"):
+        for customer in Customer.objects.all():
             total_customers += 1
 
             try:
