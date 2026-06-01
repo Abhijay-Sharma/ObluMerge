@@ -2338,10 +2338,16 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
             price_request.accountant_approved = True
             price_request.is_under_msrp = True  # Mark it true so template shows "Sent to Admin"
             price_request.save()
-
+            # ajax implementation
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({"status": "admin_notified", "violation": violation_type})
             messages.warning(request, f"⚠️ {violation_type}: Nitin Sir notified for final approval.")
         except Exception as e:
+            # ajax implementation
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({"status": "error", "message": str(e)})
             messages.error(request, f"Error notifying Admin: {str(e)}")
+
 
         return redirect("proforma_price_change_requests")
 
