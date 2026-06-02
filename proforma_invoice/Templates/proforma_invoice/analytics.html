@@ -1,0 +1,105 @@
+
+
+
+{% extends 'proforma_invoice/base.html' %}
+
+{% block content %}
+<style>
+    .analytics-container { padding: 30px; background: #121212; min-height: 100vh; color: #e0e0e0; }
+    .filter-card { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #333; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 30px; }
+    .stat-card { background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #333; position: relative; }
+    .stat-card .value { font-size: 1.8rem; font-weight: 800; color: #fff; margin: 5px 0; }
+    .stat-card label { font-size: 0.65rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* LEADERBOARD TABLE */
+    .table-card { background: #1e1e1e; border-radius: 12px; border: 1px solid #333; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #252525; color: #ffc107; padding: 15px; font-size: 0.7rem; text-transform: uppercase; text-align: left; }
+    td { padding: 15px; border-bottom: 1px solid #2a2a2a; font-size: 0.85rem; }
+    tr:hover { background: rgba(255,193,7,0.03); }
+
+    .badge-count { background: #333; color: #fff; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.75rem; }
+    input[type="date"] { background: #2a2a2a; color: white; border: 1px solid #444; padding: 6px 12px; border-radius: 6px; }
+</style>
+
+<div class="analytics-container">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h1 class="fw-bold m-0">Efficiency Dashboard</h1>
+            <p class="text-muted">Showing data for last {{ days_count }} days</p>
+        </div>
+
+        <form method="GET" class="filter-card d-flex gap-3 align-items-end m-0">
+            <div>
+                <label class="d-block small text-muted mb-1">From Date</label>
+                <input type="date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div>
+                <label class="d-block small text-muted mb-1">To Date</label>
+                <input type="date" name="end_date" value="{{ end_date }}">
+            </div>
+            <button type="submit" class="btn btn-warning fw-bold">Filter Range</button>
+        </form>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <label>Invoices Created</label>
+            <div class="value">{{ total_created }}</div>
+            <div class="small text-warning">Avg {{ avg_per_day }}/day</div>
+        </div>
+        <div class="stat-card">
+            <label>Price Approval Avg</label>
+            <div class="value">{{ avg_price_time }}</div>
+        </div>
+        <div class="stat-card">
+            <label>Stock Check Avg</label>
+            <div class="value">{{ avg_stock_time }}</div>
+        </div>
+<!-- New card inside .stats-grid -->
+    <div class="stat-card" style="border-top: 3px solid #6f42c1;">
+        <label>Quote to Shipped Avg</label>
+        <div class="value">{{ avg_cycle_time }}</div>
+        <small class="text-muted">Total lead-to-delivery time</small>
+    </div>
+    <!-- Salesperson Performance Table -->
+    </div>
+
+    <div class="table-card">
+        <div class="p-3 border-bottom border-secondary">
+            <h5 class="m-0 fw-bold">👤 Salesperson Activity Detailed</h5>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Salesperson</th>
+                    <th>Total Invoices</th>
+                    <th>Dispatch Requests</th>
+                    <th>Price Change Requests</th>
+                    <th>Stock Requests</th>
+                                        <th style="color: #6f42c1;">Full Cycle (Avg)</th> <!-- NEW HEADER -->
+
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in sales_leaderboard %}
+                <tr>
+                    <td class="fw-bold text-white">{{ row.name }}</td>
+                    <td><span class="badge-count" style="border-left: 3px solid #ffc107;">{{ row.invoices }}</span></td>
+                    <td><span class="badge-count" style="border-left: 3px solid #28a745;">{{ row.dispatches }}</span></td>
+                    <td><span class="badge-count" style="border-left: 3px solid #17a2b8;">{{ row.prices }}</span></td>
+                    <td><span class="badge-count" style="border-left: 3px solid #6f42c1;">{{ row.stocks }}</span></td>
+                                        <td class="fw-bold" style="color: #6f42c1;">{{ row.avg_cycle }}</td> <!-- NEW DATA CELL -->
+
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-5">No activity found for this date range.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

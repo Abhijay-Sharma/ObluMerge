@@ -2967,4 +2967,105 @@ class ProformaRequestDetailsApiView(LoginRequiredMixin, View):  # Renamed for cl
 
         return JsonResponse(data)
 
+from django.db.models import Avg, F, ExpressionWrapper, fields, Count, Q
+from django.utils import timezone
+from datetime import datetime, timedelta
 
+class ProformaAnalyticsDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "proforma_invoice/analytics.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # 1. Handle Date Range Filtering
+        today = timezone.now().date()
+        default_start = today - timedelta(days=30)
+
+        start_str = self.request.GET.get('start_date')
+        end_str = self.request.GET.get('end_date')
+
+        start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else default_start
+        end_date = datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else today
+
+        # 2. Base Querysets filtered by date range
+        pi_qs = ProformaInvoice.objects.filter(date_created__date__range=[start_date, end_date])
+        price_qs = ProformaPriceChangeRequest.objects.filter(created_at__date__range=[start_date, end_date])
+        stock_qs = ProformaStockShortageRequest.objects.filter(created_at__date__range=[start_date, end_date])
+
+        # 3. Calculate Global Averages
+        total_created = pi_qs.count()
+        total_shipped = pi_qs.filter(dispatch_status='dispatched').count()
+
+        # Realistic Divisor (Number of days in range)
+        delta = (end_date - start_date).days + 1
+        avg_per_day = round(total_created / delta, 2) if total_created > 0 else 0
+
+        # 4. SALESPERSON LEADERBOARD (Aggregated across models)
+        # Get unique salesperson names from all invoices in this period
+        salespeople = pi_qs.values_list('created_by', flat=True).distinct()
+        # --- FIX 1: Move Expression OUTSIDE the loop ---
+        cycle_expr = ExpressionWrapper(
+            F('dispatched_at') - F('customer__quotationmaker__date_created'),
+            output_field=fields.DurationField()
+        )
+
+        sales_leaderboard = []
+        for name in salespeople:
+            p_pi = pi_qs.filter(created_by=name) # Filter for this person
+
+            # --- FIX 2: Calculate p_cycle for THIS specific person BEFORE appending ---
+            p_cycle = p_pi.filter(
+                dispatch_status='dispatched',
+                dispatched_at__isnull=False,
+                customer__quotationmaker__is_converted_to_proforma=True
+            ).annotate(cycle=cycle_expr).aggregate(Avg('cycle'))['cycle__avg']
+
+            sales_leaderboard.append({
+                'name': name,
+                'invoices': p_pi.count(),
+                'dispatches': p_pi.exclude(dispatch_requested_at__isnull=True).count(),
+                'prices': price_qs.filter(requested_by__username=name).count(),
+                'stocks': stock_qs.filter(requested_by__username=name).count(),
+                'avg_cycle': self.format_td(p_cycle) # Now it works!
+            })
+
+        # --- FIX 3: Calculate Global Average OUTSIDE the loop ---
+        global_cycle_avg = pi_qs.filter(
+            dispatch_status='dispatched',
+            dispatched_at__isnull=False,
+            customer__quotationmaker__is_converted_to_proforma=True
+        ).annotate(cycle=cycle_expr).aggregate(Avg('cycle'))['cycle__avg']
+
+        # Sort by total invoices
+        sales_leaderboard = sorted(sales_leaderboard, key=lambda x: x['invoices'], reverse=True)
+
+        # 5. Timing Calculations (Same as before but with custom range)
+        duration_expr = ExpressionWrapper(F('reviewed_at') - F('created_at'), output_field=fields.DurationField())
+        avg_price_time = \
+        price_qs.filter(status__in=['approved', 'rejected']).annotate(duration=duration_expr).aggregate(
+            Avg('duration'))['duration__avg']
+        avg_stock_time = \
+        stock_qs.filter(status__in=['approved', 'rejected']).annotate(duration=duration_expr).aggregate(
+            Avg('duration'))['duration__avg']
+
+        context.update({
+            'sales_leaderboard': sales_leaderboard,
+            'total_created': total_created,
+            'total_shipped': total_shipped,
+            'avg_per_day': avg_per_day,
+            'avg_price_time': self.format_td(avg_price_time),
+            'avg_stock_time': self.format_td(avg_stock_time),
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d'),
+            'days_count': delta,
+            'avg_cycle_time': self.format_td(global_cycle_avg),
+
+
+        })
+        return context
+
+    def format_td(self, td):
+        if not td: return "N/A"
+        days, hours, minutes = td.days, td.seconds // 3600, (td.seconds // 60) % 60
+        if days > 0: return f"{days}d {hours}h"
+        return f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
