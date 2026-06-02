@@ -3005,7 +3005,7 @@ class ProformaAnalyticsDashboardView(LoginRequiredMixin, TemplateView):
         salespeople = pi_qs.values_list('created_by', flat=True).distinct()
         # --- FIX 1: Move Expression OUTSIDE the loop ---
         cycle_expr = ExpressionWrapper(
-            F('dispatched_at') - F('customer__quotationmaker__date_created'),
+            F('dispatched_at') - F('date_created'),
             output_field=fields.DurationField()
         )
 
@@ -3017,7 +3017,7 @@ class ProformaAnalyticsDashboardView(LoginRequiredMixin, TemplateView):
             p_cycle = p_pi.filter(
                 dispatch_status='dispatched',
                 dispatched_at__isnull=False,
-                customer__quotationmaker__is_converted_to_proforma=True
+                # customer__quotationmaker__is_converted_to_proforma=True
             ).annotate(cycle=cycle_expr).aggregate(Avg('cycle'))['cycle__avg']
 
             sales_leaderboard.append({
@@ -3032,8 +3032,7 @@ class ProformaAnalyticsDashboardView(LoginRequiredMixin, TemplateView):
         # --- FIX 3: Calculate Global Average OUTSIDE the loop ---
         global_cycle_avg = pi_qs.filter(
             dispatch_status='dispatched',
-            dispatched_at__isnull=False,
-            customer__quotationmaker__is_converted_to_proforma=True
+            dispatched_at__isnull=False
         ).annotate(cycle=cycle_expr).aggregate(Avg('cycle'))['cycle__avg']
 
         # Sort by total invoices
