@@ -1,6 +1,6 @@
 # vouchers/urls.py
 from django.urls import path
-from .views import voucher_list, VoucherDetailView, customer_item_purchases
+from .views import voucher_list, VoucherDetailView, customer_item_purchases, VoucherListView
 
 urlpatterns = [
     path("voucher/<int:pk>/", VoucherDetailView.as_view(), name="voucher_detail"),
