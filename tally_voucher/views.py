@@ -141,8 +141,8 @@ class VoucherListView(AccountantRequiredMixin,ListView):
 
         return queryset
 
-    def get_context_data(self, kwargs):
-        context = super().get_context_data(kwargs)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
         context['voucher_types'] = Voucher.objects.values_list('voucher_type', flat=True).distinct()
         context['voucher_categories'] = Voucher.objects.values_list('voucher_category', flat=True).distinct()
