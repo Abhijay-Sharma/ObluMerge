@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EMI Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .table thead { background-color: #212529; color: white; }
+        .paid-input { width: 130px; font-weight: 700; border: 2px solid #dee2e6; }
+        .balance-cell { font-weight: 700; }
+        #suggestion_box {
+            position: absolute; width: 100%; z-index: 1000; background: white;
+            border: 1px solid #ddd; border-radius: 8px; display: none; top: 100%;
+        }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .suggestion-item:hover { background: #f1f8ff; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5 pb-5">
+    <div class="row align-items-center mb-4">
+        <div class="col-md-6">
+            <h2 class="fw-bold"><i class="fas fa-hand-holding-usd text-success me-2"></i> EMI Allocation List</h2>
+        </div>
+        <div class="col-md-6 position-relative">
+            <form method="GET" action="" id="search-form">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                    <input type="text" name="q" id="party_search" class="form-control"
+                           placeholder="Search by Customer..." value="{{ params.q|default:'' }}" autocomplete="off">
+                    <button class="btn btn-dark" type="submit">Search</button>
+                </div>
+            </form>
+            <div id="suggestion_box" class="shadow"></div>
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Date</th>
+                        <th>Customer / Stock Item</th>
+                        <th>Voucher No</th>
+                        <th>Voucher Total</th>
+                        <th>Allocated (Paid)</th>
+                        <th>Balance Due</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alloc in allocations %}
+                    <tr id="row-{{ alloc.id }}">
+                        <td class="ps-4 text-muted small">{{ alloc.voucher.voucher.date|date:"d M Y" }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ alloc.voucher.voucher.party_name }}</div>
+                            <div class="text-muted small">
+                                {% if alloc.voucher.item %}{{ alloc.voucher.item.name }}{% else %}{{ alloc.voucher.item_name_text }}{% endif %}
+                            </div>
+                        </td>
+                        <td><span class="badge bg-light text-primary border border-primary-subtle">{{ alloc.voucher.voucher.voucher_number }}</span></td>
+                        <td class="fw-bold text-nowrap">₹{{ alloc.full_voucher_total }}</td>
+                        <td>
+                            <input type="number" step="0.01" class="form-control form-control-sm paid-input"
+                                   id="input-{{ alloc.id }}" value="{{ alloc.amount_received }}">
+                        </td>
+                        <td class="balance-cell" id="balance-{{ alloc.id }}">
+                            <!-- This will be calculated by the script below -->
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-primary btn-sm px-3 save-btn" data-id="{{ alloc.id }}">
+                                <i class="fas fa-save me-1"></i> Save
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-5 text-muted">No manually allocated EMI records found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    // 1. Initial Balance Calculation on Load
+    function calculateBalance(total, paid) {
+        return (parseFloat(total) - parseFloat(paid)).toFixed(2);
+    }
+
+    // Initial Balance Calculation on Load
+    {% for alloc in allocations %}
+        (function() {
+            // We use the custom attribute created in the view
+            let total = "{{ alloc.full_voucher_total }}";
+            let paid = "{{ alloc.amount_received }}";
+
+            // Simple balance calculation
+            let balance = (parseFloat(total) - parseFloat(paid)).toFixed(2);
+            let cell = $("#balance-{{ alloc.id }}");
+
+            if (balance <= 0) {
+                cell.html('<span class="text-success"><i class="fas fa-check-circle"></i> Settled</span>');
+            } else {
+                cell.html('<span class="text-danger">₹' + balance + '</span>');
+            }
+        })();
+    {% endfor %}
+
+    // 2. AJAX Update
+        $(document).on('click', '.save-btn', function() {
+        const id = $(this).data('id');
+        const amount = $(`#input-${id}`).val();
+        const btn = $(this);
+
+        // Keep loading UI active
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Processing...');
+
+        $.ajax({
+            url: "{% url 'emi_update_action' %}",
+            type: "POST",
+            data: {
+                'id': id,
+                'amount': amount,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Handle normal success
+                    const balanceCell = $(`#balance-${id}`);
+                    if (response.balance <= 0) {
+                        balanceCell.html('<span class="text-success"><i class="fas fa-check-circle"></i> Settled</span>');
+                    } else {
+                        balanceCell.html(`<span class="text-danger">₹${response.balance.toFixed(2)}</span>`);
+                    }
+
+                    $(`#row-${id}`).addClass('table-success');
+                    setTimeout(() => { $(`#row-${id}`).removeClass('table-success'); }, 2000);
+
+                    btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save');
+                }
+                else if (response.status === 'process_error') {
+                    // Handle the 10-loop failure
+                    alert(response.message); // This shows "Payment status voucher is not processed yet, try again."
+                    btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save').addClass('btn-warning');
+                }
+            },
+            error: function() {
+                alert("Network Error: Could not connect to the server.");
+                btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save');
+            }
+        });
+    });
+
+    // 3. Autocomplete logic (same as before)
+    const searchInput = document.getElementById('party_search');
+    const suggestionBox = document.getElementById('suggestion_box');
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value;
+        if (query.length > 0) {
+            fetch(`{% url 'party_autocomplete' %}?term=${encodeURIComponent(query)}`)
+                .then(r => r.json()).then(data => {
+                    suggestionBox.innerHTML = '';
+                    if (data.length > 0) {
+                        suggestionBox.style.display = 'block';
+                        data.forEach(name => {
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.innerText = name;
+                            div.onclick = () => { searchInput.value = name; suggestionBox.style.display = 'none'; document.getElementById('search-form').submit(); };
+                            suggestionBox.appendChild(div);
+                        });
+                    } else { suggestionBox.style.display = 'none'; }
+                });
+        } else { suggestionBox.style.display = 'none'; }
+    });
+</script>
+</body>
+</html>

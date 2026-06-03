@@ -340,3 +340,82 @@ class EmiUpdateActionView(ListView):
                 {'status': 'process_error', 'message': "Payment status voucher is not processed yet, try again."})
 
 
+
+class StockItemListView(AccountantRequiredMixin,ListView):
+    model = InventoryItem
+    template_name = "tally_voucher/stock_item_list.html"
+    context_object_name = "items"
+
+    def get_queryset(self):
+        queryset = InventoryItem.objects.all().order_by('name')
+        q = self.request.GET.get('q')
+        if q:
+            queryset = queryset.filter(name__icontains=q)
+        return queryset
+
+
+class StockItemLedgerView(AccountantRequiredMixin,ListView):
+    model = VoucherStockItem
+    template_name = "tally_voucher/stock_item_ledger.html"
+    context_object_name = "stock_records"
+
+    def get_queryset(self):
+        self.item = get_object_or_404(InventoryItem, id=self.kwargs['item_id'])
+        queryset = VoucherStockItem.objects.filter(item=self.item).select_related('voucher').order_by('-voucher__date')
+
+        # Get Filter Parameters
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+        v_num = self.request.GET.get('v_num')
+        p_name = self.request.GET.get('p_name')
+
+        if start_date:
+            queryset = queryset.filter(voucher__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(voucher__date__lte=end_date)
+        if v_num:
+            queryset = queryset.filter(voucher__voucher_number__icontains=v_num)
+        if p_name:
+            queryset = queryset.filter(voucher__party_name__icontains=p_name)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['item'] = self.item
+        context['params'] = self.request.GET
+        summary = self.get_queryset().aggregate(
+            total_qty=Sum('quantity'), total_value=Sum('amount')
+        )
+        context['summary'] = summary
+        return context
+
+
+class EmiUpdationListView(AccountantRequiredMixin,ListView):
+    model = VoucherEmiPaymentAllocation
+    template_name = "tally_voucher/emi_updation.html"
+    context_object_name = "allocations"
+
+    def get_queryset(self):
+        return VoucherEmiPaymentAllocation.objects.select_related(
+            'voucher__voucher',
+            'voucher__item'
+        ).prefetch_related(
+            'voucher__voucher__rows'
+        ).order_by('-voucher__voucher__date')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        allocations = context['allocations']
+
+        for alloc in allocations:
+            voucher = alloc.voucher.voucher
+            # Logic: Look through the prefetched rows for the one matching the party name
+            party_row = next(
+                (row for row in voucher.rows.all() if row.ledger == voucher.party_name),
+                None
+            )
+            alloc.full_voucher_total = party_row.amount if party_row else 0
+
+        context['params'] = self.request.GET
+        return context

@@ -1,0 +1,75 @@
+<!-- stock_item_list.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Stock Items</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; }
+        .search-wrapper { position: relative; }
+        #suggestion_box {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 1000;
+            background: white; border: 1px solid #ddd; border-radius: 8px; display: none;
+        }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .suggestion-item:hover { background: #f1f8ff; }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-boxes me-2"></i> Stock Inventory</h2>
+        <div class="search-wrapper w-50">
+            <form method="GET" id="search-form" class="d-flex shadow-sm rounded">
+                <input type="text" name="q" id="stock_search" class="form-control border-0 py-2" placeholder="Start typing item name..." value="{{ request.GET.q }}" autocomplete="off">
+                <button class="btn btn-primary px-4" type="submit"><i class="fas fa-search"></i></button>
+            </form>
+            <div id="suggestion_box" class="shadow"></div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 overflow-hidden">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr><th class="ps-4">#</th><th>Item Name</th><th class="text-end pe-4">Action</th></tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr style="cursor:pointer" onclick="window.location='{% url 'stock_item_ledger' item.id %}'">
+                    <td class="ps-4">{{ forloop.counter }}</td>
+                    <td class="fw-bold">{{ item.name }}</td>
+                    <td class="text-end pe-4"><a href="{% url 'stock_item_ledger' item.id %}" class="btn btn-sm btn-outline-primary">View Ledger</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('stock_search');
+    const suggestionBox = document.getElementById('suggestion_box');
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value;
+        if (query.length > 0) {
+            fetch(`{% url 'stock_item_autocomplete' %}?term=${encodeURIComponent(query)}`)
+                .then(r => r.json()).then(data => {
+                    suggestionBox.innerHTML = '';
+                    if (data.length > 0) {
+                        suggestionBox.style.display = 'block';
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.innerText = item.name;
+                            div.onclick = () => { window.location = `/vouchers/items/${item.id}/ledger/`; };
+                            suggestionBox.appendChild(div);
+                        });
+                    } else { suggestionBox.style.display = 'none'; }
+                });
+        } else { suggestionBox.style.display = 'none'; }
+    });
+</script>
+</body>
+</html>
