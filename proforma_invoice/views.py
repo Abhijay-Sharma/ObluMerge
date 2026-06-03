@@ -2538,64 +2538,117 @@ class ProformaPriceChangeRequestRemarkView(AccountantRequiredMixin, View):
         return redirect("proforma_price_change_requests")
 
 
+
+
 class CourierPricingView(TemplateView):
     template_name = "proforma_invoice/courier_editor.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # 1. Get unique product IDs from all Proforma Invoice Items
-        # Use exclude to avoid errors with deleted products
-        proforma_product_ids = ProformaInvoiceItem.objects.exclude(product__isnull=True).values_list('product_id', flat=True).distinct()
+        # 1. GET FILTERS FROM URL
+        search_query = self.request.GET.get('q', '').strip()
+        category_id = self.request.GET.get('category', '').strip()
 
-        # 2. Sync Logic: Ensure Air/Surface rows exist for every product
+        # 2. FETCH ALL INVENTORY PRODUCTS (NOT JUST PROFORMA ONES)
+        product_qs = InventoryItem.objects.all()
+
+        if search_query:
+            product_qs = product_qs.filter(name__icontains=search_query)
+
+        if category_id:
+            product_qs = product_qs.filter(category_id=category_id)
+
+        # Limit to first 200 items to keep the page fast,
+        # or remove .all()[:200] if your DB is small.
+        found_product_ids = product_qs.values_list('id', flat=True)
+
+        # 3. SYNC LOGIC: Ensure rows exist for these found products
         with transaction.atomic():
-            for p_id in proforma_product_ids:
+            for p_id in found_product_ids:
                 for mode_code, _ in CourierMode.choices:
-                    # Create the Header (CourierCharge) if missing
                     charge_obj, _ = CourierCharge.objects.get_or_create(
                         product_id=p_id,
                         mode=mode_code
                     )
-
-                    # Create the Slab (Tier) if missing
+                    # If product has NO tiers at all, create a default "1+ Qty" tier
                     if not charge_obj.tiers.exists():
                         CourierChargeTier.objects.create(
                             courier_product=charge_obj,
-                            min_quantity=1, # Start at 1
+                            min_quantity=1,
                             max_quantity=None,
                             charge=Decimal("0.00")
                         )
 
-        # 3. Fetch only tiers for products found in Proformas
-        # We order by Product Name then Mode (Air/Surface) to keep the list organized
+        # 4. FETCH TIERS
         tiers = CourierChargeTier.objects.select_related(
-            'courier_product__product'
+            'courier_product__product__category'
         ).filter(
-            courier_product__product_id__in=proforma_product_ids
-        ).order_by('courier_product__product__name', 'courier_product__mode')
+            courier_product__product_id__in=found_product_ids
+        ).order_by('courier_product__product__name', 'courier_product__mode', 'min_quantity')
 
-        # 4. Prepare JSON for the Jspreadsheet frontend
+        # 5. PREPARE JSON
         courier_data = []
         for t in tiers:
-            p_name = t.courier_product.product.name if t.courier_product.product else "Unknown"
+            p_name = t.courier_product.product.name
+            cat_id = str(t.courier_product.product.category_id or "")
             mode = t.courier_product.get_mode_display()
 
             courier_data.append([
                 int(t.id),
                 str(p_name),
                 str(mode),
-                int(t.min_quantity or 1),
-                int(t.max_quantity) if t.max_quantity is not None else "",
-                float(t.charge or 0)
+                int(t.min_quantity),
+                int(t.max_quantity) if t.max_quantity else "",
+                float(t.charge),
+                cat_id
             ])
 
         context['courier_json'] = json.dumps(courier_data)
+        context['categories'] = Category.objects.all().order_by('name')
         return context
-
 
 @method_decorator(csrf_exempt, name='dispatch')
 
+class BulkUpdateCourierView(View):
+    def post(self, request, *args, **kwargs):
+        payload = json.loads(request.body)
+        cat_id = payload.get('category_id')
+        mode = payload.get('mode')
+        min_qty = int(payload.get('min_qty'))
+        max_qty = payload.get('max_qty')
+        max_qty = int(max_qty) if (max_qty and str(max_qty).strip() != "") else None
+        new_price = Decimal(str(payload.get('price')))
+
+        # 1. Find all products in this category
+        from inventory.models import InventoryItem
+        products = InventoryItem.objects.filter(category_id=cat_id)
+
+        count = 0
+        with transaction.atomic():
+            for product in products:
+                # 2. Get or create the CourierCharge header for this product/mode
+                charge_obj, _ = CourierCharge.objects.get_or_create(
+                    product=product,
+                    mode=mode
+                )
+
+                # 3. Update or create the specific Slab (tier)
+                # We look for a tier with same min_qty to update it, or create new
+                tier, created = CourierChargeTier.objects.update_or_create(
+                    courier_product=charge_obj,
+                    min_quantity=min_qty,
+                    defaults={
+                        'max_quantity': max_qty,
+                        'charge': new_price
+                    }
+                )
+                count += 1
+
+        return JsonResponse({
+            "status": "success",
+            "message": f"Successfully updated {count} products in this category."
+        })
 
 
 

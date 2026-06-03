@@ -35,6 +35,8 @@ urlpatterns = [
 
     path('courier-editor/', views.CourierPricingView.as_view(), name='courier_editor'),
     path('courier-editor/save/', views.SaveCourierSlabsView.as_view(), name='save_courier_slabs'),
+    path('bulk-update-courier/', views.BulkUpdateCourierView.as_view(), name='bulk_update_courier'),
+
     path('new-customer', views.CreateNewProformaCustomerView.as_view(), name='proforma_new_customer'),
     path('dispatch-page/', views.ProformaInvoiceListViewForDispatch.as_view(), name='proforma_invoice_dispatch'),
     path('set-dispatch/<int:pk>/<str:status>/', views.set_dispatch_status, name='set_dispatch'),

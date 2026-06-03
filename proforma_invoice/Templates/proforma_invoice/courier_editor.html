@@ -190,15 +190,54 @@
 <main>
     <div class="tool-bar">
         <div class="filter-group">
-            <input type="text" id="tableSearch" class="search-box" placeholder="Search product or mode..." onkeyup="doSearch(this.value)">
+            <!-- ID set to dbSearch to match JS -->
+            <input type="text" id="dbSearch" class="search-box" placeholder="Find Brand/Product in DB..." value="{{ request.GET.q }}">
+
+            <button class="btn-save" onclick="fetchFromDb()" style="background: #6366f1; color: white; border-radius: 8px;">
+                <i class="fas fa-search"></i> SEARCH DATABASE
+            </button>
+
             <select class="mode-pill" id="modeFilter" onchange="doModeFilter()" style="padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-soft);">
-                <option value="">All Modes</option>
+                <option value="">All Modes (Table View)</option>
                 <option value="Surface">Surface Mode</option>
                 <option value="Air">Air Mode</option>
             </select>
         </div>
-        <div style="color: #64748b; font-size: 0.85rem;">
-            <i class="fas fa-info-circle"></i> Slabs are restricted by Product & Mode
+    </div>
+
+    <!-- BULK UPDATE BAR -->
+    <div class="tool-bar" style="background: #f8fafc; border: 2px solid #6366f1; margin-bottom: 15px; padding: 1.5rem; border-radius: 12px;">
+        <div class="filter-group" style="width: 100%; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <div style="background: #6366f1; color: white; padding: 5px 12px; border-radius: 6px; font-weight: bold; font-size: 0.8rem;">
+                BULK UPDATE TOOL
+            </div>
+
+            <!-- ID set to dbCategory to match JS -->
+            <select id="dbCategory" onchange="fetchFromDb()" style="padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-soft); min-width: 200px;">
+                <option value="">-- All Categories --</option>
+                {% for cat in categories %}
+                <option value="{{ cat.id }}" {% if request.GET.category == cat.id|stringformat:"s" %}selected{% endif %}>
+                    {{ cat.name }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <select id="bulkMode" style="padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-soft);">
+                <option value="surface">Surface</option>
+                <option value="air">Air</option>
+            </select>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <input type="number" id="bulkMin" placeholder="Min Qty" style="width: 80px; padding: 0.6rem; border-radius: 8px;">
+                <span>to</span>
+                <input type="number" id="bulkMax" placeholder="Max Qty" style="width: 80px; padding: 0.6rem; border-radius: 8px;">
+            </div>
+
+            <input type="number" id="bulkPrice" placeholder="New Price (₹)" style="width: 120px; padding: 0.6rem; border-radius: 8px;">
+
+            <button onclick="runBulkUpdate()" style="background: #10b981; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                <i class="fas fa-layer-group"></i> APPLY TO ALL
+            </button>
         </div>
     </div>
 
@@ -208,6 +247,42 @@
 </main>
 
 <script>
+
+
+// FETCH FROM DB (RELOADS PAGE WITH SEARCH PARAMS)
+function fetchFromDb() {
+    const q = document.getElementById('dbSearch').value;
+    const cat = document.getElementById('dbCategory').value;
+    window.location.href = `?q=${encodeURIComponent(q)}&category=${cat}`;
+}
+
+// BULK UPDATE ACTION
+async function runBulkUpdate() {
+    const catId = document.getElementById('dbCategory').value; // Use category from dropdown
+    const mode = document.getElementById('bulkMode').value;
+    const minQty = document.getElementById('bulkMin').value;
+    const maxQty = document.getElementById('bulkMax').value;
+    const price = document.getElementById('bulkPrice').value;
+
+    if (!catId || !minQty || price === "") {
+        alert("Please select a Category and enter Min Qty/Price.");
+        return;
+    }
+
+    if (!confirm("Update ALL products in this category?")) return;
+
+    try {
+        const response = await fetch("{% url 'bulk_update_courier' %}", {
+            method: "POST",
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ category_id: catId, mode: mode, min_qty: minQty, max_qty: maxQty, price: price })
+        });
+        const res = await response.json();
+        alert(res.message);
+        location.reload();
+    } catch (e) { alert("Error: " + e.message); }
+}
+
     let isDirty = false;
     let table;
 
@@ -227,6 +302,9 @@
                 { type: 'numeric', title: 'Min Qty', width: 100 },
                 { type: 'numeric', title: 'Max Qty', width: 100 },
                 { type: 'numeric', title: 'Charge (₹)', width: 150, mask: '₹ #,##0.00' },
+                    // ADD THIS LINE TO HIDE THE CATEGORY ID (G):
+                { type: 'hidden', title: 'Category ID' },  // index 6
+
             ],
             pagination: 50,
             search: true,
@@ -252,6 +330,14 @@
     } catch (err) {
         console.error("Initialization Error:", err);
     }
+    function fetchFromDb() {
+    const q = document.getElementById('dbSearch').value;
+    const cat = document.getElementById('dbCategory').value;
+
+    // This reloads the page and hits the backend view to fetch fresh data from DB
+    window.location.href = `?q=${encodeURIComponent(q)}&category=${cat}`;
+}
+
 
     function doSearch(val) { window.myTable.search(val); }
     function doModeFilter() { window.myTable.search(document.getElementById('modeFilter').value); }
@@ -303,6 +389,40 @@
         const nativeSearch = document.querySelector('.jexcel_search');
         if (nativeSearch) nativeSearch.style.display = 'none';
     });
+
+// FETCH FROM DB (RELOADS PAGE WITH SEARCH PARAMS)
+function fetchFromDb() {
+    const q = document.getElementById('dbSearch').value;
+    const cat = document.getElementById('dbCategory').value;
+    window.location.href = `?q=${encodeURIComponent(q)}&category=${cat}`;
+}
+
+// BULK UPDATE ACTION
+async function runBulkUpdate() {
+    const catId = document.getElementById('dbCategory').value; // Use category from dropdown
+    const mode = document.getElementById('bulkMode').value;
+    const minQty = document.getElementById('bulkMin').value;
+    const maxQty = document.getElementById('bulkMax').value;
+    const price = document.getElementById('bulkPrice').value;
+
+    if (!catId || !minQty || price === "") {
+        alert("Please select a Category and enter Min Qty/Price.");
+        return;
+    }
+
+    if (!confirm("Update ALL products in this category?")) return;
+
+    try {
+        const response = await fetch("{% url 'bulk_update_courier' %}", {
+            method: "POST",
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ category_id: catId, mode: mode, min_qty: minQty, max_qty: maxQty, price: price })
+        });
+        const res = await response.json();
+        alert(res.message);
+        location.reload();
+    } catch (e) { alert("Error: " + e.message); }
+}
 </script>
 
 </body>
