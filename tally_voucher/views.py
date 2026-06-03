@@ -2,6 +2,7 @@
 from django.shortcuts import render, get_object_or_404
 from .models import Voucher , VoucherStockItem, VoucherEmiPaymentAllocation
 from customer_dashboard.models import Customer, CustomerVoucherStatus
+from inventory.models import InventoryItem
 from django.views.generic import DetailView
 from django.db.models import Sum
 from customer_dashboard.models import Customer
@@ -82,22 +83,24 @@ def customer_item_purchases(request, customer_id):
         "items_summary": items_summary,   # now proper dictionary
     })
 
+# Auto-suggest Party Names
 def party_autocomplete_for_item(request):
     term = request.GET.get('term', '')
     item_id = request.GET.get('item_id')
 
     vouchers = Voucher.objects.filter(
-        stock_rowsitem_id=item_id,
-        party_nameicontains=term
+        stock_rows__item_id=item_id,
+        party_name__icontains=term
     ).values_list('party_name', flat=True).distinct()[:10]
 
     return JsonResponse(list(vouchers), safe=False)
 
+# 1. Fetch products for the modal
 def get_voucher_products(request, voucher_id):
-
+    # 1. Get the voucher and prefetch rows to find the total
     voucher = get_object_or_404(Voucher.objects.prefetch_related('rows'), id=voucher_id)
 
-
+    # 2. Logic: Find the row where the ledger name matches the party name (The Bill Total)
     party_row = next(
         (row for row in voucher.rows.all() if row.ledger == voucher.party_name),
         None
@@ -117,14 +120,14 @@ def get_voucher_products(request, voucher_id):
         })
     return JsonResponse(data, safe=False)
 
-class VoucherListView(AccountantRequiredMixin,ListView):
+class VoucherListView(ListView):
     model = Voucher
     template_name = "tally_voucher/voucher_list.html"
     context_object_name = "vouchers"
     paginate_by = 50
 
     def get_queryset(self):
-        queryset = Voucher.objects.prefetch_related("rows", "stock_rowsitem").order_by("-date", "-id")
+        queryset = Voucher.objects.prefetch_related("rows", "stock_rows__item").order_by("-date", "-id")
 
         self.q = self.request.GET.get('q', '')
         self.start_date = self.request.GET.get('start_date')
@@ -134,11 +137,11 @@ class VoucherListView(AccountantRequiredMixin,ListView):
 
         # Apply Filters
         if self.q:
-            queryset = queryset.filter(party_nameicontains=self.q)
+            queryset = queryset.filter(party_name__icontains=self.q)
         if self.start_date:
-            queryset = queryset.filter(dategte=self.start_date)
+            queryset = queryset.filter(date__gte=self.start_date)
         if self.end_date:
-            queryset = queryset.filter(datelte=self.end_date)
+            queryset = queryset.filter(date__lte=self.end_date)
         if self.v_type:
             queryset = queryset.filter(voucher_type=self.v_type)
         if self.v_cat:
@@ -155,6 +158,16 @@ class VoucherListView(AccountantRequiredMixin,ListView):
         context['params'] = self.request.GET
         return context
 
+
+# Auto-suggest Stock Items
+def stock_item_autocomplete(request):
+    term = request.GET.get('term', '')
+    items = InventoryItem.objects.filter(name__icontains=term).values('id', 'name')[:10]
+    return JsonResponse(list(items), safe=False)
+
+
+
+# 2. Save EMI and Run Bucket Logic
 class SaveEmiFromVoucherListView(ListView):
     def post(self, request, *args, **kwargs):
         stock_item_id = request.POST.get('stock_item_id')
@@ -189,6 +202,8 @@ class SaveEmiFromVoucherListView(ListView):
             return JsonResponse(
                 {'status': 'error', 'message': "EMI saved but payment status not processed. Try again."})
 
+
+# 1. THE LOGIC
 def run_bucket_logic_for_customer(customer_name):
     today = timezone.now().date()
     # Filter only for the specific customer updated in the view
@@ -286,3 +301,42 @@ def run_bucket_logic_for_customer(customer_name):
                     "is_credit_period_crossed": is_credit_crossed,
                 }
             )
+
+
+class EmiUpdateActionView(ListView):
+    def post(self, request, *args, **kwargs):
+        allocation_id = request.POST.get('id')
+        new_paid_amount = Decimal(request.POST.get('amount', 0))
+
+        allocation = get_object_or_404(VoucherEmiPaymentAllocation, id=allocation_id)
+        customer_name = allocation.voucher.voucher.party_name
+        success = False
+
+        # 10-Attempt Loop
+        for i in range(1, 11):
+            try:
+                with transaction.atomic():
+                    # Save the new amount
+                    allocation.amount_received = new_paid_amount
+                    allocation.save()
+
+                    # Execute the bucket logic directly
+                    run_bucket_logic_for_customer(customer_name)
+                    success = True
+
+                if success: break
+
+            except (OperationalError, Exception) as e:
+                print(f"Attempt {i} failed for {customer_name}: {str(e)}")
+                if i < 10: time.sleep(0.5)
+
+        if success:
+            party_row = allocation.voucher.voucher.rows.filter(ledger=customer_name).first()
+            total_price = Decimal(party_row.amount) if party_row else Decimal(0)
+            balance = total_price - allocation.amount_received
+            return JsonResponse({'status': 'success', 'balance': float(balance)})
+        else:
+            return JsonResponse(
+                {'status': 'process_error', 'message': "Payment status voucher is not processed yet, try again."})
+
+
