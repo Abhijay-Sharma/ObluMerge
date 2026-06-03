@@ -6,7 +6,7 @@ from django.db.models import Sum
 from customer_dashboard.models import Customer
 from django.views.generic import DetailView, ListView
 from inventory.mixins import AccountantRequiredMixin
-
+from django.http import JsonResponse
 
 class VoucherDetailView(DetailView):
     model = Voucher
@@ -77,6 +77,40 @@ def customer_item_purchases(request, customer_id):
         "items_summary": items_summary,   # now proper dictionary
     })
 
+def party_autocomplete_for_item(request):
+    term = request.GET.get('term', '')
+    item_id = request.GET.get('item_id')
+
+    vouchers = Voucher.objects.filter(
+        stock_rowsitem_id=item_id,
+        party_nameicontains=term
+    ).values_list('party_name', flat=True).distinct()[:10]
+
+    return JsonResponse(list(vouchers), safe=False)
+
+def get_voucher_products(request, voucher_id):
+
+    voucher = get_object_or_404(Voucher.objects.prefetch_related('rows'), id=voucher_id)
+
+
+    party_row = next(
+        (row for row in voucher.rows.all() if row.ledger == voucher.party_name),
+        None
+    )
+    total_invoice_amount = float(party_row.amount) if party_row else 0.0
+
+    # 3. Get the stock items
+    stock_items = VoucherStockItem.objects.filter(voucher=voucher).select_related('item')
+
+    data = []
+    for si in stock_items:
+        data.append({
+            'id': si.id,
+            'name': si.item.name if si.item else si.item_name_text,
+            'qty': float(si.quantity),
+            'total_bill_amount': total_invoice_amount,  # This is the amount in front of the party name
+        })
+    return JsonResponse(data, safe=False)
 
 class VoucherListView(AccountantRequiredMixin,ListView):
     model = Voucher
