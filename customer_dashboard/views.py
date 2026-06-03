@@ -50,7 +50,7 @@ import openpyxl
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from datetime import date
-
+from tally_voucher.models import VoucherEmiPaymentAllocation
 
 class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -1301,6 +1301,9 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
         is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
         qs = self.get_queryset()
         today = date.today()
+        emi_voucher_ids = set(
+            VoucherEmiPaymentAllocation.objects.values_list('voucher__voucher_id', flat=True)
+        )
         exclude_list = [
             "Nimit", "Jackson", "Akshay", "Nitin", "online Order",
             "Vibhuti", "Raman", "Abhijay", "Danish", "Mukesh", "Online", "test1", "Aryan",
@@ -1308,6 +1311,8 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
         if qs.exists():
             for vs in qs:
                 PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
+
+                vs.has_emi = vs.voucher.id in emi_voucher_ids
 
                 # --- NEW: PASS TOTAL AMOUNT ---
                 # We fetch this from the related voucher object
@@ -1320,9 +1325,9 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
                     credit_period = vs.customer.credit_profile.credit_period_days
 
                 days_elapsed = (today - vs.voucher_date).days
-                    #abj fix
+
                 if days_elapsed > credit_period:
-                    vs.credit_display_text = f"Crossed by {days_elapsed - credit_period} days"
+                    vs.credit_display_text = f"Crossed by {days_elapsed} days"
                     vs.credit_display_color = "status-crossed"
                 else:
                     remaining = max(credit_period - days_elapsed, 0)
