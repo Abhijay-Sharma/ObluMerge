@@ -1,12 +1,17 @@
 # vouchers/views.py
 from django.shortcuts import render, get_object_or_404
-from .models import Voucher , VoucherStockItem
+from .models import Voucher , VoucherStockItem, VoucherEmiPaymentAllocation
+from customer_dashboard.models import Customer, CustomerVoucherStatus
 from django.views.generic import DetailView
 from django.db.models import Sum
 from customer_dashboard.models import Customer
 from django.views.generic import DetailView, ListView
 from inventory.mixins import AccountantRequiredMixin
 from django.http import JsonResponse
+from decimal import Decimal
+from django.utils import timezone
+from django.db import transaction, OperationalError
+import time
 
 class VoucherDetailView(DetailView):
     model = Voucher
@@ -149,3 +154,135 @@ class VoucherListView(AccountantRequiredMixin,ListView):
 
         context['params'] = self.request.GET
         return context
+
+class SaveEmiFromVoucherListView(ListView):
+    def post(self, request, *args, **kwargs):
+        stock_item_id = request.POST.get('stock_item_id')
+        allocated_amount = Decimal(request.POST.get('amount', 0))
+
+        # Get or create the allocation
+        stock_item = get_object_or_404(VoucherStockItem.objects.select_related('voucher'), id=stock_item_id)
+        allocation, created = VoucherEmiPaymentAllocation.objects.get_or_create(
+            voucher=stock_item,
+            defaults={'amount_received': allocated_amount}
+        )
+
+        if not created:
+            allocation.amount_received = allocated_amount
+            allocation.save()
+
+        customer_name = stock_item.voucher.party_name
+        success = False
+
+        for i in range(1, 11):
+            try:
+                with transaction.atomic():
+                    run_bucket_logic_for_customer(customer_name)
+                    success = True
+                if success: break
+            except (OperationalError, Exception) as e:
+                if i < 10: time.sleep(0.5)
+
+        if success:
+            return JsonResponse({'status': 'success'})
+        else:
+            return JsonResponse(
+                {'status': 'error', 'message': "EMI saved but payment status not processed. Try again."})
+
+def run_bucket_logic_for_customer(customer_name):
+    today = timezone.now().date()
+    # Filter only for the specific customer updated in the view
+    customers = Customer.objects.filter(name__iexact=customer_name)
+
+    for customer in customers:
+        try:
+            credit_profile = customer.credit_profile
+        except Exception:
+            continue
+
+        total_tally_balance = Decimal(str(credit_profile.outstanding_balance))
+        credit_days = credit_profile.credit_period_days
+
+        manual_allocations = VoucherEmiPaymentAllocation.objects.filter(
+            voucher__voucher__party_name__iexact=customer.name
+        ).select_related('voucher', 'voucher__voucher')
+
+        total_machine_unpaid = Decimal("0.00")
+        emi_voucher_map = {}
+
+        for allocation in manual_allocations:
+            parent_voucher = allocation.voucher.voucher
+            party_row = parent_voucher.rows.filter(ledger__iexact=parent_voucher.party_name).first()
+
+            if party_row:
+                item_price = Decimal(str(party_row.amount))
+            else:
+                item_price = Decimal(str(allocation.voucher.amount))
+
+            received_so_far = Decimal(str(allocation.amount_received))
+            net_unpaid = item_price - received_so_far
+            total_machine_unpaid += net_unpaid
+            emi_voucher_map[parent_voucher.id] = received_so_far
+
+        remaining_stock_balance = total_tally_balance - total_machine_unpaid
+        if total_tally_balance < total_machine_unpaid:
+            remaining_stock_balance = total_tally_balance
+        if remaining_stock_balance < 0:
+            remaining_stock_balance = Decimal("0.00")
+
+        vouchers = Voucher.objects.filter(party_name__iexact=customer.name).order_by("-date", "-id")
+
+        for voucher in vouchers:
+            party_row = voucher.rows.filter(ledger__iexact=voucher.party_name).first()
+            if not party_row: continue
+
+            voucher_amount = Decimal(str(party_row.amount))
+            base_defaults = {
+                "voucher_type": voucher.voucher_type,
+                "voucher_category": voucher.voucher_category,
+                "voucher_date": voucher.date,
+                "voucher_amount": voucher_amount,
+            }
+
+            if voucher.voucher_type != "TAX INVOICE":
+                CustomerVoucherStatus.objects.update_or_create(
+                    customer=customer, voucher=voucher,
+                    defaults={**base_defaults, "unpaid_amount": None, "is_unpaid": None,
+                              "is_partially_paid": None, "is_fully_paid": None}
+                )
+                continue
+
+            if voucher.id in emi_voucher_map:
+                received_amount = emi_voucher_map[voucher.id]
+                unpaid_amount = voucher_amount - received_amount
+                is_unpaid = (unpaid_amount == voucher_amount)
+                is_partially_paid = (0 < unpaid_amount < voucher_amount)
+                is_fully_paid = (unpaid_amount <= 0)
+            else:
+                if remaining_stock_balance >= voucher_amount:
+                    unpaid_amount = voucher_amount
+                    remaining_stock_balance -= voucher_amount
+                    is_unpaid, is_partially_paid, is_fully_paid = True, False, False
+                elif remaining_stock_balance > 0:
+                    unpaid_amount = remaining_stock_balance
+                    remaining_stock_balance = Decimal("0.00")
+                    is_unpaid, is_partially_paid, is_fully_paid = False, True, False
+                else:
+                    unpaid_amount = Decimal("0.00")
+                    is_unpaid, is_partially_paid, is_fully_paid = False, False, True
+
+            if is_fully_paid:
+                credit_days_elapsed, is_credit_crossed = 0, False
+            else:
+                credit_days_elapsed = (today - voucher.date).days
+                is_credit_crossed = credit_days_elapsed > credit_days
+
+            CustomerVoucherStatus.objects.update_or_create(
+                customer=customer, voucher=voucher,
+                defaults={
+                    **base_defaults, "unpaid_amount": unpaid_amount,
+                    "is_unpaid": is_unpaid, "is_partially_paid": is_partially_paid,
+                    "is_fully_paid": is_fully_paid, "credit_days_elapsed": credit_days_elapsed,
+                    "is_credit_period_crossed": is_credit_crossed,
+                }
+            )
