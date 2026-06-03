@@ -1,80 +1,374 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>All Vouchers</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voucher Explorer | Dashboard</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .voucher { border: 1px solid #ccc; padding: 15px; margin-bottom: 25px; }
-        .section-title { font-weight: bold; margin-top: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 8px; border: 1px solid #ddd; }
-        th { background: #f2f2f2; }
+        :root {
+            --primary-dark: #2c3e50;
+            --accent-blue: #3498db;
+            --bg-light: #f4f7f6;
+            --accent-success: #27ae60;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Header Area */
+        .page-header {
+            background-color: var(--primary-dark);
+            height: 140px;
+            padding-top: 2rem;
+            color: white;
+        }
+
+        /* Filter Section */
+        .filter-card {
+            background: white; border: none; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            margin-top: -50px; position: relative; z-index: 100;
+        }
+
+        /* Auto-suggestion Styling */
+        .search-wrapper { position: relative; }
+        #suggestion_box {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 1050;
+            background: white; border-radius: 0 0 8px 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            max-height: 250px; overflow-y: auto; display: none;
+            border: 1px solid #ddd; margin-top: 2px;
+        }
+        .suggestion-item {
+            padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f8f9fa;
+            font-size: 0.95rem; color: #333;
+        }
+        .suggestion-item:hover { background-color: #f1f8ff; color: var(--accent-blue); padding-left: 20px; }
+
+        /* Table Styling */
+        .table-card {
+            background: white; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-top: 30px; overflow: hidden; border: none;
+        }
+        .table thead { background-color: #f8f9fa; }
+        .table thead th {
+            font-weight: 600; text-transform: uppercase; font-size: 0.75rem;
+            letter-spacing: 0.5px; color: #6c757d; padding: 15px; border: none;
+        }
+        .hover-row:hover { background-color: #fafbfc; }
+
+        /* Modal Customization */
+        .modal-content { border-radius: 15px; border: none; overflow: hidden; }
+        .modal-header { background-color: var(--accent-success); color: white; }
+        .table-modal thead { font-size: 0.7rem; background: #fdfdfd; }
     </style>
 </head>
 <body>
 
-<h1>All Vouchers</h1>
+<!-- Dark Header Area -->
+<div class="page-header">
+    <div class="container-fluid px-5">
+        <h2><i class="fas fa-file-invoice-dollar me-2"></i> Voucher Explorer</h2>
+    </div>
+</div>
 
-{% for v in vouchers %}
-<div class="voucher">
+<div class="container-fluid px-5">
 
-    <h2>{{ v.voucher_type }} - {{ v.voucher_number }}</h2>
-    <p><strong>Date:</strong> {{ v.date }}</p>
-    <p><strong>Party:</strong> {{ v.party_name }}</p>
-    <p><strong>Category:</strong> {{ v.voucher_category }}</p>
+    <!-- Filter Form Card -->
+    <div class="card filter-card">
+        <div class="card-body p-4">
+            <form method="GET" action="{% url 'voucher_list' %}" id="filter-form" class="row g-3 align-items-end">
 
-    <!-- Voucher Ledger Rows -->
-    <div class="section-title">Voucher Rows</div>
-    {% if v.rows.all %}
-        <table>
-            <tr>
-                <th>Ledger</th>
-                <th>Narration</th>
-                <th>Amount</th>
-            </tr>
-            {% for row in v.rows.all %}
-            <tr>
-                <td>{{ row.ledger }}</td>
-                <td>{{ row.narration }}</td>
-                <td>{{ row.amount }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>No voucher rows.</p>
-    {% endif %}
+                <!-- Party Name with Suggestion -->
+                <div class="col-md-3 search-wrapper">
+                    <label class="form-label fw-bold small text-muted">PARTY NAME</label>
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-user text-muted"></i></span>
+                        <input type="text" name="q" id="party_search" class="form-control border-start-0"
+                               placeholder="Type customer name..." value="{{ params.q|default:'' }}" autocomplete="off">
+                    </div>
+                    <!-- Suggestion Box -->
+                    <div id="suggestion_box"></div>
+                </div>
 
-    <!-- Stock Item Rows -->
-    <div class="section-title">Stock Items</div>
-    {% if v.stock_rows.all %}
-        <table>
-            <tr>
-                <th>Item</th>
-                <th>Quantity</th>
-                <th>Amount</th>
-                <th>Godown</th>
-            </tr>
-            {% for s in v.stock_rows.all %}
-            <tr>
-                <td>
-                    {% if s.item %}
-                        {{ s.item.name }}
-                    {% else %}
-                        {{ s.item_name_text }}
-                    {% endif %}
-                </td>
-                <td>{{ s.quantity }}</td>
-                <td>{{ s.amount }}</td>
-                <td>{{ s.godown }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>No stock rows.</p>
+                <!-- Voucher Type -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">TYPE</label>
+                    <select name="v_type" class="form-select shadow-sm">
+                        <option value="">All Types</option>
+                        {% for type in voucher_types %}
+                        <option value="{{ type }}" {% if params.v_type == type %}selected{% endif %}>{{ type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Category -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">CATEGORY</label>
+                    <select name="v_cat" class="form-select shadow-sm">
+                        <option value="">All Categories</option>
+                        {% for cat in voucher_categories %}
+                        <option value="{{ cat }}" {% if params.v_cat == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-muted">DATE RANGE</label>
+                    <div class="input-group shadow-sm">
+                        <input type="date" name="start_date" class="form-control" value="{{ params.start_date }}">
+                        <span class="input-group-text">to</span>
+                        <input type="date" name="end_date" class="form-control" value="{{ params.end_date }}">
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">APPLY</button>
+                    <a href="{% url 'voucher_list' %}" class="btn btn-light border w-50" title="Reset Filters">
+                        <i class="fas fa-sync-alt"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Table -->
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Date</th>
+                        <th>Voucher Number</th>
+                        <th>Party Name</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vouchers %}
+                    <tr class="hover-row">
+                        <td class="ps-4 text-nowrap"><span class="text-dark fw-medium">{{ v.date|date:"d M Y" }}</span></td>
+                        <td><code class="fw-bold text-primary">{{ v.voucher_number }}</code></td>
+                        <td><div class="fw-bold text-dark">{{ v.party_name }}</div></td>
+                        <td><span class="badge bg-light text-dark border">{{ v.voucher_type }}</span></td>
+                        <td><span class="text-muted small">{{ v.voucher_category|default:"--" }}</span></td>
+                        <td class="text-end pe-4">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <!-- Trigger Modal -->
+                                <button class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold"
+                                        onclick="openEmiModal('{{ v.id }}', '{{ v.party_name|escapejs }}')">
+                                    <i class="fas fa-plus me-1"></i> Add EMI
+                                </button>
+                                <a href="{% url 'voucher_detail' v.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    Details
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-5 text-muted">No records found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination (Handled at 50 per page) -->
+    {% if is_paginated %}
+    <nav class="mt-4 pb-5">
+        <ul class="pagination justify-content-center shadow-sm">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ params.q|default:'' }}&v_type={{ params.v_type|default:'' }}&v_cat={{ params.v_cat|default:'' }}&start_date={{ params.start_date|default:'' }}&end_date={{ params.end_date|default:'' }}">Previous</a>
+            </li>
+            {% endif %}
+
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }} of {{ paginator.num_pages }}</span></li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ params.q|default:'' }}&v_type={{ params.v_type|default:'' }}&v_cat={{ params.v_cat|default:'' }}&start_date={{ params.start_date|default:'' }}&end_date={{ params.end_date|default:'' }}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
     {% endif %}
 
 </div>
-{% endfor %}
+
+<!-- EMI ALLOCATION MODAL -->
+<div class="modal fade" id="emiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-hand-holding-usd me-2"></i> EMI Allocation: <span id="modal_party_name"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="modal_loading" class="text-center py-5">
+                    <div class="spinner-border text-success" role="status"></div>
+                    <div class="mt-2 text-muted small">Fetching products...</div>
+                </div>
+
+                <div id="modal_content" style="display:none;">
+                    <p class="text-muted small mb-3">Please select a product from this invoice to allocate an EMI payment.</p>
+                    <table class="table table-bordered table-modal align-middle">
+                        <thead class="text-uppercase small fw-bold">
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Qty</th>
+                                <th>Voucher Total</th> <!-- Shows Amount from Party Ledger -->
+                                <th width="180">Allocate Amt</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product_list_body">
+                            <!-- Rows generated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    /* --- 1. AUTO-SUGGESTION LOGIC --- */
+    const searchInput = document.getElementById('party_search');
+    const suggestionBox = document.getElementById('suggestion_box');
+    const filterForm = document.getElementById('filter-form');
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value;
+        if (query.length > 0) {
+            fetch(`{% url 'party_autocomplete' %}?term=${encodeURIComponent(query)}`)
+                .then(r => r.json()).then(data => {
+                    suggestionBox.innerHTML = '';
+                    if (data.length > 0) {
+                        suggestionBox.style.display = 'block';
+                        data.forEach(name => {
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.innerHTML = `<i class="fas fa-history me-2 text-muted"></i> ${name}`;
+                            div.onclick = () => {
+                                searchInput.value = name;
+                                suggestionBox.style.display = 'none';
+                                filterForm.submit();
+                            };
+                            suggestionBox.appendChild(div);
+                        });
+                    } else { suggestionBox.style.display = 'none'; }
+                });
+        } else { suggestionBox.style.display = 'none'; }
+    });
+
+    /* --- 2. EMI MODAL OPEN LOGIC --- */
+    let emiModalObj = new bootstrap.Modal(document.getElementById('emiModal'));
+
+    function openEmiModal(vId, partyName) {
+        document.getElementById('modal_party_name').innerText = partyName;
+        emiModalObj.show();
+
+        // UI Reset
+        document.getElementById('modal_loading').style.display = 'block';
+        document.getElementById('modal_content').style.display = 'none';
+        const tbody = document.getElementById('product_list_body');
+        tbody.innerHTML = '';
+
+        // AJAX Fetch Products
+        fetch(`/vouchers/get-products/${vId}/`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('modal_loading').style.display = 'none';
+                document.getElementById('modal_content').style.display = 'block';
+
+                data.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="fw-bold small text-dark">${item.name}</td>
+                            <td>${item.qty}</td>
+                            <td class="fw-bold text-primary">₹${item.total_bill_amount}</td>
+                            <td>
+                                <input type="number" id="emi_amt_${item.id}"
+                                       class="form-control form-control-sm border-success fw-bold"
+                                       placeholder="0.00">
+                            </td>
+                            <td>
+                                <button class="btn btn-success btn-sm w-100 fw-bold"
+                                        onclick="saveEmiFromModal(${item.id}, '${partyName}')">
+                                    SAVE
+                                </button>
+                            </td>
+                        </tr>`;
+                });
+            })
+            .catch(err => {
+                alert("Error loading products.");
+                emiModalObj.hide();
+            });
+    }
+
+    /* --- 3. SAVE EMI & PROCESS BUCKET LOGIC --- */
+    function saveEmiFromModal(stockItemId, customerName) {
+        const amtInput = document.getElementById(`emi_amt_${stockItemId}`);
+        const amt = amtInput.value;
+        const btn = event.target;
+
+        if(!amt || amt <= 0) { alert("Please enter a valid amount"); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        $.ajax({
+            url: "{% url 'save_emi_list' %}",
+            type: "POST",
+            data: {
+                'stock_item_id': stockItemId,
+                'amount': amt,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(data) {
+                if(data.status === 'success') {
+                    btn.classList.replace('btn-success', 'btn-dark');
+                    btn.innerHTML = '<i class="fas fa-check"></i> PROCESSED';
+                    // Hide modal after short delay
+                    setTimeout(() => { emiModalObj.hide(); }, 1200);
+                } else {
+                    alert(data.message);
+                    btn.disabled = false;
+                    btn.innerText = 'SAVE';
+                }
+            },
+            error: function() {
+                alert("Network error. Try again.");
+                btn.disabled = false;
+                btn.innerText = 'SAVE';
+            }
+        });
+    }
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target)) suggestionBox.style.display = 'none';
+    });
+</script>
 
 </body>
 </html>

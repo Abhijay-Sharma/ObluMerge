@@ -4,16 +4,9 @@ from .models import Voucher , VoucherStockItem
 from django.views.generic import DetailView
 from django.db.models import Sum
 from customer_dashboard.models import Customer
+from django.views.generic import DetailView, ListView
+from inventory.mixins import AccountantRequiredMixin
 
-def voucher_list(request):
-    # Prefetch related rows and stock_rows to avoid N+1 queries
-    vouchers = (
-        Voucher.objects
-        .prefetch_related("rows", "stock_rows__item")
-        .order_by("-date", "-id")
-    )
-
-    return render(request, "tally_voucher/voucher_list.html", {"vouchers": vouchers})
 
 class VoucherDetailView(DetailView):
     model = Voucher
@@ -83,3 +76,42 @@ def customer_item_purchases(request, customer_id):
         "customer": customer,
         "items_summary": items_summary,   # now proper dictionary
     })
+
+
+class VoucherListView(AccountantRequiredMixin,ListView):
+    model = Voucher
+    template_name = "tally_voucher/voucher_list.html"
+    context_object_name = "vouchers"
+    paginate_by = 50
+
+    def get_queryset(self):
+        queryset = Voucher.objects.prefetch_related("rows", "stock_rowsitem").order_by("-date", "-id")
+
+        self.q = self.request.GET.get('q', '')
+        self.start_date = self.request.GET.get('start_date')
+        self.end_date = self.request.GET.get('end_date')
+        self.v_type = self.request.GET.get('v_type')
+        self.v_cat = self.request.GET.get('v_cat')
+
+        # Apply Filters
+        if self.q:
+            queryset = queryset.filter(party_nameicontains=self.q)
+        if self.start_date:
+            queryset = queryset.filter(dategte=self.start_date)
+        if self.end_date:
+            queryset = queryset.filter(datelte=self.end_date)
+        if self.v_type:
+            queryset = queryset.filter(voucher_type=self.v_type)
+        if self.v_cat:
+            queryset = queryset.filter(voucher_category=self.v_cat)
+
+        return queryset
+
+    def get_context_data(self, kwargs):
+        context = super().get_context_data(kwargs)
+
+        context['voucher_types'] = Voucher.objects.values_list('voucher_type', flat=True).distinct()
+        context['voucher_categories'] = Voucher.objects.values_list('voucher_category', flat=True).distinct()
+
+        context['params'] = self.request.GET
+        return context
