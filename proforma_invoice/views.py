@@ -2358,7 +2358,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         if not any_pending:
             try:
                 to_emails = [price_request.requested_by.email]
-                cc_emails = ["swasti.obluhc@gmail.com"]
+                cc_emails = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com"]
                 all_requests = parent_obj.price_requests.select_related('product').all()
                 email_context = {
                     "invoice": parent_obj,
