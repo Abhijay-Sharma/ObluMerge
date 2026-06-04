@@ -323,3 +323,68 @@ class PaymentTicketEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type} by {self.performed_by} at {self.performed_at}"
+
+
+
+class CustomerUnit(models.Model):
+    """
+    Groups multiple Customer ledgers (e.g. billing + shipping addresses for the
+    same real-world buyer) into one logical "unit" so they are treated as a
+    single customer on the salesperson dashboard.
+
+    Rules:
+    - A Customer can belong to AT MOST one CustomerUnit  (enforced by OneToOne
+      on the through-model CustomerUnitMembership).
+    - A unit is "active" if ANY of its member customers is active (last order
+      within 90 days).
+    - A unit belongs to a single SalesPerson (the one who created it, or the
+      salesperson of its members — keep it simple: store it explicitly).
+    """
+
+    name = models.CharField(
+        max_length=255,
+        help_text="Friendly label for this unit, e.g. 'Sharma Traders'"
+    )
+
+    salesperson = models.ForeignKey(
+        "SalesPerson",
+        on_delete=models.CASCADE,
+        related_name="customer_units"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("name", "salesperson")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.salesperson})"
+
+
+class CustomerUnitMembership(models.Model):
+    """
+    Through-model that links a Customer to a CustomerUnit.
+    OneToOneField on `customer` guarantees one customer → at most one unit.
+    """
+
+    customer = models.OneToOneField(
+        "Customer",
+        on_delete=models.CASCADE,
+        related_name="unit_membership"  # customer.unit_membership → this row
+    )
+
+    unit = models.ForeignKey(
+        CustomerUnit,
+        on_delete=models.CASCADE,  # deleting a unit removes all memberships
+        related_name="memberships"  # unit.memberships.all() → member rows
+    )
+
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["customer__name"]
+
+    def __str__(self):
+        return f"{self.customer.name} → {self.unit.name}"
