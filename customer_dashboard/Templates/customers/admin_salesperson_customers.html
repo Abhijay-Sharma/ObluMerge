@@ -284,6 +284,12 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
 
 {% if not selected_salesperson %}
 <!-- ══════════════ SALESPERSON PICKER ══════════════ -->
+{% if access_denied %}
+<div class="center-card">
+  <h2>Access Restricted</h2>
+  <p>You don't have a salesperson profile linked to your account. Please contact your administrator.</p>
+</div>
+{% else %}
 <div class="center-card">
   <h2>Customer Overview</h2>
   <p>Select a salesperson to view their customers</p>
@@ -297,6 +303,7 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
     <button type="submit">Continue →</button>
   </form>
 </div>
+{% endif %}
 
 {% else %}
 
@@ -327,11 +334,19 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
 
     <div class="filter-group">
       <label>Salesperson</label>
+      {% if salesperson_picker_hidden %}
+      {# Non-accountant with only their own profile — show a plain label, no picker #}
+      <div style="padding:7px 11px;background:var(--bg);border:1px solid var(--border-mid);border-radius:7px;font-size:13px;font-weight:600;color:var(--text-main);">
+        {{ selected_salesperson.name }}
+      </div>
+      <input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}">
+      {% else %}
       <select name="salesperson" onchange="this.form.submit()">
         {% for s in salespersons %}
         <option value="{{ s.id }}" {% if selected_salesperson.id == s.id %}selected{% endif %}>{{ s.name }}</option>
         {% endfor %}
       </select>
+      {% endif %}
     </div>
 
     <div class="filter-group search-wrap">
