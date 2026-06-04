@@ -533,7 +533,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 # access level based
 # Names always excluded from the salesperson dropdown regardless of role
 EXCLUDED_SALESPERSON_NAMES = ["Abhijay"]
-class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
+class AdminSalesPersonCustomersView(TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
 
     # ------------------------------------------------------------------ #
