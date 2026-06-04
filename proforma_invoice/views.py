@@ -2368,7 +2368,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
                     "requests": all_requests,
                     "proforma_url": f"https://oblutools.com/proforma/{parent_obj.id}/",
                 }
-                html_content = render_to_string("proforma_invoice/q.html", email_context)
+                html_content = render_to_string("proforma_invoice/price_change_request_status_email.html", email_context)
                 subject = f"✅ Reviewed: #{parent_obj.id} ({parent_obj.customer.name})"
                 msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
                 msg.attach_alternative(html_content, "text/html")
