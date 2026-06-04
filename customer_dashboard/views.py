@@ -1,7 +1,7 @@
 from django.views.generic import TemplateView, ListView, UpdateView
 from django.db.models import Count
 from django.shortcuts import render
-from .models import Customer, SalesPerson, CustomerVoucherStatus, CustomerFollowUp, CustomerCreditProfile
+from .models import Customer, SalesPerson, CustomerVoucherStatus, CustomerFollowUp, CustomerCreditProfile , CustomerUnit, CustomerUnitMembership
 import json
 from inventory.mixins import AccountantRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -52,7 +52,7 @@ from xhtml2pdf import pisa
 from datetime import date
 from tally_voucher.models import VoucherEmiPaymentAllocation
 
-class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
+class AdminSalesPersonCustomersViewLegacy(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
 
     def get_context_data(self, **kwargs):
@@ -236,6 +236,299 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         messages.success(request, "Remark added successfully ✅")
         return redirect(f"{redirect_url}#{scroll_to}")
+
+class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
+    template_name = "customers/admin_salesperson_customers.html"
+
+    # ------------------------------------------------------------------ #
+    #  GET                                                                  #
+    # ------------------------------------------------------------------ #
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        excluded_names = ["Abhijay"]
+
+        ctx["salespersons"] = (
+            SalesPerson.objects
+            .all()
+            .exclude(name__in=excluded_names)
+            .order_by(Lower("name"))
+        )
+
+        selected_id = self.request.GET.get("salesperson")
+        status_filter = self.request.GET.get("status", "all")
+        outstanding_filter = self.request.GET.get("outstanding", "all")
+
+        ctx["status_filter"] = status_filter
+        ctx["outstanding_filter"] = outstanding_filter
+
+        if not selected_id:
+            ctx["customers"] = []
+            ctx["units"] = []
+            ctx["selected_salesperson"] = None
+            return ctx
+
+        salesperson = SalesPerson.objects.filter(id=selected_id).first()
+        ctx["selected_salesperson"] = salesperson
+
+        if not salesperson:
+            ctx["customers"] = []
+            ctx["units"] = []
+            return ctx
+
+        # ── BASE QUERY ────────────────────────────────────────────────── #
+        customers_qs = Customer.objects.filter(
+            salesperson=salesperson
+        ).select_related("credit_profile", "unit_membership__unit")
+
+        # ── OUTSTANDING FILTER (DB LEVEL) ─────────────────────────────── #
+        if outstanding_filter == "due":
+            customers_qs = customers_qs.filter(
+                credit_profile__outstanding_balance__gt=0
+            )
+        elif outstanding_filter == "clear":
+            customers_qs = customers_qs.filter(
+                Q(credit_profile__outstanding_balance__lte=0) |
+                Q(credit_profile__isnull=True)
+            )
+
+        cutoff_date = date.today() - timedelta(days=90)
+
+        # ── ENRICH EACH CUSTOMER ──────────────────────────────────────── #
+        customers = list(customers_qs)
+
+        for customer in customers:
+            customer.remarks_list = customer.remarks.select_related(
+                "salesperson", "salesperson__user"
+            ).order_by("-created_at")
+
+            customer.followups_list = customer.followups.select_related(
+                "salesperson", "salesperson__user"
+            ).order_by("-followup_date")
+
+            credit_profile = getattr(customer, "credit_profile", None)
+            customer.trial_balance = (
+                credit_profile.outstanding_balance if credit_profile else None
+            )
+
+            vouchers = Voucher.objects.filter(
+                party_name__iexact=customer.name
+            ).order_by("-date")
+
+            customer.vouchers_list = vouchers
+
+            tax_invoices = vouchers.filter(voucher_type="TAX INVOICE")
+
+            customer.last_order_date = (
+                tax_invoices.first().date if tax_invoices.exists() else None
+            )
+            customer.total_orders = tax_invoices.count()
+
+            total_value = 0
+            for v in tax_invoices:
+                total_row = v.rows.filter(
+                    ledger__iexact=v.party_name
+                ).first()
+                if total_row:
+                    total_value += total_row.amount
+            customer.total_order_value = total_value
+
+            customer.is_red_flag = (
+                    customer.last_order_date is None
+                    or customer.last_order_date < cutoff_date
+            )
+
+        # ── STATUS FILTER (PYTHON LEVEL) ──────────────────────────────── #
+        if status_filter == "active":
+            customers = [c for c in customers if not c.is_red_flag]
+        elif status_filter == "inactive":
+            customers = [c for c in customers if c.is_red_flag]
+
+        # ── BUILD UNITS + STANDALONE LIST ────────────────────────────── #
+        # Map unit_id → list of enriched customers
+        unit_map = {}  # {unit_id: {"unit": CustomerUnit, "members": [...]}}
+        standalone = []  # customers not in any unit
+
+        for customer in customers:
+            membership = getattr(customer, "unit_membership", None)
+            if membership:
+                uid = membership.unit_id
+                if uid not in unit_map:
+                    unit_map[uid] = {"unit": membership.unit, "members": []}
+                unit_map[uid]["members"].append(customer)
+            else:
+                standalone.append(customer)
+
+        # Build enriched unit objects
+        enriched_units = []
+        for uid, data in unit_map.items():
+            unit_obj = data["unit"]
+            members = data["members"]
+            unit_obj.members = members
+
+            # unit is active if at least one member is active
+            unit_obj.is_red_flag = all(m.is_red_flag for m in members)
+
+            # aggregate financials for display
+            unit_obj.total_orders = sum(m.total_orders for m in members)
+            unit_obj.total_order_value = sum(m.total_order_value for m in members)
+
+            outstanding_members = [
+                m for m in members
+                if m.trial_balance and m.trial_balance > 0
+            ]
+            unit_obj.trial_balance = (
+                sum(m.trial_balance for m in outstanding_members)
+                if outstanding_members else None
+            )
+
+            last_dates = [m.last_order_date for m in members if m.last_order_date]
+            unit_obj.last_order_date = max(last_dates) if last_dates else None
+
+            enriched_units.append(unit_obj)
+
+        # ── ALL UNITS FOR THIS SALESPERSON (for "add to existing unit" dropdown) #
+        all_units = CustomerUnit.objects.filter(salesperson=salesperson).order_by("name")
+
+        # ── STATS (across both units and standalone) ──────────────────── #
+        # Each unit counts as 1; each standalone counts as 1
+        all_display_items = enriched_units + standalone
+        active_count = sum(1 for x in all_display_items if not x.is_red_flag)
+        inactive_count = sum(1 for x in all_display_items if x.is_red_flag)
+        total_display = len(all_display_items)
+
+        outstanding_count = 0
+        total_outstanding_amount = 0
+        for x in all_display_items:
+            bal = getattr(x, "trial_balance", None)
+            if bal and bal > 0:
+                outstanding_count += 1
+                total_outstanding_amount += bal
+
+        # ── FOLLOW-UPS ────────────────────────────────────────────────── #
+        today = date.today()
+
+        all_followups = CustomerFollowUp.objects.filter(
+            salesperson=salesperson
+        ).select_related("customer").order_by("followup_date")
+
+        ctx["followups_previous"] = all_followups.filter(followup_date__lt=today)
+        ctx["followups_today"] = all_followups.filter(followup_date=today)
+        ctx["followups_future"] = all_followups.filter(followup_date__gt=today)
+
+        # ── CONTEXT ───────────────────────────────────────────────────── #
+        ctx["customers"] = standalone  # standalone (no unit)
+        ctx["units"] = enriched_units  # unit groups
+        ctx["all_units"] = all_units  # for dropdown
+        ctx["total_display_count"] = total_display
+        ctx["active_count"] = active_count
+        ctx["inactive_count"] = inactive_count
+        ctx["outstanding_count"] = outstanding_count
+        ctx["total_outstanding_amount"] = total_outstanding_amount
+
+        return ctx
+
+    # ------------------------------------------------------------------ #
+    #  POST                                                                 #
+    # ------------------------------------------------------------------ #
+    def post(self, request, *args, **kwargs):
+        redirect_url = request.get_full_path()
+        scroll_to = request.POST.get("scroll_to", "")
+        action = request.POST.get("action", "")
+
+        # ── DELETE REMARK ─────────────────────────────────────────────── #
+        delete_id = request.POST.get("delete_remark_id")
+        if delete_id and request.user.is_accountant:
+            remark = get_object_or_404(CustomerRemark, id=delete_id)
+            remark.delete()
+            messages.success(request, "Remark deleted successfully 🗑️")
+            return redirect(f"{redirect_url}#{scroll_to}")
+
+        # ── ADD REMARK ────────────────────────────────────────────────── #
+        remark_text = request.POST.get("remark", "").strip()
+        customer_id = request.POST.get("customer_id")
+
+        if remark_text and customer_id:
+            customer = get_object_or_404(Customer, id=customer_id)
+            salesperson = request.user.salesperson_profile.first()
+            CustomerRemark.objects.create(
+                customer=customer,
+                salesperson=salesperson,
+                remark=remark_text
+            )
+            messages.success(request, "Remark added successfully ✅")
+            return redirect(f"{redirect_url}#{scroll_to}")
+
+        # ── CREATE UNIT (from a single customer) ──────────────────────── #
+        if action == "create_unit":
+            unit_name = request.POST.get("unit_name", "").strip()
+            cid = request.POST.get("customer_id")
+            salesperson = self._get_salesperson_from_request(request)
+
+            if unit_name and cid and salesperson:
+                customer = get_object_or_404(Customer, id=cid)
+                unit, _ = CustomerUnit.objects.get_or_create(
+                    name=unit_name,
+                    salesperson=salesperson
+                )
+                # attach customer (ignore if already in a unit)
+                CustomerUnitMembership.objects.get_or_create(
+                    customer=customer,
+                    defaults={"unit": unit}
+                )
+                messages.success(request, f"Unit '{unit_name}' created ✅")
+            return redirect(redirect_url)
+
+        # ── ADD CUSTOMER TO EXISTING UNIT ─────────────────────────────── #
+        if action == "add_to_unit":
+            unit_id = request.POST.get("unit_id")
+            cid = request.POST.get("customer_id")
+            if unit_id and cid:
+                customer = get_object_or_404(Customer, id=cid)
+                unit = get_object_or_404(CustomerUnit, id=unit_id)
+                # if already in another unit, move them
+                CustomerUnitMembership.objects.filter(customer=customer).delete()
+                CustomerUnitMembership.objects.create(customer=customer, unit=unit)
+                messages.success(request, f"Added to unit '{unit.name}' ✅")
+            return redirect(redirect_url)
+
+        # ── LEAVE UNIT ────────────────────────────────────────────────── #
+        if action == "leave_unit":
+            cid = request.POST.get("customer_id")
+            if cid:
+                CustomerUnitMembership.objects.filter(customer_id=cid).delete()
+                messages.success(request, "Customer removed from unit ✅")
+            return redirect(redirect_url)
+
+        # ── RENAME UNIT ───────────────────────────────────────────────── #
+        if action == "rename_unit":
+            unit_id = request.POST.get("unit_id")
+            new_name = request.POST.get("unit_name", "").strip()
+            if unit_id and new_name:
+                unit = get_object_or_404(CustomerUnit, id=unit_id)
+                unit.name = new_name
+                unit.save()
+                messages.success(request, f"Unit renamed to '{new_name}' ✅")
+            return redirect(redirect_url)
+
+        # ── DELETE UNIT ───────────────────────────────────────────────── #
+        if action == "delete_unit":
+            unit_id = request.POST.get("unit_id")
+            if unit_id:
+                unit = get_object_or_404(CustomerUnit, id=unit_id)
+                unit.delete()  # memberships cascade-deleted automatically
+                messages.success(request, "Unit deleted. Customers are now standalone ✅")
+            return redirect(redirect_url)
+
+        return redirect(redirect_url)
+
+    # ── HELPER ────────────────────────────────────────────────────────── #
+    def _get_salesperson_from_request(self, request):
+        """Return the SalesPerson matching the ?salesperson= GET param."""
+        sid = request.GET.get("salesperson") or request.POST.get("salesperson_id")
+        if sid:
+            return SalesPerson.objects.filter(id=sid).first()
+        return None
 
 class CustomerListViewLegacy(AccountantRequiredMixin, ListView):
     model = Customer

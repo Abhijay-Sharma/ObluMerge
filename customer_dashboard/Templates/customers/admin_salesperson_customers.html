@@ -1,1053 +1,1008 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Salesperson → Customer Overview</title>
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Customer Overview — {{ selected_salesperson.name|default:"Select Salesperson" }}</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
-
-/* ------------------------------------------------------
-    THEME COLORS
------------------------------------------------------- */
-:root{
-  --page-bg: #000;
-  --card-bg: #111;
-  --table-cell: #1A1A1A;
-  --table-red: #3a0b0b;
-  --border-color: #333;
-  --accent: #b30000;
-  --inactive-bg: #3a0b0b;
-  --text-light: #ffffff;
+/* ─── TOKENS ──────────────────────────────────────────────────── */
+:root {
+  --bg:          #F6F7FB;
+  --surface:     #FFFFFF;
+  --border:      #E4E7EF;
+  --border-mid:  #CDD2E0;
+  --text-main:   #0F1623;
+  --text-muted:  #6B7694;
+  --accent:      #3B5BDB;          /* indigo */
+  --accent-soft: #EEF2FF;
+  --danger:      #E03131;
+  --danger-soft: #FFF5F5;
+  --success:     #2F9E44;
+  --success-soft:#EBFBEE;
+  --warn:        #E67700;
+  --warn-soft:   #FFF9DB;
+  --unit-bg:     #F0F4FF;
+  --unit-border: #A5B4FC;
+  --radius:      10px;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:   0 4px 16px rgba(0,0,0,.08);
+  --font: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
 }
 
-/* ------------------------------------------------------
-    GLOBAL
------------------------------------------------------- */
-body{
-  background: var(--page-bg);
-  font-family: "Poppins", sans-serif;
-  color: var(--text-light);
+/* ─── RESET / BASE ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+body { background: var(--bg); font-family: var(--font); color: var(--text-main); font-size: 14px; margin: 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ─── LAYOUT ─────────────────────────────────────────────────── */
+.page-wrap { max-width: 1320px; margin: 0 auto; padding: 28px 20px 60px; }
+
+/* ─── HEADER BAR ─────────────────────────────────────────────── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; gap: 12px; flex-wrap: wrap;
+}
+.page-header h1 {
+  font-size: 20px; font-weight: 700; margin: 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.sp-badge {
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 13px; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; border: 1px solid var(--unit-border);
 }
 
-.btn {
-  color:#fff;
-  background:#111;
-  border: #fff 2px solid;
-  border-radius: 20px !important;
+/* ─── FILTER CARD ────────────────────────────────────────────── */
+.filter-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 20px;
+  box-shadow: var(--shadow-sm); margin-bottom: 20px;
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
 }
-/* ------------------------------------------------------
-    SEARCH + SUGGESTIONS
------------------------------------------------------- */
-.search-wrapper { position: relative; }
+.filter-card label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.filter-card select, .filter-card input[type=text] {
+  border: 1px solid var(--border-mid); border-radius: 7px;
+  padding: 7px 11px; font-family: var(--font); font-size: 13px;
+  background: var(--bg); color: var(--text-main); outline: none;
+  transition: border-color .15s;
+}
+.filter-card select:focus, .filter-card input[type=text]:focus { border-color: var(--accent); }
+.filter-group { flex: 1; min-width: 140px; }
 
-#customerSearch {
-  border-radius: 25px;
-  border: 1px solid #444;
-  height: 44px;
-  color: white;
-  background-color: #000;
+/* ─── STATS ROW ──────────────────────────────────────────────── */
+.stats-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.stat-pill {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 20px;
+  box-shadow: var(--shadow-sm); flex: 1; min-width: 130px;
 }
+.stat-pill .label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+.stat-pill .value { font-size: 22px; font-weight: 700; }
+.stat-pill.active  .value { color: var(--success); }
+.stat-pill.inactive .value { color: var(--danger); }
+.stat-pill.outstanding .value { color: var(--warn); }
 
-.suggestions {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
-  background: #111;
-  border-radius: 12px;
-  border: 1px solid #333;
-  box-shadow: 0 0 18px rgba(255,0,0,0.15);
-  max-height: 260px;
-  overflow-y: auto;
-  z-index: 1000;
-  display: none;
-}
-
-.suggestions .item {
-  padding: 12px 16px;
-  cursor: pointer;
-  color: white;
-  border-bottom: 1px solid #2a2a2a;
-}
-.suggestions .item:hover {
-  background: #222;
+/* ─── ALERTS ─────────────────────────────────────────────────── */
+.toast-list { margin-bottom: 16px; }
+.toast-item {
+  background: var(--success-soft); border: 1px solid #8CE99A;
+  border-radius: var(--radius); padding: 10px 14px;
+  font-size: 13px; color: var(--success); margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: space-between;
 }
 
-/* ------------------------------------------------------
-     STATS CARDS
------------------------------------------------------- */
-.stat-card {
-  background: #111;
-  color: white;
-  border: 1px solid #333;
-  border-radius: 14px;
-  text-align: center;
+/* ─── TABLE WRAPPER ──────────────────────────────────────────── */
+.table-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden;
 }
 
-/* ------------------------------------------------------
-    CARD
------------------------------------------------------- */
+table.master { width: 100%; border-collapse: collapse; }
+table.master thead th {
+  background: var(--bg); color: var(--text-muted);
+  font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 2;
+}
+table.master tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+table.master tbody tr:last-child { border-bottom: none; }
+table.master tbody tr:hover > td { background: #FAFBFF; }
+table.master tbody td { padding: 10px 14px; vertical-align: middle; }
+
+/* ─── STATUS BADGES ──────────────────────────────────────────── */
+.badge-active   { background: var(--success-soft); color: var(--success); border: 1px solid #8CE99A; border-radius: 20px; font-size: 11px; font-weight: 600; padding: 2px 9px; }
+.badge-inactive { background: var(--danger-soft);  color: var(--danger);  border: 1px solid #FFA8A8; border-radius: 20px; font-size: 11px; font-weight: 600; padding: 2px 9px; }
+.badge-unit     { background: var(--unit-bg); color: var(--accent); border: 1px solid var(--unit-border); border-radius: 20px; font-size: 11px; font-weight: 600; padding: 2px 9px; }
+
+/* ─── UNIT ROW ───────────────────────────────────────────────── */
+tr.unit-header td { background: var(--unit-bg) !important; font-weight: 600; }
+tr.unit-header td:first-child { border-left: 3px solid var(--accent); }
+
+tr.unit-member td { background: #FAFBFF !important; padding-left: 28px !important; }
+tr.unit-member td:first-child { border-left: 3px solid var(--unit-border); padding-left: 28px !important; }
+tr.unit-member:hover td { background: #F0F4FF !important; }
+
+.unit-toggle {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); font-size: 13px; padding: 0 6px 0 0;
+  transition: transform .2s;
+}
+.unit-toggle.open { transform: rotate(90deg); }
+.unit-members-group { display: none; }
+.unit-members-group.open { display: table-row-group; }
+
+/* ─── ACTION BUTTONS ─────────────────────────────────────────── */
+.btn-xs {
+  font-size: 11px; padding: 4px 10px; border-radius: 6px;
+  border: 1px solid; font-weight: 500; cursor: pointer;
+  font-family: var(--font); transition: .12s; white-space: nowrap;
+}
+.btn-xs.primary   { background: var(--accent-soft); color: var(--accent); border-color: var(--unit-border); }
+.btn-xs.primary:hover { background: var(--accent); color: #fff; }
+.btn-xs.danger    { background: var(--danger-soft); color: var(--danger); border-color: #FFA8A8; }
+.btn-xs.danger:hover  { background: var(--danger); color: #fff; }
+.btn-xs.neutral   { background: var(--bg); color: var(--text-muted); border-color: var(--border-mid); }
+.btn-xs.neutral:hover { background: var(--border); color: var(--text-main); }
+.btn-xs.success   { background: var(--success-soft); color: var(--success); border-color: #8CE99A; }
+
+.actions-cell { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* ─── SEARCH ─────────────────────────────────────────────────── */
+.search-wrap { position: relative; flex: 2; min-width: 180px; }
+.search-wrap input { width: 100%; padding-right: 32px; }
+.suggestions-box {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border-mid);
+  border-radius: var(--radius); box-shadow: var(--shadow-md);
+  max-height: 240px; overflow-y: auto; z-index: 500; display: none;
+}
+.suggestions-box .s-item {
+  padding: 9px 14px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border);
+}
+.suggestions-box .s-item:hover { background: var(--accent-soft); }
+.suggestions-box .s-item:last-child { border-bottom: none; }
+
+/* ─── MODAL ──────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,22,35,.45);
+  display: none; justify-content: center; align-items: center; z-index: 8000;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--surface); border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18); width: 460px; max-width: 95vw;
+  max-height: 88vh; overflow-y: auto; padding: 24px;
+  animation: popIn .18s ease;
+}
+.modal-box.wide { width: 580px; }
+@keyframes popIn { from { transform: scale(.93); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-head h5 { font-size: 15px; font-weight: 700; margin: 0; }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; }
+.modal-close:hover { color: var(--danger); }
+.modal-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+/* form elements inside modal */
+.modal-box label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; display: block; margin-bottom: 4px; }
+.modal-box input[type=text], .modal-box select, .modal-box textarea {
+  width: 100%; border: 1px solid var(--border-mid); border-radius: 7px;
+  padding: 8px 12px; font-family: var(--font); font-size: 13px;
+  background: var(--bg); color: var(--text-main); outline: none; transition: border-color .15s;
+}
+.modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus { border-color: var(--accent); }
+.modal-box textarea { height: 80px; resize: vertical; }
+.btn-modal-primary {
+  background: var(--accent); color: #fff; border: none; border-radius: 7px;
+  padding: 9px 18px; font-family: var(--font); font-weight: 600; cursor: pointer;
+  font-size: 13px; transition: .15s;
+}
+.btn-modal-primary:hover { background: #2F4AC5; }
+.btn-modal-danger {
+  background: var(--danger); color: #fff; border: none; border-radius: 7px;
+  padding: 9px 18px; font-family: var(--font); font-weight: 600; cursor: pointer;
+  font-size: 13px;
+}
+
+/* remark items */
+.remark-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.remark-item:last-child { border-bottom: none; }
+.remark-item p { margin: 0 0 2px; font-size: 13px; }
+.remark-item small { color: var(--text-muted); font-size: 11px; }
+
+/* history list */
+.history-item { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.history-item:last-child { border-bottom: none; }
+
+/* ─── FIRST SCREEN (salesperson picker) ─────────────────────── */
 .center-card {
-  max-width: 640px;
-  margin: 72px auto;
-  padding: 30px;
-  border-radius: 16px;
-  background: var(--card-bg);
-  box-shadow: 0 0 25px rgba(255,0,0,0.15);
+  max-width: 520px; margin: 80px auto; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 16px; padding: 40px;
+  box-shadow: var(--shadow-md); text-align: center;
 }
+.center-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.center-card p  { color: var(--text-muted); margin-bottom: 24px; }
+.center-card select { border: 1px solid var(--border-mid); border-radius: 8px; padding: 10px 14px; font-family: var(--font); font-size: 14px; width: 100%; background: var(--bg); outline: none; margin-bottom: 16px; }
+.center-card button { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 11px 24px; font-family: var(--font); font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; }
+.center-card button:hover { background: #2F4AC5; }
 
-/* ------------------------------------------------------
-    TABLE (CLEAN STYLING)
------------------------------------------------------- */
-
-.table thead th {
-  background: #000;
-  color: white;
-  border-color: var(--border-color);
-<!--  position: fixed;-->
-
+/* ─── MOBILE ACCORDION ───────────────────────────────────────── */
+.mob-acc-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
 }
+.mob-acc-item.unit-item { border-color: var(--unit-border); background: var(--unit-bg); }
+.mob-acc-item.inactive { border-left: 3px solid var(--danger); }
+.mob-acc-item.active   { border-left: 3px solid var(--success); }
 
-/* NORMAL CUSTOMER ROW */
-table tbody td {
-  background: var(--table-cell) !important;
-  color: white !important;
-  border-color: var(--border-color) !important;
+.mob-acc-btn {
+  width: 100%; padding: 13px 16px; background: none; border: none;
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; text-align: left; font-family: var(--font); color: var(--text-main);
 }
+.mob-acc-btn .acc-name { font-weight: 600; font-size: 14px; }
+.mob-acc-btn .acc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.mob-acc-btn .acc-arrow { color: var(--text-muted); transition: transform .2s; }
+.mob-acc-btn.open .acc-arrow { transform: rotate(180deg); }
 
-/* RED FLAG CUSTOMER ROW */
-.red-flag td {
-  background: var(--table-red) !important;
-  color: white !important;
-}
+.mob-acc-panel { display: none; padding: 0 16px 14px; border-top: 1px solid var(--border); }
+.mob-acc-panel.open { display: block; }
+.mob-kv { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+.mob-kv:last-of-type { border-bottom: none; }
+.mob-kv .k { color: var(--text-muted); }
+.mob-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
-/* ------------------------------------------------------
-    MOBILE ACCORDION
------------------------------------------------------- */
-.accordion-btn {
-  width: 100%;
-  background:#111;
-  border:1px solid #333;
-  border-radius: 12px;
-  padding: 16px;
-  color:white;
-  font-weight:600;
-  margin-bottom: 12px;
-  display:flex;
-  justify-content: space-between;
-  align-items:center;
-  cursor:pointer;
-}
+/* nested unit member in mobile */
+.mob-unit-members { background: #fff; border-radius: 8px; margin-top: 10px; overflow: hidden; border: 1px solid var(--border); }
+.mob-unit-member-item { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.mob-unit-member-item:last-child { border-bottom: none; }
 
-/* Red-flag accordion header */
-.accordion-btn.inactive {
-  background: var(--inactive-bg) !important;
-}
+/* ─── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 767px) { .desktop-only { display: none !important; } }
+@media (min-width: 768px) { .mobile-only  { display: none !important; } }
 
-/* White dot for remarks */
-.remark-dot-white {
-  width: 9px;
-  height: 9px;
-  background: white;
-  border-radius: 50%;
-  display: inline-block;
-  margin-left: 8px;
-}
+/* ─── MISC ───────────────────────────────────────────────────── */
+.text-mono { font-family: var(--font-mono); }
+.text-muted-sm { color: var(--text-muted); font-size: 12px; }
+.tag-none { color: var(--text-muted); }
+.followup-section h6 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.followup-item { padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.followup-item:last-child { border-bottom: none; }
 
-.accordion-btn .arrow {
-  font-size:18px;
-  transition:0.25s;
-}
-.accordion-btn.active .arrow { transform: rotate(180deg); }
-
-.accordion-panel {
-  display:none;
-  background:#111;
-  border:1px solid #333;
-  padding:14px;
-  border-radius:10px;
-  margin-top:-8px;
-  margin-bottom:12px;
-}
-
-/* RESPONSIVE */
-@media (max-width: 767px) { .desktop-table { display:none !important; } }
-@media (min-width: 768px) { .mobile-accordion { display:none !important; } }
-
-/* ------------------------------------------------------
-    REMARK MODAL
------------------------------------------------------- */
-.remark-modal {
-  position:fixed;
-  inset:0;
-  display:none;
-  justify-content:center;
-  align-items:center;
-  background:rgba(0,0,0,0.6);
-  z-index:9999;
-}
-
-.remark-box {
-  width:420px;
-  background:#111;
-  border:1px solid #333;
-  padding:20px;
-  border-radius:12px;
-  color:white;
-  transform:scale(0.8);
-  opacity:0;
-  transition:0.2s ease;
-}
-
-.remark-modal.show .remark-box {
-  transform:scale(1);
-  opacity:1;
-}
-
-.remark-item {
-  border-bottom:1px solid #333;
-  padding:8px 0;
-}
-
-    /* ---------------- FILTER DROPDOWN ---------------- */
-
-.filter-th {
-  position: absolute;
-  cursor: pointer;
-  user-select: none;
-  transform: translateX(-25px);
-}
-
-.filter-toggle {
-  font-size: 12px;
-  margin-left: 6px;
-  opacity: 0.7;
-  transform: translateX(-25px);
-
-}
-
-.filter-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  min-width: 180px;
-  background: #111;
-  border: 1px solid #333;
-  border-radius: 10px;
-  box-shadow: 0 0 18px rgba(255,0,0,0.25);
-  z-index: 2000;
-  display: none;
-  padding: 6px 0;
-}
-
-.filter-menu div {
-  padding: 10px 14px;
-  font-size: 14px;
-  color: white;
-  cursor: pointer;
-}
-
-.filter-menu div:hover {
-  background: #222;
-}
-
-.filter-menu div.active {
-  background: #3a0b0b;
-  font-weight: 600;
-}
-
-.delete-icon-btn {
-  background: transparent;
-  border: none;
-  color: #ff4d4d;
-  font-size: 15px;
-  cursor: pointer;
-  padding: 4px;
-  transition: 0.2s ease;
-}
-
-.delete-icon-btn:hover {
-  transform: scale(1.2);
-  color: #ff0000;
-}
-//* ===== Highlight border around customer row ===== */
-
-.customer-highlight td {
-  border-top: 2px solid #ff3b3b !important;
-  border-bottom: 2px solid #ff3b3b !important;
-}
-
-/* left side border */
-.customer-highlight td:first-child {
-  border-left: 2px solid #ff3b3b !important;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-}
-
-/* right side border */
-.customer-highlight td:last-child {
-  border-right: 2px solid #ff3b3b !important;
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
-}
-
+/* customer highlight flash */
+@keyframes flashBg { 0%,100% { background: transparent; } 30% { background: #EEF2FF; } }
+.row-flash { animation: flashBg 1.6s ease; }
 </style>
 </head>
 
 <body>
-
-
-<div class="container mt-5 mb-5">
+<div class="page-wrap">
 
 {% if not selected_salesperson %}
-<!-- FIRST SCREEN -->
-<div class="center-card text-center">
-  <h3 class="fw-bold mb-3">Admin: Salesperson → Customer Overview</h3>
-
+<!-- ══════════════ SALESPERSON PICKER ══════════════ -->
+<div class="center-card">
+  <h2>Customer Overview</h2>
+  <p>Select a salesperson to view their customers</p>
   <form method="GET">
-    <label class="form-label">Select Salesperson</label>
-    <select name="salesperson" class="form-select mb-3" required>
-      <option value="">-- Select --</option>
+    <select name="salesperson" required>
+      <option value="">— Select Salesperson —</option>
       {% for s in salespersons %}
       <option value="{{ s.id }}">{{ s.name }}</option>
       {% endfor %}
     </select>
-
-    <button type="submit" class="btn btn-danger w-100">Continue →</button>
+    <button type="submit">Continue →</button>
   </form>
 </div>
 
 {% else %}
 
+<!-- ══════════════ MESSAGES ══════════════ -->
 {% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}
+<div class="toast-list">
+  {% for message in messages %}
+  <div class="toast-item">
+    <span>{{ message }}</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:inherit;font-size:16px;padding:0;">×</button>
+  </div>
+  {% endfor %}
+</div>
 {% endif %}
 
+<!-- ══════════════ HEADER ══════════════ -->
+<div class="page-header">
+  <h1>
+    Customer Overview
+    <span class="sp-badge">{{ selected_salesperson.name }}</span>
+  </h1>
+  <button class="btn-xs primary" onclick="openFollowupsModal()">📅 View All Follow-ups</button>
+</div>
 
-<h2 class="fw-bold mb-4">Customers handled by: {{ selected_salesperson.name }}</h2>
+<!-- ══════════════ FILTER BAR ══════════════ -->
+<div class="filter-card">
+  <form method="GET" style="display:contents;">
 
-<!-- FILTER -->
-<div class="card p-4 mb-4" style="background:#111; border:1px solid #333;">
-  <form method="GET" class="row g-3 align-items-end">
-
-    <div class="col-md-4">
-      <label class="form-label" style="color:white;">Select Salesperson</label>
-      <select name="salesperson"
-              class="form-select"
-              onchange="this.form.submit()">
+    <div class="filter-group">
+      <label>Salesperson</label>
+      <select name="salesperson" onchange="this.form.submit()">
         {% for s in salespersons %}
-        <option value="{{ s.id }}"
-          {% if selected_salesperson.id == s.id %}selected{% endif %}>
-          {{ s.name }}
-        </option>
+        <option value="{{ s.id }}" {% if selected_salesperson.id == s.id %}selected{% endif %}>{{ s.name }}</option>
         {% endfor %}
       </select>
     </div>
 
-    <div class="col-md-5 search-wrapper">
-      <label class="form-label" style="color:white;">Search Customer</label>
-      <input id="customerSearch" class="form-control" autocomplete="off">
-      <div id="searchSuggestions" class="suggestions"></div>
+    <div class="filter-group search-wrap">
+      <label>Search Customer</label>
+      <input type="text" id="customerSearch" placeholder="Type to search…" autocomplete="off">
+      <div id="searchSuggestions" class="suggestions-box"></div>
     </div>
 
-   <div class="col-md-3">
-      <label class="form-label text-white">Status</label>
-      <select name="status" class="form-select" onchange="this.form.submit()">
+    <div class="filter-group">
+      <label>Status</label>
+      <select name="status" onchange="this.form.submit()">
         <option value="all">All</option>
-        <option value="active"
-          {% if status_filter == "active" %}selected{% endif %}>
-          Active
-        </option>
-        <option value="inactive"
-          {% if status_filter == "inactive" %}selected{% endif %}>
-          Inactive
-        </option>
+        <option value="active"   {% if status_filter == "active" %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>Inactive</option>
       </select>
     </div>
 
-    <div class="col-md-3">
-      <label class="form-label text-white">Outstanding</label>
-      <select name="outstanding" class="form-select" onchange="this.form.submit()">
+    <div class="filter-group">
+      <label>Outstanding</label>
+      <select name="outstanding" onchange="this.form.submit()">
         <option value="all">All</option>
-        <option value="due"
-          {% if outstanding_filter == "due" %}selected{% endif %}>
-          With Outstanding
-        </option>
-        <option value="clear"
-          {% if outstanding_filter == "clear" %}selected{% endif %}>
-          No Outstanding
-        </option>
+        <option value="due"   {% if outstanding_filter == "due" %}selected{% endif %}>With Outstanding</option>
+        <option value="clear" {% if outstanding_filter == "clear" %}selected{% endif %}>No Outstanding</option>
       </select>
     </div>
-
 
   </form>
 </div>
 
-<!-- STATS -->
-<div class="row g-4 mb-4">
-  <div class="col-md-4"><div class="stat-card"><h3>Total Customers</h3><h2>{{ customers|length }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Active</h3><h2 class="text-success">{{ active_count }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Inactive</h3><h2 class="text-danger">{{ inactive_count }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Outstanding Customers</h3><h2 class="text-warning">{{ outstanding_count }}</h2></div></div>
-  <div class="col-md-4"><div class="stat-card"><h3>Total Outstanding Amount</h3><h2 class="text-danger">₹ {{ total_outstanding_amount|floatformat:2 }}</h2></div></div>
+<!-- ══════════════ STATS ══════════════ -->
+<div class="stats-row">
+  <div class="stat-pill">
+    <div class="label">Total</div>
+    <div class="value">{{ total_display_count }}</div>
+  </div>
+  <div class="stat-pill active">
+    <div class="label">Active</div>
+    <div class="value">{{ active_count }}</div>
+  </div>
+  <div class="stat-pill inactive">
+    <div class="label">Inactive</div>
+    <div class="value">{{ inactive_count }}</div>
+  </div>
+  <div class="stat-pill outstanding">
+    <div class="label">Outstanding</div>
+    <div class="value">{{ outstanding_count }}</div>
+  </div>
+  <div class="stat-pill outstanding">
+    <div class="label">Outstanding ₹</div>
+    <div class="value" style="font-size:16px;">₹{{ total_outstanding_amount|floatformat:0 }}</div>
+  </div>
 </div>
 
-<!-- -view all followups-->
-<div class="col-md-3 d-flex align-items-end">
-  <button type="button"
-          class="btn btn-danger w-100"
-          onclick="openSalespersonFollowups()">
-    View All Follow-ups
-  </button>
-</div>
-
-
-<!-- DESKTOP TABLE -->
-<div class="card shadow-sm" style="background:#111; border:1px solid #333;">
-  <div class="card-body p-0">
-
-<table id="customerTable" class="table table-hover mb-0 desktop-table">
+<!-- ══════════════ DESKTOP TABLE ══════════════ -->
+<div class="table-card desktop-only">
+<table class="master" id="customerTable">
   <thead>
     <tr>
       <th>#</th>
-      <th>Customer</th>
+      <th>Customer / Unit</th>
       <th>State</th>
       <th>Orders</th>
-      <th>Total</th>
+      <th>Total Value</th>
       <th>Outstanding</th>
-
-
-      <th>Last</th>
+      <th>Last Order</th>
       <th>Status</th>
-
       <th>Actions</th>
     </tr>
   </thead>
 
   <tbody>
-    {% for c in customers %}
-<tr
-  id="customer-{{ c.id }}"
-  data-customer-id="{{ c.id }}"
-  data-customer-name="{{ c.name }}"
-  data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}"
-  data-outstanding="{% if c.trial_balance and c.trial_balance > 0 %}due{% else %}clear{% endif %}">
 
-      <td>{{ forloop.counter }}</td>
-      <td class="cust-name">{{ c.name }}</td>
-      <td>{{ c.state }}</td>
-      <td>{{ c.total_orders }}</td>
-      <td>₹ {{ c.total_order_value|floatformat:2 }}</td>
-      <td>
-        {% if c.trial_balance is not None %}
-          ₹ {{ c.trial_balance|floatformat:2 }}
-        {% else %}
-          -
-        {% endif %}
-      </td>
-      <td>{{ c.last_order_date|default:"None" }}</td>
+  <!-- ── UNITS ── -->
+  {% for unit in units %}
 
-      <td>
-        {% if c.is_red_flag %}
-          <span class="text-danger">Inactive</span>
-        {% else %}
-          <span class="text-success">Active</span>
-        {% endif %}
-      </td>
+  <!-- Unit header row -->
+  <tr class="unit-header" id="unit-row-{{ unit.id }}">
+    <td>
+      <button class="unit-toggle" data-unit="{{ unit.id }}" onclick="toggleUnit(this)" title="Expand unit">▶</button>
+    </td>
+    <td>
+      <span class="badge-unit me-1">UNIT</span>
+      <strong>{{ unit.name }}</strong>
+      <span class="text-muted-sm ms-2">({{ unit.members|length }} ledger{% if unit.members|length != 1 %}s{% endif %})</span>
+    </td>
+    <td class="tag-none">—</td>
+    <td>{{ unit.total_orders }}</td>
+    <td class="text-mono">₹{{ unit.total_order_value|floatformat:2 }}</td>
+    <td class="text-mono">{% if unit.trial_balance %}₹{{ unit.trial_balance|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td>{{ unit.last_order_date|default:"—" }}</td>
+    <td>{% if unit.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}</td>
+    <td>
+      <div class="actions-cell">
+        <button class="btn-xs neutral" onclick="openRenameUnit({{ unit.id }}, '{{ unit.name|escapejs }}')">✏️ Rename</button>
+        <button class="btn-xs danger"  onclick="openDeleteUnit({{ unit.id }}, '{{ unit.name|escapejs }}')">🗑 Delete Unit</button>
+      </div>
+    </td>
+  </tr>
 
-      <td>
-        <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Item Purchases</a>
+  <!-- Unit member rows (hidden by default, revealed on toggle) -->
+  <tbody class="unit-members-group" id="unit-members-{{ unit.id }}">
+  {% for c in unit.members %}
+  <tr class="unit-member" id="customer-{{ c.id }}" data-cid="{{ c.id }}" data-cname="{{ c.name }}" data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}">
+    <td>↳</td>
+    <td>{{ c.name }}</td>
+    <td>{{ c.state }}</td>
+    <td>{{ c.total_orders }}</td>
+    <td class="text-mono">₹{{ c.total_order_value|floatformat:2 }}</td>
+    <td class="text-mono">{% if c.trial_balance %}₹{{ c.trial_balance|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td>{{ c.last_order_date|default:"—" }}</td>
+    <td>{% if c.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}</td>
+    <td>
+      <div class="actions-cell">
+        <a href="{% url 'customer_item_purchases' c.id %}" class="btn-xs primary">Item Purchases</a>
+        <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn-xs primary">Payment Status</a>
+        <button class="btn-xs neutral open-history-btn" data-cid="{{ c.id }}">Order History</button>
+        <button class="btn-xs neutral" onclick="openViewRemarks({{ c.id }})">Remarks ({{ c.remarks_list|length }})</button>
+        <button class="btn-xs primary" onclick="openAddRemark({{ c.id }})">+ Remark</button>
+        <button class="btn-xs danger"  onclick="openLeaveUnit({{ c.id }}, '{{ c.name|escapejs }}', {{ unit.id }}, '{{ unit.name|escapejs }}')">Leave Unit</button>
+        <button class="btn-xs neutral" onclick="openAddToUnit({{ c.id }}, '{{ c.name|escapejs }}')">Move Unit</button>
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
 
-        <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Payment Status</a>
+  {% endfor %}
 
-        <button class="btn btn-danger btn-sm open-history mb-1" data-customer="{{ c.id }}">View Order History</button>
+  <!-- ── STANDALONE CUSTOMERS ── -->
+  {% for c in customers %}
+  <tr id="customer-{{ c.id }}" data-cid="{{ c.id }}" data-cname="{{ c.name }}" data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}">
+    <td>{{ forloop.counter }}</td>
+    <td>{{ c.name }}</td>
+    <td>{{ c.state }}</td>
+    <td>{{ c.total_orders }}</td>
+    <td class="text-mono">₹{{ c.total_order_value|floatformat:2 }}</td>
+    <td class="text-mono">{% if c.trial_balance %}₹{{ c.trial_balance|floatformat:2 }}{% else %}—{% endif %}</td>
+    <td>{{ c.last_order_date|default:"—" }}</td>
+    <td>{% if c.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}</td>
+    <td>
+      <div class="actions-cell">
+        <a href="{% url 'customer_item_purchases' c.id %}" class="btn-xs primary">Item Purchases</a>
+        <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn-xs primary">Payment Status</a>
+        <button class="btn-xs neutral open-history-btn" data-cid="{{ c.id }}">Order History</button>
+        <button class="btn-xs neutral" onclick="openViewRemarks({{ c.id }})">Remarks ({{ c.remarks_list|length }})</button>
+        <button class="btn-xs primary" onclick="openAddRemark({{ c.id }})">+ Remark</button>
+        <!-- Unit actions -->
+        <button class="btn-xs success" onclick="openCreateUnit({{ c.id }}, '{{ c.name|escapejs }}')">＋ Start Unit</button>
+        {% if all_units %}<button class="btn-xs neutral" onclick="openAddToUnit({{ c.id }}, '{{ c.name|escapejs }}')">Add to Unit</button>{% endif %}
+      </div>
+    </td>
+  </tr>
+  {% empty %}
+    {% if not units %}<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-muted);">No customers found.</td></tr>{% endif %}
+  {% endfor %}
 
-        <button class="btn btn-danger btn-sm" onclick="openModal('{{ c.id }}')">
-          View Remarks ({{ c.remarks_list|length }})
-        </button>
-
-        <button class="btn btn-danger btn-sm" onclick="openAddRemark('{{ c.id }}')">
-            Add Remark
-        </button>
-
-      </td>
-
-    </tr>
-    {% endfor %}
   </tbody>
 </table>
-
-  </div>
 </div>
 
+<!-- ══════════════ MOBILE ACCORDION ══════════════ -->
+<div class="mobile-only">
 
-<!-- MOBILE ACCORDION -->
-<div class="mobile-accordion">
-{% for c in customers %}
-  <button class="accordion-btn {% if c.is_red_flag %}inactive{% endif %}"
-          data-customer-id="{{ c.id }}" data-customer-name="{{ c.name }}">
+  <!-- Units -->
+  {% for unit in units %}
+  <div class="mob-acc-item unit-item {% if unit.is_red_flag %}inactive{% else %}active{% endif %}">
+    <button class="mob-acc-btn" onclick="toggleMobAcc(this)">
+      <div>
+        <div class="acc-name"><span class="badge-unit me-1">UNIT</span> {{ unit.name }}</div>
+        <div class="acc-meta">{{ unit.members|length }} ledger{% if unit.members|length != 1 %}s{% endif %} · {% if unit.is_red_flag %}Inactive{% else %}Active{% endif %}</div>
+      </div>
+      <span class="acc-arrow">▾</span>
+    </button>
+    <div class="mob-acc-panel">
+      <div class="mob-kv"><span class="k">Total Orders</span><span>{{ unit.total_orders }}</span></div>
+      <div class="mob-kv"><span class="k">Total Value</span><span class="text-mono">₹{{ unit.total_order_value|floatformat:2 }}</span></div>
+      <div class="mob-kv"><span class="k">Outstanding</span><span>{% if unit.trial_balance %}₹{{ unit.trial_balance|floatformat:2 }}{% else %}—{% endif %}</span></div>
+      <div class="mob-kv"><span class="k">Last Order</span><span>{{ unit.last_order_date|default:"—" }}</span></div>
 
-    <div>
-      <strong>{{ c.name }}</strong>
-      {% if c.remarks_list|length > 0 %}
-        <span class="remark-dot-white"></span>
-      {% endif %}
-    </div>
-
-    <span class="arrow">▼</span>
-  </button>
-
-  <div class="accordion-panel">
-    <p><strong>State:</strong> {{ c.state }}</p>
-    <p><strong>Orders:</strong> {{ c.total_orders }}</p>
-    <p><strong>Total:</strong> ₹ {{ c.total_order_value|floatformat:2 }}</p>
-    <p><strong>Last:</strong> {{ c.last_order_date|default:"None" }}</p>
-
-    <a href="{% url 'customer_item_purchases' c.id %}" class="btn btn-outline-danger btn-sm">View Item Purchases</a>
-    <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn btn-outline-danger btn-sm mb-1">View Payment Status</a>
-    <button class="btn btn-danger btn-sm open-history" data-customer="{{ c.id }}">View Order History</button>
-    <button class="btn btn-danger btn-sm" onclick="openModal('{{ c.id }}')">View Remarks ({{ c.remarks_list|length }})</button>
-    <button class="btn btn-danger btn-sm" onclick="openAddRemark('{{ c.id }}')">Add Remark</button>
-
-    <div id="history-data-{{ c.id }}" style="display:none;">
-      <ul>
-        {% for v in c.vouchers_list %}
-          <li><strong>{{ v.date }}</strong> — {{ v.voucher_type }} <a href="{% url 'voucher_detail' v.id %}" style="color:#fff; text-decoration:underline;" target="_blank"> {{ v.voucher_number }}</a></li>
-        {% empty %}
-          <li>No vouchers</li>
-        {% endfor %}
-      </ul>
-    </div>
-
-  </div>
-
-{% endfor %}
-</div>
-
-
-<!-- REMARK MODALS -->
-
-<!-- VIEW REMARKS MODAL -->
-<!--<div class="remark-modal" id="modal{{ c.id }}">-->
-<!--  <div class="remark-box">-->
-<!--    <div class="d-flex justify-content-between mb-2">-->
-<!--      <h5>Remarks — {{ c.name }}</h5>-->
-<!--      <button class="btn btn-sm btn-light"-->
-<!--              onclick="closeModal('{{ c.id }}')">-->
-<!--        Close-->
-<!--      </button>-->
-<!--    </div>-->
-
-<!--    view & dlt remarks-->
-{% for c in customers %}
-
-<div class="remark-modal" id="modal{{ c.id }}">
-  <div class="remark-box">
-    <div class="d-flex justify-content-between mb-2">
-      <h5>Remarks & Follow-ups — {{ c.name }}</h5>
-      <button class="btn btn-sm btn-light"
-              onclick="closeModal('{{ c.id }}')">
-        Close
-      </button>
-    </div>
-
-    <!-- REMARKS -->
-    <h6 class="mt-2">Remarks</h6>
-
-    {% for r in c.remarks_list %}
-      <div class="remark-item d-flex justify-content-between align-items-start">
-
-        <div>
-          <p class="mb-1">{{ r.remark }}</p>
-          <small>
-            {{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}
-          </small>
+      <div class="mob-unit-members">
+        {% for c in unit.members %}
+        <div class="mob-unit-member-item">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">{{ c.name }} {% if c.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}</div>
+          <div class="mob-actions">
+            <a href="{% url 'customer_item_purchases' c.id %}" class="btn-xs primary">Item Purchases</a>
+            <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn-xs primary">Payment Status</a>
+            <button class="btn-xs neutral open-history-btn" data-cid="{{ c.id }}">History</button>
+            <button class="btn-xs neutral" onclick="openViewRemarks({{ c.id }})">Remarks ({{ c.remarks_list|length }})</button>
+            <button class="btn-xs primary" onclick="openAddRemark({{ c.id }})">+ Remark</button>
+            <button class="btn-xs danger" onclick="openLeaveUnit({{ c.id }}, '{{ c.name|escapejs }}', {{ unit.id }}, '{{ unit.name|escapejs }}')">Leave Unit</button>
+          </div>
         </div>
+        {% endfor %}
+      </div>
 
+      <div class="mob-actions mt-2">
+        <button class="btn-xs neutral" onclick="openRenameUnit({{ unit.id }}, '{{ unit.name|escapejs }}')">✏️ Rename</button>
+        <button class="btn-xs danger"  onclick="openDeleteUnit({{ unit.id }}, '{{ unit.name|escapejs }}')">🗑 Delete Unit</button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Standalone customers -->
+  {% for c in customers %}
+  <div class="mob-acc-item {% if c.is_red_flag %}inactive{% else %}active{% endif %}" id="mob-customer-{{ c.id }}">
+    <button class="mob-acc-btn" onclick="toggleMobAcc(this)">
+      <div>
+        <div class="acc-name">{{ c.name }}</div>
+        <div class="acc-meta">{{ c.state }} · {% if c.is_red_flag %}Inactive{% else %}Active{% endif %}</div>
+      </div>
+      <span class="acc-arrow">▾</span>
+    </button>
+    <div class="mob-acc-panel">
+      <div class="mob-kv"><span class="k">Orders</span><span>{{ c.total_orders }}</span></div>
+      <div class="mob-kv"><span class="k">Total Value</span><span class="text-mono">₹{{ c.total_order_value|floatformat:2 }}</span></div>
+      <div class="mob-kv"><span class="k">Outstanding</span><span>{% if c.trial_balance %}₹{{ c.trial_balance|floatformat:2 }}{% else %}—{% endif %}</span></div>
+      <div class="mob-kv"><span class="k">Last Order</span><span>{{ c.last_order_date|default:"—" }}</span></div>
+      <div class="mob-actions">
+        <a href="{% url 'customer_item_purchases' c.id %}" class="btn-xs primary">Item Purchases</a>
+        <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn-xs primary">Payment Status</a>
+        <button class="btn-xs neutral open-history-btn" data-cid="{{ c.id }}">History</button>
+        <button class="btn-xs neutral" onclick="openViewRemarks({{ c.id }})">Remarks ({{ c.remarks_list|length }})</button>
+        <button class="btn-xs primary" onclick="openAddRemark({{ c.id }})">+ Remark</button>
+        <button class="btn-xs success" onclick="openCreateUnit({{ c.id }}, '{{ c.name|escapejs }}')">＋ Start Unit</button>
+        {% if all_units %}<button class="btn-xs neutral" onclick="openAddToUnit({{ c.id }}, '{{ c.name|escapejs }}')">Add to Unit</button>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+</div><!-- /mobile-only -->
+
+
+<!-- ══════════════ HIDDEN ORDER HISTORY DATA ══════════════ -->
+{% for c in customers %}
+<script type="text/template" id="history-data-{{ c.id }}">
+  {% for v in c.vouchers_list %}
+  <div class="history-item">
+    <strong>{{ v.date }}</strong> — {{ v.voucher_type }}
+    <a href="{% url 'voucher_detail' v.id %}" target="_blank">{{ v.voucher_number }}</a>
+  </div>
+  {% empty %}<div class="history-item text-muted-sm">No vouchers found.</div>
+  {% endfor %}
+</script>
+{% endfor %}
+{% for unit in units %}
+  {% for c in unit.members %}
+  <script type="text/template" id="history-data-{{ c.id }}">
+    {% for v in c.vouchers_list %}
+    <div class="history-item">
+      <strong>{{ v.date }}</strong> — {{ v.voucher_type }}
+      <a href="{% url 'voucher_detail' v.id %}" target="_blank">{{ v.voucher_number }}</a>
+    </div>
+    {% empty %}<div class="history-item text-muted-sm">No vouchers found.</div>
+    {% endfor %}
+  </script>
+  {% endfor %}
+{% endfor %}
+
+{% endif %}<!-- /selected_salesperson -->
+</div><!-- /page-wrap -->
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  MODALS                                               -->
+<!-- ══════════════════════════════════════════════════════ -->
+
+<!-- VIEW REMARKS -->
+{% if selected_salesperson %}
+{% for c in customers %}
+<div class="modal-overlay" id="modal-remarks-{{ c.id }}">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Remarks — {{ c.name }}</h5>
+      <button class="modal-close" onclick="closeModal('modal-remarks-{{ c.id }}')">×</button>
+    </div>
+    {% for r in c.remarks_list %}
+    <div class="remark-item">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <p>{{ r.remark }}</p>
+          <small>{{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}</small>
+        </div>
         {% if request.user.is_accountant %}
-        <form method="post"
-        action="{{ request.get_full_path }}"
-              class="ms-2">
+        <form method="post" action="{{ request.get_full_path }}" style="margin:0;">
           {% csrf_token %}
           <input type="hidden" name="delete_remark_id" value="{{ r.id }}">
           <input type="hidden" name="scroll_to" value="customer-{{ c.id }}">
-          <button type="submit"
-                  class="delete-icon-btn"
-                  title="Delete Remark"
-                  onclick="return confirm('Delete this remark?')">
-            🗑️
-          </button>
+          <button type="submit" onclick="return confirm('Delete this remark?')"
+                  style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:15px;">🗑</button>
         </form>
         {% endif %}
-
       </div>
-
-    {% empty %}
-      <p>No remarks.</p>
-    {% endfor %}
-
-  </div>
-</div>
-
-
-<!-- ADD REMARK MODAL  -->
-<div class="remark-modal" id="addRemark{{ c.id }}">
-  <div class="remark-box">
-    <div class="d-flex justify-content-between mb-2">
-      <h5>Add Remark — {{ c.name }}</h5>
-      <button class="btn btn-sm btn-light"
-              onclick="closeAddRemark('{{ c.id }}')">
-        Close
-      </button>
     </div>
-
-    <form method="post" action="{{ request.get_full_path }}" class="ms-2">
-        {% csrf_token %}
-
-        <input type="hidden" name="customer_id" value="{{ c.id }}">
-        <input type="hidden" name="scroll_to" value="customer-{{ c.id }}">
-
-        <textarea name="remark"
-                  placeholder="Write admin remark..."
-                  required
-                  style="width:100%; height:80px; border-radius:8px; padding:10px;">
-        </textarea>
-
-        <button type="submit" class="btn btn-danger mt-2">
-            Save Remark
-        </button>
-    </form>
-
+    {% empty %}<p class="text-muted-sm">No remarks yet.</p>{% endfor %}
   </div>
 </div>
-
 {% endfor %}
-
-
-<!-- ORDER HISTORY MODAL -->
-<div class="modal fade" id="historyModal">
-  <div class="modal-dialog modal-dialog-centered modal-md">
-    <div class="modal-content bg-dark text-white">
-      <div class="modal-header">
-        <h5 class="modal-title">Order History</h5>
-        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="historyModalBody"></div>
+{% for unit in units %}{% for c in unit.members %}
+<div class="modal-overlay" id="modal-remarks-{{ c.id }}">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Remarks — {{ c.name }}</h5>
+      <button class="modal-close" onclick="closeModal('modal-remarks-{{ c.id }}')">×</button>
     </div>
+    {% for r in c.remarks_list %}
+    <div class="remark-item">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <p>{{ r.remark }}</p>
+          <small>{{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}</small>
+        </div>
+        {% if request.user.is_accountant %}
+        <form method="post" action="{{ request.get_full_path }}" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="delete_remark_id" value="{{ r.id }}">
+          <input type="hidden" name="scroll_to" value="customer-{{ c.id }}">
+          <button type="submit" onclick="return confirm('Delete this remark?')"
+                  style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:15px;">🗑</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}<p class="text-muted-sm">No remarks yet.</p>{% endfor %}
   </div>
 </div>
+{% endfor %}{% endfor %}
 
+<!-- ADD REMARK -->
+{% for c in customers %}
+<div class="modal-overlay" id="modal-add-remark-{{ c.id }}">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Add Remark — {{ c.name }}</h5>
+      <button class="modal-close" onclick="closeModal('modal-add-remark-{{ c.id }}')">×</button>
+    </div>
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <input type="hidden" name="customer_id" value="{{ c.id }}">
+      <input type="hidden" name="scroll_to" value="customer-{{ c.id }}">
+      <label>Remark</label>
+      <textarea name="remark" placeholder="Write your remark…" required></textarea>
+      <div style="margin-top:12px;">
+        <button type="submit" class="btn-modal-primary">Save Remark</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% for unit in units %}{% for c in unit.members %}
+<div class="modal-overlay" id="modal-add-remark-{{ c.id }}">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Add Remark — {{ c.name }}</h5>
+      <button class="modal-close" onclick="closeModal('modal-add-remark-{{ c.id }}')">×</button>
+    </div>
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <input type="hidden" name="customer_id" value="{{ c.id }}">
+      <input type="hidden" name="scroll_to" value="customer-{{ c.id }}">
+      <label>Remark</label>
+      <textarea name="remark" placeholder="Write your remark…" required></textarea>
+      <div style="margin-top:12px;">
+        <button type="submit" class="btn-modal-primary">Save Remark</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}{% endfor %}
 {% endif %}
-</div>
 
-<div class="remark-modal" id="salespersonFollowupsModal">
-  <div class="remark-box" style="width:520px; max-height:80vh; overflow-y:auto;">
-    <div class="d-flex justify-content-between mb-2">
-      <h5>Follow-ups — {{ selected_salesperson.name }}</h5>
-      <button class="btn btn-sm btn-light" onclick="closeSalespersonFollowups()">Close</button>
+<!-- ORDER HISTORY (shared single modal, filled by JS) -->
+<div class="modal-overlay" id="modal-history">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h5>Order History</h5>
+      <button class="modal-close" onclick="closeModal('modal-history')">×</button>
     </div>
-
-
-
-    <!-- TODAY -->
-    <h6>Today’s Follow-ups</h6>
-    {% for f in followups_today %}
-      <div class="remark-item">
-        <p>
-          {% if f.is_completed %}✅{% else %}❌{% endif %}
-          {{ f.note|default:"(No note)" }}
-        </p>
-        <small>{{ f.customer.name }}</small>
-      </div>
-    {% empty %}
-      <p class="text-muted">No follow-ups today.</p>
-    {% endfor %}
-
-    <hr>
-
-
-
-    <!-- FUTURE -->
-    <h6>Upcoming Follow-ups</h6>
-    {% for f in followups_future %}
-      <div class="remark-item">
-        <p>• {{ f.note|default:"(No note)" }}</p>
-        <small>{{ f.customer.name }} · {{ f.followup_date|date:"d M Y" }}</small>
-      </div>
-    {% empty %}
-      <p class="text-muted">No future follow-ups.</p>
-    {% endfor %}
-    <hr>
-            <!-- PREVIOUS -->
-    <h6 class="mt-3">Previous Follow-ups</h6>
-    {% for f in followups_previous %}
-      <div class="remark-item">
-        <p>
-          {% if f.is_completed %}✅{% else %}❌{% endif %}
-          {{ f.note|default:"(No note)" }}
-        </p>
-        <small>{{ f.customer.name }} · {{ f.followup_date|date:"d M Y" }}</small>
-      </div>
-    {% empty %}
-      <p class="text-muted">No previous follow-ups.</p>
-    {% endfor %}
-
-
+    <div id="history-modal-body"></div>
   </div>
 </div>
 
+<!-- CREATE UNIT MODAL -->
+<div class="modal-overlay" id="modal-create-unit">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Start a New Unit</h5>
+      <button class="modal-close" onclick="closeModal('modal-create-unit')">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">
+      Give this unit a name (e.g. the real business name). You can then add more ledgers to it.
+    </p>
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_unit">
+      <input type="hidden" name="customer_id" id="create-unit-cid">
+      <input type="hidden" name="salesperson_id" value="{{ selected_salesperson.id }}">
+      <label>Unit Name</label>
+      <input type="text" name="unit_name" id="create-unit-name-input" placeholder="e.g. Sharma Traders" required style="margin-bottom:12px;">
+      <p id="create-unit-hint" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></p>
+      <button type="submit" class="btn-modal-primary">Create Unit</button>
+    </form>
+  </div>
+</div>
+
+<!-- ADD TO EXISTING UNIT MODAL -->
+<div class="modal-overlay" id="modal-add-to-unit">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Add to Unit</h5>
+      <button class="modal-close" onclick="closeModal('modal-add-to-unit')">×</button>
+    </div>
+    <p id="add-to-unit-hint" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;"></p>
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_to_unit">
+      <input type="hidden" name="customer_id" id="add-to-unit-cid">
+      <label>Select Unit</label>
+      <select name="unit_id" style="margin-bottom:12px;">
+        {% if selected_salesperson %}
+        {% for u in all_units %}
+        <option value="{{ u.id }}">{{ u.name }}</option>
+        {% endfor %}
+        {% endif %}
+      </select>
+      <br>
+      <button type="submit" class="btn-modal-primary">Add to Unit</button>
+    </form>
+  </div>
+</div>
+
+<!-- LEAVE UNIT MODAL -->
+<div class="modal-overlay" id="modal-leave-unit">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Remove from Unit</h5>
+      <button class="modal-close" onclick="closeModal('modal-leave-unit')">×</button>
+    </div>
+    <p id="leave-unit-hint" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;"></p>
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="leave_unit">
+      <input type="hidden" name="customer_id" id="leave-unit-cid">
+      <button type="submit" class="btn-modal-danger">Remove from Unit</button>
+    </form>
+  </div>
+</div>
+
+<!-- RENAME UNIT MODAL -->
+<div class="modal-overlay" id="modal-rename-unit">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Rename Unit</h5>
+      <button class="modal-close" onclick="closeModal('modal-rename-unit')">×</button>
+    </div>
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="rename_unit">
+      <input type="hidden" name="unit_id" id="rename-unit-id">
+      <label>New Name</label>
+      <input type="text" name="unit_name" id="rename-unit-input" required style="margin-bottom:12px;">
+      <button type="submit" class="btn-modal-primary">Save</button>
+    </form>
+  </div>
+</div>
+
+<!-- DELETE UNIT MODAL -->
+<div class="modal-overlay" id="modal-delete-unit">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h5>Delete Unit</h5>
+      <button class="modal-close" onclick="closeModal('modal-delete-unit')">×</button>
+    </div>
+    <p id="delete-unit-hint" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;"></p>
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete_unit">
+      <input type="hidden" name="unit_id" id="delete-unit-id">
+      <button type="submit" class="btn-modal-danger">Delete Unit</button>
+    </form>
+  </div>
+</div>
+
+<!-- FOLLOW-UPS MODAL -->
+<div class="modal-overlay" id="modal-followups">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h5>Follow-ups — {% if selected_salesperson %}{{ selected_salesperson.name }}{% endif %}</h5>
+      <button class="modal-close" onclick="closeModal('modal-followups')">×</button>
+    </div>
+
+    <div class="followup-section">
+      <h6>Today</h6>
+      {% if selected_salesperson %}
+      {% for f in followups_today %}
+      <div class="followup-item">
+        {% if f.is_completed %}✅{% else %}❌{% endif %}
+        {{ f.note|default:"(No note)" }}
+        <span class="text-muted-sm ms-2">{{ f.customer.name }}</span>
+      </div>
+      {% empty %}<p class="text-muted-sm">No follow-ups today.</p>{% endfor %}
+      {% endif %}
+    </div>
+    <hr class="modal-divider">
+    <div class="followup-section">
+      <h6>Upcoming</h6>
+      {% if selected_salesperson %}
+      {% for f in followups_future %}
+      <div class="followup-item">• {{ f.note|default:"(No note)" }}
+        <span class="text-muted-sm ms-2">{{ f.customer.name }} · {{ f.followup_date|date:"d M Y" }}</span>
+      </div>
+      {% empty %}<p class="text-muted-sm">No upcoming follow-ups.</p>{% endfor %}
+      {% endif %}
+    </div>
+    <hr class="modal-divider">
+    <div class="followup-section">
+      <h6>Previous</h6>
+      {% if selected_salesperson %}
+      {% for f in followups_previous %}
+      <div class="followup-item">
+        {% if f.is_completed %}✅{% else %}❌{% endif %}
+        {{ f.note|default:"(No note)" }}
+        <span class="text-muted-sm ms-2">{{ f.customer.name }} · {{ f.followup_date|date:"d M Y" }}</span>
+      </div>
+      {% empty %}<p class="text-muted-sm">No previous follow-ups.</p>{% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SCRIPTS ══════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
- <script>
-    // wait for DOM
-    document.addEventListener('DOMContentLoaded', () => {
-      const searchInput = document.getElementById('customerSearch');
-      const suggestionsBox = document.getElementById('searchSuggestions');
-      const table = document.getElementById('customerTable');
-      const rows = table ? Array.from(table.querySelectorAll('tbody tr')) : [];
-      const accordButtons = Array.from(document.querySelectorAll('.accordion-btn'));
-      const historyModalEl = document.getElementById('historyModal');
-      const historyModal = historyModalEl ? new bootstrap.Modal(historyModalEl) : null;
-      const historyModalBody = document.getElementById('historyModalBody');
+<script>
+/* ── MODAL HELPERS ─────────────────────────────────── */
+function openModal(id)  { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
-      // build customersIndex using data attributes (more robust)
-      const customersIndex = [];
-
-      // From desktop rows
-      rows.forEach(r => {
-        const id = r.dataset.customerId || r.getAttribute('data-customer-id');
-        const name = r.dataset.customerName || (r.querySelector('.cust-name') ? r.querySelector('.cust-name').innerText.trim() : '');
-        if (id && name) customersIndex.push({ id: String(id), name: name.trim(), rowEl: r, accBtnEl: null });
-      });
-
-      // From mobile accordion buttons
-      accordButtons.forEach(btn => {
-        const id = btn.dataset.customerId || btn.getAttribute('data-customer-id');
-        // prefer the explicit dataset name if present
-        const name = btn.dataset.customerName || btn.textContent.replace('▼','').trim();
-        // try to find existing by id
-        let existing = null;
-        if (id) existing = customersIndex.find(c => c.id === String(id));
-        if (!existing) existing = customersIndex.find(c => c.name.toLowerCase() === name.toLowerCase());
-
-        if (existing) {
-          existing.accBtnEl = btn;
-        } else {
-          customersIndex.push({ id: id ? String(id) : null, name: name.trim(), rowEl: null, accBtnEl: btn });
-        }
-      });
-
-      // Helper: render suggestions
-      function showSuggestions(list) {
-        suggestionsBox.innerHTML = '';
-        if (!list || !list.length) { suggestionsBox.style.display = 'none'; suggestionsBox.setAttribute('aria-hidden','true'); return; }
-
-        list.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'item';
-          div.textContent = item.name;
-          div.dataset.cid = item.id;
-          div.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            selectSuggestion(item);
-          });
-          suggestionsBox.appendChild(div);
-        });
-
-        suggestionsBox.style.display = 'block';
-        suggestionsBox.setAttribute('aria-hidden','false');
-      }
-
-      function openAddRemark(id) {
-        document.getElementById("addRemark" + id).style.display = "flex";
-    }
-
-
-      // flash highlight (desktop)
-      function flashHighlight(el){
-        if (!el) return;
-        el.classList.add('cust-highlight');
-        setTimeout(()=> el.classList.remove('cust-highlight'), 1700);
-      }
-
-      // open accordion helper
-      function openAccordion(btn) {
-        if (!btn) return;
-        const panel = btn.nextElementSibling;
-        // close others
-        document.querySelectorAll('.accordion-btn').forEach(other => {
-          if (other !== btn) {
-            other.classList.remove('active');
-            const p = other.nextElementSibling;
-            if (p) p.style.display = 'none';
-          }
-        });
-        // open this
-        btn.classList.add('active');
-        if (panel) panel.style.display = 'block';
-      }
-
-      // scroll & open logic for selected suggestion
-      function selectSuggestion(item) {
-        suggestionsBox.style.display = 'none';
-        searchInput.value = item.name;
-
-        // Desktop row exists -> scroll to it and highlight
-        if (item.rowEl) {
-          // If the table is inside an overflowed container (card-table), scroll that container first:
-          const scrollContainer = item.rowEl.closest('.card-table') || document.scrollingElement || document.documentElement;
-          // scroll row into view (works across browsers)
-          item.rowEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-          flashHighlight(item.rowEl);
-          // If mobile accordion exists too, open it on small screens
-          if (item.accBtnEl && window.innerWidth <= 767) {
-            openAccordion(item.accBtnEl);
-            // also ensure visible in viewport
-            item.accBtnEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-          return;
-        }
-
-        // If only accordion exists (mobile)
-        if (item.accBtnEl) {
-          // open and scroll
-          openAccordion(item.accBtnEl);
-          item.accBtnEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          return;
-        }
-
-        // fallback: nothing found visually
-        console.warn('selected item has no visual element', item);
-      }
-
-      // Search input handlers
-      if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-          const q = e.target.value.trim().toLowerCase();
-          if (!q) { showSuggestions([]); return; }
-
-          // find matches from index
-          const matches = customersIndex.filter(c => c.name.toLowerCase().includes(q));
-          showSuggestions(matches.slice(0, 50)); // limit to 50 for performance
-        });
-
-        // Enter = if exact or first partial match, select it
-        searchInput.addEventListener('keydown', (ev) => {
-          if (ev.key === 'Enter') {
-            ev.preventDefault();
-            const q = searchInput.value.trim().toLowerCase();
-            if (!q) { showSuggestions([]); return; }
-            const exact = customersIndex.find(c => c.name.toLowerCase() === q);
-            const partial = customersIndex.find(c => c.name.toLowerCase().includes(q));
-            const pick = exact || partial;
-            if (pick) selectSuggestion(pick);
-          } else if (ev.key === 'ArrowDown') {
-            // optional: focus first suggestion
-            const first = suggestionsBox.querySelector('.item');
-            if (first) first.focus();
-          }
-        });
-
-        // hide suggestions when clicking outside the search wrapper
-        document.addEventListener('click', (ev) => {
-          if (!ev.target.closest('.search-wrapper')) {
-            suggestionsBox.style.display = 'none';
-          }
-        });
-      }
-
-      // clicking desktop rows highlights them
-      rows.forEach(r => {
-        r.addEventListener('click', () => flashHighlight(r));
-      });
-
-      // Mobile accordion behavior
-      document.querySelectorAll('.accordion-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          // ignore clicks on the history button inside the panel (stopPropagation used there)
-          if (e.target.classList.contains('open-history')) return;
-          const panel = btn.nextElementSibling;
-          const isOpen = btn.classList.contains('active');
-
-          // close others (optional)
-          document.querySelectorAll('.accordion-btn').forEach(other => {
-            if (other !== btn) {
-              other.classList.remove('active');
-              const p = other.nextElementSibling;
-              if (p) p.style.display = 'none';
-            }
-          });
-
-          if (isOpen) {
-            btn.classList.remove('active');
-            if (panel) panel.style.display = 'none';
-          } else {
-            btn.classList.add('active');
-            if (panel) panel.style.display = 'block';
-          }
-        });
-      });
-
-      // history modal wiring (works for both desktop and mobile)
-      document.querySelectorAll('.open-history').forEach(btn => {
-        btn.addEventListener('click', (ev) => {
-          ev.stopPropagation(); // prevent accordion toggle
-          const cid = btn.dataset.customer;
-          const template = document.getElementById('history-data-' + cid);
-          if (!template) {
-            historyModalBody.innerHTML = '<p>No history found.</p>';
-          } else {
-            historyModalBody.innerHTML = template.innerHTML;
-          }
-          if (historyModal) historyModal.show();
-        });
-      });
-
-      // Accessibility: hide suggestions on escape
-      document.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape') {
-          suggestionsBox.style.display = 'none';
-        }
-      });
-      /* ===== highlight customer after remark save ===== */
-        if (window.location.hash) {
-
-            const target = document.querySelector(window.location.hash);
-
-            if (target) {
-
-                setTimeout(() => {
-
-                    target.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center"
-                    });
-
-                    target.classList.add("customer-highlight");
-
-                    setTimeout(() => {
-                        target.classList.remove("customer-highlight");
-                        history.replaceState(null, null, window.location.pathname + window.location.search);
-
-                    }, 5000);
-
-
-                }, 100);
-            }
-        }
-
-    }); // DOMContentLoaded
-
-
-/* ------------------ REMARK MODAL ------------------ */
-function openModal(id) {
-  const m = document.getElementById("modal" + id);
-  m.style.display = "flex";
-  setTimeout(() => m.classList.add("show"), 10);
-}
-function closeModal(id) {
-  const m = document.getElementById("modal" + id);
-  m.classList.remove("show");
-  setTimeout(() => (m.style.display = "none"), 200);
-}
-
-function openAddRemark(id) {
-    const modal = document.getElementById("addRemark" + id);
-    if (!modal) return;
-    modal.style.display = "flex";
-    setTimeout(() => modal.classList.add("show"), 10);
-}
-
-function closeAddRemark(id) {
-    const modal = document.getElementById("addRemark" + id);
-    if (!modal) return;
-    modal.classList.remove("show");
-    setTimeout(() => modal.style.display = "none", 200);
-}
-
-/* ------------------ ALL FOLLWUP MODAL ------------------ */
-
-function openSalespersonFollowups() {
-  const m = document.getElementById("salespersonFollowupsModal");
-  if (!m) return;
-  m.style.display = "flex";
-  setTimeout(() => m.classList.add("show"), 10);
-}
-
-function closeSalespersonFollowups() {
-  const m = document.getElementById("salespersonFollowupsModal");
-  if (!m) return;
-  m.classList.remove("show");
-  setTimeout(() => (m.style.display = "none"), 200);
-}
-
- <!--filteration-->
-
-document.addEventListener('DOMContentLoaded', () => {
-  let filters = {
-    status: 'all',
-    outstanding: 'all'
-  };
-
-  const rows = document.querySelectorAll('#customerTable tbody tr');
-
-  function applyFilters() {
-    rows.forEach(row => {
-      const statusOk =
-        filters.status === 'all' ||
-        row.dataset.status === filters.status;
-
-      const outstandingOk =
-        filters.outstanding === 'all' ||
-        row.dataset.outstanding === filters.outstanding;
-
-      row.style.display = (statusOk && outstandingOk) ? '' : 'none';
-    });
-  }
-
-  // Toggle dropdown
-  document.querySelectorAll('.filter-th').forEach(th => {
-    th.addEventListener('click', e => {
-      e.stopPropagation();
-      document.querySelectorAll('.filter-menu').forEach(m => m.style.display = 'none');
-      const menu = th.querySelector('.filter-menu');
-      if (menu) menu.style.display = 'block';
-    });
-  });
-
-  // Select option
-  document.querySelectorAll('.filter-menu div').forEach(opt => {
-    opt.addEventListener('click', e => {
-      e.stopPropagation();
-      const menu = opt.closest('.filter-menu');
-      const type = menu.dataset.filter;
-      const value = opt.dataset.value;
-
-      filters[type] = value;
-
-      // active state
-      menu.querySelectorAll('div').forEach(d => d.classList.remove('active'));
-      opt.classList.add('active');
-
-      menu.style.display = 'none';
-      applyFilters();
-    });
-  });
-
-  // Close on outside click
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.filter-menu').forEach(m => m.style.display = 'none');
+// close on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('show');
   });
 });
-</script>
 
+/* ── REMARK SHORTCUTS ──────────────────────────────── */
+function openViewRemarks(cid) { openModal('modal-remarks-' + cid); }
+function openAddRemark(cid)   { openModal('modal-add-remark-' + cid); }
+
+/* ── FOLLOW-UPS MODAL ──────────────────────────────── */
+function openFollowupsModal() { openModal('modal-followups'); }
+
+/* ── UNIT MODALS ───────────────────────────────────── */
+function openCreateUnit(cid, cname) {
+  document.getElementById('create-unit-cid').value  = cid;
+  document.getElementById('create-unit-hint').textContent = 'First ledger: ' + cname;
+  document.getElementById('create-unit-name-input').value = '';
+  openModal('modal-create-unit');
+}
+
+function openAddToUnit(cid, cname) {
+  document.getElementById('add-to-unit-cid').value = cid;
+  document.getElementById('add-to-unit-hint').textContent = 'Move "' + cname + '" into an existing unit.';
+  openModal('modal-add-to-unit');
+}
+
+function openLeaveUnit(cid, cname, uid, uname) {
+  document.getElementById('leave-unit-cid').value = cid;
+  document.getElementById('leave-unit-hint').textContent =
+    'Remove "' + cname + '" from unit "' + uname + '"? The customer will become standalone.';
+  openModal('modal-leave-unit');
+}
+
+function openRenameUnit(uid, uname) {
+  document.getElementById('rename-unit-id').value    = uid;
+  document.getElementById('rename-unit-input').value = uname;
+  openModal('modal-rename-unit');
+}
+
+function openDeleteUnit(uid, uname) {
+  document.getElementById('delete-unit-id').value = uid;
+  document.getElementById('delete-unit-hint').textContent =
+    'Delete unit "' + uname + '"? All its customers will become standalone. This cannot be undone.';
+  openModal('modal-delete-unit');
+}
+
+/* ── UNIT TOGGLE (desktop) ─────────────────────────── */
+function toggleUnit(btn) {
+  const uid  = btn.dataset.unit;
+  const body = document.getElementById('unit-members-' + uid);
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  btn.classList.toggle('open', open);
+}
+
+/* ── MOBILE ACCORDION ──────────────────────────────── */
+function toggleMobAcc(btn) {
+  const panel = btn.nextElementSibling;
+  const isOpen = panel.classList.contains('open');
+  // close all
+  document.querySelectorAll('.mob-acc-panel.open').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.mob-acc-btn.open').forEach(b => b.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); btn.classList.add('open'); }
+}
+
+/* ── ORDER HISTORY ─────────────────────────────────── */
+document.querySelectorAll('.open-history-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const cid  = btn.dataset.cid;
+    const tmpl = document.getElementById('history-data-' + cid);
+    const body = document.getElementById('history-modal-body');
+    body.innerHTML = tmpl ? tmpl.innerHTML : '<p class="text-muted-sm">No history found.</p>';
+    openModal('modal-history');
+  });
+});
+
+/* ── CUSTOMER SEARCH ───────────────────────────────── */
+(function() {
+  const input = document.getElementById('customerSearch');
+  const box   = document.getElementById('searchSuggestions');
+  if (!input) return;
+
+  // Build index from all rows (desktop) + accordion buttons (mobile)
+  const index = [];
+  document.querySelectorAll('#customerTable tbody tr[data-cid]').forEach(row => {
+    index.push({ id: row.dataset.cid, name: row.dataset.cname, rowEl: row });
+  });
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { box.style.display = 'none'; return; }
+    const matches = index.filter(c => c.name.toLowerCase().includes(q)).slice(0, 40);
+    if (!matches.length) { box.style.display = 'none'; return; }
+    box.innerHTML = matches.map(c =>
+      `<div class="s-item" data-cid="${c.id}">${c.name}</div>`
+    ).join('');
+    box.style.display = 'block';
+    box.querySelectorAll('.s-item').forEach((item, i) => {
+      item.addEventListener('click', () => {
+        input.value = matches[i].name;
+        box.style.display = 'none';
+        const row = matches[i].rowEl;
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          row.classList.add('row-flash');
+          setTimeout(() => row.classList.remove('row-flash'), 1700);
+        }
+      });
+    });
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) box.style.display = 'none';
+  });
+})();
+
+/* ── HASH SCROLL (after remark save) ──────────────── */
+if (window.location.hash) {
+  const target = document.querySelector(window.location.hash);
+  if (target) {
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('row-flash');
+      setTimeout(() => {
+        target.classList.remove('row-flash');
+        history.replaceState(null, null, window.location.pathname + window.location.search);
+      }, 1700);
+    }, 120);
+  }
+}
+</script>
 </body>
 </html>
