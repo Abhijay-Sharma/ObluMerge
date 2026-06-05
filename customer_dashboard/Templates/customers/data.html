@@ -283,7 +283,9 @@ body{ overflow-x:hidden; }
   <div class="customer-card">
     <div class="customer-header">
       <div>
-        <div class="customer-name">{{ c.name }}</div>
+        <a href="{% url 'customers:customer_detail' c.id %}" class="customer-name fw-bold text-decoration-none" style="font-size: 1.rem; color: #2374ff; display: block;">
+          {{ c.name }}
+      </a>
         <div class="customer-sales">
           Salesperson: {{ c.salesperson.name|default:"Unassigned" }}
         </div>
