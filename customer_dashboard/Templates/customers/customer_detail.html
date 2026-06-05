@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ customer.name }} | Customer Detail</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-blue: #4361ee;
+            --success-green: #2ec4b6;
+            --danger-red: #e71d36;
+            --warning-yellow: #ff9f1c;
+            --indigo-unit: #6c5ce7;
+            --bg-light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: #2d3436;
+        }
+
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            background-color: transparent !important;
+            border-bottom: 1px solid #f1f3f5 !important;
+            padding: 1.25rem;
+        }
+
+        /* KPI Card Styling */
+        .kpi-card {
+            transition: transform 0.2s ease;
+            border-bottom: 4px solid transparent;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+        }
+        .icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Timeline Styling */
+        .timeline {
+            border-left: 2px solid #e9ecef;
+            margin-left: 1rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+        .timeline-marker {
+            position: absolute;
+            left: -31px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px #e9ecef;
+        }
+
+        /* Unit Section Special Styling */
+        .unit-card {
+            border-left: 6px solid var(--indigo-unit) !important;
+            background: linear-gradient(to right, #ffffff, #fcfbff);
+        }
+        .text-indigo { color: var(--indigo-unit); }
+        .bg-light-indigo { background-color: #f3f0ff; color: var(--indigo-unit); }
+
+        /* Table Styling */
+        .table thead th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            color: #6c757d;
+            border-top: none;
+        }
+        .table-active {
+            background-color: #f8f9ff !important;
+        }
+
+        /* Custom Badges */
+        .badge-soft-primary { background-color: #e7f0ff; color: var(--primary-blue); }
+        .badge-soft-danger { background-color: #ffeef0; color: var(--danger-red); }
+        .badge-soft-warning { background-color: #fff8e6; color: #b7791f; }
+
+        .btn {
+            border-radius: 10px;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid py-4">
+
+    <!-- ====================================================== -->
+    <!-- PAGE HEADER -->
+    <!-- ====================================================== -->
+    <div class="row align-items-center mb-4">
+        <div class="col-md-6">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'customers:data' %}" class="text-decoration-none">Customers</a></li>
+                    <li class="breadcrumb-item active">{{ customer.name }}</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-0">
+                {{ customer.name }} 
+                {% if unit %}<span class="badge bg-light-indigo ms-2 fs-6"><i class="bi bi-diagram-3 me-1"></i>{{ unit.name }}</span>{% endif %}
+            </h2>
+        </div>
+        <div class="col-md-6 text-md-end mt-3 mt-md-0">
+            <div class="btn-group shadow-sm">
+                <a href="{% url 'customers:customerpaymentstatus' customer.id %}" class="btn btn-white border">
+                    <i class="bi bi-cash-stack me-2 text-primary"></i>Payment Dashboard
+                </a>
+                <a href="{% url 'customers:customer_edit' customer.id %}" class="btn btn-white border">
+                    <i class="bi bi-pencil me-2 text-warning"></i>Edit
+                </a>
+                <a href="/voucher/customer/{{ customer.id }}/items/" class="btn btn-primary">
+                    <i class="bi bi-cart4 me-2"></i>Purchase History
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- KPI CARDS -->
+    <!-- ====================================================== -->
+    <div class="row mb-2">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card kpi-card h-100" style="border-color: var(--danger-red);">
+                <div class="card-body">
+                    <div class="icon-box" style="background-color: #ffeef0; color: var(--danger-red);">
+                        <i class="bi bi-currency-rupee"></i>
+                    </div>
+                    <div class="text-muted small fw-bold">OUTSTANDING BALANCE</div>
+                    <h3 class="fw-bold mt-1 mb-0">₹{{ credit_profile.outstanding_balance|default:0 }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card kpi-card h-100" style="border-color: var(--primary-blue);">
+                <div class="card-body">
+                    <div class="icon-box" style="background-color: #e7f0ff; color: var(--primary-blue);">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div class="text-muted small fw-bold">CREDIT PERIOD</div>
+                    <h3 class="fw-bold mt-1 mb-0">{{ credit_profile.credit_period_days|default:0 }} Days</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card kpi-card h-100" style="border-color: var(--warning-yellow);">
+                <div class="card-body">
+                    <div class="icon-box" style="background-color: #fff8e6; color: var(--warning-yellow);">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div class="text-muted small fw-bold">PENDING INVOICES</div>
+                    <h3 class="fw-bold mt-1 mb-0">{{ pending_vouchers|length }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card kpi-card h-100" style="border-color: var(--success-green);">
+                <div class="card-body">
+                    <div class="icon-box" style="background-color: #e6f9f7; color: var(--success-green);">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <div class="text-muted small fw-bold">SALESPERSON</div>
+                    <h5 class="fw-bold mt-2 mb-0">{{ customer.salesperson }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            
+            <!-- ====================================================== -->
+            <!-- UNIT MEMBERS SECTION (Conditional) -->
+            <!-- ====================================================== -->
+            {% if unit %}
+            <div class="card unit-card shadow-sm border-0 mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-indigo"><i class="bi bi-people-fill me-2"></i>Unit Members ({{ unit.name }})</h5>
+                    <span class="badge bg-light-indigo">{{ unit_members|length }} Total Entities</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Entity Name</th>
+                                    <th>Salesperson</th>
+                                    <th class="text-end pe-4">Current Outstanding</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in unit_members %}
+                                <tr {% if member.id == customer.id %}class="table-active"{% endif %}>
+                                    <td class="ps-4">
+                                        <a href="{% url 'customers:customer_detail' member.id %}" class="text-decoration-none fw-bold {% if member.id == customer.id %}text-indigo{% else %}text-dark{% endif %}">
+                                            {{ member.name }} {% if member.id == customer.id %}<span class="ms-1 small fw-normal">(Viewing)</span>{% endif %}
+                                        </a>
+                                    </td>
+                                    <td class="small">{{ member.salesperson }}</td>
+                                    <td class="text-end pe-4">
+                                        <span class="fw-bold {% if member.credit_profile.outstanding_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                            ₹{{ member.credit_profile.outstanding_balance|default:0 }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ====================================================== -->
+            <!-- CUSTOMER INFO -->
+            <!-- ====================================================== -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2 text-primary"></i>General Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row gy-4">
+                        <div class="col-md-4">
+                            <small class="text-muted text-uppercase fw-bold d-block mb-1">Phone</small>
+                            <div class="fw-semibold">{{ customer.phone }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted text-uppercase fw-bold d-block mb-1">Email</small>
+                            <div class="fw-semibold">{{ customer.email|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted text-uppercase fw-bold d-block mb-1">State / District</small>
+                            <div class="fw-semibold">{{ customer.state }} / {{ customer.district }}</div>
+                        </div>
+                        <div class="col-md-12">
+                            <small class="text-muted text-uppercase fw-bold d-block mb-1">Address</small>
+                            <div class="fw-semibold">{{ customer.address }} - {{ customer.pincode }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================================================== -->
+            <!-- PENDING PAYMENTS -->
+            <!-- ====================================================== -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0 fw-bold text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Pending Payments</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Voucher No</th>
+                                    <th>Date</th>
+                                    <th>Balance</th>
+                                    <th>Days</th>
+                                    <th class="text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in pending_vouchers %}
+                                <tr {% if invoice.is_credit_period_crossed %}style="background-color: #fff9f9;"{% endif %}>
+                                    <td class="ps-4">
+                                        <div class="fw-bold">{{ invoice.voucher.voucher_number }}</div>
+                                        <div class="text-muted small">{{ invoice.voucher_type }}</div>
+                                    </td>
+                                    <td>{{ invoice.voucher_date }}</td>
+                                    <td>
+                                        <span class="fw-bold text-danger">₹{{ invoice.unpaid_amount }}</span>
+                                        <div class="text-muted smaller">of ₹{{ invoice.voucher_amount }}</div>
+                                    </td>
+                                    <td>{{ invoice.credit_days_elapsed }}</td>
+                                    <td class="text-end pe-4">
+                                        <a href="{% url 'customers:payment_thread_detail' invoice.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            Thread
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center py-5 text-muted">No pending payments found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- ====================================================== -->
+            <!-- TOP PRODUCTS -->
+            <!-- ====================================================== -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2 text-warning"></i>Top Products</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for product in top_products %}
+                        <div class="list-group-item py-3">
+                            <div class="fw-bold text-dark mb-1">{{ product.product }}</div>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for month, qty in product.months.items %}
+                                <span class="badge badge-soft-primary" style="font-size: 10px;">{{ month }}: {{ qty|floatformat:0 }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================================================== -->
+            <!-- TIMELINE -->
+            <!-- ====================================================== -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-info"></i>Activity Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for row in timeline %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker {% if row.type == 'remark' %}bg-primary{% else %}bg-warning{% endif %}"></div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold small">{{ row.salesperson }}</span>
+                                <span class="text-muted" style="font-size: 11px;">{{ row.date|date:"d M, H:i" }}</span>
+                            </div>
+                            <p class="text-muted small mb-0 mt-1">
+                                {% if row.type == 'remark' %}
+                                    {{ row.text }}
+                                {% else %}
+                                    Followup scheduled for {{ row.obj.followup_date }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-muted small py-3">No activity recorded.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- PAYMENT REMARKS HISTORY -->
+    <!-- ====================================================== -->
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-chat-dots me-2 text-secondary"></i>Payment Remarks History</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Date</th>
+                            <th>User</th>
+                            <th>Invoice No</th>
+                            <th>Remark Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for remark in payment_remarks %}
+                        <tr>
+                            <td class="ps-4 text-muted small">{{ remark.created_at|date:"d M Y H:i" }}</td>
+                            <td><span class="fw-bold">{{ remark.created_by }}</span></td>
+                            <td><span class="badge border text-dark">{{ remark.thread.voucher_status.voucher.voucher_number }}</span></td>
+                            <td class="small">{{ remark.remark }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">No remarks available.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

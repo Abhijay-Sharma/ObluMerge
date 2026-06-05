@@ -66,4 +66,10 @@ urlpatterns = [
     path("salesperson-qualitative-report/", views.SalesPersonQualitativeReportView.as_view(), name="salesperson_qualitative_report"),
 
     path('payment-followups/export/', views.export_payment_followup, name='export_payment_followup'),
+
+    path(
+        "customer/<int:pk>/",
+        views.CustomerDetailView.as_view(),
+        name="customer_detail",
+    ),
 ]

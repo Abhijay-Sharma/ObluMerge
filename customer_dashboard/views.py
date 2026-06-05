@@ -3948,3 +3948,176 @@ class GeoSalesReportView(AccountantRequiredMixin, TemplateView):
                  d_map2.items()])
 
         return ctx
+
+
+class CustomerDetailView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/customer_detail.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        customer = get_object_or_404(
+            Customer.objects.select_related(
+                "salesperson",
+                "credit_profile"
+            ),
+            pk=self.kwargs["pk"]
+        )
+
+        ctx["customer"] = customer
+
+        # UNIT FUNCTIONALITY (NEW)
+        # =====================================================
+        # Check if this customer belongs to any unit
+        membership = CustomerUnitMembership.objects.filter(customer=customer).select_related('unit').first()
+
+        if membership:
+            unit = membership.unit
+            ctx["unit"] = unit
+            # Fetch all customers belonging to this unit
+            # We select related credit_profile and salesperson for detailed display
+            ctx["unit_members"] = Customer.objects.filter(
+                unit_membership__unit=unit
+            ).select_related("credit_profile", "salesperson").order_by("name")
+        else:
+            ctx["unit"] = None
+            ctx["unit_members"] = []
+
+        # =====================================================
+        # REMARKS + FOLLOWUPS TIMELINE
+        # =====================================================
+
+        timeline = []
+
+        remarks = CustomerRemark.objects.filter(
+            customer=customer
+        ).select_related("salesperson")
+
+        for r in remarks:
+            timeline.append({
+                "type": "remark",
+                "date": r.created_at,
+                "salesperson": r.salesperson,
+                "text": r.remark,
+                "obj": r,
+            })
+
+        followups = CustomerFollowUp.objects.filter(
+            customer=customer
+        ).select_related("salesperson")
+
+        for f in followups:
+            timeline.append({
+                "type": "followup",
+                "date": f.created_at,
+                "salesperson": f.salesperson,
+                "obj": f,
+            })
+
+        timeline = sorted(
+            timeline,
+            key=lambda x: x["date"],
+            reverse=True
+        )
+
+        ctx["timeline"] = timeline
+
+        # =====================================================
+        # TOP 5 PRODUCTS
+        # =====================================================
+
+        invoices = Voucher.objects.filter(
+            party_name__iexact=customer.name,
+            voucher_type="TAX INVOICE"
+        )
+
+        product_month_data = defaultdict(
+            lambda: defaultdict(float)
+        )
+
+        stock_rows = VoucherStockItem.objects.filter(
+            voucher__in=invoices
+        ).select_related(
+            "voucher",
+            "item"
+        )
+
+        for row in stock_rows:
+
+            product_name = (
+                row.item.name
+                if row.item
+                else row.item_name_text
+            )
+
+            month_key = row.voucher.date.strftime("%b%y")
+
+            product_month_data[product_name][month_key] += float(
+                row.quantity
+            )
+
+        ranked_products = sorted(
+            product_month_data.items(),
+            key=lambda x: sum(x[1].values()),
+            reverse=True
+        )[:5]
+
+        top_products = []
+
+        for idx, (product, months) in enumerate(
+            ranked_products,
+            start=1
+        ):
+            top_products.append({
+                "sno": idx,
+                "product": product,
+                "months": dict(months)
+            })
+
+        ctx["top_products"] = top_products
+
+        # =====================================================
+        # PAYMENT SUMMARY
+        # =====================================================
+
+        credit_profile = getattr(
+            customer,
+            "credit_profile",
+            None
+        )
+
+        ctx["credit_profile"] = credit_profile
+
+        pending_vouchers = (
+            CustomerVoucherStatus.objects
+            .filter(
+                customer=customer
+            )
+            .filter(
+                is_fully_paid=False
+            )
+            .select_related("voucher")
+            .order_by("-voucher_date")
+        )
+
+        ctx["pending_vouchers"] = pending_vouchers
+
+        # =====================================================
+        # PAYMENT REMARKS
+        # =====================================================
+
+        payment_remarks = (
+            PaymentRemark.objects
+            .filter(
+                thread__voucher_status__customer=customer
+            )
+            .select_related(
+                "created_by",
+                "thread__voucher_status"
+            )
+            .order_by("-created_at")
+        )
+
+        ctx["payment_remarks"] = payment_remarks
+
+        return ctx
