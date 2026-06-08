@@ -246,7 +246,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
-        excluded_names = ["Abhijay"]
+        excluded_names = ["Abhijay","Aryan","Danish","Jackson","Mukesh","Nimit","Raman","test1","Vibhuti"]
 
         ctx["salespersons"] = (
             SalesPerson.objects
