@@ -455,6 +455,7 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
       <a href="{% url 'customers:customer_detail' c.id %}" style="font-weight: 600; color: var(--accent);">
         {{ c.name }}
       </a>
+      <div class="text-muted-sm" style="font-size: 11px; margin-top: 2px;">{{ c.phone }}</div>
     </td>
     <td>{{ c.state }}</td>
     <td>{{ c.total_orders }}</td>
@@ -487,6 +488,7 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
       <a href="{% url 'customers:customer_detail' c.id %}" style="font-weight: 600; color: var(--accent);">
         {{ c.name }}
       </a>
+      <div class="text-muted-sm" style="font-size: 11px; margin-top: 2px;">{{ c.phone }}</div>
     </td>
     <td>{{ c.state }}</td>
     <td>{{ c.total_orders }}</td>
@@ -541,6 +543,7 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
           <div style="font-weight:600;font-size:13px;margin-bottom:4px;">
             <a href="{% url 'customers:customer_detail' c.id %}" style="color: var(--accent);">{{ c.name }}</a>
             {% if c.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}
+            <div class="text-muted-sm" style="font-weight: 400; font-size: 11px; margin-top: 2px;">{{ c.phone }}</div>
           </div>
           <div class="mob-actions">
             <a href="{% url 'customer_item_purchases' c.id %}" class="btn-xs primary">Item Purchases</a>
@@ -570,6 +573,7 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
 <!--        <div class="acc-name">{{ c.name }}</div>-->
             <div class="acc-name">
               <a href="{% url 'customers:customer_detail' c.id %}" style="color: var(--accent);">{{ c.name }}</a>
+              <div class="text-muted-sm" style="font-weight: 400; font-size: 11px; margin-top: 2px;">{{ c.phone }}</div>
             </div>
         <div class="acc-meta">{{ c.state }} · {% if c.is_red_flag %}Inactive{% else %}Active{% endif %}</div>
       </div>
