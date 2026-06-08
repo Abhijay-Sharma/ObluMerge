@@ -451,7 +451,11 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
   {% for c in unit.members %}
   <tr class="unit-member" id="customer-{{ c.id }}" data-cid="{{ c.id }}" data-cname="{{ c.name }}" data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}">
     <td>↳</td>
-    <td>{{ c.name }}</td>
+    <td>
+      <a href="{% url 'customers:customer_detail' c.id %}" style="font-weight: 600; color: var(--accent);">
+        {{ c.name }}
+      </a>
+    </td>
     <td>{{ c.state }}</td>
     <td>{{ c.total_orders }}</td>
     <td class="text-mono">₹{{ c.total_order_value|floatformat:2 }}</td>
@@ -479,7 +483,11 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
   {% for c in customers %}
   <tr id="customer-{{ c.id }}" data-cid="{{ c.id }}" data-cname="{{ c.name }}" data-status="{% if c.is_red_flag %}inactive{% else %}active{% endif %}">
     <td>{{ forloop.counter }}</td>
-    <td>{{ c.name }}</td>
+    <td>
+      <a href="{% url 'customers:customer_detail' c.id %}" style="font-weight: 600; color: var(--accent);">
+        {{ c.name }}
+      </a>
+    </td>
     <td>{{ c.state }}</td>
     <td>{{ c.total_orders }}</td>
     <td class="text-mono">₹{{ c.total_order_value|floatformat:2 }}</td>
@@ -529,7 +537,11 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
       <div class="mob-unit-members">
         {% for c in unit.members %}
         <div class="mob-unit-member-item">
-          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">{{ c.name }} {% if c.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}</div>
+<!--          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">{{ c.name }} {% if c.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}</div>-->
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">
+            <a href="{% url 'customers:customer_detail' c.id %}" style="color: var(--accent);">{{ c.name }}</a>
+            {% if c.is_red_flag %}<span class="badge-inactive">Inactive</span>{% else %}<span class="badge-active">Active</span>{% endif %}
+          </div>
           <div class="mob-actions">
             <a href="{% url 'customer_item_purchases' c.id %}" class="btn-xs primary">Item Purchases</a>
             <a href="{% url 'customers:customerpaymentstatus' c.id %}" class="btn-xs primary">Payment Status</a>
@@ -555,7 +567,10 @@ tr.unit-member:hover td { background: #F0F4FF !important; }
   <div class="mob-acc-item {% if c.is_red_flag %}inactive{% else %}active{% endif %}" id="mob-customer-{{ c.id }}">
     <button class="mob-acc-btn" onclick="toggleMobAcc(this)">
       <div>
-        <div class="acc-name">{{ c.name }}</div>
+<!--        <div class="acc-name">{{ c.name }}</div>-->
+            <div class="acc-name">
+              <a href="{% url 'customers:customer_detail' c.id %}" style="color: var(--accent);">{{ c.name }}</a>
+            </div>
         <div class="acc-meta">{{ c.state }} · {% if c.is_red_flag %}Inactive{% else %}Active{% endif %}</div>
       </div>
       <span class="acc-arrow">▾</span>
