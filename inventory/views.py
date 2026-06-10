@@ -31,6 +31,7 @@ from tally_voucher.models import VoucherStockItem
 from collections import defaultdict
 from customer_dashboard.models import Customer
 from urllib.parse import quote
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -2839,9 +2840,20 @@ class ProductContributionSummaryView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        # 1. Handle Default Dates (90 Days)
+        today = timezone.now().date()
+        default_start = (today - timedelta(days=90)).isoformat()
+        default_end = today.isoformat()
+
         # 1. Get Filters
         start_date = self.request.GET.get('start_date')
         end_date = self.request.GET.get('end_date')
+        # If date is missing, empty string, or the string "None", use defaults
+        if not start_date or start_date == "" or start_date == "None":
+            start_date = default_start
+        if not end_date or end_date == "" or end_date == "None":
+            end_date = default_end
+
 
         # Base Query: Only Tax Invoices
         stock_qs = VoucherStockItem.objects.filter(voucher__voucher_type="TAX INVOICE")
@@ -2890,43 +2902,52 @@ class ProductSalesHistoryDetailView(ListView):
     context_object_name = "transactions"
 
     def get_queryset(self):
+        # 1. Get the item
         self.item = get_object_or_404(InventoryItem, id=self.kwargs['item_id'])
-        queryset = VoucherStockItem.objects.filter(
-            item=self.item,
-            voucher__voucher_type="TAX INVOICE"
-        ).select_related('voucher').order_by('-voucher__date')
 
+        # 2. Get and handle dates
+        today = timezone.now().date()
         start_date = self.request.GET.get('start_date')
         end_date = self.request.GET.get('end_date')
 
-        if start_date:
-            queryset = queryset.filter(voucher__date__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(voucher__date__lte=end_date)
+        if not start_date or start_date == "None" or start_date == "":
+            start_date = (today - timedelta(days=90)).isoformat()
+        if not end_date or end_date == "None" or end_date == "":
+            end_date = today.isoformat()
 
-        return queryset
+        # Store dates in self so get_context_data can access them later
+        self.start_date = start_date
+        self.end_date = end_date
+
+        # 3. RETURN THE ACTUAL QUERYSET (This was the error)
+        return VoucherStockItem.objects.filter(
+            item=self.item,
+            voucher__voucher_type="TAX INVOICE",
+            voucher__date__gte=start_date,  # Actually filter by date here
+            voucher__date__lte=end_date
+        ).select_related('voucher').order_by('-voucher__date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        # transactions is now a QuerySet of VoucherStockItem objects
         transactions = context['transactions']
 
-        # Optimization: Map party_names to Salespersons to avoid N+1 queries
+        # Map party_names to Salespersons
         party_names = [t.voucher.party_name for t in transactions]
         customer_map = {
-            c.name.lower(): c.salesperson.name if c.salesperson else "N/A"
+            c.name.lower(): (c.salesperson.name if c.salesperson else "N/A")
             for c in Customer.objects.filter(name__in=party_names).select_related('salesperson')
         }
 
-        # Calculate totals and enrich data
+        enriched_data = []
         total_qty = 0
         total_amt = 0
-        enriched_data = []
 
         for trans in transactions:
             total_qty += trans.quantity
             total_amt += trans.amount
             enriched_data.append({
-                'obj': trans,
+                'obj': trans,  # The actual VoucherStockItem object
                 'salesperson': customer_map.get(trans.voucher.party_name.lower(), "N/A"),
                 'rate': trans.amount / trans.quantity if trans.quantity > 0 else 0
             })
@@ -2936,7 +2957,7 @@ class ProductSalesHistoryDetailView(ListView):
             "report_rows": enriched_data,
             "total_qty": total_qty,
             "total_amt": total_amt,
-            "start_date": self.request.GET.get('start_date'),
-            "end_date": self.request.GET.get('end_date'),
+            "start_date": self.start_date,  # Use the dates we saved in get_queryset
+            "end_date": self.end_date,
         })
         return context
