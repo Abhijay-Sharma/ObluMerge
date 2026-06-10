@@ -338,7 +338,7 @@
             <tbody>
               {% for c in churned %}
               <tr>
-                <td class="customer-name">{{ c.name }}</td>
+                <td class="customer-name"><a href="{% url 'customer_detail' c.id %}">{{ c.name }}</a></td>
                 <td class="mono">{{ c.alltime_qty }}</td>
                 <td class="mono">{{ c.prior_qty }}</td>
                 <td class="mono">{{ c.last_purchase|date:"d M Y"|default:"—" }}</td>
@@ -383,7 +383,7 @@
             <tbody>
               {% for c in declining %}
               <tr>
-                <td class="customer-name">{{ c.name }}</td>
+                <td class="customer-name"><a href="{% url 'customer_detail' c.id %}">{{ c.name }}</a></td>
                 <td class="mono">{{ c.recent_qty }}</td>
                 <td class="mono">{{ c.prior_qty }}</td>
                 <td class="mono" style="color:var(--red); font-weight:600">▼ {{ c.drop_pct }}%</td>
@@ -421,7 +421,7 @@
             <tbody>
               {% for c in rising %}
               <tr>
-                <td class="customer-name">{{ c.name }}</td>
+                <td class="customer-name"><a href="{% url 'customer_detail' c.id %}">{{ c.name }}</a></td>
                 <td class="mono">{{ c.recent_qty }}</td>
                 <td class="mono">{% if c.prior_qty %}{{ c.prior_qty }}{% else %}—{% endif %}</td>
                 <td class="mono" style="color:var(--green); font-weight:600">
