@@ -292,7 +292,7 @@
               {% for c in top_customers %}
               <tr>
                 <td class="mono" style="color:var(--muted)">{{ forloop.counter }}</td>
-                <td class="customer-name"><a href="{% url 'customer_detail' c.id %}">{{ c.name }}</a></td>
+                <td class="customer-name">{{ c.name }}</td>
                 <td class="mono">{{ c.alltime_qty }}</td>
                 <td class="mono">
                   {{ c.recent_qty }}

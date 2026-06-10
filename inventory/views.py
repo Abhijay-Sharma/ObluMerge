@@ -3288,7 +3288,6 @@ class ProductAnalyticsDetailView(AccountantRequiredMixin, View):
                 for m in last_12_months
             ]
             top_customers.append({
-                "id": customer.pk,
                 "name":         name,
                 "alltime_qty":  round(total, 1),
                 "recent_qty":   round(cust_recent[name], 1),
