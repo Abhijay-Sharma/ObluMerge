@@ -1,235 +1,234 @@
-{% extends "base.html" %}
-{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Ledger | {{ item.name }}</title>
 
-{% block content %}
-<div class="container-fluid">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
-    <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --primary-accent: #4f46e5;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --glass: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            padding: 2rem 0;
+        }
+
+        /* --- Header Section --- */
+        .page-header {
+            background: white;
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-back {
+            background: #f1f5f9;
+            color: var(--text-muted);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-back:hover {
+            background: var(--text-dark);
+            color: white;
+        }
+
+        /* --- Ledger Card --- */
+        .ledger-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        .ledger-title-bar {
+            padding: 1.5rem 2rem;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* --- Table Styling --- */
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background: white;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            padding: 1.2rem 1rem;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .table tbody td {
+            padding: 1.2rem 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+        }
+
+        .salesperson-badge {
+            background: #eef2ff;
+            color: #4338ca;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .text-amount {
+            color: var(--primary-accent);
+            font-weight: 700;
+        }
+
+        /* --- Footer Summary --- */
+        .ledger-footer {
+            background: #0f172a;
+            color: white;
+            padding: 1.5rem 2rem;
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+
+        .summary-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Top Navigation Header -->
+    <header class="page-header d-flex justify-content-between align-items-center">
         <div>
-            <h2 class="fw-bold mb-1">{{ product.name }}</h2>
-            <p class="text-muted mb-0">
-                Product Sales History
-            </p>
+            <nav aria-label="breadcrumb" class="mb-1">
+                <ol class="breadcrumb mb-0" style="font-size: 0.75rem;">
+                    <li class="breadcrumb-item"><a href="#" class="text-decoration-none">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Sales Ledger</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold mb-0">Ledger: <span class="text-primary">{{ item.name }}</span></h2>
+            <p class="text-muted small mb-0">Period: {{ start_date }} to {{ end_date }}</p>
         </div>
-
-        <a href="{% url 'inventory_report' %}"
-           class="btn btn-outline-secondary">
-            <i class="mdi mdi-arrow-left"></i>
-            Back
+        <a href="{% url 'product_contribution_summary' %}?start_date={{ start_date }}&end_date={{ end_date }}" class="btn-back">
+            <i class="bi bi-arrow-left"></i> Back to Summary
         </a>
-    </div>
+    </header>
 
-    <!-- Summary Cards -->
-    <div class="row mb-4">
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Current Stock</p>
-                    <h3 class="fw-bold mb-0">
-                        {{ product.quantity }}
-                    </h3>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Total Sold</p>
-                    <h3 class="fw-bold text-primary mb-0">
-                        {{ total_qty }}
-                    </h3>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Transactions</p>
-                    <h3 class="fw-bold text-info mb-0">
-                        {{ history|length }}
-                    </h3>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm bg-success text-white">
-                <div class="card-body">
-                    <p class="mb-1">Lifetime Revenue</p>
-                    <h3 class="fw-bold mb-0">
-                        ₹{{ total_revenue|floatformat:0|intcomma }}
-                    </h3>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Product Information -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-
-            <div class="row">
-
-                <div class="col-md-6">
-                    <h5 class="fw-bold mb-3">Product Details</h5>
-
-                    <table class="table table-sm">
-                        <tr>
-                            <th width="180">Product</th>
-                            <td>{{ product.name }}</td>
-                        </tr>
-
-                        <tr>
-                            <th>Category</th>
-                            <td>
-                                <span class="badge bg-primary">
-                                    {{ product.category.name }}
-                                </span>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <th>Current Stock</th>
-                            <td>{{ product.quantity }}</td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="col-md-6">
-
-                    <div class="alert alert-success mb-0">
-                        <h5 class="fw-bold mb-2">
-                            Revenue Generated
-                        </h5>
-
-                        <h2 class="mb-0">
-                            ₹{{ total_revenue|floatformat:0|intcomma }}
-                        </h2>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Transaction Table -->
-    <div class="card border-0 shadow-sm">
-
-        <div class="card-header bg-white">
-            <h5 class="mb-0 fw-bold">
-                Sales Transaction History
-            </h5>
+    <!-- Detailed Transactions Card -->
+    <div class="ledger-card">
+        <div class="ledger-title-bar d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">Transaction Breakdown</h5>
+            <span class="badge bg-white text-dark border px-3 py-2 rounded-pill small fw-bold">
+                {{ report_rows|length }} Records Found
+            </span>
         </div>
 
         <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
-
-                <thead class="table-light">
+            <table class="table table-hover align-middle">
+                <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Quantity Sold</th>
+                        <th class="ps-4">Date</th>
+                        <th>Voucher #</th>
+                        <th>Customer / Party Name</th>
                         <th>Salesperson</th>
-                        <th>Customer</th>
-                        <th class="text-end">Sale Value</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-end">Avg Rate</th>
+                        <th class="text-end pe-4">Total Amount</th>
                     </tr>
                 </thead>
-
                 <tbody>
-
-                {% for entry in history %}
-
+                    {% for row in report_rows %}
                     <tr>
-
+                        <td class="ps-4 text-muted">{{ row.obj.voucher.date|date:"d M Y" }}</td>
+                        <td class="fw-medium text-dark">{{ row.obj.voucher.voucher_no }}</td>
                         <td>
-                            {{ entry.date|date:"d M Y" }}
+                            <div class="fw-bold text-dark">{{ row.obj.voucher.party_name }}</div>
                         </td>
-
                         <td>
-                            <span class="badge bg-danger">
-                                {{ entry.outwards_quantity }}
+                            <span class="salesperson-badge">
+                                <i class="bi bi-person-circle me-1"></i> {{ row.salesperson }}
                             </span>
                         </td>
-
-                        <td>
-                            <span class="badge bg-info">
-                                Tally Sale
-                            </span>
-                        </td>
-
-                        <td>
-                            <span class="badge bg-secondary">
-                                Customer
-                            </span>
-                        </td>
-
-                        <td class="text-end fw-bold text-success">
-                            ₹{{ entry.outwards_value|floatformat:2|intcomma }}
-                        </td>
-
+                        <td class="text-center fw-bold">{{ row.obj.quantity|floatformat:0 }}</td>
+                        <td class="text-end text-muted">₹ {{ row.rate|floatformat:2 }}</td>
+                        <td class="text-end pe-4 text-amount">₹ {{ row.obj.amount|floatformat:2 }}</td>
                     </tr>
-
-                {% empty %}
-
+                    {% empty %}
                     <tr>
-                        <td colspan="5">
-
-                            <div class="text-center py-5">
-
-                                <i class="mdi mdi-package-variant fs-1 text-muted"></i>
-
-                                <h5 class="mt-3">
-                                    No Sales Found
-                                </h5>
-
-                                <p class="text-muted mb-0">
-                                    This product has no recorded sales history.
-                                </p>
-
-                            </div>
-
+                        <td colspan="7" class="text-center py-5 text-muted italic">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No transactions found for the selected period.
                         </td>
                     </tr>
-
-                {% endfor %}
-
+                    {% endfor %}
                 </tbody>
-
-                <tfoot class="table-light">
-
-                    <tr class="fw-bold">
-
-                        <td colspan="1">
-                            TOTAL
-                        </td>
-
-                        <td>
-                            {{ total_qty }}
-                        </td>
-
-                        <td></td>
-                        <td></td>
-
-                        <td class="text-end text-success">
-                            ₹{{ total_revenue|floatformat:2|intcomma }}
-                        </td>
-
-                    </tr>
-
-                </tfoot>
-
             </table>
-
         </div>
 
+        <!-- Ledger Footer Summary -->
+        <div class="ledger-footer">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <span class="summary-label d-block mb-1">Cumulative Sales Summary</span>
+                    <span class="small text-white-50">Total volume and value generated for {{ item.name }}</span>
+                </div>
+                <div class="col-md-3 text-md-end">
+                    <span class="summary-label d-block mb-1">Total Quantity</span>
+                    <span class="summary-value">{{ total_qty|floatformat:2 }}</span>
+                </div>
+                <div class="col-md-3 text-md-end">
+                    <span class="summary-label d-block mb-1">Net Sales Value</span>
+                    <span class="summary-value text-warning">₹ {{ total_amt|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Print / Export Actions (Optional) -->
+    <div class="mt-4 d-flex justify-content-end gap-2 d-print-none">
+        <button onclick="window.print()" class="btn btn-outline-dark btn-sm fw-bold">
+            <i class="bi bi-printer me-1"></i> Print Ledger
+        </button>
+    </div>
 </div>
-{% endblock %}
+
+</body>
+</html>
