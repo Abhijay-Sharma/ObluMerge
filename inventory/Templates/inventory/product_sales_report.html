@@ -330,7 +330,7 @@
                                     </div>
                                 </td>
                                 <td class="text-center">
-                                    <a href="?start_date={{ start_date }}&end_date={{ end_date }}&product_id={{ p.prod_pk|default:p.item__id }}#details" 
+                                    <a href="{% url 'product_sales_history' p.item__id %}?start_date={{ start_date }}&end_date={{ end_date }}"
                                        class="btn btn-action">
                                         View History
                                     </a>
