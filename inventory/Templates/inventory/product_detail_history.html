@@ -1,39 +1,235 @@
-<div class="container-fluid mt-4">
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Sales Ledger: {{ item.name }}</h2>
-        <a href="{% url 'product_contribution_summary' %}?start_date={{start_date}}&end_date={{end_date}}" class="btn btn-secondary btn-sm">Back</a>
+        <div>
+            <h2 class="fw-bold mb-1">{{ product.name }}</h2>
+            <p class="text-muted mb-0">
+                Product Sales History
+            </p>
+        </div>
+
+        <a href="{% url 'inventory_report' %}"
+           class="btn btn-outline-secondary">
+            <i class="mdi mdi-arrow-left"></i>
+            Back
+        </a>
     </div>
 
-    <table class="table table-bordered shadow-sm">
-        <thead class="table-dark">
-            <tr>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Salesperson</th>
-                <th class="text-end">Qty</th>
-                <th class="text-end">Avg Rate</th>
-                <th class="text-end">Total Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in report_rows %}
-            <tr>
-                <td>{{ row.obj.voucher.date }}</td>
-                <td>{{ row.obj.voucher.party_name }}</td>
-                <td><span class="badge bg-info text-dark">{{ row.salesperson }}</span></td>
-                <td class="text-end">{{ row.obj.quantity }}</td>
-                <td class="text-end">₹{{ row.rate|floatformat:2 }}</td>
-                <td class="text-end fw-bold">₹{{ row.obj.amount|floatformat:2 }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot class="table-warning fw-bold text-end">
-            <tr>
-                <td colspan="3">SUMMARY TOTAL:</td>
-                <td>{{ total_qty|floatformat:2 }}</td>
-                <td>-</td>
-                <td>₹{{ total_amt|floatformat:2 }}</td>
-            </tr>
-        </tfoot>
-    </table>
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Current Stock</p>
+                    <h3 class="fw-bold mb-0">
+                        {{ product.quantity }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Total Sold</p>
+                    <h3 class="fw-bold text-primary mb-0">
+                        {{ total_qty }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Transactions</p>
+                    <h3 class="fw-bold text-info mb-0">
+                        {{ history|length }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-success text-white">
+                <div class="card-body">
+                    <p class="mb-1">Lifetime Revenue</p>
+                    <h3 class="fw-bold mb-0">
+                        ₹{{ total_revenue|floatformat:0|intcomma }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Product Information -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-6">
+                    <h5 class="fw-bold mb-3">Product Details</h5>
+
+                    <table class="table table-sm">
+                        <tr>
+                            <th width="180">Product</th>
+                            <td>{{ product.name }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Category</th>
+                            <td>
+                                <span class="badge bg-primary">
+                                    {{ product.category.name }}
+                                </span>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th>Current Stock</th>
+                            <td>{{ product.quantity }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="col-md-6">
+
+                    <div class="alert alert-success mb-0">
+                        <h5 class="fw-bold mb-2">
+                            Revenue Generated
+                        </h5>
+
+                        <h2 class="mb-0">
+                            ₹{{ total_revenue|floatformat:0|intcomma }}
+                        </h2>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Transaction Table -->
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-header bg-white">
+            <h5 class="mb-0 fw-bold">
+                Sales Transaction History
+            </h5>
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Quantity Sold</th>
+                        <th>Salesperson</th>
+                        <th>Customer</th>
+                        <th class="text-end">Sale Value</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                {% for entry in history %}
+
+                    <tr>
+
+                        <td>
+                            {{ entry.date|date:"d M Y" }}
+                        </td>
+
+                        <td>
+                            <span class="badge bg-danger">
+                                {{ entry.outwards_quantity }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-info">
+                                Tally Sale
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-secondary">
+                                Customer
+                            </span>
+                        </td>
+
+                        <td class="text-end fw-bold text-success">
+                            ₹{{ entry.outwards_value|floatformat:2|intcomma }}
+                        </td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+                        <td colspan="5">
+
+                            <div class="text-center py-5">
+
+                                <i class="mdi mdi-package-variant fs-1 text-muted"></i>
+
+                                <h5 class="mt-3">
+                                    No Sales Found
+                                </h5>
+
+                                <p class="text-muted mb-0">
+                                    This product has no recorded sales history.
+                                </p>
+
+                            </div>
+
+                        </td>
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+                <tfoot class="table-light">
+
+                    <tr class="fw-bold">
+
+                        <td colspan="1">
+                            TOTAL
+                        </td>
+
+                        <td>
+                            {{ total_qty }}
+                        </td>
+
+                        <td></td>
+                        <td></td>
+
+                        <td class="text-end text-success">
+                            ₹{{ total_revenue|floatformat:2|intcomma }}
+                        </td>
+
+                    </tr>
+
+                </tfoot>
+
+            </table>
+
+        </div>
+
+    </div>
+
 </div>
+{% endblock %}
