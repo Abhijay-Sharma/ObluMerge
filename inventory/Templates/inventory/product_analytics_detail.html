@@ -1,0 +1,565 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ item.name }} — Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f8f9fb;
+    --surface:   #ffffff;
+    --border:    #e5e8ef;
+    --text:      #1a1d23;
+    --muted:     #6b7280;
+    --indigo:    #4f46e5;
+    --indigo-lt: #eef2ff;
+    --indigo-dk: #3730a3;
+    --green:     #10b981;
+    --green-lt:  #d1fae5;
+    --green-dk:  #065f46;
+    --red:       #ef4444;
+    --red-lt:    #fee2e2;
+    --red-dk:    #991b1b;
+    --amber:     #f59e0b;
+    --amber-lt:  #fef3c7;
+    --amber-dk:  #92400e;
+    --purple:    #8b5cf6;
+    --purple-lt: #ede9fe;
+    --radius:    10px;
+    --shadow:    0 1px 3px rgba(0,0,0,.07);
+  }
+
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  a    { color: inherit; text-decoration: none; }
+
+  /* ── Topbar ── */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px; }
+  .topbar a { font-size: 13px; color: var(--muted); }
+  .topbar a:hover { color: var(--text); }
+  .topbar-sep { color: var(--border); font-size: 18px; }
+  .topbar-current { font-size: 13px; font-weight: 500; }
+
+  /* ── Layout ── */
+  .page { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  /* ── Product header ── */
+  .product-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; flex-wrap: wrap; }
+  .product-header-left h1 { font-size: 24px; font-weight: 700; line-height: 1.3; }
+  .product-header-left .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .dead-pill { display: inline-flex; align-items: center; gap: 5px; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin-left: 10px; }
+
+  /* ── Growth pills row ── */
+  .growth-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+  .growth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; min-width: 130px; flex: 1; }
+  .growth-card .label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .growth-card .value { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .growth-card .subtext { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .val-pos  { color: var(--green); }
+  .val-neg  { color: var(--red); }
+  .val-flat { color: var(--amber); }
+  .val-na   { color: var(--muted); }
+
+  /* ── Section ── */
+  .section { margin-bottom: 32px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .section-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+
+  /* ── Card ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+
+  /* ── Chart wrapper ── */
+  .chart-wrap { padding: 20px; }
+  .chart-tabs { display: flex; gap: 4px; padding: 16px 20px 0; border-bottom: 1px solid var(--border); }
+  .chart-tab { font-size: 13px; font-weight: 500; padding: 8px 14px; border-radius: 6px 6px 0 0; cursor: pointer; color: var(--muted); border: 1px solid transparent; border-bottom: none; }
+  .chart-tab.active { background: var(--surface); color: var(--indigo); border-color: var(--border); border-bottom-color: var(--surface); margin-bottom: -1px; }
+  .chart-panel { display: none; padding: 20px; }
+  .chart-panel.active { display: block; }
+  canvas { max-height: 280px; }
+
+  /* ── Summary stat row ── */
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--border); }
+  .stat-cell { background: var(--surface); padding: 16px 20px; }
+  .stat-cell .s-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .stat-cell .s-value { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); background: var(--bg); }
+  td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafbfc; }
+
+  .customer-name { font-weight: 500; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  /* trend sparkline */
+  .sparkline { display: inline-flex; align-items: flex-end; gap: 2px; height: 28px; vertical-align: middle; }
+  .spark-bar { width: 6px; border-radius: 2px 2px 0 0; background: var(--indigo); opacity: .7; min-height: 2px; }
+
+  /* badges */
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .badge-green  { background: var(--green-lt);  color: var(--green-dk); }
+  .badge-red    { background: var(--red-lt);     color: var(--red-dk); }
+  .badge-amber  { background: var(--amber-lt);   color: var(--amber-dk); }
+  .badge-indigo { background: var(--indigo-lt);  color: var(--indigo-dk); }
+  .badge-purple { background: var(--purple-lt);  color: #4c1d95; }
+
+  /* ── Empty row ── */
+  .empty-row td { text-align: center; color: var(--muted); padding: 32px; }
+
+  /* ── Tabs for customer sections ── */
+  .cust-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+  .cust-tab { padding: 12px 20px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: center; gap: 6px; }
+  .cust-tab .ct-count { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 20px; }
+  .cust-tab.active { color: var(--text); border-bottom-color: var(--indigo); }
+  .cust-tab:hover:not(.active) { color: var(--text); }
+  .cust-panel { display: none; }
+  .cust-panel.active { display: block; }
+
+  /* ── Top customers monthly mini-chart ── */
+  .monthly-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 32px; }
+  .mb { width: 8px; border-radius: 2px 2px 0 0; background: var(--indigo); opacity: .6; min-height: 2px; }
+  .mb.recent { background: var(--green); opacity: .85; }
+
+  @media (max-width: 768px) {
+    .growth-row { gap: 8px; }
+    .growth-card { min-width: 100px; padding: 12px 14px; }
+    .growth-card .value { font-size: 18px; }
+    .page { padding: 16px 14px 40px; }
+    th, td { padding: 9px 12px; }
+    .cust-tab { padding: 10px 14px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Breadcrumb ── -->
+<nav class="topbar">
+  <a href="/inventory/">Inventory</a>
+  <span class="topbar-sep">›</span>
+  <a href="{{ back_url }}">Analytics</a>
+  <span class="topbar-sep">›</span>
+  <span class="topbar-current">{{ item.name }}</span>
+</nav>
+
+<div class="page">
+
+  <!-- ── Product Header ── -->
+  <div class="product-header">
+    <div class="product-header-left">
+      <h1>
+        {{ item.name }}
+        {% if is_dead %}<span class="dead-pill">⚠ No sales in 90 days</span>{% endif %}
+      </h1>
+      <div class="meta">
+        {% if item.category %}{{ item.category.name }} &nbsp;·&nbsp; {% endif %}
+        {{ item.unit|default:"" }}
+        &nbsp;·&nbsp; Stock: <strong>{{ item.quantity|floatformat:1 }}</strong>
+        &nbsp;·&nbsp; Avg daily sales: <strong>{{ avg_daily }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Growth Pills ── -->
+  <div class="growth-row">
+    {% with g=growth %}
+    <div class="growth-card">
+      <div class="label">1 Month</div>
+      {% if g.1m is None %}<div class="value val-na">—</div>
+      {% elif g.1m >= 0 %}<div class="value val-pos">+{{ g.1m }}%</div>
+      {% else %}<div class="value val-neg">{{ g.1m }}%</div>{% endif %}
+      <div class="subtext">{{ g.r1m }} vs {{ g.p1m }}</div>
+    </div>
+    <div class="growth-card">
+      <div class="label">3 Months</div>
+      {% if g.3m is None %}<div class="value val-na">—</div>
+      {% elif g.3m >= 0 %}<div class="value val-pos">+{{ g.3m }}%</div>
+      {% else %}<div class="value val-neg">{{ g.3m }}%</div>{% endif %}
+      <div class="subtext">{{ g.r3m }} vs {{ g.p3m }}</div>
+    </div>
+    <div class="growth-card">
+      <div class="label">6 Months</div>
+      {% if g.6m is None %}<div class="value val-na">—</div>
+      {% elif g.6m >= 0 %}<div class="value val-pos">+{{ g.6m }}%</div>
+      {% else %}<div class="value val-neg">{{ g.6m }}%</div>{% endif %}
+      <div class="subtext">{{ g.r6m }} vs {{ g.p6m }}</div>
+    </div>
+    <div class="growth-card">
+      <div class="label">1 Year</div>
+      {% if g.1y is None %}<div class="value val-na">—</div>
+      {% elif g.1y >= 0 %}<div class="value val-pos">+{{ g.1y }}%</div>
+      {% else %}<div class="value val-neg">{{ g.1y }}%</div>{% endif %}
+      <div class="subtext">{{ g.r1y }} vs {{ g.p1y }}</div>
+    </div>
+    {% endwith %}
+  </div>
+
+  <!-- ── Customer Summary Stats ── -->
+  <div class="section">
+    <div class="card">
+      <div class="stat-row">
+        <div class="stat-cell">
+          <div class="s-label">Total customers</div>
+          <div class="s-value">{{ total_customers_ever }}</div>
+        </div>
+        <div class="stat-cell">
+          <div class="s-label">Active (last 90d)</div>
+          <div class="s-value" style="color:var(--green)">{{ active_customers_recent }}</div>
+        </div>
+        <div class="stat-cell">
+          <div class="s-label">Churned</div>
+          <div class="s-value" style="color:var(--red)">{{ churned_count }}</div>
+        </div>
+        <div class="stat-cell">
+          <div class="s-label">Declining &gt;50%</div>
+          <div class="s-value" style="color:var(--amber)">{{ declining_count }}</div>
+        </div>
+        <div class="stat-cell">
+          <div class="s-label">Rising / New</div>
+          <div class="s-value" style="color:var(--indigo)">{{ rising_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sales Charts ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Sales History</div>
+    </div>
+    <div class="card">
+      <div class="chart-tabs">
+        <div class="chart-tab active" data-tab="monthly">Monthly (all time)</div>
+        <div class="chart-tab" data-tab="daily">Daily (last 90 days)</div>
+      </div>
+      <div class="chart-panel active" id="tab-monthly">
+        <canvas id="chartMonthly"></canvas>
+      </div>
+      <div class="chart-panel" id="tab-daily">
+        <canvas id="chartDaily"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Customer Intelligence (tabbed) ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Customer Intelligence</div>
+    </div>
+    <div class="card">
+      <div class="cust-tabs">
+        <div class="cust-tab active" data-ctab="top">
+          Top Customers
+          <span class="ct-count badge-indigo badge">{{ top_customers|length }}</span>
+        </div>
+        <div class="cust-tab" data-ctab="churned">
+          Churned
+          <span class="ct-count badge-red badge">{{ churned_count }}</span>
+        </div>
+        <div class="cust-tab" data-ctab="declining">
+          Declining
+          <span class="ct-count badge-amber badge">{{ declining_count }}</span>
+        </div>
+        <div class="cust-tab" data-ctab="rising">
+          Rising / New
+          <span class="ct-count badge-green badge">{{ rising_count }}</span>
+        </div>
+      </div>
+
+      <!-- TOP CUSTOMERS -->
+      <div class="cust-panel active" id="ctab-top">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Customer</th>
+                <th>All-time qty</th>
+                <th>Last 90 days</th>
+                <th>Prior 90 days</th>
+                <th>Trend (12m)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in top_customers %}
+              <tr>
+                <td class="mono" style="color:var(--muted)">{{ forloop.counter }}</td>
+                <td class="customer-name">{{ c.name }}</td>
+                <td class="mono">{{ c.alltime_qty }}</td>
+                <td class="mono">
+                  {{ c.recent_qty }}
+                  {% if c.prior_qty > 0 %}
+                    {% with chg=c.recent_qty|add:"-0" %}
+                      {% if c.recent_qty > c.prior_qty %}
+                        <span class="badge badge-green" style="margin-left:4px">↑</span>
+                      {% elif c.recent_qty < c.prior_qty %}
+                        <span class="badge badge-red" style="margin-left:4px">↓</span>
+                      {% endif %}
+                    {% endwith %}
+                  {% elif c.recent_qty > 0 %}
+                    <span class="badge badge-purple" style="margin-left:4px">new</span>
+                  {% endif %}
+                </td>
+                <td class="mono">{{ c.prior_qty }}</td>
+                <td>
+                  <span class="monthly-bars" data-monthly='{{ c.monthly_trend|safe }}'></span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="empty-row"><td colspan="6">No customers found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CHURNED CUSTOMERS -->
+      <div class="cust-panel" id="ctab-churned">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>All-time qty</th>
+                <th>Prior 90d qty</th>
+                <th>Last purchase</th>
+                <th>Days since</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in churned %}
+              <tr>
+                <td class="customer-name">{{ c.name }}</td>
+                <td class="mono">{{ c.alltime_qty }}</td>
+                <td class="mono">{{ c.prior_qty }}</td>
+                <td class="mono">{{ c.last_purchase|date:"d M Y"|default:"—" }}</td>
+                <td class="mono">
+                  {% if c.days_since %}
+                    {% if c.days_since > 180 %}
+                      <span style="color:var(--red)">{{ c.days_since }}d ago</span>
+                    {% else %}
+                      {{ c.days_since }}d ago
+                    {% endif %}
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  {% if c.days_since and c.days_since > 180 %}
+                    <span class="badge badge-red">Long-term churn</span>
+                  {% else %}
+                    <span class="badge badge-amber">Recent churn</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="empty-row"><td colspan="6">✓ No churned customers — everyone's still buying.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DECLINING CUSTOMERS -->
+      <div class="cust-panel" id="ctab-declining">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Last 90d qty</th>
+                <th>Prior 90d qty</th>
+                <th>Drop</th>
+                <th>Severity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in declining %}
+              <tr>
+                <td class="customer-name">{{ c.name }}</td>
+                <td class="mono">{{ c.recent_qty }}</td>
+                <td class="mono">{{ c.prior_qty }}</td>
+                <td class="mono" style="color:var(--red); font-weight:600">▼ {{ c.drop_pct }}%</td>
+                <td>
+                  {% if c.drop_pct >= 80 %}
+                    <span class="badge badge-red">Critical</span>
+                  {% elif c.drop_pct >= 65 %}
+                    <span class="badge badge-amber">High</span>
+                  {% else %}
+                    <span class="badge" style="background:#f3f4f6;color:#374151">Moderate</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="empty-row"><td colspan="5">✓ No customers with &gt;50% drop in buying.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RISING / NEW CUSTOMERS -->
+      <div class="cust-panel" id="ctab-rising">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Last 90d qty</th>
+                <th>Prior 90d qty</th>
+                <th>Rise</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in rising %}
+              <tr>
+                <td class="customer-name">{{ c.name }}</td>
+                <td class="mono">{{ c.recent_qty }}</td>
+                <td class="mono">{% if c.prior_qty %}{{ c.prior_qty }}{% else %}—{% endif %}</td>
+                <td class="mono" style="color:var(--green); font-weight:600">
+                  {% if c.rise_pct %}▲ {{ c.rise_pct }}%{% else %}New{% endif %}
+                </td>
+                <td>
+                  {% if c.is_new %}
+                    <span class="badge badge-purple">New customer</span>
+                  {% elif c.rise_pct >= 100 %}
+                    <span class="badge badge-green">Rapid growth</span>
+                  {% else %}
+                    <span class="badge badge-indigo">Growing</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="empty-row"><td colspan="5">No significantly rising customers in the last 90 days.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /.card -->
+  </div>
+
+</div><!-- /.page -->
+
+<script>
+// ── Data from Django ──────────────────────────────────────────────────────
+const monthlySales = {{ monthly_sales_json|safe }};
+const dailySales   = {{ daily_sales_json|safe }};
+
+// ── Chart: Monthly ────────────────────────────────────────────────────────
+(function() {
+  const ctx = document.getElementById('chartMonthly');
+  if (!ctx || !monthlySales.length) return;
+
+  const labels = monthlySales.map(r => r.month);
+  const data   = monthlySales.map(r => r.qty);
+
+  // Color last 3 bars differently
+  const colors = labels.map((_, i) =>
+    i >= labels.length - 3 ? 'rgba(79,70,229,0.85)' : 'rgba(79,70,229,0.35)'
+  );
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Qty sold',
+        data,
+        backgroundColor: colors,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { title: t => t[0].label } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 45 } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+// ── Chart: Daily ──────────────────────────────────────────────────────────
+(function() {
+  const ctx = document.getElementById('chartDaily');
+  if (!ctx || !dailySales.length) return;
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dailySales.map(r => r.date),
+      datasets: [{
+        label: 'Qty sold',
+        data: dailySales.map(r => r.qty),
+        backgroundColor: 'rgba(16,185,129,0.6)',
+        borderRadius: 3,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 60, autoSkip: true, maxTicksLimit: 20 } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+// ── Chart tabs ────────────────────────────────────────────────────────────
+document.querySelectorAll('.chart-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.chart-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Customer section tabs ─────────────────────────────────────────────────
+document.querySelectorAll('.cust-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.cust-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.cust-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('ctab-' + tab.dataset.ctab).classList.add('active');
+  });
+});
+
+// ── Sparkline bars for top customers ─────────────────────────────────────
+document.querySelectorAll('.monthly-bars[data-monthly]').forEach(el => {
+  try {
+    const data = JSON.parse(el.dataset.monthly.replace(/&#x27;/g, '"').replace(/&quot;/g, '"'));
+    const qtys = data.map(r => r.qty);
+    const max  = Math.max(...qtys, 1);
+    const count = qtys.length;
+
+    qtys.forEach((q, i) => {
+      const bar = document.createElement('span');
+      bar.className = 'mb' + (i >= count - 3 ? ' recent' : '');
+      bar.style.height = Math.max(2, Math.round((q / max) * 32)) + 'px';
+      bar.title = data[i].month + ': ' + q;
+      el.appendChild(bar);
+    });
+  } catch(e) {}
+});
+</script>
+
+</body>
+</html>

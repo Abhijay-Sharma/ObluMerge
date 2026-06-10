@@ -1,0 +1,162 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Analytics{% if selected_category_id %} — {{ products.0.category|default:"" }}{% endif %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f8f9fb;
+    --surface:   #ffffff;
+    --border:    #e5e8ef;
+    --text:      #1a1d23;
+    --muted:     #6b7280;
+    --indigo:    #4f46e5;
+    --indigo-lt: #eef2ff;
+    --green:     #10b981;
+    --green-lt:  #d1fae5;
+    --red:       #ef4444;
+    --red-lt:    #fee2e2;
+    --amber:     #f59e0b;
+    --amber-lt:  #fef3c7;
+    --dead:      #9ca3af;
+    --dead-lt:   #f3f4f6;
+    --radius:    10px;
+    --shadow:    0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+  }
+
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── Nav ── */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 16px; }
+  .topbar-brand { font-weight: 700; font-size: 15px; color: var(--indigo); text-decoration: none; }
+  .topbar-sep { color: var(--border); }
+  .topbar-title { font-size: 14px; color: var(--muted); }
+
+  /* ── Page ── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Category form ── */
+  .filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .filter-bar select { height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--surface); color: var(--text); outline: none; cursor: pointer; }
+  .filter-bar select:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-lt); }
+  .btn-primary { height: 40px; padding: 0 18px; background: var(--indigo); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; }
+  .btn-primary:hover { background: #4338ca; }
+
+  /* ── Grid ── */
+  .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+  /* ── Card ── */
+  .product-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; text-decoration: none; color: inherit; display: block; transition: box-shadow .15s, border-color .15s; position: relative; }
+  .product-card:hover { box-shadow: 0 4px 16px rgba(79,70,229,.10); border-color: var(--indigo); }
+  .product-card.dead { opacity: .7; }
+
+  .card-name { font-size: 14px; font-weight: 600; margin-bottom: 12px; line-height: 1.4; padding-right: 60px; }
+
+  .card-stats { display: flex; flex-direction: column; gap: 6px; }
+  .card-stat { display: flex; justify-content: space-between; font-size: 12px; }
+  .card-stat-label { color: var(--muted); }
+  .card-stat-value { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 12px; }
+
+  /* growth badge */
+  .growth-badge {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .growth-pos  { background: var(--green-lt); color: #065f46; }
+  .growth-neg  { background: var(--red-lt);   color: #991b1b; }
+  .growth-flat { background: var(--amber-lt); color: #92400e; }
+  .growth-dead { background: var(--dead-lt);  color: var(--dead); }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty svg { display: block; margin: 0 auto 16px; opacity: .3; }
+
+  @media (max-width: 600px) {
+    .page { padding: 20px 16px; }
+    .product-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a href="/inventory/" class="topbar-brand">Inventory</a>
+  <span class="topbar-sep">›</span>
+  <span class="topbar-title">Product Analytics</span>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <h1>Product Analytics</h1>
+    <p>Select a category to see growth trends and customer intelligence for each product.</p>
+  </div>
+
+  <form method="get" class="filter-bar">
+    <select name="category" onchange="this.form.submit()">
+      <option value="">— Select category —</option>
+      {% for cat in categories %}
+        <option value="{{ cat.id }}" {% if selected_category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn-primary">Go</button></noscript>
+  </form>
+
+  {% if products is not None %}
+    {% if products %}
+      <div class="product-grid">
+        {% for p in products %}
+          <a href="{% url 'product_analytics_detail' p.id %}" class="product-card {% if p.is_dead %}dead{% endif %}">
+
+            {% if p.is_dead %}
+              <span class="growth-badge growth-dead">DEAD</span>
+            {% elif p.growth_3m is None %}
+              <span class="growth-badge growth-flat">—</span>
+            {% elif p.growth_3m >= 20 %}
+              <span class="growth-badge growth-pos">▲ {{ p.growth_3m }}%</span>
+            {% elif p.growth_3m <= -10 %}
+              <span class="growth-badge growth-neg">▼ {{ p.growth_3m|cut:"-" }}%</span>
+            {% else %}
+              <span class="growth-badge growth-flat">{{ p.growth_3m }}%</span>
+            {% endif %}
+
+            <div class="card-name">{{ p.name }}</div>
+
+            <div class="card-stats">
+              <div class="card-stat">
+                <span class="card-stat-label">Stock</span>
+                <span class="card-stat-value">{{ p.current_stock|floatformat:1 }} {{ p.unit }}</span>
+              </div>
+              <div class="card-stat">
+                <span class="card-stat-label">Avg daily sales</span>
+                <span class="card-stat-value">{{ p.avg_daily }}</span>
+              </div>
+              <div class="card-stat">
+                <span class="card-stat-label">Sold (last 90d)</span>
+                <span class="card-stat-value">{{ p.recent_qty }}</span>
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        No products found in this category.
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+</body>
+</html>

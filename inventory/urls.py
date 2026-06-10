@@ -44,4 +44,17 @@ urlpatterns = [
     path('sales-dashboard/', views.ProductContributionSummaryView.as_view(), name='product_contribution_summary'),
     path('sales-dashboard/item/<int:item_id>/', views.ProductSalesHistoryDetailView.as_view(),
          name='product_sales_history'),
+    path(
+        "analytics/",
+        views.ProductAnalyticsCategoryView.as_view(),
+        name="product_analytics_category",
+    ),
+
+    # Full product intelligence page
+    path(
+        "analytics/<int:item_id>/",
+        views.ProductAnalyticsDetailView.as_view(),
+        name="product_analytics_detail",
+    ),
+
 ]

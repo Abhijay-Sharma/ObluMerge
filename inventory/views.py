@@ -2968,3 +2968,396 @@ class ProductSalesHistoryDetailView(ListView):
             "end_date": self.end_date,
         })
         return context
+
+
+
+
+import json
+import datetime
+from collections import defaultdict
+from dateutil.relativedelta import relativedelta
+from datetime import timedelta
+
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.views import View
+
+from inventory.models import InventoryItem, Category
+from tally_voucher.models import Voucher, VoucherStockItem
+from inventory.mixins import AccountantRequiredMixin  # adjust as needed
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Category → Product list view  (the "landing" for this feature)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ProductAnalyticsCategoryView(AccountantRequiredMixin, View):
+    """
+    GET /inventory/analytics/
+    GET /inventory/analytics/?category=<id>
+
+    Shows all products in a category with their 3-month growth badge.
+    Clicking a product goes to ProductAnalyticsDetailView.
+    """
+    template_name = "inventory/product_analytics_category.html"
+
+    def get(self, request):
+        today           = datetime.date.today()
+        ninety_days_ago = today - timedelta(days=90)
+
+        categories           = Category.objects.all().order_by("name")
+        selected_category_id = request.GET.get("category")
+
+        if not selected_category_id:
+            return render(request, self.template_name, {
+                "categories": categories,
+                "products":   None,
+                "selected_category_id": None,
+            })
+
+        # Pull all TAX INVOICE voucher rows for the whole category in one query
+        items = (
+            InventoryItem.objects
+            .filter(category_id=selected_category_id)
+            .select_related("category")
+            .order_by("name")
+        )
+
+        item_ids = list(items.values_list("id", flat=True))
+
+        # One query for all sales rows across the category
+        raw_rows = (
+            VoucherStockItem.objects
+            .filter(
+                voucher__voucher_type__iexact="TAX INVOICE",
+                item_id__in=item_ids,
+            )
+            .select_related("voucher")
+            .values("item_id", "quantity", "voucher__date", "voucher__party_name")
+        )
+
+        # Group by item
+        sales_map = defaultdict(list)
+        for row in raw_rows:
+            iid = row["item_id"]
+            sales_map[iid].append({
+                "date":  row["voucher__date"],
+                "qty":   float(row["quantity"] or 0),
+                "party": row["voucher__party_name"] or "Unknown",
+            })
+
+        products_data = []
+        for item in items:
+            iid        = item.id
+            rows       = sales_map.get(iid, [])
+            is_dead    = not any(
+                r["date"] and r["date"] >= ninety_days_ago for r in rows
+            )
+            growth_3m  = _growth_3m(rows, today)
+            avg_daily  = _avg_daily(rows, today)
+            recent_qty = sum(r["qty"] for r in rows if r["date"] and r["date"] >= ninety_days_ago)
+
+            products_data.append({
+                "id":           iid,
+                "name":         item.name,
+                "unit":         item.unit or "",
+                "current_stock": float(item.quantity or 0),
+                "is_dead":      is_dead,
+                "growth_3m":    growth_3m,
+                "avg_daily":    round(avg_daily, 2),
+                "recent_qty":   round(recent_qty, 1),
+            })
+
+        return render(request, self.template_name, {
+            "categories":           categories,
+            "selected_category_id": int(selected_category_id),
+            "products":             products_data,
+        })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Product detail analytics view
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ProductAnalyticsDetailView(AccountantRequiredMixin, View):
+    """
+    GET /inventory/analytics/<item_id>/
+
+    Full product intelligence page:
+      • Monthly & daily sales chart
+      • Growth windows (1y, 6m, 3m, 1m)
+      • Top customers (by total qty)
+      • Rising customers  (growth > +20% in last 3m vs prior 3m)
+      • Declining customers (drop > 50% in last 3m vs prior 3m)
+      • Churned customers  (bought before the last 3m, zero in last 3m)
+    """
+    template_name = "inventory/product_analytics_detail.html"
+
+    def get(self, request, item_id):
+        today            = datetime.date.today()
+        ninety_days_ago  = today - timedelta(days=90)
+        six_months_ago   = today - timedelta(days=180)
+        one_year_ago     = today - timedelta(days=365)
+
+        item = get_object_or_404(InventoryItem.objects.select_related("category"), pk=item_id)
+
+        # ── All TAX INVOICE rows for this item (no date filter — we need history)
+        raw_rows = (
+            VoucherStockItem.objects
+            .filter(
+                voucher__voucher_type__iexact="TAX INVOICE",
+                item_id=item_id,
+            )
+            .select_related("voucher")
+            .values("quantity", "voucher__date", "voucher__party_name", "voucher__voucher_number")
+            .order_by("voucher__date")
+        )
+
+        sales_rows = [
+            {
+                "date":   r["voucher__date"],
+                "qty":    float(r["quantity"] or 0),
+                "party":  r["voucher__party_name"] or "Unknown",
+                "voucher": r["voucher__voucher_number"] or "",
+            }
+            for r in raw_rows
+            if r["voucher__date"]
+        ]
+
+        # ── Monthly aggregation  (all time)
+        by_month = defaultdict(float)
+        for r in sales_rows:
+            by_month[r["date"].strftime("%Y-%m")] += r["qty"]
+
+        monthly_sales = [
+            {"month": m, "qty": round(q, 2)}
+            for m, q in sorted(by_month.items())
+        ]
+
+        # ── Daily aggregation (last 90 days for the chart)
+        by_day = defaultdict(float)
+        for r in sales_rows:
+            if r["date"] >= ninety_days_ago:
+                by_day[r["date"].isoformat()] += r["qty"]
+
+        daily_sales = [
+            {"date": d, "qty": round(q, 2)}
+            for d, q in sorted(by_day.items())
+        ]
+
+        # ── Growth windows
+        def _sum_months(offset_start, count):
+            total = 0.0
+            for i in range(offset_start, offset_start + count):
+                key = (today.replace(day=1) - relativedelta(months=i)).strftime("%Y-%m")
+                total += by_month.get(key, 0)
+            return total
+
+        r1m = _sum_months(0, 1);  p1m = _sum_months(1, 1)
+        r3m = _sum_months(0, 3);  p3m = _sum_months(3, 3)
+        r6m = _sum_months(0, 6);  p6m = _sum_months(6, 6)
+        r1y = _sum_months(0, 12); p1y = _sum_months(12, 12)
+
+        growth = {
+            "1m": _pct(r1m, p1m),
+            "3m": _pct(r3m, p3m),
+            "6m": _pct(r6m, p6m),
+            "1y": _pct(r1y, p1y),
+            "r1m": round(r1m, 1), "p1m": round(p1m, 1),
+            "r3m": round(r3m, 1), "p3m": round(p3m, 1),
+            "r6m": round(r6m, 1), "p6m": round(p6m, 1),
+            "r1y": round(r1y, 1), "p1y": round(p1y, 1),
+        }
+
+        avg_daily = _avg_daily(sales_rows, today)
+
+        is_dead = not any(r["date"] >= ninety_days_ago for r in sales_rows)
+
+        # ── Per-customer aggregation
+        # We need two windows per customer:
+        #   recent  = last 90 days
+        #   prior   = 91-180 days ago
+        #   all_time = everything
+
+        cust_recent   = defaultdict(float)   # last 3m
+        cust_prior    = defaultdict(float)   # 3m-6m
+        cust_alltime  = defaultdict(float)   # all time
+
+        # monthly breakdown per customer
+        cust_monthly  = defaultdict(lambda: defaultdict(float))
+
+        for r in sales_rows:
+            name = r["party"]
+            d    = r["date"]
+            qty  = r["qty"]
+            cust_alltime[name] += qty
+            cust_monthly[name][d.strftime("%Y-%m")] += qty
+            if d >= ninety_days_ago:
+                cust_recent[name] += qty
+            elif d >= six_months_ago:
+                cust_prior[name] += qty
+
+        all_customers = set(cust_alltime.keys())
+
+        # ── Churned: bought in prior window (or earlier), zero in recent
+        churned = []
+        for name in all_customers:
+            if cust_recent[name] == 0 and (
+                cust_prior[name] > 0 or
+                any(
+                    r["party"] == name and r["date"] < ninety_days_ago
+                    for r in sales_rows
+                )
+            ):
+                last_purchase = max(
+                    (r["date"] for r in sales_rows if r["party"] == name),
+                    default=None
+                )
+                days_since = (today - last_purchase).days if last_purchase else None
+                churned.append({
+                    "name":         name,
+                    "prior_qty":    round(cust_prior[name], 1),
+                    "alltime_qty":  round(cust_alltime[name], 1),
+                    "last_purchase": last_purchase,
+                    "days_since":   days_since,
+                })
+        churned.sort(key=lambda x: x["alltime_qty"], reverse=True)
+
+        # ── Declining: bought in both windows, recent < 50% of prior
+        declining = []
+        for name in all_customers:
+            r_qty = cust_recent[name]
+            p_qty = cust_prior[name]
+            if p_qty > 0 and r_qty > 0:
+                drop_pct = (p_qty - r_qty) / p_qty * 100
+                if drop_pct >= 50:
+                    declining.append({
+                        "name":      name,
+                        "recent_qty": round(r_qty, 1),
+                        "prior_qty":  round(p_qty, 1),
+                        "drop_pct":   round(drop_pct, 1),
+                    })
+        declining.sort(key=lambda x: x["drop_pct"], reverse=True)
+
+        # ── Rising: recent > prior by at least 20%, both windows active
+        rising = []
+        for name in all_customers:
+            r_qty = cust_recent[name]
+            p_qty = cust_prior[name]
+            if p_qty > 0 and r_qty > 0:
+                rise_pct = (r_qty - p_qty) / p_qty * 100
+                if rise_pct >= 20:
+                    rising.append({
+                        "name":      name,
+                        "recent_qty": round(r_qty, 1),
+                        "prior_qty":  round(p_qty, 1),
+                        "rise_pct":   round(rise_pct, 1),
+                    })
+        # Also include NEW customers (recent > 0, prior == 0, but DID have all-time before recent = no)
+        # i.e. brand new buyers in last 3m
+        for name in all_customers:
+            r_qty = cust_recent[name]
+            p_qty = cust_prior[name]
+            at    = cust_alltime[name]
+            if r_qty > 0 and p_qty == 0 and at == r_qty:
+                # truly new customer
+                rising.append({
+                    "name":      name,
+                    "recent_qty": round(r_qty, 1),
+                    "prior_qty":  0,
+                    "rise_pct":   None,   # "new"
+                    "is_new":     True,
+                })
+        rising.sort(key=lambda x: x["recent_qty"], reverse=True)
+
+        # ── Top customers (by all-time qty, show last 12m monthly trend)
+        top_customers_raw = sorted(
+            cust_alltime.items(), key=lambda x: x[1], reverse=True
+        )[:10]
+
+        top_customers = []
+        today_month = today.replace(day=1)
+        last_12_months = [
+            (today_month - relativedelta(months=i)).strftime("%Y-%m")
+            for i in range(11, -1, -1)
+        ]
+
+        for name, total in top_customers_raw:
+            monthly_trend = [
+                {"month": m, "qty": round(cust_monthly[name].get(m, 0), 1)}
+                for m in last_12_months
+            ]
+            top_customers.append({
+                "name":         name,
+                "alltime_qty":  round(total, 1),
+                "recent_qty":   round(cust_recent[name], 1),
+                "prior_qty":    round(cust_prior[name], 1),
+                "monthly_trend": monthly_trend,
+            })
+
+        # ── Summary stats
+        total_customers_ever    = len(all_customers)
+        active_customers_recent = sum(1 for n in all_customers if cust_recent[n] > 0)
+        churned_count           = len(churned)
+        declining_count         = len(declining)
+        rising_count            = len(rising)
+
+        context = {
+            "item":             item,
+            "today":            today,
+            "avg_daily":        round(avg_daily, 2),
+            "is_dead":          is_dead,
+            "growth":           growth,
+            # charts
+            "monthly_sales_json": json.dumps(monthly_sales),
+            "daily_sales_json":   json.dumps(daily_sales),
+            # customer intelligence
+            "top_customers":    top_customers,
+            "top_customers_json": json.dumps(top_customers),
+            "churned":          churned,
+            "declining":        declining,
+            "rising":           rising,
+            # summary
+            "total_customers_ever":    total_customers_ever,
+            "active_customers_recent": active_customers_recent,
+            "churned_count":           churned_count,
+            "declining_count":         declining_count,
+            "rising_count":            rising_count,
+            # for breadcrumb
+            "back_url": f"/inventory/analytics/?category={item.category_id}",
+        }
+
+        return render(request, self.template_name, context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _pct(recent, prior):
+    if not prior:
+        return None
+    return round((recent - prior) / prior * 100, 1)
+
+
+def _growth_3m(sales_rows, today):
+    by_month = defaultdict(float)
+    for r in sales_rows:
+        if r["date"]:
+            by_month[r["date"].strftime("%Y-%m")] += r["qty"]
+    r3m = sum(
+        by_month.get((today.replace(day=1) - relativedelta(months=i)).strftime("%Y-%m"), 0)
+        for i in range(0, 3)
+    )
+    p3m = sum(
+        by_month.get((today.replace(day=1) - relativedelta(months=i)).strftime("%Y-%m"), 0)
+        for i in range(3, 6)
+    )
+    return _pct(r3m, p3m)
+
+
+def _avg_daily(sales_rows, today):
+    APRIL_2025 = datetime.date(2025, 4, 1)
+    total = sum(r["qty"] for r in sales_rows if r["date"] and r["date"] >= APRIL_2025)
+    days  = (today - APRIL_2025).days or 1
+    return round(total / days, 4)
