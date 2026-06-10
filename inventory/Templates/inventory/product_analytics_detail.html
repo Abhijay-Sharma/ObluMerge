@@ -292,7 +292,7 @@
               {% for c in top_customers %}
               <tr>
                 <td class="mono" style="color:var(--muted)">{{ forloop.counter }}</td>
-                <td class="customer-name">{{ c.name }}{{c.id}}</td>
+                <td class="customer-name"><a href="{% url 'customers:customer_detail' c.id %}">{{ c.name }}</a></td>
                 <td class="mono">{{ c.alltime_qty }}</td>
                 <td class="mono">
                   {{ c.recent_qty }}
@@ -338,7 +338,7 @@
             <tbody>
               {% for c in churned %}
               <tr>
-                <td class="customer-name">{{ c.name }}{{c.id}}</td>
+                <td class="customer-name">{{ c.name }}</td>
                 <td class="mono">{{ c.alltime_qty }}</td>
                 <td class="mono">{{ c.prior_qty }}</td>
                 <td class="mono">{{ c.last_purchase|date:"d M Y"|default:"—" }}</td>
