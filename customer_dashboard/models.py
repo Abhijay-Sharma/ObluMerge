@@ -83,7 +83,7 @@ class CustomerCreditProfile(models.Model):
     )
 
     # Credit period allowed for this customer (in days)
-    credit_period_days = models.PositiveIntegerField(default=0)
+    credit_period_days = models.PositiveIntegerField(default=7)
 
     last_synced_at = models.DateTimeField(auto_now=True)
 
