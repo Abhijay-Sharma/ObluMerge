@@ -29,263 +29,180 @@
             overflow-x: hidden;
         }
 
-        /* --- LEFT SIDEBAR --- */
+        /* --- SIDEBAR RESPONSIVENESS --- */
         .sidebar-categories {
             background-color: var(--sidebar-bg);
             border-right: 1px solid #e2e8f0;
-            min-height: 100vh;
             padding: 2rem 1.5rem;
-            position: sticky;
-            top: 0;
         }
 
-        .category-item {
-            margin-bottom: 1.5rem;
+        @media (min-width: 992px) {
+            .sidebar-categories {
+                min-height: 100vh;
+                position: sticky;
+                top: 0;
+            }
         }
 
-        .category-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
+        @media (max-width: 991px) {
+            .sidebar-categories {
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+                min-height: auto;
+                padding: 1.5rem;
+            }
         }
 
-        .category-name {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-main);
-        }
+        .category-item { margin-bottom: 1.5rem; }
+        .category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .category-name { font-size: 0.85rem; font-weight: 600; }
+        .category-perc { font-size: 0.75rem; font-weight: 700; color: var(--accent); }
+        .progress-custom { height: 6px; background-color: #f1f5f9; border-radius: 10px; overflow: hidden; }
 
-        .category-perc {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        /* Thinner, cleaner progress bars */
-        .progress-custom {
-            height: 6px;
-            background-color: #f1f5f9;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        /* Unique colors for bars */
         .bar-1 { background-color: #6366f1; }
         .bar-2 { background-color: #06b6d4; }
         .bar-3 { background-color: #10b981; }
         .bar-4 { background-color: #f59e0b; }
         .bar-5 { background-color: #f43f5e; }
 
-        /* --- MAIN CONTENT --- */
-        .main-workspace {
-            padding: 2rem 3rem;
-        }
+        /* --- MAIN CONTENT RESPONSIVENESS --- */
+        .main-workspace { padding: 1.5rem; }
+        @media (min-width: 992px) { .main-workspace { padding: 2rem 3rem; } }
 
-        /* Date Filter Header */
         .glass-header {
             background: white;
-            padding: 1.25rem 2rem;
+            padding: 1.25rem;
             border-radius: 16px;
             box-shadow: var(--card-shadow);
-            margin-bottom: 2.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            margin-bottom: 2rem;
         }
 
         .calendar-input {
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-            color: var(--text-main);
-            transition: all 0.2s;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+            width: 100%;
         }
 
-        .calendar-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        /* KPI Cards */
         .kpi-card {
             background: white;
-            border: none;
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 1.25rem;
             box-shadow: var(--card-shadow);
-            transition: transform 0.2s ease;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-4px);
+            height: 100%;
         }
 
         .kpi-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
-        /* Table Design */
         .product-container {
             background: white;
             border-radius: 16px;
             box-shadow: var(--card-shadow);
-            overflow: hidden;
             margin-top: 2rem;
         }
 
-        .table thead th {
-            background-color: #f8fafc;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            padding: 1.2rem 1rem;
-            border: none;
+        /* Mobile table text size */
+        @media (max-width: 768px) {
+            .table { font-size: 0.85rem; }
+            .btn-action { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+            h3 { font-size: 1.5rem; }
         }
 
-        .table tbody td {
-            padding: 1.2rem 1rem;
-            vertical-align: middle;
-            border-color: #f1f5f9;
-        }
-
-        .btn-action {
-            background-color: #f1f5f9;
-            border: none;
-            color: var(--text-main);
-            font-weight: 600;
-            font-size: 0.8rem;
-            padding: 0.5rem 1.2rem;
-            border-radius: 8px;
-        }
-
-        .btn-action:hover {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        .badge-soft {
-            background-color: #eef2ff;
-            color: #4338ca;
-            font-weight: 600;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-        }
-
-        @media (max-width: 992px) {
-            .sidebar-categories { height: auto; min-height: unset; position: relative; }
-        }
+        .badge-soft { background-color: #eef2ff; color: #4338ca; font-weight: 600; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
 <div class="container-fluid p-0">
     <div class="row g-0">
-        
-        <!-- LEFT SIDEBAR: Category Analytics -->
+
+        <!-- LEFT SIDEBAR -->
         <aside class="col-lg-3 col-xl-2 sidebar-categories">
-            <div class="d-flex align-items-center mb-5">
-                <div class="bg-primary p-2 rounded-3 me-2 text-white">
-                    <i class="bi bi-bar-chart-fill"></i>
-                </div>
+            <div class="d-flex align-items-center mb-4">
+                <div class="bg-primary p-2 rounded-3 me-2 text-white"><i class="bi bi-bar-chart-fill"></i></div>
                 <h5 class="fw-bold mb-0">SalesPro</h5>
             </div>
 
-            <p class="text-muted small fw-bold text-uppercase mb-4">Category Metrics</p>
+            <p class="text-muted small fw-bold text-uppercase mb-3">Category Metrics</p>
 
-            {% for cat in category_stats %}
-            <div class="category-item">
-                <div class="category-header">
-                    <span class="category-name text-truncate" title="{{ cat.name|default:cat.item__category__name }}">
-                        {{ cat.name|default:cat.item__category__name|default:"General" }}
-                    </span>
-                    <span class="category-perc">{{ cat.percentage|floatformat:1 }}%</span>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-1">
+                {% for cat in category_stats %}
+                <div class="col category-item">
+                    <div class="category-header">
+                        <span class="category-name text-truncate">{{ cat.name|default:cat.item__category__name|default:"General" }}</span>
+                        <span class="category-perc">{{ cat.percentage|floatformat:1 }}%</span>
+                    </div>
+                    <div class="progress progress-custom">
+                        <div class="progress-bar {% cycle 'bar-1' 'bar-2' 'bar-3' 'bar-4' 'bar-5' %}" style="width: {{ cat.percentage }}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span class="text-muted" style="font-size: 0.7rem;">Value</span>
+                        <span class="text-dark fw-medium" style="font-size: 0.7rem;">₹{{ cat.total_sales|floatformat:0 }}</span>
+                    </div>
                 </div>
-                <div class="progress progress-custom">
-                    <div class="progress-bar {% cycle 'bar-1' 'bar-2' 'bar-3' 'bar-4' 'bar-5' %}" 
-                         style="width: {{ cat.percentage }}%"></div>
-                </div>
-                <div class="d-flex justify-content-between mt-1">
-                    <span class="text-muted" style="font-size: 0.7rem;">Contribution</span>
-                    <span class="text-dark fw-medium" style="font-size: 0.7rem;">₹{{ cat.total_val|floatformat:0 }}</span>
-                </div>
+                {% endfor %}
             </div>
-            {% empty %}
-            <p class="text-muted small">No category data available.</p>
-            {% endfor %}
 
-            <div class="mt-5 pt-4 border-top">
+            <div class="mt-4 pt-3 border-top">
                 <div class="p-3 rounded-4 bg-light">
-                    <h6 class="fw-bold small mb-2">Total Overview</h6>
-                    <div class="h4 fw-bold mb-0 text-primary">₹{{ grand_total|floatformat:0 }}</div>
+                    <h6 class="fw-bold small mb-1">Grand Total</h6>
+                    <div class="h5 fw-bold mb-0 text-primary">₹{{ grand_total|floatformat:0 }}</div>
                 </div>
             </div>
         </aside>
 
-        <!-- RIGHT SIDE: Main Dashboard Content -->
+        <!-- MAIN CONTENT -->
         <main class="col-lg-9 col-xl-10 main-workspace">
-            
-            <!-- Date Filter Section -->
+
+            <!-- Responsive Filter Section -->
             <section class="glass-header">
-                <form method="GET" class="row align-items-end g-3">
-                    <div class="col-md-auto">
-                        <h4 class="fw-bold mb-0">Product Analysis</h4>
-                        <p class="text-muted small mb-0">Monitor your product sales performance</p>
-                    </div>
-                    <div class="col-md-auto ms-auto">
-                        <div class="d-flex gap-2">
-                            <div>
-                                <label class="small fw-bold text-muted d-block mb-1">Start Date</label>
-                                <input type="date" name="start_date" value="{{ start_date }}" class="calendar-input">
-                            </div>
-                            <div>
-                                <label class="small fw-bold text-muted d-block mb-1">End Date</label>
-                                <input type="date" name="end_date" value="{{ end_date }}" class="calendar-input">
-                            </div>
-                            <div class="align-self-end">
-                                <button type="submit" class="btn btn-dark px-4 fw-bold shadow-sm" style="height: 42px; border-radius: 8px;">
-                                    Update
-                                </button>
-                            </div>
+                <form method="GET" class="row g-3 align-items-center">
+                    <div class="col-12 col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                            <input type="text" name="search" value="{{ search|default:'' }}" class="form-control border-start-0" placeholder="Search product...">
                         </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <input type="date" name="start_date" value="{{ start_date }}" class="calendar-input">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <input type="date" name="end_date" value="{{ end_date }}" class="calendar-input">
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm py-2">Update</button>
                     </div>
                 </form>
             </section>
 
             <!-- KPI Row -->
-            <div class="row g-4">
-                <div class="col-md-4">
+            <div class="row g-3 g-lg-4">
+                <div class="col-12 col-md-4">
                     <div class="kpi-card">
-                        <div class="kpi-icon bg-indigo-subtle text-primary">
-                            <i class="bi bi-wallet2"></i>
-                        </div>
-                        <p class="text-muted small fw-bold text-uppercase mb-1">Total Revenue</p>
-                        <h3 class="fw-bold mb-0">₹ {{ grand_total|floatformat:2 }}</h3>
+                        <div class="kpi-icon bg-indigo-subtle text-primary"><i class="bi bi-wallet2"></i></div>
+                        <p class="text-muted small fw-bold text-uppercase mb-1">Revenue</p>
+                        <h3 class="fw-bold mb-0">₹{{ grand_total|floatformat:2 }}</h3>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <div class="kpi-card">
-                        <div class="kpi-icon bg-emerald-subtle text-success">
-                            <i class="bi bi-award"></i>
-                        </div>
-                        <p class="text-muted small fw-bold text-uppercase mb-1">Top Product</p>
+                        <div class="kpi-icon bg-emerald-subtle text-success"><i class="bi bi-award"></i></div>
+                        <p class="text-muted small fw-bold text-uppercase mb-1">Top Item</p>
                         <h3 class="fw-bold mb-0 h5 text-truncate">{{ product_stats.0.name|default:product_stats.0.item__name|default:"N/A" }}</h3>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <div class="kpi-card">
-                        <div class="kpi-icon bg-amber-subtle text-warning">
-                            <i class="bi bi-box-seam"></i>
-                        </div>
+                        <div class="kpi-icon bg-amber-subtle text-warning"><i class="bi bi-box-seam"></i></div>
                         <p class="text-muted small fw-bold text-uppercase mb-1">Total Items</p>
                         <h3 class="fw-bold mb-0">{{ product_stats|length }} Products</h3>
                     </div>
@@ -293,106 +210,56 @@
             </div>
 
             <!-- Product Rankings Table -->
-            <div class="product-container">
-                <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold mb-0">Product Contribution Rankings</h5>
+            <div class="product-container mt-4">
+                <div class="px-3 py-3 border-bottom d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+                    <h5 class="fw-bold mb-0">Sales Rankings</h5>
+                    <span class="badge bg-light text-primary border px-3 py-2 rounded-pill fw-bold">
+                        Period Total: ₹{{ grand_total|floatformat:2 }}
+                    </span>
                 </div>
                 <div class="table-responsive">
                     <table class="table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th class="ps-4">Product Details</th>
-                                <th>Category</th>
-                                <th class="text-end">Sales Value</th>
-                                <th style="width: 25%">Market Share</th>
+                                <th class="ps-3">Product</th>
+                                <th class="d-none d-md-table-cell">Category</th>
+                                <th class="text-end">Value</th>
+                                <th class="d-none d-sm-table-cell" style="width: 20%">Share</th>
                                 <th class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for p in product_stats %}
                             <tr>
-                                <td class="ps-4">
-                                    <div class="fw-bold text-dark">{{ p.name|default:p.item__name }}</div>
-                                    <div class="text-muted" style="font-size: 0.75rem;">ID: #{{ p.prod_pk|default:p.item__id }}</div>
+                                <td class="ps-3">
+                                    <div class="fw-bold">{{ p.name|default:p.item__name }}</div>
+                                    <div class="text-muted x-small">ID: #{{ p.prod_pk|default:p.item__id }}</div>
                                 </td>
-                                <td>
-                                    <span class="badge-soft">{{ p.item__category__name|default:"Uncategorized" }}</span>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="badge-soft">{{ p.item__category__name|default:"General" }}</span>
                                 </td>
-                                <td class="text-end fw-bold text-dark">
-                                    ₹ {{ p.total_val|default:p.total_sales|floatformat:2 }}
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="progress flex-grow-1" style="height: 5px; background-color: #f1f5f9;">
-                                            <div class="progress-bar bg-primary" style="width: {{ p.percentage }}%"></div>
-                                        </div>
-                                        <span class="small fw-bold">{{ p.percentage|floatformat:1 }}%</span>
+                                <td class="text-end fw-bold">₹{{ p.total_sales|floatformat:0 }}</td>
+                                <td class="d-none d-sm-table-cell">
+                                    <div class="progress" style="height: 4px;">
+                                        <div class="progress-bar bg-primary" style="width: {{ p.percentage }}%"></div>
                                     </div>
+                                    <span class="x-small fw-bold">{{ p.percentage|floatformat:1 }}%</span>
                                 </td>
                                 <td class="text-center">
-                                    <a href="{% url 'product_sales_history' p.item__id %}?start_date={{ start_date }}&end_date={{ end_date }}"
-                                       class="btn btn-action">
-                                        View History
-                                    </a>
+                                    <a href="{% url 'product_sales_history' p.prod_pk|default:p.item__id %}?start_date={{ start_date }}&end_date={{ end_date }}"
+                                       class="btn btn-action btn-sm">View</a>
                                 </td>
                             </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center py-5 text-muted">No sales data found for this period.</td>
-                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            <!-- Detailed Sales History (Appears on click) -->
-            {% if selected_product %}
-            <div class="product-container mt-5" id="details">
-                <div class="px-4 py-4 border-bottom bg-light">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <span class="badge bg-primary mb-2">History Log</span>
-                            <h4 class="fw-bold mb-0">Transactions: {{ selected_product.name }}</h4>
-                        </div>
-                        <div class="col-auto text-end border-start ms-4">
-                            <p class="text-muted small fw-bold mb-0">TOTAL SOLD</p>
-                            <h3 class="fw-bold text-primary mb-0">₹{{ selected_product_total_val|floatformat:2 }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="bg-white">
-                            <tr>
-                                <th class="ps-4">Date</th>
-                                <th>Voucher #</th>
-                                <th>Customer</th>
-                                <th>Salesperson</th>
-                                <th class="text-end pe-4">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for tx in transactions %}
-                            <tr>
-                                <td class="ps-4 text-muted small">{{ tx.date|date:"d M Y" }}</td>
-                                <td class="fw-medium">{{ tx.voucher_no }}</td>
-                                <td class="fw-bold text-dark">{{ tx.customer }}</td>
-                                <td>{{ tx.salesperson }}</td>
-                                <td class="text-end pe-4 fw-bold text-primary">₹{{ tx.amount|floatformat:2 }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
 
         </main>
     </div>
 </div>
 
-<!-- Bootstrap Bundle JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -2871,6 +2871,13 @@ class ProductContributionSummaryView(TemplateView):
             .annotate(total_sales=Sum('amount'))
             .order_by('-total_sales')
         )
+        search_query = self.request.GET.get('search', '').strip()
+        if search_query:
+            product_stats = [
+                p for p in product_stats
+                if search_query.lower() in (p['item__name'] or "").lower() or
+                   search_query.lower() in (p['item_name_text'] or "").lower()
+            ]
 
         # 4. Category-wise Summary
         category_stats = (
