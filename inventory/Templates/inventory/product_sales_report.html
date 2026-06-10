@@ -1,0 +1,118 @@
+
+{% block content %}
+<div class="container-fluid py-4 bg-light">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-0">Product Sales Analytics</h2>
+            <p class="text-muted">Analyze sales contribution by products and categories</p>
+        </div>
+        
+        <form method="GET" class="d-flex gap-2">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white">From</span>
+                <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+            </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white">To</span>
+                <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+            </div>
+            <button class="btn btn-primary btn-sm px-4">Update</button>
+        </form>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3">
+                <div class="text-muted small fw-bold text-uppercase">Total Period Sales</div>
+                <div class="h3 fw-bold text-primary">₹{{ grand_total|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 border-start border-success border-4">
+                <div class="text-muted small fw-bold text-uppercase">Top Contributor</div>
+                <div class="h3 fw-bold">{{ product_stats.0.item__name|default:product_stats.0.item_name_text|truncatechars:15 }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 border-start border-info border-4">
+                <div class="text-muted small fw-bold text-uppercase">Categories Active</div>
+                <div class="h3 fw-bold">{{ category_stats|length }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Category Analysis -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0 fw-bold">Category Distribution</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-3">Category</th>
+                                <th class="text-end pe-3">Contribution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat in category_stats %}
+                            <tr>
+                                <td class="ps-3 fw-semibold text-secondary">{{ cat.item__category__name|default:"General" }}</td>
+                                <td class="text-end pe-3">
+                                    <span class="badge rounded-pill bg-light text-dark border">{{ cat.percentage|floatformat:1 }}%</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Ranking -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0 fw-bold">Sales Contribution by Product</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-3">Product Details</th>
+                                <th>Category</th>
+                                <th class="text-end">Sales Value</th>
+                                <th class="ps-4" style="width: 30%;">Contribution %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in product_stats %}
+                            <tr onclick="window.location='{% url 'product_sales_history' p.item__id %}?start_date={{start_date}}&end_date={{end_date}}'" style="cursor: pointer;">
+                                <td class="ps-3">
+                                    <div class="fw-bold text-dark">{{ p.item__name|default:p.item_name_text }}</div>
+                                    <div class="small text-muted">ID: #{{ p.item__id }}</div>
+                                </td>
+                                <td><span class="badge bg-light text-secondary">{{ p.item__category__name|default:"-" }}</span></td>
+                                <td class="text-end fw-bold text-primary">₹{{ p.total_sales|floatformat:0 }}</td>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            <div class="progress-bar bg-primary rounded" style="width: {{ p.percentage }}%"></div>
+                                        </div>
+                                        <span class="ms-3 small fw-bold">{{ p.percentage|floatformat:1 }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

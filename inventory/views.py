@@ -2828,3 +2828,115 @@ class PurchaseOrderStageLogUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy("po_tracking_detail", kwargs={"pk": self.object.purchase_order.pk})
+
+
+
+
+
+class ProductContributionSummaryView(TemplateView):
+    template_name = "inventory/product_sales_report.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # 1. Get Filters
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+
+        # Base Query: Only Tax Invoices
+        stock_qs = VoucherStockItem.objects.filter(voucher__voucher_type="TAX INVOICE")
+        if start_date:
+            stock_qs = stock_qs.filter(voucher__date__gte=start_date)
+        if end_date:
+            stock_qs = stock_qs.filter(voucher__date__lte=end_date)
+
+        # 2. Total Sales Value for the Period
+        grand_total = stock_qs.aggregate(total=Sum('amount'))['total'] or 0
+
+        # 3. Product-wise Summary
+        product_stats = (
+            stock_qs.values('item__id', 'item__name', 'item__category__name', 'item_name_text')
+            .annotate(total_sales=Sum('amount'))
+            .order_by('-total_sales')
+        )
+
+        # 4. Category-wise Summary
+        category_stats = (
+            stock_qs.values('item__category__name')
+            .annotate(total_sales=Sum('amount'))
+            .order_by('-total_sales')
+        )
+
+        # 5. Calculate Percentages
+        for item in product_stats:
+            item['percentage'] = (item['total_sales'] / grand_total * 100) if grand_total > 0 else 0
+
+        for cat in category_stats:
+            cat['percentage'] = (cat['total_sales'] / grand_total * 100) if grand_total > 0 else 0
+
+        context.update({
+            "product_stats": product_stats,
+            "category_stats": category_stats,
+            "grand_total": grand_total,
+            "start_date": start_date,
+            "end_date": end_date,
+        })
+        return context
+
+
+class ProductSalesHistoryDetailView(ListView):
+    model = VoucherStockItem
+    template_name = "inventory/product_detail_history.html"
+    context_object_name = "transactions"
+
+    def get_queryset(self):
+        self.item = get_object_or_404(InventoryItem, id=self.kwargs['item_id'])
+        queryset = VoucherStockItem.objects.filter(
+            item=self.item,
+            voucher__voucher_type="TAX INVOICE"
+        ).select_related('voucher').order_by('-voucher__date')
+
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+
+        if start_date:
+            queryset = queryset.filter(voucher__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(voucher__date__lte=end_date)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        transactions = context['transactions']
+
+        # Optimization: Map party_names to Salespersons to avoid N+1 queries
+        party_names = [t.voucher.party_name for t in transactions]
+        customer_map = {
+            c.name.lower(): c.salesperson.name if c.salesperson else "N/A"
+            for c in Customer.objects.filter(name__in=party_names).select_related('salesperson')
+        }
+
+        # Calculate totals and enrich data
+        total_qty = 0
+        total_amt = 0
+        enriched_data = []
+
+        for trans in transactions:
+            total_qty += trans.quantity
+            total_amt += trans.amount
+            enriched_data.append({
+                'obj': trans,
+                'salesperson': customer_map.get(trans.voucher.party_name.lower(), "N/A"),
+                'rate': trans.amount / trans.quantity if trans.quantity > 0 else 0
+            })
+
+        context.update({
+            "item": self.item,
+            "report_rows": enriched_data,
+            "total_qty": total_qty,
+            "total_amt": total_amt,
+            "start_date": self.request.GET.get('start_date'),
+            "end_date": self.request.GET.get('end_date'),
+        })
+        return context

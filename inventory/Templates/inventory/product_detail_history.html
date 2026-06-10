@@ -1,0 +1,39 @@
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Sales Ledger: {{ item.name }}</h2>
+        <a href="{% url 'product_contribution_summary' %}?start_date={{start_date}}&end_date={{end_date}}" class="btn btn-secondary btn-sm">Back</a>
+    </div>
+
+    <table class="table table-bordered shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Salesperson</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Avg Rate</th>
+                <th class="text-end">Total Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in report_rows %}
+            <tr>
+                <td>{{ row.obj.voucher.date }}</td>
+                <td>{{ row.obj.voucher.party_name }}</td>
+                <td><span class="badge bg-info text-dark">{{ row.salesperson }}</span></td>
+                <td class="text-end">{{ row.obj.quantity }}</td>
+                <td class="text-end">₹{{ row.rate|floatformat:2 }}</td>
+                <td class="text-end fw-bold">₹{{ row.obj.amount|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot class="table-warning fw-bold text-end">
+            <tr>
+                <td colspan="3">SUMMARY TOTAL:</td>
+                <td>{{ total_qty|floatformat:2 }}</td>
+                <td>-</td>
+                <td>₹{{ total_amt|floatformat:2 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>

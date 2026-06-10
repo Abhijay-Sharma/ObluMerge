@@ -41,4 +41,7 @@ urlpatterns = [
 
     path("purchase-orders/tracked/<int:po_pk>/stage/add/", views.PurchaseOrderStageLogCreateView.as_view(), name="po_stage_log_create"),
     path("purchase-orders/stage-log/<int:pk>/edit/", views.PurchaseOrderStageLogUpdateView.as_view(), name="po_stage_log_update"),
+    path('sales-dashboard/', views.ProductContributionSummaryView.as_view(), name='product_contribution_summary'),
+    path('sales-dashboard/item/<int:item_id>/', views.ProductSalesHistoryDetailView.as_view(),
+         name='product_sales_history'),
 ]
