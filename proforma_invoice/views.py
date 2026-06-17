@@ -1553,8 +1553,8 @@ class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
         ).order_by("-created_at")
 
         # logic: Super Admin sees all, but we can default filter
-        if self.request.user.is_superuser:
-            return queryset # superuser sees all by default now
+        # if self.request.user.is_superuser:
+        #     return queryset # superuser sees all by default now
 
             # If no specific filter is selected, show 'Under MSRP' by default
             # if not self.request.GET.get('f_status'):
