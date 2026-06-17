@@ -97,7 +97,26 @@
     70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); }
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
 }
+/* High Visibility MSRP Badge */
+.msrp-alarm {
+    background: #ff4757;
+    color: white;
+    font-size: 10px;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    animation: alarm-pulse 1.5s infinite;
+    border: 1px solid #ff6b81;
+}
 
+@keyframes alarm-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+}
 </style>
 
 <div class="pi-main-container">
@@ -177,21 +196,33 @@
                             </td>
                             <td>{{ first_req.requested_by.username }}</td>
 
-                            <td>
-                                <!-- 1. AGGREGATE STATUS LOGIC -->
-                                {% if group.is_pending %}
-                                    <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 3px 8px; border-radius: 50px; color: #ffc107; border-color: #ffc107;">
-                                        PENDING
-                                    </span>
-                                {% else %}
-                                    <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 3px 8px; border-radius: 50px; color: #28a745; border-color: #28a745;">
-                                        REVIEWED
-                                    </span>
-                                {% endif %}
+<td>
+                                <!-- MSRP BADGE SECTION -->
+                                <div style="margin-bottom: 5px; text-align: center;">
+                                    {% if invoice.has_msrp_warning %}
+                                        <span class="msrp-alarm">⚠️ Under MSRP </span>
+                                    {% else %}
+                                        <!-- Fail-safe: Check individual requests in this group if the property above fails -->
+                                        {% for r in requests_in_group %}
+                                            {% if r.is_under_msrp %}
+                                                <span class="msrp-alarm">⚠️ Under MSRP </span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
 
-                                {% if invoice.has_msrp_warning %}
-                                    <br><small style="color: var(--danger); font-size: 0.6rem;">⚠️ CONTAINS BELOW MSRP</small>
-                                {% endif %}
+                                <!-- MAIN STATUS BADGE -->
+                                <div style="text-align: center;">
+                                    {% if group.is_pending %}
+                                        <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 4px 10px; border-radius: 50px; color: #ffc107; border-color: #ffc107; background: rgba(255, 193, 7, 0.1);">
+                                            PENDING
+                                        </span>
+                                    {% else %}
+                                        <span style="font-size: 0.65rem; font-weight: 800; border: 1px solid; padding: 4px 10px; border-radius: 50px; color: #28a745; border-color: #28a745; background: rgba(40, 167, 69, 0.1);">
+                                            REVIEWED
+                                        </span>
+                                    {% endif %}
+                                </div>
                             </td>
 
                             <td>
