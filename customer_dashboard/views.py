@@ -1926,7 +1926,7 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
         if search_query:
             qs = qs.filter(customer__name__icontains=search_query)
 
-        return qs.order_by("customer__name")
+        return qs.order_by("customer__name", "voucher_date")
 
     def get_context_data(self, **kwargs):
 

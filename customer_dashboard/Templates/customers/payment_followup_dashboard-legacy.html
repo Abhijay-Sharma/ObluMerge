@@ -1,366 +1,471 @@
-{% extends "customers/base.html" %}
-{% block content %}
-
-<h2>Payment Follow Ups</h2>
-
-{% if request.user.is_superuser %}
-
-<form method="get">
-
-<select name="salesperson">
-
-<option value="">All</option>
-
-{% for sp in salespersons %}
-
-<option value="{{ sp.id }}"
-{% if selected_salesperson == sp.id|stringformat:"s" %}
-selected
-{% endif %}
->
-{{ sp.name }}
-</option>
-
-{% endfor %}
-
-</select>
-
-<button type="submit">Filter</button>
-
-</form>
-
-{% endif %}
-
-
-<div id="loading"
-style="
-display:none;
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.2);
-z-index:999;
-text-align:center;
-padding-top:200px;
-font-size:20px;
-">
-
-Saving...
-
-</div>
-
-
-<table class="table table-bordered">
-
-<thead>
-
-<tr>
-<th>Customer</th>
-<th>Invoice</th>
-<th>Date</th>
-<th>Pending</th>
-<th>Remark</th>
-<th>Expected</th>
-<th>Ticket</th>
-<th>History</th>
-</tr>
-
-</thead>
-
-<tbody>
-
-{% for vs in voucher_statuses %}
-
-<tr>
-
-<td>{{ vs.customer.name }}</td>
-<td>{{ vs.voucher.voucher_number }}</td>
-<td>{{ vs.voucher_date }}</td>
-<td>{{ vs.unpaid_amount }}</td>
-
-<td>
-
-<input type="text"
-id="remark-{{vs.id}}"
-placeholder="Remark">
-
-<button onclick="saveRemark({{vs.id}})">
-Save
-</button>
-
-</td>
-
-<td>
-
-<input type="date"
-id="date-{{vs.id}}">
-
-<button onclick="saveDate({{vs.id}})">
-Save
-</button>
-
-</td>
-
-<td>
-
-<div id="ticket-btn-{{vs.id}}">
-
-{% if vs.payment_thread.ticket_status == "RAISED" %}
-
-<button onclick="solveTicket({{vs.id}})">
-Solve
-</button>
-
-{% else %}
-
-<button onclick="raiseTicket({{vs.id}})">
-Raise
-</button>
-
-{% endif %}
-
-</div>
-
-</td>
-
-<td>
-
-<button onclick="toggle({{vs.id}})">
-Show
-</button>
-
-</td>
-
-</tr>
-
-
-<tr id="history-{{vs.id}}" style="display:none">
-
-<td colspan="8">
-
-{% with thread=vs.payment_thread %}
-
-{% if thread %}
-
-<b>Remarks</b>
-
-<ul id="remarks-list-{{vs.id}}">
-
-{% for r in thread.remarks.all %}
-<li>{{r.remark}} - {{r.created_by}} ({{r.created_at}})</li>
-{% empty %}
-<li>No remarks yet</li>
-{% endfor %}
-
-</ul>
-
-
-<b>Expected Dates</b>
-
-<ul id="dates-list-{{vs.id}}">
-
-{% for d in thread.expected_date_history.all %}
-<li>{{d.expected_date}} - {{d.set_by}}</li>
-{% empty %}
-<li>No expected dates yet</li>
-{% endfor %}
-
-</ul>
-
-
-<b>Ticket History</b>
-
-<ul id="ticket-list-{{vs.id}}">
-
-{% for t in thread.ticket_events.all %}
-<li>{{t.event_type}} by {{t.performed_by}} ({{t.performed_at}})</li>
-{% empty %}
-<li>No ticket activity</li>
-{% endfor %}
-
-</ul>
-
-{% endif %}
-
-{% endwith %}
-
-</td>
-
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
-
-<script>
-
-function showLoading(){
-document.getElementById("loading").style.display="block"
-}
-
-function hideLoading(){
-document.getElementById("loading").style.display="none"
-}
-
-
-function postData(data){
-
-showLoading()
-
-return fetch("{% url 'customers:payment_followup_action' %}",{
-
-method:"POST",
-
-headers:{
-"X-CSRFToken":"{{csrf_token}}"
-},
-
-body:new URLSearchParams(data)
-
-}).then(r=>r.json()).then(data=>{
-hideLoading()
-return data
-})
-
-}
-
-
-function saveRemark(id){
-
-let input=document.getElementById("remark-"+id)
-
-let remark=input.value
-
-if(!remark.trim()){
-return
-}
-
-postData({
-action:"remark",
-voucher_status_id:id,
-remark:remark
-}).then(res=>{
-
-let ul=document.getElementById("remarks-list-"+id)
-
-let li=document.createElement("li")
-
-li.innerText=res.text+" - "+res.user
-
-ul.prepend(li)
-
-/* clear input field */
-input.value=""
-
-})
-
-}
-
-
-function saveDate(id){
-
-let input=document.getElementById("date-"+id)
-
-let date=input.value
-
-if(!date){
-return
-}
-
-postData({
-action:"expected",
-voucher_status_id:id,
-expected_date:date
-}).then(res=>{
-
-let ul=document.getElementById("dates-list-"+id)
-
-let li=document.createElement("li")
-
-li.innerText=res.date+" - "+res.user
-
-ul.prepend(li)
-
-/* clear field */
-input.value=""
-
-/* optional: focus again */
-input.focus()
-
-})
-
-}
-
-
-function raiseTicket(id){
-
-postData({
-action:"raise",
-voucher_status_id:id
-}).then(()=>{
-
-let btn=document.getElementById("ticket-btn-"+id)
-
-btn.innerHTML=`<button onclick="solveTicket(${id})">Solve</button>`
-
-let ul=document.getElementById("ticket-list-"+id)
-
-if(ul){
-
-let li=document.createElement("li")
-
-li.innerText="RAISED by you just now"
-
-ul.prepend(li)
-
-}
-
-})
-
-}
-
-
-function solveTicket(id){
-
-postData({
-action:"solve",
-voucher_status_id:id
-}).then(()=>{
-
-let btn=document.getElementById("ticket-btn-"+id)
-
-btn.innerHTML=`<button onclick="raiseTicket(${id})">Raise</button>`
-
-let ul=document.getElementById("ticket-list-"+id)
-
-if(ul){
-
-let li=document.createElement("li")
-
-li.innerText="SOLVED by you just now"
-
-ul.prepend(li)
-
-}
-
-})
-
-}
-
-
-function toggle(id){
-
-let row=document.getElementById("history-"+id)
-
-row.style.display=row.style.display==="none" ? "table-row" : "none"
-
-}
-
-</script>
-
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1250">
+    <title>Payment Follow-Up Dashboard</title>
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0; padding: 0; background-color: #f1f3f4;
+            font-family: 'Segoe UI', Tahoma, sans-serif; min-width: 1250px;
+        }
+
+        /* NAVIGATION BAR */
+        .oblu-nav {
+            background-color: #ffffff; border-bottom: 1px solid #dadce0;
+            padding: 0 30px; height: 60px; display: flex;
+            justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 1000;
+        }
+        .nav-left .brand { font-size: 22px; font-weight: 700; color: #1a73e8; text-decoration: none; }
+        .nav-right { display: flex; gap: 25px; align-items: center; }
+        .nav-link { text-decoration: none; color: #5f6368; font-size: 14px; font-weight: 500; }
+        .nav-link:hover { color: #1a73e8; }
+
+        /* LOADING BAR */
+        #loader-top {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 3px;
+            background: #1a73e8; z-index: 9999;
+        }
+
+        /* DASHBOARD CARD */
+        .sheets-outer-wrapper { padding: 30px; }
+         .sheets-card {
+            background: white; border: 1px solid #dadce0; border-radius: 8px;
+            width: 1450px;
+            margin: 0 auto; box-shadow: 0 1px 3px rgba(60,64,67, 0.3); overflow: hidden;
+         }
+
+        .sheets-toolbar {
+            padding: 15px 20px; border-bottom: 1px solid #e0e0e0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .toolbar-title { font-size: 18px; font-weight: 500; color: #3c4043; margin: 0; }
+        .user-pill {
+            background: #e8f0fe; color: #1967d2; border: 1px solid #c2d7fa;
+            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+        }
+
+        /* GRID STYLING */
+        .table-sheets { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .table-sheets th {
+            background: #f8f9fa; color: #5f6368; font-size: 11px; font-weight: 600;
+            text-transform: uppercase; border: 1px solid #e0e0e0; padding: 10px;
+        }
+        .table-sheets td {
+            border: 1px solid #e0e0e0; padding: 8px 10px; font-size: 13px;
+            color: #3c4043; vertical-align: middle; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .cust-cell { font-weight: 600; color: #1a73e8; display: block; }
+        .cust-cell:hover { text-decoration: underline !important; }
+        .voucher-sub:hover { color: #1a73e8 !important; text-decoration: underline !important; }
+        .amt-red { color: #d93025; font-weight: 700; text-align: right; }
+
+        /* Status Colors */
+        .status-crossed { color: #d93025 !important; font-weight: 600; }
+        .status-warning { color: #f29900 !important; font-weight: 600; }
+        .status-remaining { color: #188038 !important; font-weight: 600; }
+
+        .cell-input {
+            border: 1px solid #dadce0; padding: 5px; font-size: 12px;
+            border-radius: 4px; width: 100%; outline-color: #1a73e8;
+        }
+        .btn-sheet {
+            padding: 4px 10px; font-size: 11px; font-weight: 600;
+            border-radius: 4px; border: 1px solid #dadce0; background: white;
+            cursor: pointer; text-transform: uppercase;
+        }
+        .btn-blue { background: #1a73e8 !important; color: white !important; border-color: #1a73e8 !important; }
+        .btn-history-active {
+            background-color: #e8f0fe !important; color: #1967d2 !important; border-color: #1967d2 !important;
+        }
+
+        .drawer { background: #fbfbfb; border-bottom: 2px solid #1a73e8; }
+        .drawer-content { display: flex; gap: 30px; padding: 20px; white-space: normal !important; }
+        .drawer-col { flex: 1; }
+        .drawer-h { font-weight: 700; font-size: 11px; color: #1a73e8; margin-bottom: 10px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+        .log-item { font-size: 12px; margin-bottom: 8px; border-bottom: 1px solid #f1f1f1; padding-bottom: 6px; }
+        .log-meta { color: #888; font-size: 10px; margin-top: 2px; }
+
+        /* Autocomplete Container */
+        .search-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .suggestions-list {
+            position: absolute;
+            top: 100%; /* Exactly below the input */
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #dadce0;
+            border-top: none;
+            z-index: 1001;
+            max-height: 250px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(32,33,36,0.28);
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #3c4043;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .suggestion-item:last-child { border-bottom: none; }
+
+        .suggestion-item:hover {
+            background-color: #f8f9fa;
+            color: #1a73e8;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="oblu-nav">
+        <div class="nav-left"><a href="/" class="brand">OBLU TOOLS</a></div>
+        <div class="nav-right">
+            <a href="{% url 'customers:monthly_sales_report' %}" class="nav-link">Sales Report</a>
+            <a href="{% url 'customers:salesperson_customer_orders' %}" class="nav-link">Customer Report</a>
+            <span class="user-pill">User: {{ request.user.username }}</span>
+        </div>
+    </nav>
+
+    <div id="loader-top"></div>
+
+    <div class="sheets-outer-wrapper">
+        <div class="sheets-card">
+
+            <!-- TOOLBAR SECTION -->
+            <div class="sheets-toolbar">
+                <div style="display:flex; align-items:center; gap:25px;">
+                    <h1 class="toolbar-title">Payment Follow-Ups</h1>
+
+                    <form method="get" style="display:flex; align-items:center; gap:15px;">
+
+                        <!-- 1. SALESPERSON DROPDOWN  -->
+                        {% if is_accountant %}
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <span style="font-size:13px; color:#5f6368;">Salesperson:</span>
+                            <select name="salesperson" onchange="this.form.submit()" style="padding:4px 8px; border-radius:4px; border:1px solid #dadce0; font-size:13px;">
+                                <option value="">-- Show All --</option>
+                                {% for sp in salespersons %}
+                                <option value="{{ sp.id }}" {% if selected_salesperson == sp.id|stringformat:"s" %}selected{% endif %}>{{ sp.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <!-- 2. NEW CUSTOMER SEARCH  -->
+                        <div class="search-wrapper">
+                            <div style="display:flex; align-items:center; gap:5px;">
+                                <span style="font-size:13px; color:#5f6368;">Find Customer:</span>
+                                <input type="text" id="cust-search" name="q" value="{{ search_query }}"
+                                       placeholder="Search Customer..." autocomplete="off"
+                                       style="padding:4px 8px; border:1px solid #dadce0; border-radius:4px; font-size:13px; width: 250px;">
+
+                                <button type="submit" class="btn-sheet btn-blue">Search</button>
+                            </div>
+
+                            <div id="suggestions-box" class="suggestions-list" style="display:none;"></div>
+                        </div>
+
+                        {% if selected_salesperson or search_query %}
+                            <a href="." style="font-size:12px; color:#1a73e8; text-decoration:none;">Clear All</a>
+                        {% endif %}
+
+                        {% if selected_salesperson or search_query or selected_customer_id %}
+                            <a href="." style="font-size:12px; color:#1a73e8; text-decoration:none; margin-left: 10px;">
+                                Show All Records
+                            </a>
+                        {% endif %}
+                    </form>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; margin-left: 20px;">
+                    <!-- Excel Download -->
+                    <a id="btn-excel" href="#" class="btn-sheet" style="background: #1d6f42; color: white; border-color: #1d6f42; text-decoration: none;">
+                        Download Excel
+                    </a>
+
+                    <!-- PDF Download -->
+                    <a id="btn-pdf" href="#" class="btn-sheet" style="background: #d93025; color: white; border-color: #d93025; text-decoration: none;">
+                        Download PDF
+                    </a>
+                </div>
+
+                <div class="user-pill">User: {{ request.user.username }}</div>
+            </div>
+
+            <table class="table-sheets">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">S.No.</th>
+                        <th style="width: 290px;">Customer / Voucher</th>
+                        <th style="width: 100px;">Date</th>
+                        <th style="width: 150px;">Credit Status</th>
+                        <th style="width: 110px;">Total Amount</th> <!-- New Column -->
+                        <th style="width: 100px;">Pending</th>
+                        <th style="width: 220px;">Remark</th>
+                        <th style="width: 210px;">Expected Date</th>
+                        <th style="width: 90px;">Ticket</th>
+                        <th style="width: 90px; text-align: center;">History</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vs in voucher_statuses %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                <div style="flex: 1; min-width: 0; white-space: normal;">
+
+                                    <a href="{% url 'customers:customerpaymentstatus' vs.customer.pk %}"
+                                       class="cust-cell"
+                                       style="white-space: normal; word-break: break-word; line-height: 1.3; display: inline-block;">
+                                        {{ vs.customer.name }}
+                                    </a>
+
+                                    <!-- State -->
+                                    <div style="font-size: 10px; color: #666; margin-top: 2px;">{{ vs.customer.state|default:"" }}</div>
+
+                                    <!-- Voucher Link -->
+                                    <a href="{% url 'voucher_detail' vs.voucher.pk %}" class="voucher-sub"
+                                       style="text-decoration: none; white-space: nowrap; display: block; margin-top: 4px;">
+                                        {{ vs.voucher.voucher_number }}
+                                    </a>
+
+                                    {% if not selected_salesperson %}
+                                        <div style="font-size: 9px; color: #1a73e8; font-weight: bold; margin-top: 3px; text-transform: uppercase;">
+                                            SP: {{ vs.customer.salesperson.name }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- SELECT Button  -->
+                                <div style="flex-shrink: 0;">
+                                    <a href="?customer_id={{ vs.customer.id }}" class="btn-sheet"
+                                       style="background: #f8f9fa; border: 1px solid #dadce0; padding: 2px 6px; font-size: 9px; text-decoration: none; color: #3c4043; display: inline-block;">
+                                        SELECT
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td>{{ vs.voucher_date|date:"d M Y" }}</td>
+
+                        <td>
+                            <span class="{{ vs.credit_display_color }}">
+                                <span style="color:blue; font-size: 10px;">credit period : {{ vs.customer.credit_profile.credit_period_days }}</span> <br> <br>
+                                {{ vs.credit_display_text }}
+                            </span>
+                        </td>
+
+                        <!-- New Total Amount Column -->
+                         <td style="font-weight: 600; text-align: right; color: #3c4043;">
+                            {{ vs.total_invoice_amt|default:"0.00" }}
+                         </td>
+
+                        <td class="amt-red">
+                            {{ vs.unpaid_amount }}
+
+                            {% if vs.has_emi %}
+                            <div style="margin-top: 5px;">
+                                <span style="
+                                    background: #e6f4ea;
+                                    color: #1e8e3e;
+                                    font-size: 10px;
+                                    padding: 2px 6px;
+                                    border-radius: 4px;
+                                    font-weight: 800;
+                                    border: 1px solid #1e8e3e;
+                                    display: inline-block;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.5px;
+                                ">
+                                    PDC
+                                </span>
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <input type="text" id="rem-{{vs.id}}" class="cell-input" placeholder="Add note...">
+                                <button class="btn-sheet btn-blue" onclick="saveRemark({{vs.id}})">Save</button>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="date" id="date-{{vs.id}}" class="cell-input">
+                                <button class="btn-sheet" onclick="saveDate({{vs.id}})">Set</button>
+                            </div>
+                        </td>
+                        <td>
+                            <div id="tkt-btn-{{vs.id}}">
+                                {% if vs.payment_thread.ticket_status == "RAISED" %}
+                                    <button class="btn-sheet" style="background:#fef7e0; color:#b06000;" onclick="solveTicket({{vs.id}})">SOLVE</button>
+                                {% else %}
+                                    <button class="btn-sheet" style="width:100%" onclick="raiseTicket({{vs.id}})">RAISE</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            {% with thread=vs.payment_thread %}
+                            {% if thread.remarks.exists or thread.expected_date_history.exists or thread.ticket_events.exists %}
+                                <button class="btn-sheet btn-history-active" onclick="toggle({{vs.id}})">VIEW</button>
+                            {% else %}
+                                <button class="btn-sheet" style="color:#ccc;" onclick="toggle({{vs.id}})">NONE</button>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
+
+                    <tr id="drawer-{{vs.id}}" style="display:none;" class="drawer">
+                        <td colspan="10">
+                            <div class="drawer-content">
+                                <div class="drawer-col" style="flex: 2;">
+                                    <div class="drawer-h">REMARKS LOG</div>
+                                    {% for r in vs.payment_thread.remarks.all %}
+                                        <div class="log-item">
+                                            {{ r.remark }}
+                                            <div class="log-meta">{{ r.created_by }} • {{ r.created_at|date:"d/m H:i" }}</div>
+                                        </div>
+                                    {% empty %}<div class="log-item">No remarks</div>{% endfor %}
+                                </div>
+                                <div class="drawer-col">
+                                    <div class="drawer-h">EXPECTED DATES</div>
+                                    {% for d in vs.payment_thread.expected_date_history.all %}
+                                        <div class="log-item">
+                                            <strong>{{ d.expected_date|date:"d M Y" }}</strong>
+                                            <div class="log-meta">set by {{ d.set_by }}</div>
+                                        </div>
+                                    {% empty %}<div class="log-item">No dates</div>{% endfor %}
+                                </div>
+                                <div class="drawer-col">
+                                    <div class="drawer-h">TICKET ACTIVITY</div>
+                                    {% for t in vs.payment_thread.ticket_events.all %}
+                                        <div class="log-item">
+                                            <span style="color: {% if t.event_type == 'RAISED' %}#d93025{% else %}#188038{% endif %}; font-weight:700;">
+                                                {{ t.event_type }}
+                                            </span>
+                                            <div class="log-meta">by {{ t.performed_by }} on {{ t.performed_at|date:"d/m" }}</div>
+                                        </div>
+                                    {% empty %}<div class="log-item">No activity</div>{% endfor %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 1. Pass the Django list to JavaScript safely
+        const customerNames = [
+            {% for name in customer_suggestions %}"{{ name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+
+        const searchInput = document.getElementById('cust-search');
+        const suggestionsBox = document.getElementById('suggestions-box');
+
+        searchInput.addEventListener('input', function() {
+            const val = this.value.toLowerCase();
+            suggestionsBox.innerHTML = '';
+
+            if (!val) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+
+            // Filter names that contain the typed letters
+            const matches = customerNames.filter(name => name.toLowerCase().includes(val));
+
+            if (matches.length > 0) {
+                matches.forEach(name => {
+                    const div = document.createElement('div');
+                    div.classList.add('suggestion-item');
+                    div.innerText = name;
+
+                    // When user clicks a suggestion
+                    div.addEventListener('click', function() {
+                        searchInput.value = name;
+                        suggestionsBox.style.display = 'none';
+                        searchInput.form.submit(); // Automatically search on click
+                    });
+
+                    suggestionsBox.appendChild(div);
+                });
+                suggestionsBox.style.display = 'block';
+            } else {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+
+        // Close suggestions if user clicks outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== searchInput) {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+        function showLoad() { document.getElementById("loader-top").style.display = "block"; }
+        function hideLoad() { document.getElementById("loader-top").style.display = "none"; }
+        function postData(data) {
+            showLoad();
+            return fetch("{% url 'customers:payment_followup_action' %}", {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{csrf_token}}" },
+                body: new URLSearchParams(data)
+            })
+            .then(r => r.json()).then(data => { location.reload(); })
+            .catch(() => { hideLoad(); alert("Error connecting to server."); });
+        }
+        function saveRemark(id) {
+            let val = document.getElementById("rem-" + id).value;
+            if (val.trim()) postData({ action: "remark", voucher_status_id: id, remark: val });
+        }
+        function saveDate(id) {
+            let val = document.getElementById("date-" + id).value;
+            if (val) postData({ action: "expected", voucher_status_id: id, expected_date: val });
+        }
+        function raiseTicket(id) { postData({ action: "raise", voucher_status_id: id }); }
+        function solveTicket(id) { postData({ action: "solve", voucher_status_id: id }); }
+        function toggle(id) {
+            let el = document.getElementById("drawer-" + id);
+            el.style.display = (el.style.display === "none") ? "table-row" : "none";
+        }
+
+        // Dynamically update the download links with current search/filter parameters
+        function updateDownloadLinks() {
+            const params = new URLSearchParams(window.location.search);
+            const baseUrl = "{% url 'customers:export_payment_followup' %}"; // Ensure this matches your URL name
+
+            const excelBtn = document.getElementById('btn-excel');
+            const pdfBtn = document.getElementById('btn-pdf');
+
+            params.set('type', 'excel');
+            excelBtn.href = baseUrl + '?' + params.toString();
+
+            params.set('type', 'pdf');
+            pdfBtn.href = baseUrl + '?' + params.toString();
+        }
+
+        // Call on load
+        updateDownloadLinks();
+    </script>
+</body>
+</html>

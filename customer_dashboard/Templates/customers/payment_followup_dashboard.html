@@ -38,12 +38,21 @@
          .sheets-card {
             background: white; border: 1px solid #dadce0; border-radius: 8px;
             width: 1450px;
-            margin: 0 auto; box-shadow: 0 1px 3px rgba(60,64,67, 0.3); overflow: hidden;
+            margin: 0 auto; box-shadow: 0 1px 3px rgba(60,64,67, 0.3);
          }
 
         .sheets-toolbar {
-            padding: 15px 20px; border-bottom: 1px solid #e0e0e0;
-            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            position: sticky;
+            top: 60px;
+            z-index: 100;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
         }
         .toolbar-title { font-size: 18px; font-weight: 500; color: #3c4043; margin: 0; }
         .user-pill {
@@ -56,6 +65,7 @@
         .table-sheets th {
             background: #f8f9fa; color: #5f6368; font-size: 11px; font-weight: 600;
             text-transform: uppercase; border: 1px solid #e0e0e0; padding: 10px;
+            position: sticky; top: 131px; z-index: 90;
         }
         .table-sheets td {
             border: 1px solid #e0e0e0; padding: 8px 10px; font-size: 13px;
@@ -204,6 +214,11 @@
                     <a id="btn-pdf" href="#" class="btn-sheet" style="background: #d93025; color: white; border-color: #d93025; text-decoration: none;">
                         Download PDF
                     </a>
+
+                    <!-- NEW: Expand All Button -->
+                    <button id="btn-expand-all" class="btn-sheet" style="background: #5f6368; color: white; border-color: #5f6368;">
+                        Expand All
+                    </button>
                 </div>
 
                 <div class="user-pill">User: {{ request.user.username }}</div>
@@ -338,7 +353,7 @@
                             <div class="drawer-content">
                                 <div class="drawer-col" style="flex: 2;">
                                     <div class="drawer-h">REMARKS LOG</div>
-                                    {% for r in vs.payment_thread.remarks.all %}
+                                    {% for r in vs.payment_thread.remarks.all|dictsortreversed:"created_at" %}
                                         <div class="log-item">
                                             {{ r.remark }}
                                             <div class="log-meta">{{ r.created_by }} • {{ r.created_at|date:"d/m H:i" }}</div>
@@ -374,98 +389,170 @@
         </div>
     </div>
 
-    <script>
-        // 1. Pass the Django list to JavaScript safely
-        const customerNames = [
-            {% for name in customer_suggestions %}"{{ name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}
-        ];
+<script>
+    // 1. PASS DJANGO DATA TO JS
+    const customerNames = [
+        {% for name in customer_suggestions %}"{{ name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}
+    ];
 
-        const searchInput = document.getElementById('cust-search');
-        const suggestionsBox = document.getElementById('suggestions-box');
+    const searchInput = document.getElementById('cust-search');
+    const suggestionsBox = document.getElementById('suggestions-box');
+    const expandAllBtn = document.getElementById('btn-expand-all');
+    let isAllExpanded = false;
 
-        searchInput.addEventListener('input', function() {
-            const val = this.value.toLowerCase();
-            suggestionsBox.innerHTML = '';
+    // 2. SEARCH & AUTOCOMPLETE LOGIC
+    searchInput.addEventListener('input', function() {
+        const val = this.value.toLowerCase();
+        suggestionsBox.innerHTML = '';
 
-            if (!val) {
-                suggestionsBox.style.display = 'none';
-                return;
-            }
+        if (!val) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
 
-            // Filter names that contain the typed letters
-            const matches = customerNames.filter(name => name.toLowerCase().includes(val));
+        const matches = customerNames.filter(name => name.toLowerCase().includes(val));
 
-            if (matches.length > 0) {
-                matches.forEach(name => {
-                    const div = document.createElement('div');
-                    div.classList.add('suggestion-item');
-                    div.innerText = name;
-
-                    // When user clicks a suggestion
-                    div.addEventListener('click', function() {
-                        searchInput.value = name;
-                        suggestionsBox.style.display = 'none';
-                        searchInput.form.submit(); // Automatically search on click
-                    });
-
-                    suggestionsBox.appendChild(div);
+        if (matches.length > 0) {
+            matches.forEach(name => {
+                const div = document.createElement('div');
+                div.classList.add('suggestion-item');
+                div.innerText = name;
+                div.addEventListener('click', function() {
+                    searchInput.value = name;
+                    suggestionsBox.style.display = 'none';
+                    searchInput.form.submit();
                 });
-                suggestionsBox.style.display = 'block';
-            } else {
-                suggestionsBox.style.display = 'none';
-            }
+                suggestionsBox.appendChild(div);
+            });
+            suggestionsBox.style.display = 'block';
+        } else {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target !== searchInput) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+
+    // 3. BULK EXPAND/COLLAPSE LOGIC (NEW)
+    if (expandAllBtn) {
+        expandAllBtn.addEventListener('click', function() {
+            const drawers = document.querySelectorAll('.drawer');
+            isAllExpanded = !isAllExpanded;
+
+            drawers.forEach(drawer => {
+                drawer.style.display = isAllExpanded ? 'table-row' : 'none';
+            });
+
+            this.innerText = isAllExpanded ? 'Collapse All' : 'Expand All';
+
+            // Save the global state
+            localStorage.setItem('allExpanded', isAllExpanded);
+            // Clear individual rows if global is set to avoid conflict
+            if (!isAllExpanded) localStorage.setItem('expandedRows', '[]');
         });
+    }
 
-        // Close suggestions if user clicks outside
-        document.addEventListener('click', function(e) {
-            if (e.target !== searchInput) {
-                suggestionsBox.style.display = 'none';
-            }
+    // 4. ACTION FUNCTIONS (REMARK, DATE, TICKETS)
+    function showLoad() { document.getElementById("loader-top").style.display = "block"; }
+    function hideLoad() { document.getElementById("loader-top").style.display = "none"; }
+
+    function postData(data) {
+        showLoad();
+        return fetch("{% url 'customers:payment_followup_action' %}", {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{csrf_token}}" },
+            body: new URLSearchParams(data)
+        })
+        .then(r => r.json()).then(data => {
+            location.reload();
+        })
+        .catch(() => {
+            hideLoad();
+            alert("Error connecting to server.");
         });
-        function showLoad() { document.getElementById("loader-top").style.display = "block"; }
-        function hideLoad() { document.getElementById("loader-top").style.display = "none"; }
-        function postData(data) {
-            showLoad();
-            return fetch("{% url 'customers:payment_followup_action' %}", {
-                method: "POST",
-                headers: { "X-CSRFToken": "{{csrf_token}}" },
-                body: new URLSearchParams(data)
-            })
-            .then(r => r.json()).then(data => { location.reload(); })
-            .catch(() => { hideLoad(); alert("Error connecting to server."); });
+    }
+
+    function saveRemark(id) {
+        let val = document.getElementById("rem-" + id).value;
+        if (val.trim()) postData({ action: "remark", voucher_status_id: id, remark: val });
+    }
+
+    function saveDate(id) {
+        let val = document.getElementById("date-" + id).value;
+        if (val) postData({ action: "expected", voucher_status_id: id, expected_date: val });
+    }
+
+    function raiseTicket(id) { postData({ action: "raise", voucher_status_id: id }); }
+    function solveTicket(id) { postData({ action: "solve", voucher_status_id: id }); }
+
+    // 5. INDIVIDUAL TOGGLE
+    function toggle(id) {
+        let el = document.getElementById("drawer-" + id);
+        let expandedRows = JSON.parse(localStorage.getItem('expandedRows') || '[]');
+
+        if (el.style.display === "none" || el.style.display === "") {
+            el.style.display = "table-row";
+            // Add to list if not already there
+            if (!expandedRows.includes(id)) expandedRows.push(id);
+        } else {
+            el.style.display = "none";
+            // Remove from list
+            expandedRows = expandedRows.filter(rowId => rowId !== id);
         }
-        function saveRemark(id) {
-            let val = document.getElementById("rem-" + id).value;
-            if (val.trim()) postData({ action: "remark", voucher_status_id: id, remark: val });
-        }
-        function saveDate(id) {
-            let val = document.getElementById("date-" + id).value;
-            if (val) postData({ action: "expected", voucher_status_id: id, expected_date: val });
-        }
-        function raiseTicket(id) { postData({ action: "raise", voucher_status_id: id }); }
-        function solveTicket(id) { postData({ action: "solve", voucher_status_id: id }); }
-        function toggle(id) {
-            let el = document.getElementById("drawer-" + id);
-            el.style.display = (el.style.display === "none") ? "table-row" : "none";
+        localStorage.setItem('expandedRows', JSON.stringify(expandedRows));
+    }
+
+    // 6. EXPORT LINK UPDATER
+    function updateDownloadLinks() {
+        const params = new URLSearchParams(window.location.search);
+        const baseUrl = "{% url 'customers:export_payment_followup' %}";
+
+        const excelBtn = document.getElementById('btn-excel');
+        const pdfBtn = document.getElementById('btn-pdf');
+
+        if (excelBtn) {
+            const excelParams = new URLSearchParams(params);
+            excelParams.set('type', 'excel');
+            excelBtn.href = baseUrl + '?' + excelParams.toString();
         }
 
-        // Dynamically update the download links with current search/filter parameters
-        function updateDownloadLinks() {
-            const params = new URLSearchParams(window.location.search);
-            const baseUrl = "{% url 'customers:export_payment_followup' %}"; // Ensure this matches your URL name
-
-            const excelBtn = document.getElementById('btn-excel');
-            const pdfBtn = document.getElementById('btn-pdf');
-
-            params.set('type', 'excel');
-            excelBtn.href = baseUrl + '?' + params.toString();
-
-            params.set('type', 'pdf');
-            pdfBtn.href = baseUrl + '?' + params.toString();
+        if (pdfBtn) {
+            const pdfParams = new URLSearchParams(params);
+            pdfParams.set('type', 'pdf');
+            pdfBtn.href = baseUrl + '?' + pdfParams.toString();
         }
+    }
 
-        // Call on load
-        updateDownloadLinks();
-    </script>
+    // Initialize links on load
+    updateDownloadLinks();
+
+    // Function to restore the state after reload
+    function restoreExpandedState() {
+        const isAllExpandedStored = localStorage.getItem('allExpanded') === 'true';
+        const expandedRows = JSON.parse(localStorage.getItem('expandedRows') || '[]');
+
+        if (isAllExpandedStored) {
+            // If "Expand All" was on, expand everything
+            isAllExpanded = true;
+            document.querySelectorAll('.drawer').forEach(drawer => {
+                drawer.style.display = 'table-row';
+            });
+            if(expandAllBtn) expandAllBtn.innerText = 'Collapse All';
+        } else {
+            // Otherwise, only expand specific rows that were open
+            expandedRows.forEach(id => {
+                let el = document.getElementById("drawer-" + id);
+                if (el) el.style.display = 'table-row';
+            });
+        }
+    }
+
+    // Call this immediately
+    restoreExpandedState();
+</script>
+
 </body>
 </html>
