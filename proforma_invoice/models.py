@@ -967,42 +967,38 @@ class ProformaPriceChangeRequest(models.Model):
         default=False,
     )
 
-    def save(self, *args, **kwargs):
-
-        # 1. HANDLE PRODUCT REQUESTS
+    def save(self, args, **kwargs):
+        # 1. HANDLE PRODUCT REQUEST LOGIC
         if self.is_product_request:
             self.requested_courier_charge = None
+            # Snapshot quantity if missing
             if self.quantity is None and self.product and self.invoice:
                 item = self.invoice.items.filter(product=self.product).first()
                 if item:
                     self.quantity = item.quantity
-
+            # Check MSRP violation
             if self.requested_price is not None and self.msrp_snapshot is not None:
                 self.is_under_msrp = self.requested_price < self.msrp_snapshot
 
-        # 2. HANDLE COURIER REQUESTS
+        # 2. HANDLE COURIER REQUEST LOGIC
         else:
             self.product = None
             self.requested_price = None
             self.msrp_snapshot = None
             self.quantity = None
-
+            # Fetch default system charge if missing
             if not self.recommended_courier_charge and self.invoice:
-                self.recommended_courier_charge = self.invoice.courier_charge()
+                curr_charge = self.invoice.courier_charge() if callable(self.invoice.courier_charge) else self.invoice.courier_charge
+                self.recommended_courier_charge = curr_charge
+            # Deep discount rule (Courier < 50% of recommended)
+            if self.requested_courier_charge is not None and self.recommended_courier_charge:
+                self.is_under_msrp = self.requested_courier_charge < (self.recommended_courier_charge / 2)
 
-            if self.requested_courier_charge is not None and self.recommended_courier_charge is not None:
-                half_price = self.recommended_courier_charge / 2
-                self.is_under_msrp = self.requested_courier_charge < half_price
+        # 3. TRACKING LOGIC (Set reviewed_at when status changes from pending)
+        if self.status != "pending" and not self.reviewed_at:
+            self.reviewed_at = timezone.now()
 
-        # --- TIMER LOGIC ---
-        if self.pk:
-            old_instance = ProformaPriceChangeRequest.objects.filter(pk=self.pk).first()
-            if old_instance:
-                # If status moves from pending to anything else, record the time
-                if old_instance.status == "pending" and self.status != "pending" and not self.first_reviewed_at:
-                    self.first_reviewed_at = timezone.now()
-
-        super().save(*args, **kwargs)
+        super().save(args, **kwargs)
 
     def __str__(self):
         req_type = "Product" if self.is_product_request else "Courier"
