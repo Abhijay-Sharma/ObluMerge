@@ -907,8 +907,7 @@ class ProformaPriceChangeRequest(models.Model):
     msrp_snapshot = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Snapshot of quantity at time of request")
 
-
-# -------For courier-------
+    # -------For courier-------
     requested_courier_charge = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     recommended_courier_charge = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
@@ -967,7 +966,27 @@ class ProformaPriceChangeRequest(models.Model):
         default=False,
     )
 
-    def save(self, args, **kwargs):
+    def save(self, *args, **kwargs):
+        # 1. Logic for Product Requests
+        if self.is_product_request:
+            # Clear courier fields to ensure data integrity
+            self.requested_courier_charge = None
+
+            # Auto-calculate MSRP status
+            if self.requested_price and self.msrp_snapshot:
+                self.is_under_msrp = self.requested_price < self.msrp_snapshot
+
+        # 2. Logic for Courier Requests
+        else:
+            # Clear product fields
+            self.product = None
+            self.requested_price = None
+            self.msrp_snapshot = None
+            self.is_under_msrp = False
+
+        super().save(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
         # 1. HANDLE PRODUCT REQUEST LOGIC
         if self.is_product_request:
             self.requested_courier_charge = None
@@ -988,7 +1007,8 @@ class ProformaPriceChangeRequest(models.Model):
             self.quantity = None
             # Fetch default system charge if missing
             if not self.recommended_courier_charge and self.invoice:
-                curr_charge = self.invoice.courier_charge() if callable(self.invoice.courier_charge) else self.invoice.courier_charge
+                curr_charge = self.invoice.courier_charge() if callable(
+                    self.invoice.courier_charge) else self.invoice.courier_charge
                 self.recommended_courier_charge = curr_charge
             # Deep discount rule (Courier < 50% of recommended)
             if self.requested_courier_charge is not None and self.recommended_courier_charge:
@@ -998,7 +1018,7 @@ class ProformaPriceChangeRequest(models.Model):
         if self.status != "pending" and not self.reviewed_at:
             self.reviewed_at = timezone.now()
 
-        super().save(args, **kwargs)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         req_type = "Product" if self.is_product_request else "Courier"
