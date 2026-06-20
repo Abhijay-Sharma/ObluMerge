@@ -905,6 +905,7 @@ class ProformaPriceChangeRequest(models.Model):
     requested_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     recommended_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     msrp_snapshot = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Snapshot of quantity at time of request")
 
 
 # -------For courier-------
@@ -967,22 +968,39 @@ class ProformaPriceChangeRequest(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        # 1. Logic for Product Requests
-        if self.is_product_request:
-            # Clear courier fields to ensure data integrity
-            self.requested_courier_charge = None
 
-            # Auto-calculate MSRP status
-            if self.requested_price and self.msrp_snapshot:
+        # 1. HANDLE PRODUCT REQUESTS
+        if self.is_product_request:
+            self.requested_courier_charge = None
+            if self.quantity is None and self.product and self.invoice:
+                item = self.invoice.items.filter(product=self.product).first()
+                if item:
+                    self.quantity = item.quantity
+
+            if self.requested_price is not None and self.msrp_snapshot is not None:
                 self.is_under_msrp = self.requested_price < self.msrp_snapshot
 
-        # 2. Logic for Courier Requests
+        # 2. HANDLE COURIER REQUESTS
         else:
-            # Clear product fields
             self.product = None
             self.requested_price = None
             self.msrp_snapshot = None
-            self.is_under_msrp = False
+            self.quantity = None
+
+            if not self.recommended_courier_charge and self.invoice:
+                self.recommended_courier_charge = self.invoice.courier_charge()
+
+            if self.requested_courier_charge is not None and self.recommended_courier_charge is not None:
+                half_price = self.recommended_courier_charge / 2
+                self.is_under_msrp = self.requested_courier_charge < half_price
+
+        # --- TIMER LOGIC ---
+        if self.pk:
+            old_instance = ProformaPriceChangeRequest.objects.filter(pk=self.pk).first()
+            if old_instance:
+                # If status moves from pending to anything else, record the time
+                if old_instance.status == "pending" and self.status != "pending" and not self.first_reviewed_at:
+                    self.first_reviewed_at = timezone.now()
 
         super().save(*args, **kwargs)
 
@@ -1012,15 +1030,41 @@ class ProformaStockShortageRequest(models.Model):
     """Handles requests where quantity ordered > warehouse stock."""
     STATUS_CHOICES = [("pending", "Pending Approval"), ("approved", "Stock Confirmed"), ("rejected", "Unavailable")]
 
-    invoice = models.OneToOneField(ProformaInvoice, on_delete=models.CASCADE, related_name="stock_request")
+    invoice = models.ForeignKey(ProformaInvoice, on_delete=models.CASCADE, related_name="stock_requests")
+    product = models.ForeignKey(InventoryItem, on_delete=models.CASCADE,null=True,
+        blank=True
+)
+
+    requested_quantity = models.IntegerField(default=0)
+    available_quantity = models.IntegerField(default=0)
+
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    shortage_details = models.JSONField(encoder=DjangoJSONEncoder)  # { "Product Name": "Requested: 10, Available: 2" }
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                     related_name="stock_reviewed")
     reviewed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def get_duration(self):
+        if self.created_at and self.reviewed_at:
+            diff = self.reviewed_at - self.created_at
+            # Format: 2h 15m or 45m
+            total_seconds = int(diff.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            if hours > 0:
+                return f"{hours}h {minutes}m"
+            return f"{minutes}m"
+        return None
+
+    def __str__(self):
+        p_name = self.product.name if self.product else "No Product/Courier"
+        return f"{p_name} - Inv #{self.invoice.id}"
 
 class ProformaRemark(models.Model):
     # 1. Links
@@ -1040,3 +1084,39 @@ class ProformaRemark(models.Model):
         return f"{self.user.username} - {self.created_at.strftime('%d %b, %H:%M')}"
 
 
+class CreditPeriodOverdueByPassRequest(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
+    # FK to the Proforma Invoice that is causing the credit block
+    proforma_invoice = models.ForeignKey(
+        ProformaInvoice,
+        on_delete=models.CASCADE,
+        related_name="credit_approvals"
+    )
+
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="credit_requests_made"
+    )
+
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="credit_approved_by"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Request for PI #{self.proforma_invoice.id} - {self.status}"
