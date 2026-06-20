@@ -96,7 +96,7 @@ class ProformaPriceChangeRequestForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Optional: make reason required
-        self.fields["reason"].required = True
+        self.fields["reason"].required = False
 
 
 class NewProformaCustomerForm(forms.ModelForm):

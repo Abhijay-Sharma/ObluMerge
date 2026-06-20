@@ -279,6 +279,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Requested Item</th>
+                                                <th style="text-align: center;">Quantity</th>
                                                 <th style="text-align: center;">Decision</th>
                                                 <th style="text-align: right;">Recommended</th>
                                                 <th style="text-align: right;">Requested</th>
@@ -298,6 +299,13 @@
                                                     <div style="font-size: 0.7rem; color: #888; font-style: italic; margin-top: 4px;">
                                                         Reason: {{ req.reason|default:"No reason provided." }}
                                                     </div>
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    {% if req.is_product_request %}
+                                                        {{ req.quantity|default:"-" }}
+                                                    {% else %}
+                                                        <span style="color: #888;">-</span>
+                                                    {% endif %}
                                                 </td>
                                                 <td style="text-align: center;" id="decision-cell-{{ req.id }}">
                                                     {% if req.status == 'pending' %}
