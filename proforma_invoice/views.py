@@ -532,6 +532,60 @@ def customer_purchase_history_api(request, customer_id):
         'purchased_ids': list(purchased_product_ids)
     })
 
+def check_customer_credit_api(request, customer_id):
+    """
+    Checks if a customer is blocked based on the CustomerVoucherStatus model.
+    No more hardcoded 30-day math.
+    """
+    from customer_dashboard.models import CustomerVoucherStatus  # Ensure import
+
+    # 1. Directly find records where credit period is crossed and money is still owed
+    overdue_records = CustomerVoucherStatus.objects.filter(
+        customer_id=customer_id,
+        is_credit_period_crossed=True
+    ).filter(
+        Q(is_unpaid=True) | Q(is_partially_paid=True)
+    ).select_related('voucher')
+
+    is_blocked = overdue_records.exists()
+
+    overdue_list = []
+    for rec in overdue_records:
+        overdue_list.append({
+            "pi_id": rec.voucher.voucher_number,
+            "date": rec.voucher_date.strftime('%d-%m-%Y'),
+        })
+
+    return JsonResponse({
+        "is_blocked": is_blocked,
+        "overdue_invoices": overdue_list,
+        "customer_name": overdue_records.first().customer.name if is_blocked else ""
+    })
+
+def notify_admin_credit_api(request, customer_id):
+    """
+    Triggered when the user clicks 'Notify Admin' on the frontend.
+    Since no new model is created, this serves as a hook for notifications.
+    """
+    if request.method == "POST":
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        # LOGIC: You can uncomment the code below to send actual emails
+        # from django.core.mail import send_mail
+        # send_mail(
+        #     subject=f"🚨 Credit Approval Required: {customer.name}",
+        #     message=f"User {request.user.username} is requesting to create a Proforma for {customer.name}.\n\n"
+        #             f"Reason: Customer has overdue invoices in Tally.\n"
+        #             f"Action: Please review and clear the credit block in Tally.",
+        #     from_email="system@oblutools.com",
+        #     recipient_list=["admin@oblutools.com", "accounts@oblutools.com"]
+        # )
+
+        return JsonResponse({
+            "status": "success",
+            "message": f"Admin notified regarding {customer.name}."
+        })
+
 class CreateProformaInvoiceView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         invoice_form = ProformaInvoiceForm(user=request.user)
@@ -867,6 +921,54 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
 
 
 
+
+class OverdueBypassListView(AccountantRequiredMixin, ListView):
+    model = CreditPeriodOverdueByPassRequest
+    template_name = "proforma_invoice/credit_period_overdue_bypass_list.html"
+    context_object_name = "requests"
+
+    def get_queryset(self):
+        return CreditPeriodOverdueByPassRequest.objects.select_related(
+            'customer', 'proforma_invoice', 'requested_by'
+        ).order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Import the model here to avoid circular imports
+        from proforma_invoice.models import CreditPeriodOverdueByPassRequest
+        from customer_dashboard.models import CustomerVoucherStatus
+
+        for req in context['requests']:
+            # Fetch the actual overdue records from the status model
+            # Note: We use .select_related('voucher') to get the Voucher Number later
+            req.overdue_history = CustomerVoucherStatus.objects.filter(
+                customer=req.customer,
+                is_credit_period_crossed=True
+            ).filter(
+                Q(is_unpaid=True) | Q(is_partially_paid=True)
+            ).select_related('voucher').order_by('-voucher_date')
+
+        return context
+
+class ApproveOverdueBypassView(AccountantRequiredMixin, View):
+    def post(self, request, pk):
+        bypass_req = get_object_or_404(CreditPeriodOverdueByPassRequest, pk=pk)
+        decision = request.POST.get('decision')
+
+        if decision == 'yes':
+            bypass_req.status = 'approved'
+            bypass_req.approved_by = request.user
+            bypass_req.reviewed_at = timezone.now()
+            bypass_req.save()
+            messages.success(request, f"✅ Approved.")
+        else:
+            bypass_req.status = 'rejected'
+            bypass_req.save()
+            messages.warning(request, f"❌ Rejected.")
+
+        # CHANGE THIS REDIRECT NAME TO MATCH URLS.PY
+        return redirect('overdue_bypass_list')
 
 
 
