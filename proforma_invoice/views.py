@@ -3873,29 +3873,19 @@ class ProformaTimeTrackerDashboardView(AccountantRequiredMixin, ListView):
 
 # proforma_invoice/ check_is_permitted
 
-def check_is_permitted(customer, product, requested_price):
+def check_is_permitted(self, customer, product, requested_price, current_recommended):
     """
     Checks if this price (or lower) was already approved for this customer.
-    Logic: If current base price matches the snapshot, and requested price >= min approved.
     """
-    from .models import ApprovedPriceMemory, ProductPrice
-
-    # Get current master recommended price
-    master_price_obj = getattr(product, "proforma_price", None)
-    if not master_price_obj:
-        return False
-
-    current_recommended = master_price_obj.price
-
     memory = ApprovedPriceMemory.objects.filter(customer=customer, product=product).first()
 
     if memory:
-        # Check if the recommended price has changed since the memory was created
-        if memory.base_price_at_approval == current_recommended:
-            # If salesperson is asking for a price higher or equal to what was approved before
-            if Decimal(str(requested_price)) >= memory.min_approved_price:
-                return True
+        req_p = Decimal(str(requested_price))
+        rec_p = Decimal(str(current_recommended))  # Ye bahar se aaya hua Tier price hai
 
+        if memory.base_price_at_approval == rec_p:
+            if req_p >= memory.min_approved_price:
+                return True
     return False
 
 
@@ -4115,3 +4105,48 @@ class ProformaAnalyticsDashboardView(LoginRequiredMixin, TemplateView):
         days, hours, minutes = td.days, td.seconds // 3600, (td.seconds // 60) % 60
         if days > 0: return f"{days}d {hours}h"
         return f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+
+
+class ApprovedPriceListView(LoginRequiredMixin, View):
+    def get(self, request):
+        is_accountant = getattr(request.user, 'is_accountant', False) or request.user.is_superuser
+        selected_sp_id = request.GET.get('sp_id')
+
+        # Get all Salespeople for the Accountant dropdown
+        salespeople = SalesPerson.objects.all().order_by('name') if is_accountant else None
+
+        if is_accountant:
+            # If Accountant, filter by SP if selected, else show all
+            queryset = ApprovedPriceMemory.objects.select_related('customer', 'product', 'customer__salesperson').all()
+            if selected_sp_id:
+                queryset = queryset.filter(customer__salesperson_id=selected_sp_id)
+        else:
+            # If normal user, find their SP profile and filter customers
+            # Adjust 'salesperson_profile' based on your actual User-SP relationship
+            user_sp = getattr(request.user, 'salesperson_profile', None)
+            if user_sp:
+                queryset = ApprovedPriceMemory.objects.filter(
+                    customer__salesperson__in=user_sp.all()
+                ).select_related('customer', 'product')
+            else:
+                queryset = ApprovedPriceMemory.objects.none()
+
+        return render(request, "proforma_invoice/approved_price_list.html", {
+            "memories": queryset,
+            "salespeople": salespeople,
+            "is_accountant": is_accountant,
+            "selected_sp_id": selected_sp_id,
+        })
+
+
+@login_required
+def delete_approved_price(request, pk):
+    # Security: Only accountants or superusers can delete
+    if not (getattr(request.user, 'is_accountant', False) or request.user.is_superuser):
+        messages.error(request, "You do not have permission to delete these records.")
+        return redirect('approved_price_list')
+
+    memory = get_object_or_404(ApprovedPriceMemory, pk=pk)
+    memory.delete()
+    messages.success(request, "Approved price memory deleted successfully.")
+    return redirect('approved_price_list')
