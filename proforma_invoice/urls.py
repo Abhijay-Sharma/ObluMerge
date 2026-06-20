@@ -53,4 +53,13 @@ urlpatterns = [
     path('invoice/remark/manage/<int:pk>/', views.ManageInvoiceRemarkView.as_view(), name='manage_invoice_remark'),
     path('api/proforma/request-details/<int:invoice_id>/', views.ProformaRequestDetailsApiView.as_view(), name='proforma_request_details_api'),
     path('analytics/', views.ProformaAnalyticsDashboardView.as_view(), name='proforma_analytics'),
+    path('api/purchase-history/<int:customer_id>/', views.customer_purchase_history_api, name='api_purchase_history'),
+    path('approved-prices/', views.ApprovedPriceListView.as_view(), name='approved_price_list'),
+    path('approved-prices/delete/<int:pk>/', views.delete_approved_price, name='delete_approved_price'),
+
+    path('api/check-credit/<int:customer_id>/', views.check_customer_credit_api, name='api_check_credit'),
+    path('api/notify-admin-credit/<int:customer_id>/', views.notify_admin_credit_api, name='api_notify_credit'),
+
+    path('credit-bypass-requests/', views.OverdueBypassListView.as_view(), name='overdue_bypass_list'),
+    path('credit-bypass-requests/<int:pk>/approve/', views.ApproveOverdueBypassView.as_view(), name='approve_overdue_bypass'),
 ]
