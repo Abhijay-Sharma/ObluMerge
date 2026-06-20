@@ -3,102 +3,199 @@
 
 <style>
   .pi-req-container {
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 40px auto;
-    background: #2d2d2d;
+    background: #1e1e1e;
     padding: 30px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    color: white;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    color: #e0e0e0;
   }
 
-  h2 { text-align: center; margin-bottom: 30px; font-weight: 700; color: var(--primary); }
+  h2 { text-align: center; margin-bottom: 30px; font-weight: 800; color: #00d2ff; }
 
-  .table-wrapper { width: 100%; overflow-x: auto; margin-bottom: 30px; }
+  .table-wrapper { width: 100%; overflow-x: auto; margin-bottom: 30px; border-radius: 8px; border: 1px solid #444; }
 
-  table { width: 100%; border-collapse: collapse; background: #3d3d3d; border-radius: 8px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; background: #2a2a2a; }
 
-  th { backgxround-color: #1a1a1a; color: #aaa; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; padding: 15px 10px; }
+  th { background-color: #111; color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; padding: 18px 12px; border-bottom: 2px solid #444; }
 
-  td { padding: 12px 10px; border-bottom: 1px solid #4d4d4d; vertical-align: middle; }
+  td { padding: 20px 12px; border-bottom: 1px solid #383838; vertical-align: middle; }
 
-  input, textarea {
+  /* Clear Input Styling */
+  input[type="number"], textarea {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     border-radius: 6px;
-    border: 1px solid #555;
-    background: #1a1a1a;
-    color: white;
-    transition: border 0.3s;
+    border: 1px solid #444;
+    background: #111;
+    color: #00d2ff;
+    font-weight: bold;
+    transition: all 0.3s;
   }
+  input:focus { border-color: #00d2ff; outline: none; box-shadow: 0 0 8px rgba(0, 210, 255, 0.3); }
 
-  input:focus { border-color: var(--primary); outline: none; }
+  /* Price Labels */
+  .active-price-box { text-align: center; }
+  .price-main { font-size: 1.4rem; font-weight: 800; color: #fff; display: block; line-height: 1; }
+  .price-sub-label { font-size: 0.65rem; color: #00d2ff; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; display: block; }
 
-  .info-tag { font-size: 0.7rem; display: block; color: #888; margin-top: 4px; }
-  .msrp-tag { color: #ff6b6b; font-weight: bold; }
+  .system-price-box { text-align: center; border-left: 1px solid #444; border-right: 1px solid #444; }
+  .system-val { color: #ffae00; font-weight: 700; font-size: 1.1rem; }
 
-  .section-box {
-    background: #3d3d3d;
-    padding: 20px;
+  /* History Journey Card */
+  .history-card {
+    margin-top: 12px;
+    padding: 10px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    background: #222;
+    font-size: 0.75rem;
+    border: 1px solid #444;
+  }
+  .history-card.approved { border-left: 4px solid #28a745; }
+  .history-card.rejected { border-left: 4px solid #dc3545; }
+
+  .journey-row { display: flex; justify-content: space-between; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid #333; }
+  .journey-label { color: #888; }
+  .journey-val { font-weight: 600; color: #fff; }
+
+  .status-badge-clear {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 900;
+    font-size: 0.65rem;
+    display: inline-block;
   }
 
   .submit-btn {
     width: 100%;
-    padding: 15px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    padding: 18px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #007bff, #00d2ff);
+    border: none;
+    border-radius: 8px;
+    transition: transform 0.2s;
   }
+  .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4); }
 
-  /* Fix: Prevent rows from turning white on hover */
-  table tr:hover td {
-    background-color: inherit !important;
-    color: white !important;
-  }
+  .section-box { background: #2a2a2a; padding: 25px; border-radius: 10px; border: 1px solid #444; height: 100%; }
 
-  /* Optional: If you want a subtle dark hover instead */
-  table tr:hover td {
-    background-color: #444 !important;
-  }
-
+  tr:hover td { background-color: #333 !important; }
 </style>
 
 <div class="pi-req-container">
-    <h2>Request Price Change <br><small style="font-size: 1rem; color: #888;">Invoice #{{ invoice.id }} | {{ invoice.customer.name }}</small></h2>
+    <h2>Request Price Change <br>
+        <small style="font-size: 0.9rem; color: #888; font-weight: normal;">
+            Invoice #{{ invoice.id }} &bull; {{ invoice.customer.name }}
+        </small>
+    </h2>
 
     <form method="post">
         {% csrf_token %}
 
-        <!-- PRODUCT TABLE -->
         <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
-                        <th style="text-align: left;">Product Details</th>
-                        <th>Current PI Price</th>
-                        <th>System / MSRP</th>
-                        <th style="width: 200px;">New Requested Price</th>
+                        <th style="text-align: left; width: 30%;">Product Details</th>
+                        <th class="text-center">Current Active Price (in PI)</th>
+                        <th style="text-align: center;">Qty</th>
+                        <th class="text-center">System Default Price</th>
+                        <th style="width: 200px;">Request New Price</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in items %}
                     <tr>
                         <td style="text-align: left;">
-                            <strong>{{ item.product.name }}</strong>
-                            <span class="info-tag">Code: {{ item.product.product_code }}</span>
+                            <div style="font-weight: 700; color: #fff; margin-bottom: 5px;">{{ item.product.name }}</div>
+                            <span style="font-size: 0.65rem; color: #666;">ID: {{ item.product.id }}</span>
                         </td>
-                        <td class="text-center">₹{{ item.current_price|floatformat:2 }}</td>
+
                         <td class="text-center">
-                            <span class="info-tag" style="color: white !important;">System: ₹{{ item.product.proforma_price.price }}</span>
-                            <span class="info-tag msrp-tag">MSRP: ₹{{ item.product.proforma_price.msrp }}</span>
+                            <div class="active-price-box">
+                                <span class="price-main">₹{{ item.current_price|floatformat:2 }}</span>
+                                <span class="price-sub-label">Price Currently Saved</span>
+
+                                {% if item.last_processed_req or item.last_ever_approved %}
+                                    <div class="history-card {% if item.last_processed_req.status == 'approved' %}approved{% else %}rejected{% endif %}">
+
+                                        {% if item.last_processed_req %}
+                                        <div class="journey-row">
+                                            <span class="journey-label">Last Req (This PI):</span>
+                                            <span class="journey-val">₹{{ item.last_processed_req.requested_price|floatformat:2 }}</span>
+                                        </div>
+                                        <div class="journey-row" style="border: none;">
+                                            <span class="journey-label">Result:</span>
+                                            <span>
+                                                {% if item.last_processed_req.status == 'approved' %}
+                                                    <span class="status-badge-clear" style="background: #1e4620; color: #4ade80;">✅ APPROVED</span>
+                                                {% else %}
+                                                    <span class="status-badge-clear" style="background: #4c1d1d; color: #f87171;">❌ REJECTED</span>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- HISTORY FROM MEMORY (The 4 rs vs 500 rs logic) -->
+                                        {% if item.last_ever_approved %}
+                                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444; text-align: left;">
+                                            <span style="color: #888; font-size: 0.65rem;">HISTORICAL BEST PRICE:</span>
+                                            <div style="color: #4ade80; font-weight: bold; font-size: 0.85rem;">₹{{ item.last_ever_approved|floatformat:2 }}</div>
+                                        </div>
+                                        {% endif %}
+
+                                        <div style="font-size: 0.6rem; color: #555; margin-top: 5px; text-align: left;">
+                                            System Default: ₹{{ item.product.proforma_price.price|floatformat:2 }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </td>
-                        <td>
-                            <input type="number" step="0.01" name="new_price_{{ item.id }}" placeholder="0.00">
-                            <small class="info-tag">Leave blank for no change</small>
+                        <td style="text-align: center;">
+                            {{ item.quantity|default:"-" }}
                         </td>
-                    </tr>
+
+
+<!--                        <td class="system-price-box">-->
+<!--                            <div class="system-val">₹{{ item.product.proforma_price.price }}</div>-->
+<!--                            <span style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Standard Rate</span>-->
+<!--                        </td>-->
+
+                        <td class="system-price-box">
+                            <!-- This calls your model logic to show only the 160.00 applicable for 2000 qty -->
+                            <div class="system-val">₹{{ item.get_unit_price_incl_tax|floatformat:2 }}</div>
+                            <span style="font-size: 0.6rem; color: #888; text-transform: uppercase;">System Rate</span>
+                        </td>
+
+<!--                    <td>-->
+<!--                        &lt;!&ndash; Individual Price Input &ndash;&gt;-->
+<!--                        <input type="number" step="0.01" name="new_price_{{ item.id }}" placeholder="0.00">-->
+
+<!--                        &lt;!&ndash; INDIVIDUAL PRODUCT REMARK BOX &ndash;&gt;-->
+<!--                        <textarea-->
+<!--                            name="reason_{{ item.id }}"-->
+<!--                            rows="2"-->
+<!--                            placeholder="Reason for this product price change..."-->
+<!--                            style="margin-top: 8px; font-size: 0.75rem; font-weight: normal;"></textarea>-->
+
+<!--                        <div style="font-size: 0.65rem; color: #666; margin-top: 5px;">Leave empty for no change</div>-->
+<!--                    </td>-->
+                                                <td>
+                            <!-- NEW PRICE INPUT -->
+                            <input type="number" step="0.01" name="new_price_{{ item.id }}" placeholder="Enter New Price" class="mb-2">
+
+                            <!-- INDIVIDUAL REASON BOX FOR THIS PRODUCT -->
+                            <textarea
+                                name="reason_{{ item.id }}"
+                                rows="2"
+                                placeholder="Why change price for {{ item.product.name }}?"
+                                style="margin-top: 8px; font-size: 0.75rem;"></textarea>
+                        </td>
+
+                </tr>
+
                     {% endfor %}
                 </tbody>
             </table>
@@ -106,26 +203,48 @@
 
         <div class="row">
             <!-- COURIER SECTION -->
-            <div class="col-md-6">
+            <div class="col-md-6 mb-4">
                 <div class="section-box">
-                    <h6 class="text-primary mb-3">🚚 Courier Charge</h6>
-                    <label class="info-tag">Current Charge:</label>
-                    <div class="mb-3">₹{{ invoice.courier_charge }}</div>
+                    <h5 style="color: #00d2ff; margin-bottom: 20px;"><i class="fas fa-truck"></i> Courier Charge</h5>
 
-                    <label class="info-tag">Requested New Charge:</label>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <!-- Calling the method without brackets -->
+                            <span class="price-main">₹{{ invoice.courier_charge|floatformat:2 }}</span>
+                            <span class="price-sub-label" style="color:#00d2ff;">CURRENT CHARGE IN PI</span>
+                        </div>
+
+                        {% if courier_status_history %}
+                        <div>
+                            {% if courier_status_history.status == "approved" %}
+                                <span class="status-badge-clear" style="background: #1e4620; color: #4ade80;">✅ APPROVED (₹{{ courier_status_history.requested_courier_charge|floatformat:2 }})</span>
+                            {% elif courier_status_history.status == "rejected" %}
+                                <span class="status-badge-clear" style="background: #4c1d1d; color: #f87171;">❌ REJECTED</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 8px;">Requested New Charge Amount:</label>
                     <input type="number" step="0.01" name="new_courier_charge" placeholder="Enter amount">
                 </div>
             </div>
-
-            <!-- REASON SECTION -->
+                <!-- JUSTIFICATION SECTION -->
+    <!--                <div class="col-md-3">-->
+    <!--                    <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 8px;">New Courier Charge:</label>-->
+    <!--                    <input type="number" step="0.01" name="new_courier_charge" placeholder="Enter amount">-->
+    <!--                </div>-->
             <div class="col-md-6">
-                <div class="section-box">
-                    <h6 class="text-primary mb-3">📝 Justification</h6>
-                    <label class="info-tag">Reason for Request:</label>
-                    {{ form.reason }}
-                </div>
+                <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 8px;">Reason for Courier change:</label>
+                <!-- Individual Reason Box for Courier -->
+                <textarea name="reason" rows="2" placeholder="Explain why courier charge is changing..."></textarea>
             </div>
         </div>
+
+<!--        <div class="section-box mb-3">-->
+<!--            <label>General Reason (Required):</label>-->
+<!--            <textarea name="reason" rows="3" required placeholder="Explain why you are requesting these changes..."></textarea>-->
+<!--        </div>-->
 
         <button type="submit" class="btn btn-primary submit-btn">
             🚀 Submit Request to Admin

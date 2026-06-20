@@ -23,7 +23,7 @@ from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from inventory.mixins import AccountantRequiredMixin
 from django.utils import timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from decimal import Decimal, ROUND_HALF_UP
 from num2words import num2words
 from customer_dashboard.models import SalesPerson, Customer
@@ -2171,7 +2171,297 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
         messages.success(self.request, "Your price change request has been submitted.")
         return redirect("proforma_detail", pk=self.invoice.id)
 
+class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
+    template_name = "proforma_invoice/request_price_change.html"
+    form_class = ProformaPriceChangeRequestForm
 
+    def dispatch(self, request, *args, **kwargs):
+        invoice_id = self.kwargs["invoice_id"]
+        self.invoice = get_object_or_404(ProformaInvoice, id=invoice_id)
+
+        if request.user.is_superuser:
+            messages.error(request, "Super users cannot request price changes.")
+            return redirect("proforma_detail", pk=self.invoice.id)
+
+        # Check for pending requests
+        if ProformaPriceChangeRequest.objects.filter(
+                invoice=self.invoice,
+                status="pending"
+        ).exists():
+            messages.warning(request, "There is already a pending request for this Proforma Invoice.")
+            return redirect("proforma_detail", pk=self.invoice.id)
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["invoice"] = self.invoice
+
+        # 1. Filter out items rejected by warehouse
+        rejected_stock_ids = self.invoice.stock_requests.filter(
+            status="rejected"
+        ).values_list('product_id', flat=True)
+
+        items = self.invoice.items.select_related("product").exclude(
+            product_id__in=rejected_stock_ids
+        )
+
+        # 2. Fetch latest price request history for this PI
+        history_requests = ProformaPriceChangeRequest.objects.filter(
+            invoice=self.invoice,
+            is_product_request=True
+        ).exclude(status="pending").order_by('id')
+        req_map = {req.product_id: req for req in history_requests}
+
+        # 3. Fetch Historical Memory (Lowest price ever approved)
+        from .models import ApprovedPriceMemory
+        history_memory = ApprovedPriceMemory.objects.filter(customer=self.invoice.customer)
+        memory_map = {m.product_id: m.min_approved_price for m in history_memory}
+
+        for item in items:
+            item.last_processed_req = req_map.get(item.product.id)
+            item.last_ever_approved = memory_map.get(item.product.id)
+
+        context["items"] = items
+
+        # 4. Courier History
+        context["courier_status_history"] = ProformaPriceChangeRequest.objects.filter(
+            invoice=self.invoice,
+            is_product_request=False
+        ).exclude(status="pending").last()
+
+        return context
+
+    def form_valid(self, form):
+        # req_reason might be empty if not provided in template
+        req_reason = form.cleaned_data.get('reason', '') or "Price adjustment requested."
+        any_needs_accountant = False
+
+        # 1. Process Product Price Changes
+        rejected_stock_ids = self.invoice.stock_requests.filter(
+            status="rejected"
+        ).values_list('product_id', flat=True)
+
+        items_to_process = self.invoice.items.select_related("product__proforma_price").exclude(
+            product_id__in=rejected_stock_ids
+        )
+
+        for item in items_to_process:
+            raw_val = self.request.POST.get(f"new_price_{item.id}")
+            item_reason = self.request.POST.get(f"reason_{item.id}", "").strip()
+
+            if raw_val and raw_val.strip():
+                requested_price = Decimal(raw_val)
+                # Note: ensure check_price_needs_approval is imported
+                needs_req, needs_acc = check_price_needs_approval(self.request.user, item.product, requested_price)
+
+                if needs_req:
+                    pricing = getattr(item.product, 'proforma_price', None)
+                    ProformaPriceChangeRequest.objects.create(
+                        invoice=self.invoice,
+                        customer=self.invoice.customer,
+                        requested_by=self.request.user,
+                        product=item.product,
+                        is_product_request=True,
+                        requested_price=requested_price,
+                        recommended_price=pricing.price if pricing else 0,
+                        msrp_snapshot=pricing.msrp if pricing else 0,
+                        is_under_msrp=needs_acc,
+                        reason=f"{req_reason}\n[Note: {item_reason}]" if item_reason else req_reason,
+                        status="pending",
+                    )
+                    if needs_acc:
+                        any_needs_accountant = True
+
+        # 2. Process Courier Changes
+        requested_courier_charge = self.request.POST.get("new_courier_charge")
+        courier_reason = self.request.POST.get("courier_reason", "").strip()
+
+        if requested_courier_charge and requested_courier_charge.strip():
+            new_courier = Decimal(requested_courier_charge)
+            # Only create if it actually changed
+            if new_courier != self.invoice.courier_charge():
+                ProformaPriceChangeRequest.objects.create(
+                    invoice=self.invoice,
+                    customer=self.invoice.customer,
+                    requested_by=self.request.user,
+                    is_product_request=False,
+                    requested_courier_charge=new_courier,
+                    reason=f"{req_reason}\n[Courier: {courier_reason}]" if courier_reason else req_reason,
+                    status="pending",
+                )
+
+        # 3. Email Notification Logic
+        self.send_request_email(any_needs_accountant, req_reason)
+
+        messages.success(self.request, "Your price change request has been submitted.")
+        return redirect("proforma_detail", pk=self.invoice.id)
+
+    def form_valid(self, form):
+        # 1. INITIALIZE FLAGS AND DATA
+        # 'request_created' tracks if we actually saved anything to the database
+        # 'any_needs_accountant' tracks if any product price is below MSRP
+        request_created = False
+        any_needs_accountant = False
+
+        # Get the 'General Justification' from the bottom of the form (it is optional now)
+        general_req_reason = form.cleaned_data.get('reason', '').strip()
+
+        # 2. FILTER OUT REJECTED STOCK ITEMS
+        # We don't want users requesting price changes for items the warehouse already rejected
+        rejected_stock_ids = self.invoice.stock_requests.filter(
+            status="rejected"
+        ).values_list('product_id', flat=True)
+
+        # Get items that are NOT in the rejected list
+        items_to_process = self.invoice.items.select_related("product__proforma_price").exclude(
+            product_id__in=rejected_stock_ids
+        )
+
+        # 3. PROCESS PRODUCT PRICE CHANGES
+        for item in items_to_process:
+            # Look for 'new_price_ID' and 'reason_ID' in the POST data
+            raw_price = self.request.POST.get(f"new_price_{item.id}")
+            item_specific_reason = self.request.POST.get(f"reason_{item.id}", "").strip()
+
+            # Check if the user actually typed a price in this row
+            if raw_price and raw_price.strip():
+                try:
+                    requested_price = Decimal(raw_price)
+
+                    # Logic to check if this price needs Admin or Accountant approval
+                    needs_req, needs_acc = check_price_needs_approval(self.request.user, item.product, requested_price)
+
+                    if needs_req:
+                        # Fetch Product Metadata for the snapshot
+                        pricing = getattr(item.product, 'proforma_price', None)
+                        standard_price = pricing.price if pricing else Decimal("0.00")
+                        msrp = pricing.msrp if pricing else Decimal("0.00")
+
+                        # Merge the Reasons:
+                        # Priority 1: General Reason + Item Reason
+                        # Priority 2: Just Item Reason
+                        # Priority 3: Just General Reason
+                        if general_req_reason and item_specific_reason:
+                            combined_reason = f"{general_req_reason}\n[Item Note: {item_specific_reason}]"
+                        elif item_specific_reason:
+                            combined_reason = item_specific_reason
+                        else:
+                            combined_reason = general_req_reason
+
+                        # Create the database record for this product
+                        ProformaPriceChangeRequest.objects.create(
+                            invoice=self.invoice,
+                            customer=self.invoice.customer,
+                            requested_by=self.request.user,
+                            product=item.product,
+                            is_product_request=True,
+                            requested_price=requested_price,
+                            recommended_price=standard_price,
+                            msrp_snapshot=msrp,
+                            is_under_msrp=needs_acc,
+                            reason=combined_reason,
+                            status="pending",
+                        )
+                        request_created = True
+                        if needs_acc:
+                            any_needs_accountant = True
+
+                except (InvalidOperation, ValueError):
+                    # Skip if the user entered invalid text instead of a number
+                    continue
+
+        # 4. PROCESS COURIER CHARGE CHANGES
+        raw_courier = self.request.POST.get("new_courier_charge")
+        courier_note = self.request.POST.get("courier_reason", "").strip()
+
+        if raw_courier and raw_courier.strip():
+            try:
+                new_courier_val = Decimal(raw_courier)
+
+                # Only create a request if the value is different from the current system charge
+                current_system_charge = self.invoice.courier_charge() if callable(
+                    self.invoice.courier_charge) else self.invoice.courier_charge
+
+                if new_courier_val != current_system_charge:
+                    # Combine courier-specific reason with the general reason
+                    if general_req_reason and courier_note:
+                        combined_courier_reason = f"{general_req_reason}\n[Courier Note: {courier_note}]"
+                    else:
+                        combined_courier_reason = courier_note or general_req_reason
+
+                    ProformaPriceChangeRequest.objects.create(
+                        invoice=self.invoice,
+                        customer=self.invoice.customer,
+                        requested_by=self.request.user,
+                        is_product_request=False,
+                        requested_courier_charge=new_courier_val,
+                        reason=combined_courier_reason,
+                        status="pending",
+                    )
+                    request_created = True
+            except (InvalidOperation, ValueError):
+                pass
+
+        # 5. FINALIZATION: EMAIL AND MESSAGES
+        if request_created:
+            # ROUTING: If anything is under MSRP, notify the Accountant (Swasti)
+            # Otherwise, notify the standard Reviewer (Bhavya)
+            if any_needs_accountant:
+                to_emails = ["swasti.obluhc@gmail.com"]
+                subject_prefix = "🚨 DEEP DISCOUNT - Approval Required"
+            else:
+                to_emails = ["bhavya.obluhc@gmail.com"]
+                subject_prefix = "🔔 Price Change Request"
+
+            # Send Email
+            try:
+                email_context = {
+                    "invoice": self.invoice,
+                    "requested_by": self.request.user,
+                    "reason": general_req_reason or "Individual row reasons provided.",
+                    "review_url": "https://oblutools.com/proforma/price-change-requests/"
+                }
+                html_content = render_to_string("proforma_invoice/price_change_request_email.html", email_context)
+                subject = f"{subject_prefix} (Proforma #{self.invoice.id})"
+
+                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails)
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+            except Exception as e:
+                print(f"Email failed to send: {e}")
+
+            messages.success(self.request, "Success! Your price change requests have been submitted.")
+        else:
+            # If the user clicked submit but didn't actually fill any values
+            messages.info(self.request, "No changes detected. No requests were created.")
+
+        # Always redirect back to the Proforma detail page
+        return redirect("proforma_detail", pk=self.invoice.id)
+
+    def send_request_email(self, is_deep_discount, reason):
+        if is_deep_discount:
+            to_emails = ["swasti.obluhc@gmail.com"]
+            subject_prefix = "🚨 DEEP DISCOUNT"
+        else:
+            to_emails = ["bhavya.obluhc@gmail.com"]
+            subject_prefix = "🔔 Price Request"
+
+        try:
+            email_context = {
+                "invoice": self.invoice,
+                "requested_by": self.request.user,
+                "reason": reason,
+                "review_url": "https://oblutools.com/proforma/price-change-requests/"
+            }
+            html_content = render_to_string("proforma_invoice/price_change_request_email.html", email_context)
+            subject = f"{subject_prefix} (Proforma #{self.invoice.id})"
+            from django.core.mail import EmailMultiAlternatives
+            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails)
+            msg.attach_alternative(html_content, "text/html")
+            msg.send()
+        except Exception as e:
+            print(f"Email error: {e}")
 # View for accountants to list all Proforma price change requests
 # ----------------------------------------------------------
 
