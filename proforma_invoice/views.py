@@ -991,68 +991,77 @@ class StockRequestDashboardView(LoginRequiredMixin, AccountantRequiredMixin, Lis
 # --- Action View ---
 class ApproveStockRequestView(LoginRequiredMixin, AccountantRequiredMixin, View):
     def post(self, request, pk):
+        # 1. Get the specific individual product request
         req = get_object_or_404(ProformaStockShortageRequest, pk=pk)
-        action = request.POST.get("action")
+        action = request.POST.get("action")  # 'approve' or 'reject'
 
+        # Safely get product name to avoid 'NoneType' error
+        product_name = req.product.name if req.product else f"Item (Req #{req.id})"
+
+        # 2. Update status and set Email variables
         if action == "approve":
             req.status = "approved"
-
-            # Check for any other pending issues (e.g. Price Change)
-            from .models import ProformaPriceChangeRequest
-            pending_prices = ProformaPriceChangeRequest.objects.filter(
-                invoice=req.invoice,
-                status="pending"
-            ).exists()
-
-            if not pending_prices:
-                # Unlock Proforma only if all hurdles are cleared
-                req.invoice.is_price_altered = False
-                req.invoice.save()
-
-            messages.success(request, f"✅ Stock request for Invoice #{req.invoice.id} approved.")
+            email_template = "proforma_invoice/stock_request_approved_email.html"
+            email_subject = f"✅ Stock Available - Request Approved (Inv #{req.invoice.id} - {product_name})"
+            messages.success(request, f"✅ Stock for '{product_name}' (Inv #{req.invoice.id}) approved.")
         else:
             req.status = "rejected"
-            messages.error(request, f"❌ Stock request for Invoice #{req.invoice.id} rejected.")
+            email_template = "proforma_invoice/stock_request_rejected_email.html"
+            email_subject = f"❌ Stock Unavailable - Request Rejected (Inv #{req.invoice.id} - {product_name})"
+            messages.error(request, f"❌ Stock for '{product_name}' (Inv #{req.invoice.id}) rejected.")
 
-        req.reviewed_by = request.user
-        req.reviewed_at = timezone.now()
+        # 3. TIMER LOGIC: Only set reviewed_at the VERY FIRST time it is touched
+        if not req.reviewed_at:
+            req.reviewed_at = timezone.now()
+            req.reviewed_by = request.user
+
         req.save()
-        # abhijay changes start
-        # ---------------- STOCK APPROVAL EMAIL ----------------
+
+        # 4. PROFORMA UNLOCK LOGIC
+        # Check if EVERY stock request for this invoice is now 'approved'
+        all_stock_requests_approved = not req.invoice.stock_requests.exclude(status="approved").exists()
+
+        # Check for any pending Price Change requests
+        from .models import ProformaPriceChangeRequest
+        pending_prices = ProformaPriceChangeRequest.objects.filter(
+            invoice=req.invoice,
+            status="pending"
+        ).exists()
+
+        if all_stock_requests_approved and not pending_prices:
+            req.invoice.is_price_altered = False
+        else:
+            req.invoice.is_price_altered = True
+
+        req.invoice.save()
+
+        # 5. EMAIL NOTIFICATION
         try:
             requester_email = req.requested_by.email
-
             if requester_email:
                 email_context = {
                     "request_obj": req,
                     "invoice": req.invoice,
                     "reviewed_by": request.user,
+                    "product_name": product_name,
+                    "action": action,
                     "review_url": f"https://oblutools.com/proforma/{req.invoice.id}/"
                 }
 
-                html_content = render_to_string(
-                    "proforma_invoice/stock_request_approved_email.html",
-                    email_context
-                )
-
-                subject = f"✅ Stock Available - Request Approved (Proforma #{req.invoice.id})"
+                html_content = render_to_string(email_template, email_context)
 
                 msg = EmailMultiAlternatives(
-                    subject,
+                    email_subject,
                     "",
                     "proforma@oblutools.com",
                     [requester_email],
                     cc=["abhijay.obluhc@gmail.com"]
                 )
-
                 msg.attach_alternative(html_content, "text/html")
                 msg.send()
-
         except Exception as e:
             print(f"Stock Approval Mail Failed: {e}")
 
-        # -----------------------------------------------------
-        # abhijay changes ends
         return redirect("stock_request_dashboard")
 
 # ----------------------------------------------------------------------------------------------------
