@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif;">
+
+    <h2 style="color: #dc3545;">❌ Stock Request Rejected</h2>
+
+    <p>
+        Your stock request for
+        <strong>Proforma #{{ invoice.id }}</strong>
+        has been <strong>rejected</strong>.
+    </p>
+
+    <p>
+        Unfortunately, the requested stock cannot be allocated at this time. Please contact Accounts Team for more details.
+    </p>
+
+    <br>
+
+    <table border="1" cellpadding="8" cellspacing="0"
+           style="border-collapse: collapse; width:100%;">
+
+        <tr style="background:#f5f5f5;">
+            <th align="left">Requested By</th>
+            <td>{{ request_obj.requested_by.username }}</td>
+        </tr>
+
+        <tr>
+            <th align="left">Rejected By</th>
+            <td>{{ reviewed_by.username }}</td>
+        </tr>
+
+        <tr>
+            <th align="left">Request Created</th>
+            <td>{{ request_obj.created_at|date:"d M Y - H:i" }}</td>
+        </tr>
+
+        <tr>
+            <th align="left">Rejected At</th>
+            <td>{{ request_obj.reviewed_at|date:"d M Y - H:i" }}</td>
+        </tr>
+
+        <tr>
+            <th align="left">Customer</th>
+            <td>{{ invoice.customer.name }}</td>
+        </tr>
+
+    </table>
+
+    <br>
+
+    <h3>Requested Products (Not Approved)</h3>
+
+    <table border="1" cellpadding="8" cellspacing="0"
+           style="border-collapse: collapse; width:100%;">
+
+        <tr style="background:#f5f5f5;">
+            <th align="left">Product</th>
+            <th align="left">Details</th>
+        </tr>
+
+        {% for product, detail in request_obj.shortage_details.items %}
+        <tr>
+            <td>{{ product }}</td>
+            <td>{{ detail }}</td>
+        </tr>
+        {% endfor %}
+
+    </table>
+
+    <br><br>
+
+    <a href="{{ review_url }}"
+       style="background:#dc3545;
+              color:white;
+              padding:12px 18px;
+              text-decoration:none;
+              border-radius:6px;">
+        View Proforma
+    </a>
+
+</body>
+</html>
