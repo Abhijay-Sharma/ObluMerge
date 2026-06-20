@@ -80,7 +80,7 @@ from django.contrib import messages
 from decimal import Decimal
 
 
-class CreateProformaInvoiceView(LoginRequiredMixin, View):
+class CreateProformaInvoiceView(AccountantRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         invoice_form = ProformaInvoiceForm(user=request.user)
         formset = ProformaItemFormSet(queryset=ProformaInvoiceItem.objects.none(), user=request.user)
