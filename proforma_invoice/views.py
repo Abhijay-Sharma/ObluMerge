@@ -1065,7 +1065,7 @@ class ApproveStockRequestView(LoginRequiredMixin, AccountantRequiredMixin, View)
         return redirect("stock_request_dashboard")
 
 # ----------------------------------------------------------------------------------------------------
-
+#legacy
 class ProformaInvoiceDetailView(LoginRequiredMixin, DetailView):
     model = ProformaInvoice
     template_name = "proforma_invoice/proforma_detail.html"
@@ -1259,6 +1259,188 @@ class ProformaInvoiceDetailView(LoginRequiredMixin, DetailView):
 
         # =========================
         # 🔹 5. CONTEXT UPDATE
+        # =========================
+        context.update({
+            "recalculated_items": recalculated_items,
+            "recalculated_subtotal": subtotal_excl,
+            "courier_charge": courier_charge,
+            "combined_gst_rate": combined_gst_rate,
+            "igst": igst, "cgst": cgst, "utgst": utgst,
+            "total_gst": total_gst, "gross_total": gross_total, "round_off": round_off,
+            "recalculated_grand_total": final_total,
+            "amount_in_words": amount_in_words,
+            "gst_type": invoice.gst_type(),
+            "recalculated_igst": total_gst,
+            "is_approved": use_requested_values,
+        })
+        return context
+
+
+
+class ProformaInvoiceDetailView(LoginRequiredMixin, DetailView):
+    model = ProformaInvoice
+    template_name = "proforma_invoice/proforma_detail.html"
+    context_object_name = "invoice"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        invoice = self.object
+        from django.contrib import messages
+
+        # =========================================================
+        # 🔹 1. MASTER BYPASS (Fixes "Not Opening" for you)
+        # =========================================================
+        # If user is Superuser or Accountant, bypass all locks immediately.
+        if request.user.is_superuser or getattr(request.user, 'is_accountant', False):
+            return super().get(request, *args, **kwargs)
+
+        # =========================================================
+        # 🔹 2. LOCKING LOGIC (For Salespeople only)
+        # =========================================================
+        # Check if ANY individual product request for this invoice is still 'pending'
+        if invoice.stock_requests.filter(status="pending").exists():
+            messages.warning(request, "⏳ Warehouse approval is pending. Access locked.")
+            return redirect("proforma_list")
+
+        # # RULE B: If ANY stock was rejected, salesperson is blocked (Access denied)
+        # if invoice.stock_requests.filter(status="rejected").exists():
+        #     messages.error(request, "❌ Some items in this request were unavailable. Access denied.")
+        #     return redirect("proforma_list")
+
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        invoice = self.object
+        import os
+        from decimal import Decimal, ROUND_HALF_UP
+        from num2words import num2words
+        from django.conf import settings
+
+        # =========================
+        # 🔹 SIGNATURE LOADING
+        # =========================
+        signature_path = os.path.join(settings.BASE_DIR, "proforma_invoice", "assets", "sujal_signature_base64.txt")
+        try:
+            with open(signature_path, "r") as f:
+                context["signature_base64"] = f.read().strip()
+        except FileNotFoundError:
+            context["signature_base64"] = ""
+
+        # =========================================================
+        # 🔹 3. FILTER REJECTED PRODUCTS (DATABASE DRIVEN)
+        # =========================================================
+        # Instead of old dictionary logic, we get IDs of products rejected on dashboard
+        rejected_ids = invoice.stock_requests.filter(status="rejected").values_list('product_id', flat=True)
+
+        items_qs = invoice.items.select_related("product__proforma_price").prefetch_related(
+            "product__proforma_price__price_tiers")
+
+        # =========================================================
+        # 🔹 4. RESOLVE APPROVED PRICES
+        # =========================================================
+        latest_price_req = invoice.price_requests.all().order_by("-id").first()
+        altered_prices = {}
+        use_requested_values = False
+
+        if latest_price_req and latest_price_req.status in ["approved", "pending"]:
+            # Auto-switch to the Altered/Draft template
+            self.template_name = "proforma_invoice/proforma_detail_altered.html"
+
+            if latest_price_req.status == "approved":
+                use_requested_values = True
+                approved_reqs = invoice.price_requests.filter(status="approved", is_product_request=True)
+                for req in approved_reqs:
+                    altered_prices[str(req.product.id)] = req.requested_price
+
+        # =========================================================
+        # 🔹 5. PRODUCT RECALCULATION (Skipping Rejected)
+        # =========================================================
+        recalculated_items = []
+        subtotal_excl = Decimal("0.00")
+        total_product_gst = Decimal("0.00")
+
+        for item in items_qs:
+            # 🔥 CRITICAL: If product was rejected by Accountant, SKIP it.
+            # It won't show in PI and its amount won't be added to the Grand Total.
+            if item.product.id in rejected_ids:
+                continue
+
+            qty = Decimal(str(item.quantity or 0))
+            gst_rate = Decimal(str(item.taxrate() or 0))
+
+            # Resolve Unit Price
+            if use_requested_values and str(item.product.id) in altered_prices:
+                unit_price_incl = Decimal(str(altered_prices[str(item.product.id)]))
+            elif item.current_price:
+                unit_price_incl = item.current_price
+            else:
+                unit_price_incl = Decimal(str(item.unit_price()))
+
+            # Tally-style Tax Calculations
+            divisor = Decimal("1.00") + (gst_rate / Decimal("100"))
+            unit_price_excl = (unit_price_incl / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            taxable_value = (unit_price_excl * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            product_gst = (taxable_value * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            amount_incl = (taxable_value + product_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            subtotal_excl += taxable_value
+            total_product_gst += product_gst
+
+            recalculated_items.append({
+                "item": item,
+                "unit_price_incl": unit_price_incl,
+                "unit_price_excl": unit_price_excl,
+                "taxable_value": taxable_value,
+                "amount_incl": amount_incl,
+                "gst_amount": product_gst,
+                "gst_rate": gst_rate,
+            })
+
+        # =========================================================
+        # 🔹 6. COURIER CHARGES
+        # =========================================================
+        courier_req = invoice.price_requests.filter(
+            requested_courier_charge__isnull=False,
+            status="approved"
+        ).order_by('-id').first()
+
+        if courier_req:
+            courier_charge = Decimal(str(courier_req.requested_courier_charge))
+        else:
+            raw_courier = invoice.courier_charge() if callable(invoice.courier_charge) else invoice.courier_charge
+            courier_charge = Decimal(str(raw_courier or 0))
+
+        # =========================
+        # 🔹 7. TOTALS & WORDS
+        # =========================
+        if subtotal_excl > 0:
+            combined_gst_rate = (total_product_gst / subtotal_excl * Decimal("100")).quantize(Decimal("0.01"),
+                                                                                              rounding=ROUND_HALF_UP)
+        else:
+            combined_gst_rate = Decimal("0.00")
+
+        courier_gst = (courier_charge * combined_gst_rate / Decimal("100")).quantize(Decimal("0.01"),
+                                                                                     rounding=ROUND_HALF_UP)
+        total_gst = (total_product_gst + courier_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        gross_total = (subtotal_excl + courier_charge + total_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        rounded_total = gross_total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        round_off = (rounded_total - gross_total).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        final_total = rounded_total
+        amount_in_words = num2words(final_total, lang="en_IN").title() + " Rupees Only"
+
+        if invoice.is_intra_state():
+            cgst = (total_gst / 2).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            utgst = total_gst - cgst
+            igst = Decimal("0.00")
+        else:
+            igst = total_gst
+            cgst, utgst = Decimal("0.00"), Decimal("0.00")
+
+        # =========================
+        # 🔹 8. CONTEXT UPDATE
         # =========================
         context.update({
             "recalculated_items": recalculated_items,
