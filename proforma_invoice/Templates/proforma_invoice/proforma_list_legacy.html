@@ -171,13 +171,10 @@
                 <tbody>
                     {% for inv in invoices %}
                     <tr>
-                        {% with stock_req=inv.stock_requests %}
+                        {% with stock_req=inv.stock_request %}
                         {% with price_req=inv.price_requests.all|dictsort:"id"|last %}
-                        {% with credit_req=inv.credit_approvals.last %}
                         {% with stock_status=stock_req.status|default:"none" %}
                         {% with price_status=price_req.status|default:"none" %}
-                        {% with credit_status=credit_req.status|default:"none" %}
-
 
                         <!-- 1. ID -->
                         <td>#{{ inv.id }}</td>
@@ -200,28 +197,27 @@
                             {% if request.user.is_superuser %}
                                 <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">Admin View</a>
                             {% else %}
+                                {# Priority 1: Shipped #}
+                                {% if inv.dispatch_status == 'dispatched' %}
+                                    <div class="badge bg-success text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">✅ DISPATCHED</div>
+                                    <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-blue" target="_blank">👁️ View Final PI</a>
 
-                                {# MASTER LOCK 1: CREDIT OVERDUE #}
-                                {% if credit_status == 'pending' %}
-                                    <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">🚨 CREDIT PENDING</div>
-                                    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Credit Overdue Approval is pending with Admin. Locked.');">🔒 Credit Locked</button>
-
-                                {% elif credit_status == 'rejected' %}
-                                    <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">❌ CREDIT REJECTED</div>
-                                    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Admin has rejected the credit bypass for this customer.');">🔒 Access Denied</button>
-
-                                {# LOCK 2: STOCK PENDING #}
+                                {# Priority 2: Stock Pending Blocker #}
                                 {% elif stock_status == 'pending' %}
                                     <div class="badge bg-warning text-dark w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ STOCK REVIEW</div>
                                     <button type="button" class="btn-pro-action btn-grey" onclick="alert('Warehouse is reviewing stock. Locked.');">🔒 Reviewing...</button>
 
-                                {# NORMAL FLOW #}
-                                {% elif inv.dispatch_status == 'dispatched' %}
-                                    <div class="badge bg-success text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">✅ DISPATCHED</div>
-                                    <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-blue" target="_blank">👁️ View Final PI</a>
+                                {# Priority 3: Stock Rejected Blocker #}
+                                {% elif stock_status == 'rejected' and price_req %}
+                                    <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">❌ STOCK REJECTED</div>
+                                    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Stock request rejected. Access denied.');">🔒 Locked</button>
 
+                                {# Priority 4: All Unlocked Cases #}
                                 {% else %}
-                                    {% if price_status == 'pending' %}
+                                    {% if price_status == 'rejected' %}
+                                        <div class="badge bg-danger text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">❌ PRICE REJECTED</div>
+                                        <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-dark" target="_blank">View Proforma</a>
+                                    {% elif price_status == 'pending' %}
                                         <div class="badge bg-info text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ PRICE PENDING</div>
                                         <a href="{% url 'proforma_detail' inv.id %}" class="btn-pro-action btn-blue" target="_blank">View Draft PI</a>
                                     {% else %}
@@ -231,114 +227,61 @@
                                 {% endif %}
                             {% endif %}
 
-                            <button type="button" class="btn-pro-action btn-light border w-100 mt-1" style="font-size: 0.65rem;" onclick="openRejectedModal('{{ inv.id }}')">
-                                📊 Track Progress
+                            <!-- NEW SEPARATE TRACK PROGRESS BUTTON (Always Visible) -->
+                            <button type="button" class="btn-pro-action btn-light border w-100 mt-1"
+                                    style="font-size: 0.65rem; font-weight: bold; background: #fffff; color: #333;"
+                                    onclick="openRejectedModal('{{ inv.id }}')">
+                                📊 Track Progress Details
                             </button>
                         </td>
 
                         <!-- 6. APPROVAL JOURNEY & ACTIONS -->
-<td class="action-container">
-    <div class="approval-tracker mb-1">
-        <!-- 1. CREDIT STATION -->
-        <div class="station {% if credit_status == 'pending' %}active{% elif credit_status == 'approved' %}completed{% elif credit_status == 'rejected' %}rejected{% endif %}">
-            <span class="icon">🏦</span><span>Credit</span>
-            {% if credit_status != 'none' %}
-                <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
-                    {% if credit_status == 'pending' %}⌛ {{ credit_req.created_at|timesince }}{% elif credit_req.reviewed_at %}✔ {{ credit_req.created_at|timesince:credit_req.reviewed_at }}{% endif %}
-                </small>
-            {% endif %}
-        </div>
-        <div class="connector {% if credit_status == 'approved' or credit_status == 'none' %}done{% endif %}"></div>
+                        <td class="action-container">
+                            <div class="approval-tracker mb-1">
+                                <div class="station {% if stock_status == 'pending' %}active{% elif stock_status == 'approved' %}completed{% elif stock_status == 'rejected' %}rejected{% endif %}">
+                                    <span class="icon">📦</span><span>Stock</span>
+                                    {% if stock_status != 'none' %}
+                                        <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
+                                            {% if stock_status == 'pending' %}⌛ {{ stock_req.created_at|timesince }}{% elif stock_req.reviewed_at %}✔ {{ stock_req.created_at|timesince:stock_req.reviewed_at }}{% endif %}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                                <div class="connector {% if stock_status == 'approved' or stock_status == 'none' %}done{% endif %}"></div>
+                                <div class="station {% if price_status == 'pending' %}active{% elif price_status == 'approved' %}completed{% elif price_status == 'rejected' %}rejected{% endif %}">
+                                    <span class="icon">⚖️</span><span>Price</span>
+                                    {% if price_status != 'none' %}
+                                        <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
+                                            {% if price_status == 'pending' %}⌛ {{ price_req.created_at|timesince }}{% elif price_req.reviewed_at %}✔ {{ price_req.created_at|timesince:price_req.reviewed_at }}{% endif %}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </div>
 
-        <!-- 2. STOCK STATION -->
-        {% with all_stock=inv.stock_requests.all|dictsort:"id" %}
-        {% with first_stock=all_stock|first last_stock=all_stock|last %}
-        <div class="station
-            {% if inv.pending_stock_count > 0 %}active
-            {% elif all_stock %}
-                {% if last_stock.status == 'rejected' %}rejected{% else %}completed{% endif %}
-            {% else %}none{% endif %}">
+                            <div class="w-100 mt-2">
+                                {% if inv.dispatch_status == 'processing' %}
+                                    {% if stock_status == 'approved' or stock_status == 'none' %}
+                                        {% if price_status == 'approved' or price_status == 'rejected' or price_status == 'none' or request.user.is_superuser %}
+                                            <a href="{% url 'request_dispatch' inv.id %}" class="btn-pro-action btn-yellow">🚀 Dispatch PI</a>
+                                        {% else %}
+                                            <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Admin</button>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Stock</button>
+                                    {% endif %}
+                                {% elif inv.dispatch_status == 'dispatched' %}
+                                    <div class="badge bg-light text-success border w-100 p-2" style="font-size: 0.65rem; font-weight: 800;">✅ SHIPPED</div>
+                                {% elif inv.dispatch_requested_at %}
+                                    <div class="text-center p-1 border rounded bg-light w-100">
+                                        <small class="text-primary fw-bold">⌛ WAIT: {{ inv.dispatch_requested_at|timesince }}</small>
+                                    </div>
+                                {% endif %}
+                            </div>
 
-            <span class="icon">📦</span><span>Stock</span>
+                            {% if not request.user.is_superuser and inv.dispatch_status != 'dispatched' %}
+                                <a href="{% url 'proforma_price_change_request_create' inv.id %}" class="btn-pro-action btn-info-custom mt-1">✎ Request Price Change</a>
+                            {% endif %}
+                        </td>
 
-            {% if all_stock %}
-                <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
-                    {% if inv.pending_stock_count > 0 %}
-                        ⌛ {{ first_stock.created_at|timesince }}
-                    {% elif last_stock.reviewed_at %}
-                        ✔ {{ first_stock.created_at|timesince:last_stock.reviewed_at }}
-                    {% endif %}
-                </small>
-            {% endif %}
-        </div>
-        {% endwith %}{% endwith %}
-        <div class="connector {% if inv.pending_stock_count == 0 %}done{% endif %}"></div>
-
-        <!-- 3. PRICE STATION -->
-        {% with all_prices=inv.price_requests.all|dictsort:"id" %}
-        {% with first_price=all_prices|first last_price=all_prices|last %}
-        <div class="station
-            {% if last_price.status == 'pending' %}active
-            {% elif last_price.status == 'approved' %}completed
-            {% elif last_price.status == 'rejected' %}rejected
-            {% endif %}">
-
-            <span class="icon">⚖️</span><span>Price</span>
-
-            {% if all_prices %}
-                <small class="d-block" style="font-size: 8px; font-weight: bold; color: #555;">
-                    {% if last_price.status == 'pending' %}
-                        ⌛ {{ last_price.created_at|timesince }}
-                    {% elif last_price.reviewed_at %}
-                        ✔ {{ first_price.created_at|timesince:last_price.reviewed_at }}
-                    {% endif %}
-                </small>
-            {% endif %}
-        </div>
-        {% endwith %}{% endwith %}
-    </div>
-
-    <!-- MERGED DISPATCH BUTTON LOGIC -->
-    <div class="w-100 mt-2">
-        {% if inv.dispatch_status == 'processing' %}
-
-            {# STEP 1: CREDIT CHECK #}
-            {% if credit_status == 'approved' or credit_status == 'none' %}
-
-                {# STEP 2: STOCK CHECK (All items must be cleared) #}
-                {% if inv.pending_stock_count == 0 %}
-
-                    {# STEP 3: PRICE CHECK (Last price request must not be pending) #}
-                    {% with last_p=inv.price_requests.all|dictsort:"id"|last %}
-                    {% if last_p.status != 'pending' or request.user.is_superuser %}
-                        <a href="{% url 'request_dispatch' inv.id %}" class="btn-pro-action btn-yellow">🚀 Dispatch PI</a>
-                    {% else %}
-                        <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Admin</button>
-                    {% endif %}
-                    {% endwith %}
-
-                {% else %}
-                    <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Stock</button>
-                {% endif %}
-
-            {% else %}
-                 <button class="btn-pro-action btn-grey" disabled>🔒 Wait for Credit</button>
-            {% endif %}
-
-        {% elif inv.dispatch_status == 'dispatched' %}
-            <div class="badge bg-light text-success border w-100 p-2" style="font-size: 0.65rem; font-weight: 800;">✅ SHIPPED</div>
-        {% elif inv.dispatch_requested_at %}
-            <div class="text-center p-1 border rounded bg-light w-100">
-                <small class="text-primary fw-bold">⌛ WAIT: {{ inv.dispatch_requested_at|timesince }}</small>
-            </div>
-        {% endif %}
-    </div>
-
-    {# Price Change Request Button (Always available until dispatched) #}
-    {% if not request.user.is_superuser and inv.dispatch_status != 'dispatched' %}
-        <a href="{% url 'proforma_price_change_request_create' inv.id %}" class="btn-pro-action btn-info-custom mt-1">✎ Request Price Change</a>
-    {% endif %}
-</td>
                         <!-- 7. MESSAGE HUB -->
                         <td>
                             <button class="btn-pro-action btn-blue" onclick="openRemarkModal('{{ inv.id }}')">
@@ -350,12 +293,7 @@
                                 {% endwith %}
                             </button>
                         </td>
-                        {% endwith %}
-                        {% endwith %}
-                        {% endwith %}
-                        {% endwith %}
-                        {% endwith %}
-                        {% endwith %}
+                        {% endwith %}{% endwith %}{% endwith %}{% endwith %}
                     </tr>
                     {% endfor %}
                 </tbody>

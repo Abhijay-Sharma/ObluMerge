@@ -1231,7 +1231,7 @@ def update_proforma_price_remark(request):
         return JsonResponse({'status': 'ok', 'remarks': remarks_data})
     return JsonResponse({'status': 'error'}, status=400)
 
-
+#Legacy
 class ProformaInvoiceListView(LoginRequiredMixin, ListView):
     model = ProformaInvoice
     template_name = "proforma_invoice/proforma_list.html"
@@ -1261,6 +1261,68 @@ class ProformaInvoiceListView(LoginRequiredMixin, ListView):
             qs = qs.filter(customer__id=customer)
         if start_date and end_date:
             qs = qs.filter(date_created__date__range=[start_date, end_date])
+
+        # 3. Sorting Logic
+        if sort_by == "date_asc":
+            qs = qs.order_by("date_created")
+        elif sort_by == "customer":
+            qs = qs.order_by("customer__name")
+        else:
+            # DEFAULT: Latest at the top (Newest first)
+            qs = qs.order_by("-date_created")
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        User = get_user_model()
+
+        # For filter dropdowns
+        ctx["users"] = User.objects.filter(is_active=True) if self.request.user.is_accountant else []
+
+        # Distinct list of customers who actually have invoices
+        ctx["customers"] = (
+            ProformaInvoice.objects.select_related("customer")
+            .values("customer__id", "customer__name")
+            .distinct()
+        )
+        return ctx
+
+
+
+class ProformaInvoiceListView(LoginRequiredMixin, ListView):
+    model = ProformaInvoice
+    template_name = "proforma_invoice/proforma_list.html"
+    context_object_name = "invoices"
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # 1. Role Based Access (Accountants see all, others see only their own)
+        if user.is_accountant:
+            qs = ProformaInvoice.objects.select_related("customer").prefetch_related("credit_approvals","price_requests",
+        "stock_requests").all()
+        else:
+            qs = ProformaInvoice.objects.select_related("customer").prefetch_related("credit_approvals","price_requests",
+        "stock_requests").filter(
+                created_by=user.username
+            )
+
+        qs = qs.annotate(
+            pending_stock_count=Count('stock_requests', filter=Q(stock_requests__status='pending')),
+            rejected_stock_count=Count('stock_requests', filter=Q(stock_requests__status='rejected')),
+        ).prefetch_related('price_requests')
+
+        # 2. Apply Filters from GET parameters
+        created_by = self.request.GET.get("created_by")
+        customer = self.request.GET.get("customer")
+        start_date = self.request.GET.get("start_date")
+        end_date = self.request.GET.get("end_date")
+        sort_by = self.request.GET.get("sort_by")
+
+        if created_by: qs = qs.filter(created_by=created_by)
+        if customer: qs = qs.filter(customer__id=customer)
+        if start_date and end_date: qs = qs.filter(date_created__date__range=[start_date, end_date])
 
         # 3. Sorting Logic
         if sort_by == "date_asc":
