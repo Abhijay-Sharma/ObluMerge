@@ -102,9 +102,9 @@
                 <th>GST (%)</th>
                 <th>GST Amount</th>
                 <th>Unit Price (Inc. GST)</th>
-                {% if has_discount %}
-                    <th>Discount (₹)</th>
-                {% endif %}
+<!--                {% if has_discount %}-->
+<!--                    <th>Discount (₹)</th>-->
+<!--                {% endif %}-->
                 <th>Total (₹)</th>
             </tr>
         </thead>
@@ -139,9 +139,9 @@
                         <td>{{ item.gst_unit_price }}</td>
                     {% endif %}
 
-                    {% if has_discount %}
-                        <td>{{ item.discount|default:"-" }}</td>
-                    {% endif %}
+<!--                    {% if has_discount %}-->
+<!--                        <td>{{ item.discount|default:"-" }}</td>-->
+<!--                    {% endif %}-->
 
                     <td>
                         {% if new_price %}
