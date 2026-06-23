@@ -217,7 +217,7 @@
             <th>Qty</th>
             <th>Net Price (₹)</th>
             <th>GST (%)</th>
-            <th>GST Amount</th>
+<!--            <th>GST Amount</th>   -->
             <th>Unit Price (Inc. GST)</th>
 <!--              {% if has_discount %}}-->
 <!--               <th>Discount (₹)</th>}-->
@@ -245,7 +245,7 @@
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.unit_price_without_tax }}</td>
                 <td>{{ item.product.tax_rate }}</td>
-                <td>{{ item.gst_amount }}</td>
+             <!--   <td>{{ item.gst_amount }}</td>-->
                 <td>{{item.gst_unit_price}}</td>
           <!--       {% if has_discount %}-->
              <!--       <td>{{ item.discount|default:"-" }}</td>-->
