@@ -1,11 +1,15 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
-<body style="font-family: Arial, sans-serif;">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; color: #333;">
 
     <h2>📦 Stock Request Submitted</h2>
 
     <p>
-        <strong>User:</strong> {{ requested_by }}
+        <strong>User:</strong> {{ requested_by.username }}
     </p>
 
     <p>
@@ -14,27 +18,42 @@
 
     <h3>Shortage Details</h3>
 
-    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
-        <tr>
-            <th>Product</th>
-            <th>Details</th>
-        </tr>
-
-        {% for product, detail in shortage_details.items %}
-        <tr>
-            <td>{{ product }}</td>
-            <td>{{ detail }}</td>
-        </tr>
-        {% endfor %}
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; max-width: 600px;">
+        <thead style="background-color: #f2f2f2;">
+            <tr>
+                <th align="left">Product</th>
+                <th align="left">Shortage Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in shortage_details %}
+            <tr>
+                <td>
+                    <strong>{{ item.product_obj.name }}</strong>
+                </td>
+                <td>
+                    <span style="color: #d9534f;">Requested: {{ item.requested }}</span> | 
+                    <span style="color: #5cb85c;">Available: {{ item.available }}</span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" style="text-align: center;">No shortage details found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
 
-    <br>
+    <br><br>
 
     <a href="{{ review_url }}"
-       style="background:#0d6efd;color:white;padding:10px 18px;text-decoration:none;border-radius:6px;">
+       style="background:#0d6efd; color:white; padding:12px 20px; text-decoration:none; border-radius:6px; font-weight: bold; display: inline-block;">
         Review Stock Requests
     </a>
 
+    <p style="margin-top: 40px; font-size: 12px; color: #888; border-top: 1px solid #eee; padding-top: 10px;">
+        This is an automated notification from the Oblu Proforma System.
+    </p>
+
 </body>
 </html>
-```
