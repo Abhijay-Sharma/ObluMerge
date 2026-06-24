@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>All Stock Requests Reviewed</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9fafb;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f9fafb; padding: 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 40px;">
+                    <tr>
+                        <td style="color: #111827;">
+                            <h2 style="margin-top: 0; font-size: 20px; border-bottom: 2px solid #2563eb; padding-bottom: 10px; display: inline-block;">Review Summary</h2>
+
+                            <p style="font-size: 16px; line-height: 1.5; color: #374151;">
+                                Dear <strong>{{ salesperson_name }}</strong>,
+                            </p>
+
+                            <p style="font-size: 15px; line-height: 1.5; color: #374151;">
+                                All stock shortage requests for <strong>Proforma Invoice #{{ invoice.id }}</strong> (Customer: {{ invoice.customer.name }}) have been reviewed by the Accounts Team.
+                            </p>
+
+                            <table width="100%" border="0" cellspacing="0" cellpadding="10" style="border-collapse: collapse; margin-top: 20px; font-size: 14px;">
+                                <thead>
+                                    <tr style="background-color: #f8f9fa;">
+                                        <th style="border: 1px solid #ddd; text-align: left; color: #333;">Product Item</th>
+                                        <th width="100" style="border: 1px solid #ddd; text-align: center; color: #333;">Status</th>
+                                        <th style="border: 1px solid #ddd; text-align: left; color: #333;">Reviewed By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for req in requests %}
+                                    <tr>
+                                        <td style="border: 1px solid #ddd; color: #4b5563;">{{ req.product.name }}</td>
+                                        <td style="border: 1px solid #ddd; text-align: center;">
+                                            {% if req.status == 'approved' %}
+                                                <span style="color: #155724; background-color: #d4edda; font-weight: bold; padding: 4px 8px; border-radius: 4px; display: block; font-size: 12px;">APPROVED</span>
+                                            {% else %}
+                                                <span style="color: #721c24; background-color: #f8d7da; font-weight: bold; padding: 4px 8px; border-radius: 4px; display: block; font-size: 12px;">REJECTED</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="border: 1px solid #ddd; color: #4b5563;">{{ req.reviewed_by.username }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+
+                            <p style="margin-top: 30px; font-size: 15px; color: #374151;">
+                                You can now view this proforma and proceed with the next steps on your dashboard:
+                            </p>
+
+                            <div style="text-align: center; margin-top: 20px;">
+                                <a href="{{ dashboard_url }}" style="display: inline-block; padding: 12px 24px; color: #ffffff; background-color: #2563eb; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
+                                    View Proforma List
+                                </a>
+                            </div>
+
+                            <div style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 20px; font-size: 13px; color: #6b7280;">
+                                Regards,<br>
+                                <strong style="color: #111827;">Oblu Healthcare LLP | Accounts Dept</strong>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

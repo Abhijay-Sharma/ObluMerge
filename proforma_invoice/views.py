@@ -1108,6 +1108,79 @@ class ApproveStockRequestView(LoginRequiredMixin, AccountantRequiredMixin, View)
 
         return redirect("stock_request_dashboard")
 
+class ApproveStockRequestView(LoginRequiredMixin, AccountantRequiredMixin, View):
+    def post(self, request, pk):
+        # 1. Get the specific individual product request
+        req = get_object_or_404(ProformaStockShortageRequest, pk=pk)
+        invoice = req.invoice
+        action = request.POST.get("action")
+
+        product_name = req.product.name if req.product else f"Item (Req #{req.id})"
+
+        # 2. Update status
+        if action == "approve":
+            req.status = "approved"
+            messages.success(request, f"✅ Stock for '{product_name}' approved.")
+        else:
+            req.status = "rejected"
+            messages.error(request, f"❌ Stock for '{product_name}' rejected.")
+
+        # 3. Timer & Reviewer logic
+        if not req.reviewed_at:
+            req.reviewed_at = timezone.now()
+            req.reviewed_by = request.user
+        req.save()
+
+        # 4. PROFORMA UNLOCK LOGIC
+        all_stock_requests_approved = not invoice.stock_requests.exclude(status="approved").exists()
+        pending_prices = ProformaPriceChangeRequest.objects.filter(
+            invoice=invoice,
+            status="pending"
+        ).exists()
+
+        if all_stock_requests_approved and not pending_prices:
+            invoice.is_price_altered = False
+        else:
+            invoice.is_price_altered = True
+        invoice.save()
+
+        # 5. SUMMARY EMAIL LOGIC (TRIGGERS ONLY WHEN ALL ITEMS ARE REVIEWED)
+        remaining_pending = invoice.stock_requests.filter(status="pending").exists()
+
+        if not remaining_pending:
+            try:
+                # Build the absolute URL for the button in the email
+                dashboard_url = request.build_absolute_uri(reverse("proforma_list"))
+
+                # Fetch ALL requests for this specific invoice
+                all_requests = invoice.stock_requests.all().select_related('product', 'reviewed_by')
+
+                summary_subject = f"🔔 All Stock Requests Reviewed: Invoice #{invoice.id}"
+
+                # --- MATCHING CONTEXT TO YOUR HTML TEMPLATE ---
+                summary_context = {
+                    "salesperson_name": req.requested_by.get_full_name() or req.requested_by.username,
+                    "invoice": invoice,
+                    "requests": all_requests,  # Matched to {% for req in requests %}
+                    "dashboard_url": dashboard_url,
+                }
+
+                summary_html = render_to_string("proforma_invoice/stock_summary_table_email.html", summary_context)
+
+                msg_summary = EmailMultiAlternatives(
+                    summary_subject,
+                    "",
+                    "proforma@oblutools.com",
+                    [req.requested_by.email],
+                    cc=["abhijay.obluhc@gmail.com"]
+                )
+                msg_summary.attach_alternative(summary_html, "text/html")
+                msg_summary.send()
+
+            except Exception as e:
+                print(f"Summary Review Mail Failed: {e}")
+
+        return redirect("stock_request_dashboard")
 # ----------------------------------------------------------------------------------------------------
 #legacy
 class ProformaInvoiceDetailView(LoginRequiredMixin, DetailView):
@@ -1666,7 +1739,7 @@ class ProformaInvoiceListView(LoginRequiredMixin, ListView):
             parsed_date = parse_date(start_date)
             if parsed_date:
                 # Matches only the specific day selected (ignores time)
-                qs = qs.filter(date_createddate=parsed_date)
+                qs = qs.filter(date_created__date=parsed_date)
 
         # 3. Sorting Logic
         if sort_by == "date_asc":
