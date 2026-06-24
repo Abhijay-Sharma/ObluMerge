@@ -46,7 +46,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.contrib import messages
 from customer_dashboard.models import CustomerVoucherStatus
-
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 import logging
 logger = logging.getLogger(__name__)
@@ -1628,6 +1628,7 @@ class ProformaInvoiceListView(LoginRequiredMixin, ListView):
     model = ProformaInvoice
     template_name = "proforma_invoice/proforma_list.html"
     context_object_name = "invoices"
+    paginate_by = 40
 
     def get_queryset(self):
         user = self.request.user
@@ -1656,7 +1657,13 @@ class ProformaInvoiceListView(LoginRequiredMixin, ListView):
 
         if created_by: qs = qs.filter(created_by=created_by)
         if customer: qs = qs.filter(customer__id=customer)
-        if start_date and end_date: qs = qs.filter(date_created__date__range=[start_date, end_date])
+
+        # if start_date and end_date: qs = qs.filter(date_created__date__range=[start_date, end_date])
+        if start_date:
+            parsed_date = parse_date(start_date)
+            if parsed_date:
+                # Matches only the specific day selected (ignores time)
+                qs = qs.filter(date_createddate=parsed_date)
 
         # 3. Sorting Logic
         if sort_by == "date_asc":
