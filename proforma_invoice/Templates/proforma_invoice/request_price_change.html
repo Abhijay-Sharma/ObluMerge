@@ -1,263 +1,224 @@
-{% extends 'proforma_invoice/base.html' %}
+{% extends "proforma_invoice/base.html" %}
 {% block content %}
 
 <style>
-  .pi-req-container {
-    max-width: 1100px;
-    margin: 40px auto;
-    background: #1e1e1e;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-    color: #e0e0e0;
-  }
+    body { background-color: #1a1a1a; color: #eee; }
+    .request-container {
+        max-width: 1100px; margin: 40px auto; background: #2a2a2a;
+        padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .header-section { text-align: center; margin-bottom: 30px; }
+    .header-section h2 { font-weight: 800; text-transform: uppercase; margin-bottom: 5px; color: #00d2ff; }
+    .header-section p { color: #888; font-size: 0.9rem; }
 
-  h2 { text-align: center; margin-bottom: 30px; font-weight: 800; color: #00d2ff; }
+    /* Tables */
+    .custom-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .custom-table th {
+        text-align: left; font-size: 0.75rem; color: #777;
+        text-transform: uppercase; padding: 12px; border-bottom: 1px solid #444;
+    }
+    .custom-table td { padding: 15px 12px; border-bottom: 1px solid #383838; vertical-align: middle; }
 
-  .table-wrapper { width: 100%; overflow-x: auto; margin-bottom: 30px; border-radius: 8px; border: 1px solid #444; }
+    /* Inputs */
+    .price-input {
+        background: #111; border: 1px solid #555; color: #fff;
+        padding: 8px; border-radius: 6px; width: 100%; outline: none; font-weight: bold;
+    }
+    .price-input:focus { border-color: #00d2ff; box-shadow: 0 0 8px rgba(0, 210, 255, 0.3); }
 
-  table { width: 100%; border-collapse: collapse; background: #2a2a2a; }
+    /* History Journey Card (From Template 2) */
+    .history-card {
+        margin-top: 10px; padding: 10px; border-radius: 8px;
+        background: #1a1a1a; font-size: 0.75rem; border: 1px solid #444; text-align: left;
+    }
+    .history-card.approved { border-left: 4px solid #28a745; }
+    .history-card.rejected { border-left: 4px solid #dc3545; }
 
-  th { background-color: #111; color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; padding: 18px 12px; border-bottom: 2px solid #444; }
+    .journey-row { display: flex; justify-content: space-between; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid #333; }
+    .journey-label { color: #888; }
+    .journey-val { font-weight: 600; color: #fff; }
 
-  td { padding: 20px 12px; border-bottom: 1px solid #383838; vertical-align: middle; }
+    .status-badge-clear {
+        padding: 2px 6px; border-radius: 4px; font-weight: 900; font-size: 0.6rem; display: inline-block; text-transform: uppercase;
+    }
 
-  /* Clear Input Styling */
-  input[type="number"], textarea {
-    width: 100%;
-    padding: 12px;
-    border-radius: 6px;
-    border: 1px solid #444;
-    background: #111;
-    color: #00d2ff;
-    font-weight: bold;
-    transition: all 0.3s;
-  }
-  input:focus { border-color: #00d2ff; outline: none; box-shadow: 0 0 8px rgba(0, 210, 255, 0.3); }
+    /* Layout boxes */
+    .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+    .info-box { background: #333; padding: 20px; border-radius: 8px; border: 1px solid #444; }
+    .info-box h6 { color: #00d2ff; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; font-weight: bold; }
 
-  /* Price Labels */
-  .active-price-box { text-align: center; }
-  .price-main { font-size: 1.4rem; font-weight: 800; color: #fff; display: block; line-height: 1; }
-  .price-sub-label { font-size: 0.65rem; color: #00d2ff; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; display: block; }
+    .btn-submit {
+        width: 100%; background: linear-gradient(135deg, #007bff, #00d2ff); color: #fff; font-weight: 800; border: none;
+        padding: 15px; border-radius: 8px; margin-top: 30px; cursor: pointer;
+        transition: 0.3s; text-transform: uppercase; font-size: 1.1rem;
+    }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4); }
 
-  .system-price-box { text-align: center; border-left: 1px solid #444; border-right: 1px solid #444; }
-  .system-val { color: #ffae00; font-weight: 700; font-size: 1.1rem; }
-
-  /* History Journey Card */
-  .history-card {
-    margin-top: 12px;
-    padding: 10px;
-    border-radius: 8px;
-    background: #222;
-    font-size: 0.75rem;
-    border: 1px solid #444;
-  }
-  .history-card.approved { border-left: 4px solid #28a745; }
-  .history-card.rejected { border-left: 4px solid #dc3545; }
-
-  .journey-row { display: flex; justify-content: space-between; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid #333; }
-  .journey-label { color: #888; }
-  .journey-val { font-weight: 600; color: #fff; }
-
-  .status-badge-clear {
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 900;
-    font-size: 0.65rem;
-    display: inline-block;
-  }
-
-  .submit-btn {
-    width: 100%;
-    padding: 18px;
-    font-weight: 800;
-    font-size: 1.1rem;
-    background: linear-gradient(135deg, #007bff, #00d2ff);
-    border: none;
-    border-radius: 8px;
-    transition: transform 0.2s;
-  }
-  .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4); }
-
-  .section-box { background: #2a2a2a; padding: 25px; border-radius: 10px; border: 1px solid #444; height: 100%; }
-
-  tr:hover td { background-color: #333 !important; }
+    /* Master History Section */
+    .history-section { margin-top: 40px; border-top: 2px dashed #444; padding-top: 30px; }
+    .history-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 20px; color: #888; }
+    .status-badge { font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; }
+    .bg-approved { background: #27ae60; color: white; }
+    .bg-rejected { background: #e74c3c; color: white; }
 </style>
 
-<div class="pi-req-container">
-    <h2>Request Price Change <br>
-        <small style="font-size: 0.9rem; color: #888; font-weight: normal;">
-            Invoice #{{ invoice.id }} &bull; {{ invoice.customer.name }}
-        </small>
-    </h2>
+<div class="request-container">
+    <div class="header-section">
+        <h2>Request Price Change</h2>
+        <p>Invoice #{{ invoice.id }} | {{ invoice.customer.name }}</p>
+    </div>
 
     <form method="post">
         {% csrf_token %}
 
-        <div class="table-wrapper">
-            <table>
-                <thead>
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Product Details</th>
+                    <th style="text-align: center;">Current PI Price</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: center;">System Rate</th>
+                    <th style="width: 250px;">Request New Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>
+                        <div style="font-weight: bold; font-size: 0.95rem; color: #fff;">{{ item.product.name }}</div>
+                        <small style="color: #666;">ID: {{ item.product.id }}</small>
+                    </td>
+
+                    <td style="text-align: center;">
+                        <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ item.current_price|floatformat:2 }}</div>
+                        <span style="font-size: 0.6rem; color: #00d2ff; text-transform: uppercase;">Currently Saved</span>
+
+                        <!-- JOURNEY CARD INTEGRATION (From Template 2) -->
+                        {% if item.last_processed_req or item.last_ever_approved %}
+                            <div class="history-card {% if item.last_processed_req.status == 'approved' %}approved{% else %}rejected{% endif %}">
+                                {% if item.last_processed_req %}
+                                <div class="journey-row">
+                                    <span class="journey-label">Last Req:</span>
+                                    <span class="journey-val">₹{{ item.last_processed_req.requested_price|floatformat:2 }}</span>
+                                </div>
+                                <div class="journey-row" style="border: none;">
+                                    <span class="journey-label">Result:</span>
+                                    <span>
+                                        {% if item.last_processed_req.status == 'approved' %}
+                                            <span class="status-badge-clear" style="background: #1e4620; color: #4ade80;">✅ APPROVED</span>
+                                        {% else %}
+                                            <span class="status-badge-clear" style="background: #4c1d1d; color: #f87171;">❌ REJECTED</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                {% endif %}
+
+<!--                                {% if item.last_ever_approved %}-->
+<!--                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444;">-->
+<!--                                    <span style="color: #888; font-size: 0.65rem; display: block;">HISTORICAL BEST PRICE:</span>-->
+<!--                                    <div style="color: #4ade80; font-weight: bold; font-size: 0.85rem;">₹{{ item.last_ever_approved|floatformat:2 }}</div>-->
+<!--                                </div>-->
+<!--                                {% endif %}-->
+                            </div>
+                        {% endif %}
+                    </td>
+
+                    <td style="text-align: center; font-weight: bold;">{{ item.quantity }}</td>
+
+                    <td style="text-align: center;">
+                        <div style="color: #ffae00; font-weight: 700; font-size: 1.1rem;">₹{{ item.get_unit_price_incl_tax|floatformat:2 }}</div>
+                        <span style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Standard System Rate</span>
+                    </td>
+
+                    <td>
+                        <input type="number" step="0.01" name="new_price_{{ item.id }}" class="price-input" placeholder="0.00">
+                        <textarea name="reason_{{ item.id }}" rows="2" class="price-input mt-2" style="font-size: 0.75rem; font-weight: normal;" placeholder="Why change price for {{ item.product.name|truncatechars:20 }}?"></textarea>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="bottom-grid">
+            <!-- Courier Section -->
+            <div class="info-box">
+                <h6>🚚 Courier Charge</h6>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ invoice.courier_charge|floatformat:2 }}</div>
+                        <span style="font-size: 0.6rem; color: #00d2ff; text-transform: uppercase;">Current System Calculation</span>
+                    </div>
+                    {% if courier_status_history %}
+                    <div>
+                        {% if courier_status_history.status == "approved" %}
+                            <span class="status-badge-clear" style="background: #1e4620; color: #4ade80;">✅ APPROVED (₹{{ courier_status_history.requested_courier_charge|floatformat:2 }})</span>
+                        {% elif courier_status_history.status == "rejected" %}
+                            <span class="status-badge-clear" style="background: #4c1d1d; color: #f87171;">❌ REJECTED</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <label style="font-size: 0.75rem; color: #888;">Requested New Charge:</label>
+                <input type="number" step="0.01" name="new_courier_charge" class="price-input mt-1" placeholder="Enter amount">
+            </div>
+
+            <!-- Justification Section -->
+            <div class="info-box">
+                <h6>📄 Final Justification</h6>
+                <textarea name="reason" class="price-input" rows="4" placeholder="General explanation for Admin (Optional if row remarks provided)..."></textarea>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit">🚀 Submit Request to Admin</button>
+        <div style="text-align: center; margin-top: 15px;">
+            <a href="{% url 'proforma_detail' invoice.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>
+        </div>
+    </form>
+
+    <!-- 📜 MASTER TRACK HISTORY SECTION -->
+    <div class="history-section">
+        <div class="history-title">📜 All Past Attempts (Log)</div>
+
+        {% if items %}
+            <table class="custom-table" style="font-size: 0.85rem; background: #222; border-radius: 8px;">
+                <thead style="background: #1a1a1a;">
                     <tr>
-                        <th style="text-align: left; width: 30%;">Product Details</th>
-                        <th class="text-center">Current Active Price (in PI)</th>
-                        <th style="text-align: center;">Qty</th>
-                        <th class="text-center">System Default Price</th>
-                        <th style="width: 200px;">Request New Price</th>
+                        <th>Item / Type</th>
+                        <th>Requested</th>
+                        <th>Reason Provided</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- Product History Loop -->
                     {% for item in items %}
-                    <tr>
-                        <td style="text-align: left;">
-                            <div style="font-weight: 700; color: #fff; margin-bottom: 5px;">{{ item.product.name }}</div>
-                            <span style="font-size: 0.65rem; color: #666;">ID: {{ item.product.id }}</span>
-                        </td>
-
-                        <td class="text-center">
-                            <div class="active-price-box">
-                                <span class="price-main">₹{{ item.current_price|floatformat:2 }}</span>
-                                <span class="price-sub-label">Price Currently Saved</span>
-
-                                {% if item.last_processed_req or item.last_ever_approved %}
-                                    <div class="history-card {% if item.last_processed_req.status == 'approved' %}approved{% else %}rejected{% endif %}">
-
-                                        {% if item.last_processed_req %}
-                                        <div class="journey-row">
-                                            <span class="journey-label">Last Req (This PI):</span>
-                                            <span class="journey-val">₹{{ item.last_processed_req.requested_price|floatformat:2 }}</span>
-                                        </div>
-                                        <div class="journey-row" style="border: none;">
-                                            <span class="journey-label">Result:</span>
-                                            <span>
-                                                {% if item.last_processed_req.status == 'approved' %}
-                                                    <span class="status-badge-clear" style="background: #1e4620; color: #4ade80;">✅ APPROVED</span>
-                                                {% else %}
-                                                    <span class="status-badge-clear" style="background: #4c1d1d; color: #f87171;">❌ REJECTED</span>
-                                                {% endif %}
-                                            </span>
-                                        </div>
-                                        {% endif %}
-
-                                        <!-- HISTORY FROM MEMORY (The 4 rs vs 500 rs logic) -->
-                                        {% if item.last_ever_approved %}
-                                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444; text-align: left;">
-                                            <span style="color: #888; font-size: 0.65rem;">HISTORICAL BEST PRICE:</span>
-                                            <div style="color: #4ade80; font-weight: bold; font-size: 0.85rem;">₹{{ item.last_ever_approved|floatformat:2 }}</div>
-                                        </div>
-                                        {% endif %}
-
-                                        <div style="font-size: 0.6rem; color: #555; margin-top: 5px; text-align: left;">
-                                            System Default: ₹{{ item.product.proforma_price.price|floatformat:2 }}
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td style="text-align: center;">
-                            {{ item.quantity|default:"-" }}
-                        </td>
-
-
-<!--                        <td class="system-price-box">-->
-<!--                            <div class="system-val">₹{{ item.product.proforma_price.price }}</div>-->
-<!--                            <span style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Standard Rate</span>-->
-<!--                        </td>-->
-
-                        <td class="system-price-box">
-                            <!-- This calls your model logic to show only the 160.00 applicable for 2000 qty -->
-                            <div class="system-val">₹{{ item.get_unit_price_incl_tax|floatformat:2 }}</div>
-                            <span style="font-size: 0.6rem; color: #888; text-transform: uppercase;">System Rate</span>
-                        </td>
-
-<!--                    <td>-->
-<!--                        &lt;!&ndash; Individual Price Input &ndash;&gt;-->
-<!--                        <input type="number" step="0.01" name="new_price_{{ item.id }}" placeholder="0.00">-->
-
-<!--                        &lt;!&ndash; INDIVIDUAL PRODUCT REMARK BOX &ndash;&gt;-->
-<!--                        <textarea-->
-<!--                            name="reason_{{ item.id }}"-->
-<!--                            rows="2"-->
-<!--                            placeholder="Reason for this product price change..."-->
-<!--                            style="margin-top: 8px; font-size: 0.75rem; font-weight: normal;"></textarea>-->
-
-<!--                        <div style="font-size: 0.65rem; color: #666; margin-top: 5px;">Leave empty for no change</div>-->
-<!--                    </td>-->
-                                                <td>
-                            <!-- NEW PRICE INPUT -->
-                            <input type="number" step="0.01" name="new_price_{{ item.id }}" placeholder="Enter New Price" class="mb-2">
-
-                            <!-- INDIVIDUAL REASON BOX FOR THIS PRODUCT -->
-                            <textarea
-                                name="reason_{{ item.id }}"
-                                rows="2"
-                                placeholder="Why change price for {{ item.product.name }}?"
-                                style="margin-top: 8px; font-size: 0.75rem;"></textarea>
-                        </td>
-
-                </tr>
-
+                        {% for hist in item.price_history %}
+                        <tr>
+                            <td><span style="color: #bbb;">{{ item.product.name|truncatechars:40 }}</span></td>
+                            <td class="text-white">₹{{ hist.requested_price|floatformat:2 }}</td>
+                            <td><div style="font-style: italic; color: #888; font-size: 0.8rem;">"{{ hist.reason|truncatechars:60 }}"</div></td>
+                            <td><span class="status-badge bg-{{ hist.status }}">{{ hist.status }}</span></td>
+                        </tr>
+                        {% endfor %}
                     {% endfor %}
+
+                    <!-- Courier History Loop -->
+                    {% if courier_history %}
+                        {% for c_hist in courier_history %}
+                        <tr>
+                            <td><span style="color: #ffc107;">🚚 Courier Charge</span></td>
+                            <td class="text-white">₹{{ c_hist.requested_courier_charge|floatformat:2 }}</td>
+                            <td style="color: #888; font-style: italic; font-size: 0.8rem;">"{{ c_hist.reason|truncatechars:60 }}"</td>
+                            <td><span class="status-badge bg-{{ c_hist.status }}">{{ c_hist.status }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
-        </div>
-
-        <div class="row">
-            <!-- COURIER SECTION -->
-            <div class="col-md-6 mb-4">
-                <div class="section-box">
-                    <h5 style="color: #00d2ff; margin-bottom: 20px;"><i class="fas fa-truck"></i> Courier Charge</h5>
-
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <!-- Calling the method without brackets -->
-                            <span class="price-main">₹{{ invoice.courier_charge|floatformat:2 }}</span>
-                            <span class="price-sub-label" style="color:#00d2ff;">CURRENT CHARGE IN PI</span>
-                        </div>
-
-                        {% if courier_status_history %}
-                        <div>
-                            {% if courier_status_history.status == "approved" %}
-                                <span class="status-badge-clear" style="background: #1e4620; color: #4ade80;">✅ APPROVED (₹{{ courier_status_history.requested_courier_charge|floatformat:2 }})</span>
-                            {% elif courier_status_history.status == "rejected" %}
-                                <span class="status-badge-clear" style="background: #4c1d1d; color: #f87171;">❌ REJECTED</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 8px;">Requested New Charge Amount:</label>
-                    <input type="number" step="0.01" name="new_courier_charge" placeholder="Enter amount">
-                </div>
-            </div>
-                <!-- JUSTIFICATION SECTION -->
-    <!--                <div class="col-md-3">-->
-    <!--                    <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 8px;">New Courier Charge:</label>-->
-    <!--                    <input type="number" step="0.01" name="new_courier_charge" placeholder="Enter amount">-->
-    <!--                </div>-->
-            <div class="col-md-6">
-                <label style="font-size: 0.75rem; color: #888; display: block; margin-bottom: 8px;">Reason for Courier change:</label>
-                <!-- Individual Reason Box for Courier -->
-                <textarea name="reason" rows="2" placeholder="Explain why courier charge is changing..."></textarea>
-            </div>
-        </div>
-
-<!--        <div class="section-box mb-3">-->
-<!--            <label>General Reason (Required):</label>-->
-<!--            <textarea name="reason" rows="3" required placeholder="Explain why you are requesting these changes..."></textarea>-->
-<!--        </div>-->
-
-        <button type="submit" class="btn btn-primary submit-btn">
-            🚀 Submit Request to Admin
-        </button>
-
-        <div class="text-center mt-3">
-        {% if invoice.id %}
-            <a href="{% url 'proforma_detail' pk=invoice.id %}" style="color: #aaa; text-decoration: none; font-size: 0.8rem;">Cancel and Go Back</a>
         {% else %}
-            <a href="{% url 'proforma_list' %}" style="color: #aaa; text-decoration: none; font-size: 0.8rem;">Back to List</a>
+            <div style="text-align: center; color: #555; padding: 20px;">No past history records found for this invoice.</div>
         {% endif %}
-        </div>
-    </form>
+    </div>
 </div>
 
 {% endblock %}
