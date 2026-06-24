@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+        .status-header { padding: 25px; text-align: center; color: #fff; font-weight: bold; font-size: 22px; }
+        .approved { background: #27ae60; }
+        .rejected { background: #e74c3c; }
+        .content { padding: 30px; background: #ffffff; }
+        .details-box { background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; border: 1px solid #eee; }
+        .btn { display: inline-block; padding: 12px 30px; color: #fff !important; text-decoration: none; border-radius: 30px; font-weight: bold; margin-top: 10px; }
+        .btn-green { background: #27ae60; }
+        .footer { background: #f8f9fa; padding: 15px; text-align: center; font-size: 11px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Dynamic Header Color -->
+        <div class="status-header {% if request_obj.status == 'approved' %}approved{% else %}rejected{% endif %}">
+            REQUEST {{ status_text }}
+        </div>
+
+        <div class="content">
+            <p>Dear {{ request_obj.requested_by.username }},</p>
+            <p>The Admin has reviewed your credit bypass request for <b>{{ request_obj.customer.name }}</b>.</p>
+
+            <div class="details-box">
+                <b>Proforma ID:</b> #{{ request_obj.proforma_invoice.id }}<br>
+                <b>Reviewer:</b> {{ reviewer }}<br>
+                <b>Decision Date:</b> {{ request_obj.reviewed_at|date:"d M Y, h:i A" }}
+            </div>
+
+            {% if request_obj.status == 'approved' %}
+                <p style="color: #27ae60; font-weight: bold;">✅ Good news! The Proforma has been unlocked. you can now view and print the final document.</p>
+                <div style="text-align: center;">
+                    <a href="{{ pi_url }}" class="btn btn-green">View Proforma Now</a>
+                </div>
+            {% else %}
+                <p style="color: #e74c3c; font-weight: bold;">❌ Unfortunately, your request was rejected. The Proforma remains locked.</p>
+                <p>Please coordinate with the accounts team to ensure the customer clears their outstanding dues before proceeding.</p>
+            {% endif %}
+        </div>
+        <div class="footer">
+            This is an automated notification. Please do not reply.
+        </div>
+    </div>
+</body>
+</html>

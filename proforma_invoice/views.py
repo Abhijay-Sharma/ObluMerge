@@ -818,14 +818,39 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                     if has_credit_issue:
                         overdue_records = CustomerVoucherStatus.objects.filter(
                             customer=selected_customer, is_credit_period_crossed=True
-                        ).filter(Q(is_unpaid=True) | Q(is_partially_paid=True))
+                        ).filter(Q(is_unpaid=True) | Q(is_partially_paid=True)).select_related('voucher')
 
                         if overdue_records.exists():
-                            CreditPeriodOverdueByPassRequest.objects.get_or_create(
+                            bypass_req, created = CreditPeriodOverdueByPassRequest.objects.get_or_create(
                                 customer=selected_customer, proforma_invoice=invoice,
                                 requested_by=request.user, defaults={'status': 'pending'}
                             )
                             actual_credit_req_created = True
+
+                            # 2. SEND EMAIL TO ADMIN/SUPERUSER
+                            try:
+                                to_emails = ["nitin.a@obluhc.com"]  # Replace with actual Admin emails
+                                cc_emails = [request.user.email] if request.user.email else []
+                                cc_emails.append("abhijay.obluhc@gmail.com")
+
+                                context = {
+                                    "request_obj": bypass_req,
+                                    "overdue_invoices": overdue_records,
+                                    "customer": selected_customer,
+                                    "salesperson": request.user.get_full_name() or request.user.username,
+                                    "review_url": "https://oblutools.com/proforma/credit-bypass-requests/"
+                                }
+
+                                html_content = render_to_string(
+                                    "proforma_invoice/credit_bypass_request_mail.html", context)
+                                subject = f"🚨 CREDIT BYPASS REQUIRED: {selected_customer.name} (PI #{invoice.id})"
+
+                                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails,
+                                                             cc=cc_emails)
+                                msg.attach_alternative(html_content, "text/html")
+                                msg.send()
+                            except Exception as e:
+                                print(f"Credit Request Email Error: {e}")
 
                     # 5D. Stock Shortage Request (Runs even if Credit issue exists)
                     if has_stock_issue:
@@ -960,17 +985,33 @@ class ApproveOverdueBypassView(AccountantRequiredMixin, View):
             bypass_req.status = 'approved'
             bypass_req.approved_by = request.user
             bypass_req.reviewed_at = timezone.now()
-            bypass_req.save()
-            messages.success(request, f"✅ Approved.")
+            status_label = "APPROVED ✅"
         else:
             bypass_req.status = 'rejected'
-            bypass_req.save()
-            messages.warning(request, f"❌ Rejected.")
+            status_label = "REJECTED ❌"
 
-        # CHANGE THIS REDIRECT NAME TO MATCH URLS.PY
+        bypass_req.save()
+
+        # --- SEND EMAIL NOTIFICATION TO SALESPERSON ---
+        try:
+            if bypass_req.requested_by.email:
+                context = {
+                    "request_obj": bypass_req,
+                    "status_text": status_label,
+                    "reviewer": request.user.get_full_name() or request.user.username,
+                    "pi_url": f"https://oblutools.com/proforma/{bypass_req.proforma_invoice.id}/"
+                }
+                html_content = render_to_string("proforma_invoice/credit_bypass_review_mail.html", context)
+                subject = f"{status_label}: Credit Bypass Request for {bypass_req.customer.name}"
+
+                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", [bypass_req.requested_by.email])
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+        except Exception as e:
+            print(f"Credit Status Email Error: {e}")
+
+        messages.success(request, f"Request processed: {status_label}")
         return redirect('overdue_bypass_list')
-
-
 
 # --- Custom Access Mixin ---
 class AccountantRequiredMixin(UserPassesTestMixin):
