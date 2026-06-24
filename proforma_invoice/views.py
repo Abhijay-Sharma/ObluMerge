@@ -49,6 +49,9 @@ from customer_dashboard.models import CustomerVoucherStatus
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 import logging
+from collections import defaultdict
+
+
 logger = logging.getLogger(__name__)
 
 
