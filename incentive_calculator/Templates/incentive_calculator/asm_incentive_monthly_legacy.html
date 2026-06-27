@@ -6,12 +6,14 @@
 <title>ASM Incentive Dashboard</title>
 
 <style>
+
     /* LIGHT THEME UPDATED */
     body.light {
         background: #f5f5f5;
         color: #000;
     }
 
+    /* Target all text elements to be black in light mode */
     body.light h2,
     body.light h3,
     body.light th,
@@ -60,6 +62,7 @@
         font-family: 'Segoe UI', Roboto, sans-serif;
         padding: 15px; margin: 0; line-height: 1.4;
         transition: background 0.3s ease, color 0.3s ease;
+
     }
     h2, h3 { color: #00ff99; margin-bottom: 15px; margin-top: 5px; }
 
@@ -70,6 +73,7 @@
         border-radius: 12px; padding: 15px;
         margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         transition: background 0.3s ease, border 0.3s ease;
+
     }
 
     /* FILTERS */
@@ -80,7 +84,7 @@
     }
     .filter-form button { background: #00ff99; color: #000; font-weight: bold; border: none; cursor: pointer; }
 
-    /* COMPACT SUMMARY GRID */
+    /* COMPACT SUMMARY GRID (Horizontal Row) */
     .summary-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -90,12 +94,12 @@
         display: flex; flex-direction: column; justify-content: center; min-height: 140px;
     }
     .summary-card h2 { font-size: 26px; margin: 5px 0; color: #fff; }
-    .text-muted { color: #aaa; font-size: 0.85em; }
+    .text-muted { color: #fff; font-size: 0.85em; }
 
     /* CATEGORY BREAKDOWN LIST */
     .breakdown-box { border-top: 1px solid #333; margin-top: 10px; padding-top: 8px; }
     .breakdown-item { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
-    .breakdown-item b { color: #fff; }
+    .breakdown-item b { color: #aaa; }
 
     /* TABLES */
     .table-responsive { width: 100%; overflow-x: auto; border-radius: 8px; }
@@ -109,13 +113,6 @@
     .product-yellow { color:#ffd54d; font-weight:600; }
     .badge { font-size:10px; padding:2px 5px; border-radius:4px; font-weight: bold; margin-left: 5px; }
     .badge.red { background:#ff4d4d; color: white; }
-
-    /* TRIGGER BUTTON */
-    .btn-trigger {
-        font-size: 9px; padding: 3px 6px; border-radius: 4px; border: none; cursor: pointer; color: white; font-weight: bold;
-    }
-    .trigger-on { background: #333; }
-    .trigger-off { background: #ff4d4d; }
 
     /* LINKS */
     a { color:#00ff99; text-decoration: none; }
@@ -132,6 +129,8 @@
 
 <div class="container">
     <h2>ASM Incentive Dashboard</h2>
+
+    <!-- FILTERS -->
 
     <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
         <button onclick="toggleTheme()" id="themeBtn" style="
@@ -191,26 +190,19 @@
                 <h2>₹{{ total_sales|floatformat:2 }}</h2>
             </div>
 
-            <!--CARD 3: Grand Total Incentive (Potential) -->
+            <!--CARD 3: Grand Total Incentive (Potential)-->
             <div class="card summary-card">
                 <span class="text-muted">Grand Total Incentive (Potential)</span>
                 <h2 style="color: #00ff99;">₹{{ grand_total_incentive|floatformat:2 }}</h2>
 
                 <div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 10px;">
-                    <!-- BUCKET 1: PAYABLE -->
                     <div style="display: flex; justify-content: space-between; font-size: 11px;">
                         <span class="text-muted">Payable (Collected):</span>
                         <b style="color: #00ff99;">₹{{ payable_incentive|floatformat:2 }}</b>
                     </div>
-                    <!-- BUCKET 2: PENDING -->
                     <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
                         <span class="text-muted">Pending (Unpaid Invoices):</span>
-                        <b style="color: #ffd54d;">₹{{ unpayable_incentive|floatformat:2 }}</b>
-                    </div>
-                    <!-- BUCKET 3: TRIGGERED OFF -->
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
-                        <span class="text-muted">Triggered Off (Admin):</span>
-                        <b style="color: #ff4d4d;">₹{{ triggered_off_incentive|floatformat:2 }}</b>
+                        <b style="color: #ff4d4d;">₹{{ unpayable_incentive|floatformat:2 }}</b>
                     </div>
                 </div>
             </div>
@@ -240,17 +232,6 @@
                             <td>
                                 {% if r.customer_id %}
                                     <a href="{% url 'customers:customerpaymentstatus' r.customer_id %}">{{ r.customer }}</a>
-
-                                    <!-- ADMIN TRIGGER BUTTON -->
-                                    {% if user.is_superuser %}
-                                    <div style="margin-top: 5px;">
-                                        <button onclick="toggleIncentiveTrigger('{{ r.customer_id }}', {{ r.is_trigger_on|yesno:'true,false' }})"
-                                                class="btn-trigger {% if r.is_trigger_on %}trigger-on{% else %}trigger-off{% endif %}">
-                                            Trigger: {% if r.is_trigger_on %}ON{% else %}OFF{% endif %}
-                                        </button>
-                                    </div>
-                                    {% endif %}
-
                                 {% else %}
                                     {{ r.customer }}
                                 {% endif %}
@@ -267,9 +248,7 @@
                             <td>{{ r.quantity|floatformat:2 }}</td>
                             <td>₹{{ r.amount|floatformat:2 }}</td>
                             <td>
-                                {% if not r.is_trigger_on %}
-                                    <span style="color: #ff4d4d; font-size: 11px; font-weight: bold;">✕ Trigger Off</span>
-                                {% elif not r.is_fully_paid %}
+                                {% if not r.is_fully_paid %}
                                     <span class="text-muted" style="font-size: 11px;">Waiting Payment</span>
                                 {% elif r.has_incentive %}
                                     <span class="product-green" style="font-size: 11px;">✓ Calculated</span>
@@ -305,7 +284,7 @@
                             <td>₹{{ data.rate|floatformat:2 }}</td>
                             <td style="text-align: right;">
                                 <div style="color: #fff; font-weight: bold;">₹{{ data.potential_payout|floatformat:2 }}</div>
-                                <div style="color: #00ff99; font-size: 10px;">Ready: ₹{{ data.ready_payout|floatformat:2 }}</div>
+                                <div style="color: #fff; font-size: 10px;">Ready: ₹{{ data.ready_payout|floatformat:2 }}</div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -316,10 +295,13 @@
     {% endif %}
 </div>
 
+</body>
 <script>
     function toggleTheme() {
         const body = document.body;
         body.classList.toggle("light");
+
+        // Save preference
         if (body.classList.contains("light")) {
             localStorage.setItem("theme", "light");
         } else {
@@ -327,42 +309,12 @@
         }
     }
 
+    // Load saved theme on page load
     window.onload = function() {
         const savedTheme = localStorage.getItem("theme");
         if (savedTheme === "light") {
             document.body.classList.add("light");
         }
     }
-
-    /**
-     * NEW: TRIGGER TOGGLE FUNCTION
-     */
-    function toggleIncentiveTrigger(custId, currentStatus) {
-        const action = currentStatus ? "TURN OFF" : "TURN ON";
-        if(!confirm(`Are you sure you want to ${action} incentives for this customer?`)) return;
-
-        let formData = new FormData();
-        formData.append('customer_id', custId);
-        formData.append('is_enabled', !currentStatus);
-        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
-        fetch("{% url 'incentive_calculator:update_customer_trigger' %}", {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if(response.ok) {
-                location.reload(); // Refresh to recalculate and show 3 buckets correctly
-            } else {
-                alert("Error: Could not update trigger status.");
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("Network error occurred.");
-        });
-    }
 </script>
-
-</body>
 </html>

@@ -25,4 +25,5 @@ urlpatterns = [
 
 
     path('rsm-team-dashboard/', views.RSMTeamIncentiveDashboardView.as_view(), name='rsm_team_dashboard'),
+    path('update-customer-trigger/', views.update_customer_trigger, name='update_customer_trigger'),
 ]
