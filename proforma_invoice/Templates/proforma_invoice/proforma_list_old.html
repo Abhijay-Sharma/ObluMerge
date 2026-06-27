@@ -361,7 +361,7 @@
                 </tbody>
             </table>
         </div>
-                <!-- ---------------- PAGINATION ---------------- -->
+         <!-- ---------------- PAGINATION ---------------- -->
         {% if is_paginated %}
         <nav aria-label="Page navigation" class="mt-4">
             <ul class="pagination justify-content-center">
@@ -408,7 +408,6 @@
             Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ paginator.count }} invoices
         </div>
         {% endif %}
-
     </div>
 </div>
 
@@ -451,28 +450,35 @@
 
 
 <script>
-// --- 1. MESSAGE HUB LOGIC ---
+
 function openRemarkModal(invoiceId) {
     document.getElementById('modalInvoiceId').value = invoiceId;
     document.getElementById('globalRemarkModal').style.display = 'flex';
     document.getElementById('modalChatHistory').innerHTML = '<div style="color:#666; text-align:center; padding-top:50px;">Loading conversation...</div>';
-
+        // --- NEW: Hide the notification dot when opened ---
     const dot = document.getElementById('dot-' + invoiceId);
-    if (dot) dot.style.display = 'none';
+    if (dot) {
+        dot.style.display = 'none';
+    }
+    // --------------------------------------------------
 
     loadRemarks(invoiceId);
 }
 
 function loadRemarks(invoiceId) {
+    // Generate the correct URL using Django's URL tag
     const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
+
     fetch(getUrl)
         .then(r => r.json())
         .then(data => {
             const historyBox = document.getElementById('modalChatHistory');
             historyBox.innerHTML = "";
+
             if (data.remarks.length === 0) {
                 historyBox.innerHTML = '<div style="color:#444; text-align:center; padding-top:50px;">No conversation yet.</div>';
             }
+
             data.remarks.forEach(r => {
                 const bClass = `b-${r.role}`;
                 historyBox.innerHTML += `
@@ -489,6 +495,7 @@ function submitGlobalRemark() {
     const invId = document.getElementById('modalInvoiceId').value;
     const text = document.getElementById('modalRemarkInput').value.trim();
     if (!text) return;
+
     const btn = document.getElementById('sendBtn');
     btn.disabled = true;
 
@@ -497,37 +504,52 @@ function submitGlobalRemark() {
     formData.append('remark', text);
     formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
+    // Generate the correct URL using Django's URL tag
     const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
+
     fetch(postUrl, {
         method: 'POST',
         body: formData,
         headers: {'X-Requested-With': 'XMLHttpRequest'}
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) throw new Error('404 or 500 error');
+        return r.json();
+    })
     .then(data => {
         if(data.status === 'ok') {
             document.getElementById('modalRemarkInput').value = "";
             loadRemarks(invId);
         }
     })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("Check if URL is correct in urls.py");
+    })
     .finally(() => btn.disabled = false);
 }
+
 
 function closeRemarkModal() {
     document.getElementById('globalRemarkModal').style.display = 'none';
 }
 
-// --- 2. TRACK PROGRESS LOGIC ---
-
-// Fixed: Added missing closing brace
-function getStatusBadge(status) {
-    status = status.toLowerCase();
-    if (status === 'approved' || status === 'stock confirmed') return 'bg-success';
-    if (status === 'rejected' || status === 'unavailable') return 'bg-danger';
-    return 'bg-warning text-dark';
+window.onclick = function(e) {
+    const modal = document.getElementById('globalRemarkModal');
+    if (e.target == modal) closeRemarkModal();
 }
 
-function openRejectedModal(invoiceId) {
+<!--; prices Update-->
+
+// Helper for Status Badge colors
+function getStatusBadge(status) {
+    status = status.toLowerCase();
+    if (status === 'approved') return 'bg-success';
+    if (status === 'rejected') return 'bg-danger';
+    return 'bg-warning text-dark'; // Pending
+}
+
+function openRejectedModal(invoiceId) { // Keeping the name same so you don't have to change your button onclick
     const modal = document.getElementById('detailsModal');
     const content = document.getElementById('detailsContent');
     document.getElementById('detInvId').innerText = invoiceId;
@@ -535,6 +557,7 @@ function openRejectedModal(invoiceId) {
     modal.classList.add('active');
     content.innerHTML = '<div class="text-center p-5"><p>Fetching all request statuses...</p></div>';
 
+    // Update this URL to match your new API path
     fetch(`/proforma/api/proforma/request-details/${invoiceId}/`)
         .then(response => {
             if (!response.ok) throw new Error('Request Failed');
@@ -543,59 +566,40 @@ function openRejectedModal(invoiceId) {
         .then(data => {
             let html = '';
 
-            // 1. STOCK SHORTAGE SECTION
-            if (data.stock_history && data.stock_history.length > 0) {
-                html += `<h6 class="fw-bold mb-2 text-warning">📦 Stock Shortage Tracking</h6>
-                <table class="rej-table border mb-4">
-                    <thead>
-                        <tr style="background: #2a2a2a;">
-                            <th>Product</th>
-                            <th>Qty (Req/Avail)</th>
-                            <th>Status</th>
-                            <th>Time Taken</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-                data.stock_history.forEach(s => {
-                    html += `
-                        <tr>
-                            <td class="small font-weight-bold">${s.product_name}</td>
-                            <td>
-                                <span class="text-danger small">Req: ${s.requested_qty}</span><br>
-                                <span class="text-success small">Avail: ${s.available_qty}</span>
-                            </td>
-                            <td><span class="badge ${getStatusBadge(s.status)}">${s.status}</span></td>
-                            <td class="small text-muted">${s.duration}</td>
-                        </tr>`;
-                });
-                html += `</tbody></table>`;
-            }
-
-            // 2. Courier History
+            // 1. Courier Requests Section
             if (data.courier_history && data.courier_history.length > 0) {
                 html += `<h6 class="fw-bold mb-2 text-secondary">🚚 Courier Change History</h6>
                 <table class="rej-table border mb-4">
                     <thead><tr><th>Requested</th><th>Reason</th><th>Reviewer</th><th>Status</th></tr></thead>
                     <tbody>`;
                 data.courier_history.forEach(c => {
-                    html += `<tr>
-                        <td class="fw-bold">₹${c.requested}</td>
-                        <td class="small">${c.reason}</td>
-                        <td class="small">${c.reviewed_by}</td>
-                        <td><span class="badge ${getStatusBadge(c.status)}">${c.status}</span></td>
-                    </tr>`;
+                    html += `
+                        <tr>
+                            <td class="fw-bold">₹${c.requested}</td>
+                            <td class="small">${c.reason}</td>
+                            <td class="small">${c.reviewed_by}</td>
+                            <td><span class="badge ${getStatusBadge(c.status)}">${c.status}</span></td>
+                        </tr>`;
                 });
                 html += `</tbody></table>`;
             }
 
-            // 3. Product Price Tracking
-            if (data.products && data.products.length > 0) {
-                html += `<h6 class="fw-bold mb-2 text-secondary">⚖️ Product Price Tracking</h6>
-                <table class="rej-table border">
-                    <thead><tr><th>Product</th><th>Requested</th><th>Reviewer</th><th>Status</th></tr></thead>
-                    <tbody>`;
-                data.products.forEach(p => {
-                    html += `<tr>
+            // 2. Product Decisions Section
+            html += `<h6 class="fw-bold mb-2 text-secondary">📦 Product Price Tracking</h6>
+            <table class="rej-table border">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Requested</th>
+                        <th>Reviewer</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            data.products.forEach(p => {
+                html += `
+                    <tr>
                         <td style="font-size: 0.75rem;">
                             ${p.name}<br>
                             <small class="text-muted">MSRP: ₹${p.msrp} | Reason: ${p.reason}</small>
@@ -604,12 +608,12 @@ function openRejectedModal(invoiceId) {
                         <td class="small">${p.reviewed_by}</td>
                         <td><span class="badge ${getStatusBadge(p.status)}">${p.status}</span></td>
                     </tr>`;
-                });
-                html += `</tbody></table>`;
-            }
+            });
 
-            if(!data.products.length && !data.courier_history.length && !data.stock_history.length) {
-                html = '<div class="alert alert-info text-center">No active requests found for this invoice.</div>';
+            if(data.products.length === 0 && (!data.courier_history || data.courier_history.length === 0)) {
+                html = '<div class="alert alert-info">No product or courier requests found for this invoice.</div>';
+            } else {
+                html += `</tbody></table>`;
             }
 
             content.innerHTML = html;
@@ -621,14 +625,6 @@ function openRejectedModal(invoiceId) {
 
 function closeDetailsModal() {
     document.getElementById('detailsModal').classList.remove('active');
-}
-
-// Fixed window click handler for both modals
-window.onclick = function(e) {
-    const remarkModal = document.getElementById('globalRemarkModal');
-    const detailsModal = document.getElementById('detailsModal');
-    if (e.target == remarkModal) closeRemarkModal();
-    if (e.target == detailsModal) closeDetailsModal();
 }
 </script>
 {% endblock %}
