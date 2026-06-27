@@ -3,6 +3,7 @@ from inventory.models import InventoryItem
 from django.conf import settings
 from customer_dashboard.models import CustomerVoucherStatus
 from decimal import Decimal
+from customer_dashboard.models import Customer
 
 # Create your models here.
 
@@ -142,3 +143,16 @@ class ProductIncentiveTier(models.Model):
 #
 #     def __str__(self):
 #         return self.product.name
+
+
+
+class CustomerIncentiveTrigger(models.Model):
+    customer = models.OneToOneField(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="incentive_trigger"
+    )
+    is_enabled = models.BooleanField(default=True)
+
+    def str(self):
+        return f"{self.customer.name} - {'Active' if self.is_enabled else 'Disabled'}"
