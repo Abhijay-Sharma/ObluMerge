@@ -212,7 +212,7 @@
                             <span style="color: #666; font-size: 0.75rem;">{{ inv.customer.name }}</span>
                         </td>
                         <td>{{ inv.created_by }}</td>
-                        <td><strong>₹{{ inv.grand_total|floatformat:2 }}</strong></td>
+                        <td><strong>₹{{ inv.calculate_final_total|floatformat:2  }}</strong></td>
                         <td>{{ inv.get_courier_mode_display }}</td>
 
                         <!-- Status Badge -->
