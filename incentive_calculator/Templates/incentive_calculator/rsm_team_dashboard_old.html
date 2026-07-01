@@ -18,8 +18,7 @@
         --table-header-bg: #1a1a1a;
         --table-row-hover: #1c1c1c;
         --payable-green: #00ff99;
-        --pending-yellow: #ffd54d; /* Changed to Yellow for distinction */
-        --triggered-red: #ff4d4d;    /* Red for Blocked */
+        --pending-red: #ff4d4d;
         --muted-gray: #888;
         --shadow: rgba(0,0,0,0.5);
     }
@@ -36,8 +35,7 @@
         --table-header-bg: #f8f9fa;
         --table-row-hover: #f1f3f5;
         --payable-green: #000000;
-        --pending-yellow: #000000;
-        --triggered-red: #ff0000;
+        --pending-red: #000000;
         --muted-gray: #444444;
         --shadow: rgba(0,0,0,0.05);
     }
@@ -127,25 +125,25 @@
 
     tr:hover { background: var(--table-row-hover); }
 
-    /* BADGES */
-    .status-badge {
+    /* PENDING MARK FIX */
+    .pending-badge {
+        display: none;
         font-size: 9px;
         font-weight: 800;
         padding: 2px 5px;
+        border: 1.5px solid #000;
         border-radius: 4px;
         margin-left: 8px;
         vertical-align: middle;
         text-transform: uppercase;
     }
-    .badge-pending { border: 1px solid var(--pending-yellow); color: var(--pending-yellow); }
-    .badge-triggered { border: 1px solid var(--triggered-red); color: var(--triggered-red); }
+    body.light-mode .pending-badge { display: inline-block; }
 
     /* ALIGNMENT HELPERS */
     .text-center { text-align: center; }
     .text-right { text-align: right; }
     .text-payable { color: var(--payable-green) !important; font-weight: bold; }
-    .text-pending { color: var(--pending-yellow) !important; font-weight: bold; }
-    .text-triggered { color: var(--triggered-red) !important; font-weight: bold; }
+    .text-pending { color: var(--pending-red) !important; font-weight: bold; }
 
     @media (max-width: 900px) {
         .rsm-main-card { flex-direction: column; border-left: none; border-top: 6px solid var(--heading-green); }
@@ -182,10 +180,9 @@
         <div class="rsm-total-box">
             <span style="color: var(--muted-gray); font-size: 14px;">Grand Potential Incentive for <b>{{ selected_rsm.name }}</b></span>
             <h1>₹{{ grand_rsm_potential|floatformat:2 }}</h1>
-            <div style="font-size: 13px; margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap;">
-                <span>Payable: <span class="text-payable">₹{{ grand_rsm_paid|floatformat:2 }}</span></span>
-                <span>Pending: <span class="text-pending">₹{{ grand_rsm_pending|floatformat:2 }}</span></span>
-                <span>Triggered Off: <span class="text-triggered">₹{{ grand_rsm_triggered_off|floatformat:2 }}</span></span>
+            <div style="font-size: 14px; margin-top: 10px;">
+                <span style="margin-right: 20px;">Payable: <span class="text-payable">₹{{ grand_rsm_paid|floatformat:2 }}</span></span>
+                <span>Pending: <span class="text-pending">₹{{ grand_rsm_pending|floatformat:2 }}</span><span class="pending-badge">Pending</span></span>
             </div>
         </div>
 
@@ -215,9 +212,8 @@
                 </div>
             </div>
             <div class="text-right" style="line-height: 1.6;">
-                <div style="font-size: 12px; color: var(--muted-gray);">RSM Paid: <b class="text-payable">₹{{ report.rsm_paid|floatformat:2 }}</b></div>
-                <div style="font-size: 12px; color: var(--muted-gray);">RSM Pending: <b class="text-pending">₹{{ report.rsm_pending|floatformat:2 }}</b></div>
-                <div style="font-size: 12px; color: var(--muted-gray);">RSM Blocked: <b class="text-triggered">₹{{ report.rsm_triggered_off|floatformat:2 }}</b></div>
+                <div style="font-size: 13px; color: var(--muted-gray);">RSM share (Paid): <b class="text-payable">₹{{ report.rsm_paid|floatformat:2 }}</b></div>
+                <div style="font-size: 13px; color: var(--muted-gray);">RSM share (Pending): <b class="text-pending">₹{{ report.rsm_pending|floatformat:2 }}</b><span class="pending-badge">Pending</span></div>
                 <div style="margin-top: 5px; border-top: 1px solid #333; padding-top: 5px;">
                     <span class="text-muted" style="font-size: 11px;">ASM Earned: ₹{{ report.asm_paid|floatformat:2 }}</span>
                 </div>
@@ -239,21 +235,13 @@
                     <tr>
                         <td>{{ item.name }}</td>
                         <td class="text-center">{{ item.qty|floatformat:0 }}</td>
-
-                        <!-- ASM Earnings: Remove Triggered Off Label -->
                         <td class="text-right {% if not item.is_paid %}text-pending{% endif %}">
                             ₹{{ item.asm_incentive|floatformat:2 }}
-                            {% if item.is_paid == False and item.is_trigger_on %}
-                                <span class="status-badge badge-pending">Pending</span>
-                            {% endif %}
+                            {% if not item.is_paid %}<span class="pending-badge">Pending</span>{% endif %}
                         </td>
-
-                        <!-- RSM Earnings: Remove Triggered Off Label -->
                         <td class="text-right {% if not item.is_paid %}text-pending{% else %}text-payable{% endif %}">
                             ₹{{ item.rsm_incentive|floatformat:2 }}
-                            {% if item.is_paid == False and item.is_trigger_on %}
-                                <span class="status-badge badge-pending">Pending</span>
-                            {% endif %}
+                            {% if not item.is_paid %}<span class="pending-badge">Pending</span>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
