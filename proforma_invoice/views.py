@@ -949,7 +949,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
 
 
 
-
+# credit overdue bypass list
 class OverdueBypassListView(AccountantRequiredMixin, ListView):
     model = CreditPeriodOverdueByPassRequest
     template_name = "proforma_invoice/credit_period_overdue_bypass_list.html"
