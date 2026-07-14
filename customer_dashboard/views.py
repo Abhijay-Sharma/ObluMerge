@@ -2678,6 +2678,110 @@ class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
 
         return ctx
 
+# new temp view to show ankush his teammates and aman his
+class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/monthly_sales_report.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # 1. Identify the logged-in SalesPerson
+        user_sp = SalesPerson.objects.filter(user=self.request.user).first()
+        if not user_sp:
+            ctx["rows"] = []
+            return ctx
+
+        # 2. Determine Viewable Salespersons (Manager Hierarchy)
+        # The user can always see themselves.
+        # If they are a manager, they can also see their team members.
+        team_members = user_sp.team_members.all()
+        viewable_salespersons = [user_sp] + list(team_members)
+
+        ctx["viewable_salespersons"] = viewable_salespersons
+        ctx["is_manager"] = team_members.exists()
+
+        # 3. Handle Filters (Month and Selected Salesperson)
+        month_picker = self.request.GET.get("month_picker")
+        target_sp_id = self.request.GET.get("salesperson_id")
+
+        # Set default target to the logged-in user
+        target_salesperson = user_sp
+
+        # If a salesperson is selected from dropdown, validate they are in the allowed list
+        if target_sp_id:
+            requested_sp = SalesPerson.objects.filter(id=target_sp_id).first()
+            if requested_sp in viewable_salespersons:
+                target_salesperson = requested_sp
+
+        ctx["selected_salesperson"] = target_salesperson
+
+        # Month Logic
+        today = date.today()
+        if month_picker:
+            year, month = map(int, month_picker.split("-"))
+        else:
+            year, month = today.year, today.month
+
+        ctx["year"] = year
+        ctx["month"] = month
+        start_date = date(year, month, 1)
+        end_date = date(year, month, monthrange(year, month)[1])
+
+        # ---------------------------------
+        # DATA QUERY (Filter by the TARGET salesperson)
+        # ---------------------------------
+        voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=target_salesperson,
+            voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[start_date, end_date],
+        ).select_related('sold_by')
+
+        vouchers = Voucher.objects.filter(
+            id__in=voucher_statuses.values_list("voucher_id", flat=True)
+        )
+
+        voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
+
+        stock_items = (
+            VoucherStockItem.objects
+            .filter(voucher__in=vouchers)
+            .select_related("voucher", "item")
+            .order_by("voucher__date")
+        )
+
+        rows = []
+        total_sales = Decimal("0.00")
+        processed_vouchers = set()
+
+        for si in stock_items:
+            product = si.item
+            if not product: continue
+
+            if si.voucher_id not in processed_vouchers:
+                processed_vouchers.add(si.voucher_id)
+                party_row = si.voucher.rows.filter(ledger__iexact=si.voucher.party_name).first()
+                if party_row:
+                    total_sales += Decimal(str(party_row.amount))
+
+            vs = voucher_status_map.get(si.voucher_id)
+            rows.append({
+                "date": si.voucher.date,
+                "customer": si.voucher.party_name,
+                "customer_id": vs.customer_id if vs else None,
+                "voucher_id": si.voucher.id,
+                "voucher_no": si.voucher.voucher_number,
+                "product": product.name,
+                "quantity": si.quantity,
+                "amount": si.amount,
+                "is_fully_paid": bool(vs and vs.is_fully_paid),
+                "is_partially_paid": bool(vs and vs.is_partially_paid),
+                "is_unpaid": bool(vs and vs.is_unpaid),
+            })
+
+        ctx["rows"] = rows
+        ctx["total_sales"] = total_sales
+        return ctx
+
 class AllMonthsSalesReportView(AccountantRequiredMixin, TemplateView):
     template_name = "customers/all_months_sales_report.html"
 
