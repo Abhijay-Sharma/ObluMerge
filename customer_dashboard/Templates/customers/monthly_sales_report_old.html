@@ -30,20 +30,7 @@ a { color:#00ff99; }
 
 <!-- FILTER -->
 <div class="card">
-<form method="get" style="display: flex; gap: 10px; align-items: center;">
-    <!-- ✅ DROPDOWN FOR MANAGERS -->
-    {% if is_manager %}
-    <div style="display: flex; flex-direction: column;">
-        <label style="font-size: 12px; color: #888;">Select Salesperson</label>
-        <select name="salesperson_id" style="padding: 5px; background: #222; color: white; border: 1px solid #444; border-radius: 4px;">
-            {% for sp in viewable_salespersons %}
-                <option value="{{ sp.id }}" {% if sp.id == selected_salesperson.id %}selected{% endif %}>
-                    {{ sp.name }} {% if sp.id == request.user.salesperson_profile.first.id %}(Me){% endif %}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
-    {% endif %}
+<form method="get">
 
 
     <!-- ✅ MONTH CALENDAR PICKER -->
@@ -51,16 +38,9 @@ a { color:#00ff99; }
            value="{{ year }}-{% if month < 10 %}0{{ month }}{% else %}{{ month }}{% endif %}"
            required>
 
-    <button type="submit" style="margin-top: 15px; padding: 7px 15px; background: #00ff99; color: black; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-        Calculate
-    </button>
+    <button type="submit">Calculate</button>
 </form>
 </div>
-
-<h2>
-    Monthly Sales Report - {{ selected_salesperson.name }}
-    <small style="color: #888; font-size: 14px;">({{ month }}/{{ year }})</small>
-</h2>
 
 
 {% if rows %}
