@@ -374,23 +374,6 @@
             </table>
         </div>
     </div>
-    {% if is_paginated %}
-    <div style="margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 15px; padding-bottom: 50px;">
-        {% if page_obj.has_previous %}
-            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page=1" style="color: var(--primary); text-decoration: none; font-size: 0.8rem; font-weight: bold;">&laquo; First</a>
-            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}" style="background: #333; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-size: 0.8rem;">Previous</a>
-        {% endif %}
-
-        <span style="color: #888; font-size: 0.8rem;">
-            Page <b>{{ page_obj.number }}</b> of {{ page_obj.paginator.num_pages }}
-        </span>
-
-        {% if page_obj.has_next %}
-            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}" style="background: #333; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-size: 0.8rem;">Next</a>
-            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.paginator.num_pages }}" style="color: var(--primary); text-decoration: none; font-size: 0.8rem; font-weight: bold;">Last &raquo;</a>
-        {% endif %}
-    </div>
-    {% endif %}
 </div>
 
 

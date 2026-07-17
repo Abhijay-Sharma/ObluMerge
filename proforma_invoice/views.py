@@ -2869,6 +2869,126 @@ class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
 
         return render(request, 'price_change_request_list.html', {'grouped_requests': grouped_data.values()})
 
+#pagination version
+class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
+    model = ProformaPriceChangeRequest
+    template_name = "proforma_invoice/price_change_request_list.html"
+    context_object_name = "requests"
+    paginate_by = 50  # <--- ADD THIS LINE
+
+
+    def get_queryset(self):
+        # Default ordering: Latest first
+        queryset = ProformaPriceChangeRequest.objects.select_related(
+            "invoice", "requested_by", "reviewed_by", "customer"
+        ).prefetch_related(
+            "invoice__items__product",
+            "invoice__remarks__user"
+        ).order_by("-created_at")
+
+        # logic: Super Admin sees all, but we can default filter
+        # if self.request.user.is_superuser:
+        #     return queryset # superuser sees all by default now
+
+            # If no specific filter is selected, show 'Under MSRP' by default
+            # if not self.request.GET.get('f_status'):
+            #     queryset = queryset.filter(is_under_msrp=True)
+
+        # Get values from the URL
+        f_id = self.request.GET.get('f_id')
+        if f_id: queryset = queryset.filter(id__icontains=f_id)
+
+        f_inv = self.request.GET.get('f_inv')
+        f_user = self.request.GET.get('f_user')
+        f_status = self.request.GET.get('f_status')
+        f_date = self.request.GET.get('f_date')
+
+        # Apply Filters
+        if f_id:
+            queryset = queryset.filter(id__icontains=f_id)
+        if f_inv:
+            queryset = queryset.filter(invoice__id__icontains=f_inv)
+        if f_user:
+            queryset = queryset.filter(requested_by__username__icontains=f_user)
+        if f_status:
+            queryset = queryset.filter(status=f_status)
+        if f_date:
+            queryset = queryset.filter(created_at__date=f_date)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Use the already-filtered list from the ListView
+        # queryset = self.object_list
+
+        # instead of the full queryset to keep performance high.
+        queryset = context['page_obj']
+
+
+        grouped_data = {}
+        for req in queryset:
+            inv_id = req.invoice.id
+            if inv_id not in grouped_data:
+                grouped_data[inv_id] = {
+                    'invoice': req.invoice,
+                    'requests': [],
+                    'all_reviewers': [],
+                    'is_pending': False,
+                    'start_time': req.created_at,
+                    'end_time': None,
+                }
+
+            group = grouped_data[inv_id]
+            group['requests'].append(req)
+
+            if req.reviewed_by:
+                group['all_reviewers'].append(req.reviewed_by.username)
+
+            if req.status == 'pending':
+                group['is_pending'] = True
+
+            # Use reviewed_at from your model
+            if req.status != 'pending' and req.reviewed_at:
+                if not group['end_time'] or req.reviewed_at > group['end_time']:
+                    group['end_time'] = req.reviewed_at
+
+        for group in grouped_data.values():
+            group['unique_reviewers'] = list(dict.fromkeys(group['all_reviewers']))
+
+            # Duration calc
+            calc_end = group['end_time'] if (not group['is_pending'] and group['end_time']) else timezone.now()
+            diff = calc_end - group['start_time']
+            group['duration_display'] = f"{diff.days}d {diff.seconds // 3600}h {(diff.seconds // 60) % 60}m"
+            group['is_running'] = group['is_pending']
+
+        # THIS NAME MUST MATCH THE TEMPLATE
+        context['grouped_requests'] = grouped_data.values()
+        return context
+        # In your views.py (the one that renders the dashboard)
+    from django.db.models import Prefetch
+
+    def price_change_requests_list(request):
+        # Get all requests
+        all_requests = ProformaPriceChangeRequest.objects.all().order_by('-created_at')
+
+        # Logic to group them by Invoice in memory
+        grouped_data = {}
+        for req in all_requests:
+            inv_id = req.invoice.id
+            if inv_id not in grouped_data:
+                grouped_data[inv_id] = {
+                    'invoice': req.invoice,
+                    'items': [],
+                    'status': 'PENDING',  # You can calculate aggregate status
+                    'requested_by': req.requested_by,
+                    'created_at': req.created_at,
+                }
+            grouped_data[inv_id]['items'].append(req)
+
+        return render(request, 'price_change_request_list.html', {'grouped_requests': grouped_data.values()})
+
 def can_user_approve_request(user, price_request):
     if user.is_superuser or getattr(user, 'is_accountant', False):
         return True
