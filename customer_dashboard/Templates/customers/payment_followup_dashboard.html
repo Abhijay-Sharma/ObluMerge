@@ -36,11 +36,16 @@
         /* DASHBOARD CARD */
         .sheets-outer-wrapper { padding: 30px; }
          .sheets-card {
-            background: white; border: 1px solid #dadce0; border-radius: 8px;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
             width: 1450px;
-            margin: 0 auto; box-shadow: 0 1px 3px rgba(60,64,67, 0.3);
-         }
+            margin: 0 auto;
+            box-shadow: 0 1px 3px rgba(60,64,67, 0.3);
+            overflow: visible; /* Important: overflow:hidden breaks sticky */
+        }
 
+        /* Toolbar Sticky */
         .sheets-toolbar {
             padding: 15px 20px;
             border-bottom: 1px solid #e0e0e0;
@@ -49,11 +54,12 @@
             align-items: center;
             background: white;
             position: sticky;
-            top: 60px;
-            z-index: 100;
+            top: 60px; /* Height of your oblu-nav */
+            z-index: 101;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
         }
+
         .toolbar-title { font-size: 18px; font-weight: 500; color: #3c4043; margin: 0; }
         .user-pill {
             background: #e8f0fe; color: #1967d2; border: 1px solid #c2d7fa;
@@ -62,10 +68,19 @@
 
         /* GRID STYLING */
         .table-sheets { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+        /* Table Header Sticky */
         .table-sheets th {
-            background: #f8f9fa; color: #5f6368; font-size: 11px; font-weight: 600;
-            text-transform: uppercase; border: 1px solid #e0e0e0; padding: 10px;
-            position: sticky; top: 131px; z-index: 90;
+            background: #f8f9fa;
+            color: #5f6368;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            position: sticky;
+            top: 131px; /* 60px (nav) + 71px (toolbar height) */
+            z-index: 100;
         }
         .table-sheets td {
             border: 1px solid #e0e0e0; padding: 8px 10px; font-size: 13px;
@@ -185,8 +200,28 @@
                                 <input type="text" id="cust-search" name="q" value="{{ search_query }}"
                                        placeholder="Search Customer..." autocomplete="off"
                                        style="padding:4px 8px; border:1px solid #dadce0; border-radius:4px; font-size:13px; width: 250px;">
+                                 <!-- NEW: Ankush's Team Dropdown -->
+                                {% if is_ankush %}
+                                <select name="target_sp" onchange="this.form.submit()" style="padding:4px 8px; border-radius:4px; border:1px solid #dadce0; font-size:13px; background: #fffde7; border-color: #fbc02d;">
+                                    <option value="">-- Show All --</option>
+                                    <option value="Ankush" {% if selected_target_sp == "Ankush" %}selected{% endif %}>My Records</option>
+                                    <option value="Satish" {% if selected_target_sp == "Satish" %}selected{% endif %}>Satish's Records</option>
+                                    <option value="Naveen" {% if selected_target_sp == "Naveen" %}selected{% endif %}>Naveen's Records</option>
+                                </select>
+                                {% endif %}
 
-                                <button type="submit" class="btn-sheet btn-blue">Search</button>
+                                <!-- Credit Period Bypass Filter -->
+                                <div style="display:flex; align-items:center; gap:10px; margin-left: 15px; padding-left: 15px; border-left: 1px solid #dadce0;">
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #d93025; font-size: 13px; font-weight: 600;">
+                                        <input type="checkbox" name="overdue_only" value="true"
+                                               onchange="this.form.submit()"
+                                               {% if overdue_only %}checked{% endif %}
+                                               style="width: 16px; height: 16px; cursor: pointer;">
+                                        Show Only Overdue
+                                    </label>
+                                </div>
+
+<!--                                <button type="submit" class="btn-sheet btn-blue">Search</button>-->
                             </div>
 
                             <div id="suggestions-box" class="suggestions-list" style="display:none;"></div>
@@ -513,16 +548,15 @@
         const excelBtn = document.getElementById('btn-excel');
         const pdfBtn = document.getElementById('btn-pdf');
 
+        // Ensure overdue_only is preserved in links
         if (excelBtn) {
-            const excelParams = new URLSearchParams(params);
-            excelParams.set('type', 'excel');
-            excelBtn.href = baseUrl + '?' + excelParams.toString();
+            params.set('type', 'excel');
+            excelBtn.href = baseUrl + '?' + params.toString();
         }
 
         if (pdfBtn) {
-            const pdfParams = new URLSearchParams(params);
-            pdfParams.set('type', 'pdf');
-            pdfBtn.href = baseUrl + '?' + pdfParams.toString();
+            params.set('type', 'pdf');
+            pdfBtn.href = baseUrl + '?' + params.toString();
         }
     }
 
