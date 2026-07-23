@@ -157,23 +157,8 @@
     </table>
 
     <!-- Total -->
-    <div class="total" style="display: none;">
-        <strong>
-            Grand Total: ₹
-            {% with grand_total=0 %}
-                {% for item in quotation.items.all %}
-                    {% with new_price=altered_prices|get_item:item.id %}
-                        {% if new_price %}
-                            {% widthratio item.quantity 1 new_price as subtotal %}
-                        {% else %}
-                            {% widthratio item.quantity 1 item.unit_price_without_tax as subtotal %}
-                        {% endif %}
-                        {% with grand_total=grand_total|add:subtotal %}{% endwith %}
-                    {% endwith %}
-                {% endfor %}
-                {{ grand_total|floatformat:2 }}
-            {% endwith %}
-        </strong>
+    <div class="total">
+        <strong>Grand Total: ₹ {{ grand_total|floatformat:2 }}</strong>
     </div>
 
     <div class="signature">
