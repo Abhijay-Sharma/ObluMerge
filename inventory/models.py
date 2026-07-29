@@ -249,7 +249,7 @@ class PurchaseOrderTrackingItem(models.Model):
 
     def save(self, *args, **kwargs):
         if self.arrived_quantity is None:
-            self.arrived_quantity = self.ordered_quantity
+            self.arrived_quantity = Decimal("0.00")
 
         self.is_fully_arrived = Decimal(self.arrived_quantity) >= Decimal(self.ordered_quantity)
 
@@ -331,8 +331,41 @@ class PurchaseOrderStageLog(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
+        # Mark PO arrived if final stage completed
         if self.stage.is_final_stage and self.exit_datetime:
             self.purchase_order.mark_arrived_if_final_stage_done()
+
+        # Nothing to sync if current stage hasn't exited
+        if not self.exit_datetime:
+            return
+
+        # Find the next stage
+        next_stage = (
+            PurchaseOrderStage.objects
+            .filter(
+                is_active=True,
+                sort_order__gt=self.stage.sort_order
+            )
+            .order_by("sort_order")
+            .first()
+        )
+
+        if not next_stage:
+            return
+
+        next_log, created = PurchaseOrderStageLog.objects.get_or_create(
+            purchase_order=self.purchase_order,
+            stage=next_stage,
+            defaults={
+                "entered_at": self.exit_datetime,
+                "created_by": self.created_by,
+            }
+        )
+
+        # If it already exists, update its entry date
+        if not created:
+            next_log.entered_at = self.exit_datetime
+            next_log.save(update_fields=["entered_at"])
 
 
 

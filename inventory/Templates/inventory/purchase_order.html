@@ -226,6 +226,68 @@
   .cb-col { text-align:center; }
   input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:#6366f1; }
 
+  .stage-badge{
+    display:inline-block;
+    padding:3px 8px;
+    border-radius:6px;
+    font-size:.75rem;
+    font-weight:600;
+    margin-top:6px;
+  }
+
+.stage-factory{
+    background:#f3f4f6;
+    color:#374151;
+}
+
+.stage-shipping{
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+
+.stage-customs{
+    background:#fef3c7;
+    color:#92400e;
+}
+
+.stage-warehouse{
+    background:#ede9fe;
+    color:#6d28d9;
+}
+
+.stage-delivered{
+    background:#dcfce7;
+    color:#166534;
+}
+
+.stage-pill{
+    display:inline-block;
+    margin-top:6px;
+    padding:4px 10px;
+    border-radius:20px;
+    background:#eef4ff;
+    color:#2563eb;
+    font-size:.74rem;
+    font-weight:600;
+}
+
+.transit-table{
+    font-size:11px;
+    white-space:nowrap;
+}
+
+.transit-table th{
+    padding:3px 6px;
+    text-align:center;
+}
+
+.transit-table td{
+    padding:3px 6px;
+    text-align:center;
+    vertical-align:middle;
+}
+
+
   @media print {
     .no-print { display:none !important; }
     .po-wrapper { padding:0; }
@@ -431,15 +493,65 @@
 
     {# 9 — In Transit #}
     <td>
-      {% if p.incoming_qty %}
-        <div class="intransit-badge" style="font-size:.82rem">🚚 {{ p.incoming_qty|floatformat:0 }} {{ p.unit }}</div>
-        {% if p.incoming_date %}
-          <div class="sub-note">ETA: {{ p.incoming_date|date:"d M Y" }}</div>
-          <div class="sub-note">({{ p.expected_delivery_days }} day lead)</div>
-        {% endif %}
-      {% else %}
+
+        {% if p.tracking_details %}
+
+        <table class="table table-sm table-bordered table-hover mb-0 transit-table">
+
+            <thead>
+                <tr>
+                    <th>Qty</th>
+                    <th>PO</th>
+                    <th>Stage</th>
+                    <th>ETA</th>
+                    <th>Left</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            {% for po in p.tracking_details %}
+
+                <tr>
+
+                    <td>{{ po.incoming_qty|floatformat:0 }}</td>
+
+                    <td>{{ po.po_number }}</td>
+
+                    <td>{{ po.stage }}</td>
+
+                    <td>
+                        {% if po.eta %}
+                            {{ po.eta|date:"d M" }}
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if po.remaining_days is not None %}
+                            {{ po.remaining_days }}
+                        {% endif %}
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+        {% elif p.incoming_qty %}
+
+        <div class="intransit-badge">
+            🚚 {{ p.incoming_qty|floatformat:0 }}
+        </div>
+
+        {% else %}
+
         <span class="del-none">None</span>
-      {% endif %}
+
+        {% endif %}
+
     </td>
 
     {# 10 — Order recommendation #}
@@ -501,7 +613,7 @@
 
   {# ── Math breakdown row ────────────────────────────────────────────── #}
   <tr class="math-row" id="math-{{ forloop.counter }}">
-    <td colspan="12">
+    <td colspan="13">
       {% with s=p.calc_steps %}
       <div class="math-panel">
         <h4>📐 Order Calculation — {{ p.name }}</h4>
@@ -511,6 +623,74 @@
         {% else %}
 
         <div class="math-steps">
+            {% if p.tracking_details %}
+
+                <div class="math-step step-info" style="grid-column:1/-1">
+
+                    <div class="ms-label" style="margin-bottom:10px">
+                        🚚 Active Purchase Orders In Transit
+                    </div>
+
+                    <table class="hist-table">
+
+                        <thead>
+                            <tr>
+                                <th>PO No.</th>
+                                <th>Qty</th>
+                                <th>Current Stage</th>
+                                <th>Days in Stage</th>
+                                <th>Remaining</th>
+                                <th>ETA</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                        {% for po in p.tracking_details %}
+
+                            <tr>
+
+                                <td>{{ po.po_number }}</td>
+
+                                <td>{{ po.incoming_qty|floatformat:0 }} {{ p.unit }}</td>
+
+                                <td>{{ po.stage|default:"—" }}</td>
+
+                                <td>
+                                    {% if po.days_in_stage is not None %}
+                                        {{ po.days_in_stage }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if po.remaining_days is not None %}
+                                        {{ po.remaining_days }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if po.eta %}
+                                        {{ po.eta|date:"d M Y" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            {% endif %}
 
           <div class="math-step step-info">
             <div class="ms-label">📊 Current Stock</div>
@@ -536,10 +716,10 @@
             <div class="ms-note">Days until new batch arrives if ordered today</div>
           </div>
 
-          {% if s.incoming_qty > 0 %}
-          <div class="math-step step-info">
+          {% if p.tracking_details %}
+            <div class="math-step step-info">
             <div class="ms-label">📬 Incoming (Open PO)</div>
-            <div class="ms-value">{{ s.incoming_qty|floatformat:0 }} {{ p.unit }}</div>
+            <div class="ms-value">{{ p.incoming_qty|floatformat:0 }} {{ p.unit }}</div>
             <div class="ms-note">
               {% if s.incoming_arrives_in is not None %}
                 Arrives in {{ s.incoming_arrives_in }} days ({{ s.incoming_date|date:"d M Y" }})
@@ -640,7 +820,7 @@
   </tr>
 
   {% empty %}
-  <tr><td colspan="12" style="text-align:center;padding:40px;color:#94a3b8">No products found.</td></tr>
+  <tr><td colspan="13" style="text-align:center;padding:40px;color:#94a3b8">No products found.</td></tr>
   {% endfor %}
   </tbody>
 </table>
@@ -812,7 +992,10 @@
 
 {% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
+
+Chart.register(window['chartjs-plugin-annotation']);
 
 // ── PO / GST data embedded from Django ──────────────────────────────────────
 // We pass all PO and GST rows as JSON so we don't need a separate API call for them
@@ -887,98 +1070,270 @@ function toggleMath(id, btn) {
 }
 
 function drawStockChart(counter) {
-  const canvas = document.getElementById("chart-" + counter);
-  if (!canvas) {
-    console.error("Canvas not found: chart-" + counter);
-    return;
-  }
+      const canvas = document.getElementById("chart-" + counter);
+      if (!canvas) {
+        console.error("Canvas not found: chart-" + counter);
+        return;
+      }
 
-  const rawData = document.getElementById("graph-data-" + counter);
-  const rawMeta = document.getElementById("graph-meta-" + counter);
-  if (!rawData || !rawMeta) {
-    console.error("Graph data not found for counter: " + counter);
-    return;
-  }
+      const rawData = document.getElementById("graph-data-" + counter);
+      const rawMeta = document.getElementById("graph-meta-" + counter);
+      if (!rawData || !rawMeta) {
+        console.error("Graph data not found for counter: " + counter);
+        return;
+      }
 
-  let graphData, meta;
-  try {
-    graphData = JSON.parse(rawData.textContent.trim());
-    meta      = JSON.parse(rawMeta.textContent.trim());
-  } catch (e) {
-    console.error("JSON parse error for chart-" + counter, e, rawData.textContent);
-    return;
-  }
+      let graphData, meta;
+      const annotations = {};
+      try {
+        graphData = JSON.parse(rawData.textContent.trim());
+        meta      = JSON.parse(rawMeta.textContent.trim());
+      } catch (e) {
+        console.error("JSON parse error for chart-" + counter, e, rawData.textContent);
+        return;
+      }
 
-  if (!graphData || graphData.length === 0) {
-    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:20px">No graph data available.</p>';
-    return;
-  }
+      if (!graphData || graphData.length === 0) {
+        canvas.parentElement.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:20px">No graph data available.</p>';
+        return;
+      }
 
-  // ── Force explicit pixel dimensions so Chart.js can render in hidden-then-shown row
-  canvas.style.width  = "100%";
-  canvas.style.height = "180px";
-  canvas.width  = canvas.parentElement.offsetWidth || 800;
-  canvas.height = 180;
+      // ── Force explicit pixel dimensions so Chart.js can render in hidden-then-shown row
+      canvas.style.width  = "100%";
+      canvas.style.height = "180px";
+      canvas.width  = canvas.parentElement.offsetWidth || 800;
+      canvas.height = 180;
 
-  const labels     = graphData.map(d => "Day " + d.day);
-  const stockVals  = graphData.map(d => d.stock);
-  const bufferVals = graphData.map(d => d.buffer_line);
+      const labels     = graphData.map(d => "Day " + d.day);
+      const stockVals  = graphData.map(d => d.stock);
+      const bufferVals = graphData.map(d => d.buffer_line);
 
-  new Chart(canvas, {
+      const reorderPoint = meta.reorder_point;
+      const deliveryDay  = meta.delivery_days;
+      const shipments    = meta.shipments || [];
+
+      const reorderMarker = graphData.map(p =>
+        p.day === reorderPoint ? p.stock : null
+      );
+
+      const deliveryMarker = graphData.map(p =>
+        p.day === deliveryDay ? p.stock : null
+      );
+
+      const shipmentMarker = graphData.map(point => {
+
+            const ship = shipments.find(s => {
+
+                const eta = new Date(s.eta);
+                const today = new Date();
+
+                const diff = Math.round(
+                    (eta - today) / 86400000
+                );
+
+                return diff === point.day;
+
+            });
+
+            return ship ? point.stock : null;
+
+      });
+
+      // TODAY
+    annotations.today = {
+        type: "line",
+        xMin: meta.today,
+        xMax: meta.today,
+        borderColor: "#2563eb",
+        borderWidth: 2,
+        label: {
+            display: true,
+            content: "Today",
+            position: "start"
+        }
+    };
+
+    // REORDER
+    if (meta.reorder_point != null) {
+
+        annotations.reorder = {
+
+            type: "line",
+
+            xMin: meta.reorder_point,
+
+            xMax: meta.reorder_point,
+
+            borderColor: "#f59e0b",
+
+            borderWidth: 2,
+
+            label: {
+
+                display: true,
+
+                content: "Order",
+
+                position: "start"
+
+            }
+
+        };
+
+    }
+
+    // STOCKOUT
+
+    if (meta.stockout_day != null) {
+
+        annotations.stockout = {
+
+            type: "line",
+
+            xMin: meta.stockout_day,
+
+            xMax: meta.stockout_day,
+
+            borderColor: "#ef4444",
+
+            borderWidth: 3,
+
+            label: {
+
+                display: true,
+
+                content: "Stock Out",
+
+                position: "start"
+
+            }
+
+        };
+
+    }
+
+new Chart(canvas, {
     type: "line",
     data: {
       labels,
       datasets: [
         {
-          label: "Stock Level",
-          data: stockVals,
-          borderColor: "#6366f1",
-          backgroundColor: "rgba(99,102,241,.12)",
-          fill: true,
-          tension: 0.3,
-          pointRadius: 0,
-          borderWidth: 2,
+            label: "Stock Level",
+            data: stockVals,
+            borderColor: "#6366f1",
+            backgroundColor: "rgba(99,102,241,.12)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 0,
+            borderWidth: 2,
         },
+
         {
-          label: "3-Month Buffered Demand",
-          data: bufferVals,
-          borderColor: "#ef4444",
-          backgroundColor: "rgba(239,68,68,.05)",
-          fill: false,
-          tension: 0,
-          pointRadius: 0,
-          borderWidth: 1.5,
-          borderDash: [5, 4],
+            label: "Buffer",
+            data: bufferVals,
+            borderColor: "#ef4444",
+            borderDash: [5,4],
+            fill:false,
+            pointRadius:0,
         },
-      ],
+
+        {
+            label:"Reorder Point",
+            data: reorderMarker,
+            showLine:false,
+            pointRadius:8,
+            pointBackgroundColor:"#f59e0b",
+        },
+
+        {
+            label:"New Order Arrival",
+            data: deliveryMarker,
+            showLine:false,
+            pointRadius:8,
+            pointBackgroundColor:"#22c55e",
+        },
+
+        {
+            label:"Incoming Shipment",
+            data: shipmentMarker,
+            showLine:false,
+            pointRadius:8,
+            pointBackgroundColor:"#2563eb",
+        }
+
+      ]
+
     },
-    options: {
-      responsive: false,        // ← KEY: turn off responsive so it uses our explicit size
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: {
-        legend: { display: false },
+
+options: {
+    responsive: false,
+    maintainAspectRatio: false,
+    animation: false,
+
+    plugins: {
+        annotation: {
+            annotations: annotations
+        },
+
+        legend: {
+            display: false
+        },
+
         tooltip: {
-          mode: "index",
-          intersect: false,
-          callbacks: {
-            label: ctx => ctx.dataset.label + ": " + Math.round(ctx.parsed.y).toLocaleString(),
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { maxTicksLimit: 10, font: { size: 10 } },
-          grid:  { display: false },
-        },
-        y: {
-          ticks: { font: { size: 10 }, callback: v => v.toLocaleString() },
-          grid:  { color: "#f1f5f9" },
-          beginAtZero: true,
-        },
-      },
+            mode: "index",
+            intersect: false,
+
+            callbacks: {
+                label(ctx) {
+                    return ctx.dataset.label + ": " + Math.round(ctx.parsed.y);
+                },
+
+                afterBody(items) {
+                    const point = graphData[items[0].dataIndex];
+
+                    if (!point.events.length)
+                        return [];
+
+                    const lines = [""];
+
+                    point.events.forEach(e => {
+                        lines.push("PO : " + e.po);
+                        lines.push("Qty : " + e.qty);
+                        lines.push("Stage : " + e.stage);
+                        lines.push("ETA : " + e.eta);
+                        lines.push("");
+                    });
+
+                    return lines;
+                }
+            }
+        }
     },
-  });
+
+    scales: {
+        x: {
+            ticks: {
+                maxTicksLimit: 10,
+                font: { size: 10 }
+            },
+            grid: {
+                display: false
+            }
+        },
+
+        y: {
+            ticks: {
+                font: { size: 10 },
+                callback: v => v.toLocaleString()
+            },
+            grid: {
+                color: "#f1f5f9"
+            },
+            beginAtZero: true
+        }
+    }
+}
+});
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────────
@@ -1136,6 +1491,7 @@ function openSalesModal(productName, monthlyData, dailyData) {
         borderWidth: 1,
       }]
     },
+
     options: {
       responsive: false,
       maintainAspectRatio: false,
