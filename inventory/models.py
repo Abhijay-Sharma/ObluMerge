@@ -328,8 +328,8 @@ class PurchaseOrderStageLog(models.Model):
         diff = end_time - self.entered_at
         return round(Decimal(diff.total_seconds()) / Decimal(86400), 2)
 
-    def save(self, args, **kwargs):
-        super().save(args, *kwargs)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
 
         # Mark PO arrived if final stage completed
         if self.stage.is_final_stage and self.exit_datetime:
@@ -345,13 +345,18 @@ class PurchaseOrderStageLog(models.Model):
             PurchaseOrderStage.objects
             .filter(
                 is_active=True,
-                nameistartswith=current_vendor,
-                sort_ordergt=self.stage.sort_order,
+                name__istartswith=current_vendor,
+                sort_order__gt=self.stage.sort_order,
             )
             .order_by("sort_order")
             .first()
         )
-
+        print("=" * 60)
+        print("Vendor       :", current_vendor)
+        print("Current Stage:", self.stage.name)
+        print("Sort Order   :", self.stage.sort_order)
+        print("Next Stage   :", next_stage.name if next_stage else "None")
+        print("=" * 60)
 
         if not next_stage:
             return
