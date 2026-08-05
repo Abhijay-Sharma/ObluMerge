@@ -1,6 +1,11 @@
 from django.contrib import admin
 from django.urls import path
-from .views import Index  , SignUpView , LogoutView , Dashboard, Dashboard2 , AddItem , EditItem, DeleteItem , stock_chart_view, predict_min_stock_view, ShowProductData, stock_chart_view_2, predict_min_stock_2, ShowProductStockHistory, stock_chart_view_3 , predict_min_stock_from_daily , CategoryDashboard , CategoryListView, search_items, InventoryReportView, MonthlyStockChartView, PredictMinStockView, LowStockReportView, DailyStockChartView, DeadStockDashboardView, SalesComparisonDashboardView, get_inventory_by_category, PurchaseOrderView , TopCustomersAPIView #this Index is name of the class we created in views
+from .views import Index, SignUpView, LogoutView, Dashboard, Dashboard2, AddItem, EditItem, DeleteItem, \
+    stock_chart_view, predict_min_stock_view, ShowProductData, stock_chart_view_2, predict_min_stock_2, \
+    ShowProductStockHistory, stock_chart_view_3, predict_min_stock_from_daily, CategoryDashboard, CategoryListView, \
+    search_items, InventoryReportView, MonthlyStockChartView, PredictMinStockView, LowStockReportView, \
+    DailyStockChartView, DeadStockDashboardView, SalesComparisonDashboardView, get_inventory_by_category, \
+    PurchaseOrderView, TopCustomersAPIView, PurchaseOrderViewPrev  # this Index is name of the class we created in views
 from django.contrib.auth import views as auth_views
 from . import views
 
@@ -27,6 +32,7 @@ urlpatterns = [
     path('sales-comparison/', SalesComparisonDashboardView.as_view(), name='sales_comparison'),
     path("api/inventory_by_category/", get_inventory_by_category, name="get_inventory_by_category"),
     path('purchase-order/', PurchaseOrderView.as_view(), name='purchase_order'),
+    path('purchase-order-prev/', PurchaseOrderViewPrev.as_view(), name='purchase_order_prev'),
     path("purchase-order/top-customers/", TopCustomersAPIView.as_view(), name="po_top_customers"),
     path("purchase-orders/tally/", views.TallyPurchaseOrderListView.as_view(), name="tally_po_list"),
     path("purchase-orders/tally/<int:voucher_id>/track/", views.create_po_tracking, name="create_po_tracking"),

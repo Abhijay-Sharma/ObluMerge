@@ -3529,8 +3529,8 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
             "hide_dead":            hide_dead,
         })
 
-class PurchaseOrderView(AccountantRequiredMixin, View):
-    template_name = "inventory/purchase_order.html"
+class PurchaseOrderViewPrev(AccountantRequiredMixin, View):
+    template_name = "inventory/purchase_order_legacy.html"
 
     # ─────────────────────────────────────────────────────────────────────────
     # Pre-load ALL voucher data once, slice it per item in the loop
