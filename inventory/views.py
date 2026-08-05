@@ -2660,7 +2660,7 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
         })
 
 #kashissh version
-class PurchaseOrderView(AccountantRequiredMixin, View):
+class PurchaseOrderViewPrev(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order.html"
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -3529,7 +3529,7 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
             "hide_dead":            hide_dead,
         })
 
-class PurchaseOrderViewPrev(AccountantRequiredMixin, View):
+class PurchaseOrderView(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order_legacy.html"
 
     # ─────────────────────────────────────────────────────────────────────────
