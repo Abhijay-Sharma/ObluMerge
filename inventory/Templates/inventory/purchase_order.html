@@ -287,6 +287,24 @@
     vertical-align:middle;
 }
 
+.sales-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+.sales-badge.included {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.sales-badge.excluded {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 
   @media print {
     .no-print { display:none !important; }
@@ -961,7 +979,13 @@
         <canvas id="salesChart" height="180"></canvas>
       </div>
       <table class="hist-table" style="margin-top:16px">
-        <thead><tr><th>Month</th><th>Qty Sold</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Qty Sold</th>
+                <th>Details</th>
+            </tr>
+        </thead>
         <tbody id="salesTableBody"></tbody>
       </table>
     </div>
@@ -980,6 +1004,8 @@
             <th>Date</th>
             <th>Customer</th>
             <th>Qty</th>
+            <th>Status</th>
+            <th>Reason</th>
           </tr>
         </thead>
         <tbody id="dailySalesTableBody"></tbody>
@@ -1460,7 +1486,7 @@ function openSalesModal(productName, monthlyData, dailyData) {
   const tbody = document.getElementById('salesTableBody');
   tbody.innerHTML = '';
   if (!monthlyData || monthlyData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="2" style="color:#94a3b8;text-align:center;padding:20px">No sales data</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color:#94a3b8;text-align:center;padding:20px">No sales data</td></tr>';
   } else {
     [...monthlyData].reverse().forEach(row => {
       const hasDrill = _currentDailyData[row.month] && _currentDailyData[row.month].length > 0;
@@ -1524,14 +1550,34 @@ function openDailySalesModal(month) {
   tbody.innerHTML = '';
 
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="color:#94a3b8;text-align:center;padding:20px">No data</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;text-align:center;padding:20px">No data</td></tr>';
   } else {
     rows.forEach(r => {
-      tbody.innerHTML += `<tr>
-        <td style="font-weight:600">${r.date}</td>
-        <td>${escHtml(r.party)}</td>
-        <td style="color:#6366f1;font-weight:700">${r.qty}</td>
-      </tr>`;
+
+        tbody.innerHTML += `
+        <tr>
+
+            <td>${r.date}</td>
+
+            <td>${escHtml(r.party)}</td>
+
+            <td style="font-weight:700;color:#6366f1">
+                ${r.qty}
+            </td>
+
+            <td>
+                ${
+                    r.status === "Excluded"
+                        ? '<span class="sales-badge excluded">Excluded</span>'
+                        : '<span class="sales-badge included">Included</span>'
+                }
+            </td>
+
+            <td>
+                ${r.reason || "—"}
+            </td>
+
+        </tr>`;
     });
   }
 
