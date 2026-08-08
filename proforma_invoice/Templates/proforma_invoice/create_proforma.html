@@ -218,6 +218,12 @@
                     <ul id="overdue-pi-list" style="font-weight: bold;"></ul>
                     <p>Locked until Admin approval.</p>
                 </div>
+                <!-- NEW: EMI/PDC Covered Container (Green Box) -->
+            <div id="emi-info-container" class="alert alert-success mt-3" style="display:none; border-left: 8px solid #27ae60; color: #155724; background-color: #d4edda; border-radius: 15px;">
+                <h5 style="color: #1e7e34; font-weight:bold;">✅ EMI / PDC COVERED</h5>
+                <ul id="emi-pi-list" style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;"></ul>
+                <p style="font-size: 0.8rem; margin-top: 5px; color: #155724;">This customer has running EMIs/PDCs. No additional credit approval required.</p>
+            </div>
             </div>
             <div class="col-md-6">
                 <strong>Selected Shipping:</strong>
@@ -336,6 +342,8 @@
 </div>
 
 <script>
+let isCreditBlocked = false;
+let isEmiCovered = false; // Add this line
 $(function () {
     const customers = [{% for c in customers %}{ id: "{{ c.id }}", name: "{{ c.name|escapejs }}", address: "{{ c.address|default:''|escapejs }}", phone: "{{ c.phone|default:''|escapejs }}" },{% endfor %}];
     const products = [{% for p in items %}{ id: "{{ p.id }}", name: "{{ p.name|escapejs }}", category: "{{ p.category.name|upper|escapejs }}", stock: parseInt("{{ p.quantity|default:0 }}"), min_qty: parseInt("{{ p.proforma_price.min_requirement|default:1 }}"), base_price: parseFloat("{{ p.proforma_price.price|default:0 }}"), tiers: [{% if p.proforma_price.has_dynamic_price %}{% for tier in p.proforma_price.price_tiers.all %}{ min_qty: {{ tier.min_quantity }}, price: {{ tier.unit_price }} },{% endfor %}{% endif %}].sort((a, b) => b.min_qty - a.min_qty), courier: { "surface": [{% for s in p.courier_sheets.all %}{% if s.mode == 'surface' %}{% for t in s.tiers.all %}{ min: {{ t.min_quantity }}, max: {{ t.max_quantity|default:99999 }}, charge: {{ t.charge }} },{% endfor %}{% endif %}{% endfor %}], "air": [{% for s in p.courier_sheets.all %}{% if s.mode == 'air' %}{% for t in s.tiers.all %}{ min: {{ t.min_quantity }}, max: {{ t.max_quantity|default:99999 }}, charge: {{ t.charge }} },{% endfor %}{% endif %}{% endfor %}] } },{% endfor %}];
@@ -359,21 +367,57 @@ $(function () {
         }
     }
 
+<!--    function checkCustomerCredit(customerId) {-->
+<!--        if (!customerId) return;-->
+<!--        fetch(`/proforma/api/check-credit/${customerId}/`)-->
+<!--            .then(res => res.json())-->
+<!--            .then(data => {-->
+<!--                isCreditBlocked = data.is_blocked;-->
+<!--                if (isCreditBlocked) {-->
+<!--                    $("#credit-lock-container").show();-->
+<!--                    $("#overdue-pi-list").empty();-->
+<!--                    data.overdue_invoices.forEach(inv => $("#overdue-pi-list").append(`<li>PI #${inv.pi_id} (Dated: ${inv.date})</li>`));-->
+<!--                } else { $("#credit-lock-container").hide(); }-->
+<!--                updateUnifiedButton();-->
+<!--            });-->
+<!--    }-->
+
+
     function checkCustomerCredit(customerId) {
         if (!customerId) return;
         fetch(`/proforma/api/check-credit/${customerId}/`)
             .then(res => res.json())
             .then(data => {
+                // 1. Update Global Variable
                 isCreditBlocked = data.is_blocked;
+
+                // 2. Handle Hard Block (Red Box)
+                // Show only if there are 'Real' overdue records (is_blocked is true)
                 if (isCreditBlocked) {
                     $("#credit-lock-container").show();
                     $("#overdue-pi-list").empty();
-                    data.overdue_invoices.forEach(inv => $("#overdue-pi-list").append(`<li>PI #${inv.pi_id} (Dated: ${inv.date})</li>`));
-                } else { $("#credit-lock-container").hide(); }
+                    data.overdue_invoices.forEach(inv =>
+                        $("#overdue-pi-list").append(`<li>PI #${inv.pi_id} (Dated: ${inv.date})</li>`)
+                    );
+                    $("#emi-info-container").hide(); // Hide green box if hard blocked
+                } else {
+                    $("#credit-lock-container").hide();
+
+                    // 3. Handle EMI Bypass (Green Box)
+                    // If not blocked, but there WERE overdue items covered by EMI
+                    if (data.emi_covered_invoices && data.emi_covered_invoices.length > 0) {
+                        $("#emi-info-container").show();
+                        $("#emi-pi-list").empty();
+                        data.emi_covered_invoices.forEach(inv =>
+                            $("#emi-pi-list").append(`<li>PI #${inv.pi_id} (Covered by EMI)</li>`)
+                        );
+                    } else {
+                        $("#emi-info-container").hide();
+                    }
+                }
                 updateUnifiedButton();
             });
     }
-
     function calculateLiveValues() {
         let grandCourier = 0; let mode = $("#id_courier_mode").val();
         let totalSheetQty = 0; let sheetRuleProduct = null;
