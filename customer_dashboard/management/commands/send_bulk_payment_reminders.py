@@ -125,7 +125,7 @@ class Command(BaseCommand):
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_content,
-            from_email="OBLU Payment Alerts <accounts@oblu.com>",
+            from_email="OBLU Payment Alerts <payments@oblutools.com>",
             to=to_email,
             cc=cc_emails,
         )
