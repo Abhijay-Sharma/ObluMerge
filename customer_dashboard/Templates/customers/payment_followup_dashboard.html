@@ -155,6 +155,12 @@
             background-color: #f8f9fa;
             color: #1a73e8;
         }
+
+        .pill-btn { padding: 4px 12px; font-size: 11px; border-radius: 4px; display: inline-block; font-weight: 600; color: #5f6368; }
+        input:checked + .pill-btn { background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); color: #1a73e8; }
+        input:checked + .pill-red { color: #d93025; }
+        input:checked + .pill-orange { color: #f29900; }
+        input:checked + .pill-green { color: #188038; }
     </style>
 </head>
 <body>
@@ -211,17 +217,30 @@
                                 {% endif %}
 
                                 <!-- Credit Period Bypass Filter -->
-                                <div style="display:flex; align-items:center; gap:10px; margin-left: 15px; padding-left: 15px; border-left: 1px solid #dadce0;">
-                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #d93025; font-size: 13px; font-weight: 600;">
-                                        <input type="checkbox" name="overdue_only" value="true"
-                                               onchange="this.form.submit()"
-                                               {% if overdue_only %}checked{% endif %}
-                                               style="width: 16px; height: 16px; cursor: pointer;">
-                                        Show Only Overdue
-                                    </label>
-                                </div>
+                               <div style="display:flex; align-items:center; gap:10px; margin-left: 15px; padding-left: 15px; border-left: 1px solid #dadce0;">
+                                    <span style="font-size: 12px; color: #5f6368; font-weight: 600;">FILTER BY:</span>
 
-<!--                                <button type="submit" class="btn-sheet btn-blue">Search</button>-->
+                                    <div style="display: flex; background: #f1f3f4; padding: 3px; border-radius: 6px; gap: 2px;">
+                                        <label style="cursor: pointer;">
+                                            <input type="radio" name="status_filter" value="" onchange="this.form.submit()" {% if not status_filter %}checked{% endif %} style="display:none;">
+                                            <span class="pill-btn">All</span>
+                                        </label>
+                                        <label style="cursor: pointer;">
+                                            <input type="radio" name="status_filter" value="overdue" onchange="this.form.submit()" {% if status_filter == "overdue" %}checked{% endif %} style="display:none;">
+                                            <span class="pill-btn pill-red" style="color:red;">Overdue</span>
+                                        </label>
+                                        <label style="cursor: pointer;">
+                                            <input type="radio" name="status_filter" value="warning" onchange="this.form.submit()" {% if status_filter == "warning" %}checked{% endif %} style="display:none;">
+                                            <span class="pill-btn pill-orange" style="color:orange;">Danger Zone</span>
+                                        </label>
+                                        <label style="cursor: pointer;">
+                                            <input type="radio" name="status_filter" value="healthy" onchange="this.form.submit()" {% if status_filter == "healthy" %}checked{% endif %} style="display:none;">
+                                            <span class="pill-btn pill-green" style="color:green;">Remaining</span>
+                                        </label>
+                                    </div>
+                               </div>
+
+                            <!--<button type="submit" class="btn-sheet btn-blue">Search</button>-->
                             </div>
 
                             <div id="suggestions-box" class="suggestions-list" style="display:none;"></div>
@@ -352,12 +371,36 @@
                         </td>
 
                         <td>
+                            <!-- Latest Remark Highlight -->
+                            {% with last_remark=vs.payment_thread.remarks.all|dictsortreversed:"created_at"|first %}
+                                {% if last_remark %}
+                                <div style="font-size: 10.5px; color: #155724; background: #e8f5e9; padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; border-left: 3px solid #2e7d32; white-space: normal; line-height: 1.2;">
+                                    {{ last_remark.remark }}
+                                    <div style="font-size: 9px; color: #666; margin-top: 2px; font-weight: normal;">
+                                        {{ last_remark.created_by }} • {{ last_remark.created_at|date:"d/m" }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endwith %}
+
                             <div style="display: flex; gap: 5px;">
                                 <input type="text" id="rem-{{vs.id}}" class="cell-input" placeholder="Add note...">
                                 <button class="btn-sheet btn-blue" onclick="saveRemark({{vs.id}})">Save</button>
                             </div>
                         </td>
                         <td>
+                            <!-- Latest Expected Date Highlight -->
+                            {% with last_date_entry=vs.payment_thread.expected_date_history.all|dictsortreversed:"created_at"|first %}
+                                {% if last_date_entry %}
+                                <div style="font-size: 10.5px; color: #004085; background: #e3f2fd; padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; border-left: 3px solid #1976d2; line-height: 1.2;">
+                                    <strong>Exp:</strong> {{ last_date_entry.expected_date|date:"d M Y" }}
+                                    <div style="font-size: 9px; color: #666; margin-top: 2px; font-weight: normal;">
+                                        Set by {{ last_date_entry.set_by }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endwith %}
+
                             <div style="display: flex; gap: 5px; align-items: center;">
                                 <input type="date" id="date-{{vs.id}}" class="cell-input">
                                 <button class="btn-sheet" onclick="saveDate({{vs.id}})">Set</button>
