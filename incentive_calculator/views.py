@@ -23,7 +23,9 @@ from incentive_calculator.models import ProductIncentive, ProductIncentiveTier, 
 from merger.settings import LOGIN_REDIRECT_URL
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-
+from decimal import Decimal, ROUND_HALF_UP
+from incentive_calculator.models import ProductIncentive, ProductIncentiveTier, IncentivePaymentStatus, CustomerIncentiveTrigger
+from proforma_invoice.models import ProductPrice
 
 
 # Create your views here.
@@ -1556,208 +1558,737 @@ class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
         return context
 
 
+#21-8-26 kashish version to see below msp and previous unpaid incentive
+class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
+    template_name = "incentive_calculator/asm_incentive_monthly.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        logged_in_user = self.request.user
+
+        # --- 1. IDENTITY & PERMISSION CHECK ---
+        user_salesperson_profile = SalesPerson.objects.filter(user=logged_in_user).first()
+
+        if logged_in_user.is_superuser or logged_in_user.is_accountant:
+            allowed_salespersons_list = SalesPerson.objects.all().order_by("name")
+            requested_id = self.request.GET.get("salesperson")
+            target_salesperson = allowed_salespersons_list.filter(
+                id=requested_id).first() if requested_id else user_salesperson_profile
+        else:
+            target_salesperson = user_salesperson_profile
+            allowed_salespersons_list = SalesPerson.objects.filter(
+                id=target_salesperson.id) if target_salesperson else SalesPerson.objects.none()
+
+        # --- 2. DATE AND CALENDAR SETUP ---
+        selected_month_picker = self.request.GET.get("month_picker")
+        today_date = date.today()
+
+        if selected_month_picker:
+            reporting_year, reporting_month = map(int, selected_month_picker.split("-"))
+        else:
+            reporting_year, reporting_month = today_date.year, today_date.month
+
+        reporting_month_start = date(reporting_year, reporting_month, 1)
+        _, last_day_of_month = monthrange(reporting_year, reporting_month)
+        reporting_month_end = date(reporting_year, reporting_month, last_day_of_month)
+
+        # --- 3. INITIALIZE CONTEXT DEFAULTS ---
+        context.update({
+            "salespersons": allowed_salespersons_list,
+            "selected_salesperson": target_salesperson,
+            "year": reporting_year, "month": reporting_month,
+            "grand_total_incentive": Decimal("0.00"),
+            "payable_incentive": Decimal("0.00"),
+            "unpayable_incentive": Decimal("0.00"),
+            "triggered_off_incentive": Decimal("0.00"),
+            "total_sales": Decimal("0.00"),
+            "dynamic_group_qty": Decimal("0.00"),
+            "dynamic_rate_used": Decimal("0.00"),
+            "historical_arrears_list": [],
+            "total_arrears_amount": Decimal("0.00")
+        })
+
+        if not target_salesperson: return context
+
+        # --- 4. PRE-LOAD RULES AND LOOKUPS ---
+
+        all_incentive_rules = {
+            rule.product.name.strip().lower(): rule
+            for rule in ProductIncentive.objects.select_related("product", "category").all()
+        }
+        product_tax_rates = {
+            price.product_id: price for price in ProductPrice.objects.only("product_id", "tax_rate")
+        }
+        blocked_customer_ids = set(
+            CustomerIncentiveTrigger.objects.filter(is_enabled=False).values_list('customer_id', flat=True)
+        )
+
+        # Helper function for calculating specific item payout
+        def calculate_item_earning(item_obj, monthly_vol):
+            rule = all_incentive_rules.get(item_obj.item.name.strip().lower())
+            if not rule: return Decimal("0.00"), True
+
+
+            # ---------------------------------------------
+            # Step 1 : Price Excluding GST
+            # ---------------------------------------------
+            unit_price_ex = (
+                Decimal(str(item_obj.amount)) / Decimal(str(item_obj.quantity))
+                if item_obj.quantity > 0
+                else Decimal("0")
+            )
+
+            # ---------------------------------------------
+            # Step 2 : Fetch Product GST
+            # ---------------------------------------------
+            product_price_meta = product_tax_rates.get(item_obj.item_id)
+            tax_rate = Decimal(str(product_price_meta.tax_rate)) if product_price_meta else Decimal("0")
+
+            # ---------------------------------------------
+            # Step 3 : Calculate Invoice Selling Price
+            # ---------------------------------------------
+            unit_price_inc = unit_price_ex * (
+                    Decimal("1") + (tax_rate / Decimal("100"))
+            )
+
+            # ---------------------------------------------
+            # Step 4 : Comparison Price (With ₹1 Buffer)
+            # ---------------------------------------------
+            comparison_price = unit_price_inc
+            difference = rule.msp - unit_price_inc
+
+            if Decimal("0") < difference <= Decimal("1.00"):
+                comparison_price = unit_price_inc.quantize(
+                    Decimal("1"),
+                    rounding=ROUND_HALF_UP
+                )
+
+            is_above_msp = (rule.msp == 0 or comparison_price >= rule.msp)
+
+            if not is_above_msp:
+                return Decimal("0.00"), False
+
+            # Rate Resolution
+            asm_rate, _ = rule.get_effective_rates
+            if rule.has_dynamic_price:
+                applied_rate = Decimal("4.00") if monthly_vol >= 4000 else (
+                    Decimal("3.00") if monthly_vol >= 1000 else 0)
+            else:
+                applied_rate = asm_rate
+            earning = (Decimal(str(item_obj.quantity)) * rule.pack_size_multiplier) * applied_rate
+            return earning, True  # Returns money and True status
+
+        # --- 5. ARREARS ENGINE (SCANNING PAST MONTHS IN FY) ---
+        fiscal_year_start = date(reporting_year if reporting_month >= 4 else reporting_year - 1, 4, 1)
+        historical_arrears_total = Decimal("0.00")
+        historical_arrears_breakdown = []
+
+        if fiscal_year_start < reporting_month_start:
+            # Loop through months from April up to the month before current
+            for past_m_idx in range(4, 13):
+                # Setup scan date for this iteration
+                scan_date = date(reporting_year, past_m_idx, 1) if past_m_idx >= 4 else date(reporting_year + 1,
+                                                                                             past_m_idx, 1)
+                if scan_date >= reporting_month_start: break
+
+                past_month_statuses = CustomerVoucherStatus.objects.filter(
+                    sold_by=target_salesperson, voucher_date__month=past_m_idx,
+                    voucher_date__year=scan_date.year, voucher_type__iexact="TAX INVOICE"
+                )
+                if not past_month_statuses.exists(): continue
+
+                past_month_v_ids = past_month_statuses.values_list("voucher_id", flat=True)
+                past_month_items = VoucherStockItem.objects.filter(voucher_id__in=past_month_v_ids).select_related(
+                    'item')
+
+                # Calculate Volume for that specific past month
+                past_month_vol = sum([
+                    pi.quantity * all_incentive_rules.get(pi.item.name.strip().lower()).pack_size_multiplier
+                    for pi in past_month_items if all_incentive_rules.get(pi.item.name.strip().lower()) and
+                    all_incentive_rules.get(pi.item.name.strip().lower()).has_dynamic_price and
+                    pi.voucher_id in [v.voucher_id for v in past_month_statuses if
+                                      v.customer_id not in blocked_customer_ids]
+                ])
+
+                past_month_unpaid_sum = Decimal("0.00")
+                for pi in past_month_items:
+                    # Check if accountant has NOT yet finalized this payout
+                    if not IncentivePaymentStatus.objects.filter(voucher_status__voucher_id=pi.voucher_id).exists():
+                        if past_month_statuses.get(voucher_id=pi.voucher_id).customer_id not in blocked_customer_ids:
+                            earning, _ = calculate_item_earning(pi, past_month_vol)
+                            past_month_unpaid_sum += earning
+
+                if past_month_unpaid_sum > 0:
+                    historical_arrears_breakdown.append(
+                        {'month': scan_date.strftime('%b'), 'amount': past_month_unpaid_sum})
+                    historical_arrears_total += past_month_unpaid_sum
+
+        # --- 6. CURRENT MONTH CALCULATION ---
+        current_voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=target_salesperson, voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[reporting_month_start, reporting_month_end]
+        )
+        current_v_ids = current_voucher_statuses.values_list("voucher_id", flat=True)
+        current_voucher_mapping = {vs.voucher_id: vs for vs in current_voucher_statuses}
+        current_line_items = VoucherStockItem.objects.filter(voucher_id__in=current_v_ids).select_related("item",
+                                                                                                          "voucher").prefetch_related(
+            "voucher__rows")
+
+        # Get Admin Payout Status
+        payout_status_map = {pr.voucher_status.voucher_id: True for pr in
+                             IncentivePaymentStatus.objects.filter(voucher_status__voucher_id__in=current_v_ids)}
+
+        # Current Monthly Volume
+        current_month_dynamic_volume = sum([
+            si.quantity * all_incentive_rules.get(si.item.name.strip().lower()).pack_size_multiplier
+            for si in current_line_items if all_incentive_rules.get(si.item.name.strip().lower()) and
+            all_incentive_rules.get(si.item.name.strip().lower()).has_dynamic_price and
+            current_voucher_mapping[si.voucher_id].customer_id not in blocked_customer_ids
+        ])
+
+        transaction_log_rows = []
+        product_totals_map = {}
+        category_summary_map = {}
+        current_month_potential = Decimal("0.00")
+        current_month_payable = Decimal("0.00")
+        current_month_unpayable = Decimal("0.00")
+        current_month_blocked = Decimal("0.00")
+        total_revenue_accumulated = Decimal("0.00")
+        processed_vouchers = set()
+
+        for item in current_line_items:
+            rule = all_incentive_rules.get(item.item.name.strip().lower())
+            status_obj = current_voucher_mapping.get(item.voucher_id)
+            is_trigger_on = status_obj.customer_id not in blocked_customer_ids
+            is_fully_paid = bool(status_obj and (status_obj.is_fully_paid or status_obj.unpaid_amount == 0))
+
+            # Revenue calculation
+            if item.voucher_id not in processed_vouchers:
+                processed_vouchers.add(item.voucher_id)
+                party_row = item.voucher.rows.filter(ledger__icontains=item.voucher.party_name.strip()).first()
+                total_revenue_accumulated += Decimal(str(party_row.amount if party_row else (item.voucher.amount or 0)))
+
+            earning, is_item_above_msp = calculate_item_earning(item, current_month_dynamic_volume)
+
+            if is_trigger_on:
+                current_month_potential += earning
+                if is_fully_paid:
+                    current_month_payable += earning
+                    if rule:
+                        if rule.category: category_summary_map[rule.category.name] = category_summary_map.get(
+                            rule.category.name, 0) + (item.quantity * rule.pack_size_multiplier)
+                        if item.item.name not in product_totals_map:
+                            asm_r, _ = rule.get_effective_rates
+                            final_r = (Decimal("4.00") if current_month_dynamic_volume >= 4000 else Decimal(
+                                "3.00")) if rule.has_dynamic_price else asm_r
+                            product_totals_map[item.item.name] = {"potential_payout": 0, "ready_payout": 0,
+                                                                  "paid_qty": 0, "rate": final_r}
+                        product_totals_map[item.item.name]["ready_payout"] += earning
+                else:
+                    current_month_unpayable += earning
+            else:
+                current_month_blocked += earning
+
+            transaction_log_rows.append({
+                "date": item.voucher.date, "customer": item.voucher.party_name,
+                "voucher_no": item.voucher.voucher_number,
+                "product": item.item.name, "quantity": item.quantity, "amount": item.amount,
+                "is_fully_paid": is_fully_paid, "has_incentive": rule is not None, "is_trigger_on": is_trigger_on,
+                "voucher_id": item.voucher.id, "customer_id": status_obj.customer_id,
+                "payout_done": payout_status_map.get(item.voucher_id, False),
+                "is_above_msp": is_item_above_msp,
+
+            })
+
+        # Final Summary Context
+        context.update({
+            "rows": transaction_log_rows, "product_totals": product_totals_map,
+            "category_summary": category_summary_map,
+            "total_sales": total_revenue_accumulated, "dynamic_group_qty": current_month_dynamic_volume,
+            "dynamic_rate_used": Decimal("4.00") if current_month_dynamic_volume >= 4000 else (
+                Decimal("3.00") if current_month_dynamic_volume >= 1000 else 0),
+            "historical_arrears_list": historical_arrears_breakdown,
+            "total_arrears_amount": historical_arrears_total,
+            "current_month_potential": current_month_potential,
+            "payable_incentive": current_month_payable,
+            "unpayable_incentive": current_month_unpayable,
+            "triggered_off_incentive": current_month_blocked,
+            "grand_total_incentive": current_month_potential + historical_arrears_total,
+        })
+        return context
+
+
+#21-8-26 kashish
 class ASMIncentivePaidUnpaidView(AccountantRequiredMixin, TemplateView):
     template_name = "incentive_calculator/asm_incentive_admin.html"
 
     def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
 
-        # 1. FILTERS & DATE SETUP
-        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
-        salesperson_id = self.request.GET.get("salesperson")
-        month_picker = self.request.GET.get("month_picker")
+        # --- 1. FILTERS & DATE SETUP ---
+        selected_salesperson_id = self.request.GET.get("salesperson")
+        month_picker_input = self.request.GET.get("month_picker")
+        today_date = date.today()
 
-        today = date.today()
-        if month_picker:
-            year, month = map(int, month_picker.split("-"))
+        if month_picker_input:
+            reporting_year, reporting_month = map(int, month_picker_input.split("-"))
         else:
-            year, month = today.year, today.month
-        ctx.update({"year": year, "month": month})
+            reporting_year, reporting_month = today_date.year, today_date.month
 
-        # Initialize defaults
-        ctx.update({
-            "rows": [], "product_totals": {}, "grand_total_incentive": Decimal("0.00"),
-            "unpaid_months_data": [], "total_unpaid_grand": Decimal("0.00"),
-            "category_summary": {}, "total_sales": Decimal("0.00")
+        # Update base context for the template filters
+        context.update({
+            "year": reporting_year,
+            "month": reporting_month,
+            "salespersons": SalesPerson.objects.all().order_by("name")
         })
 
-        if not salesperson_id:
-            return ctx
+        if not selected_salesperson_id:
+            return context
 
-        start_date = date(year, month, 1)
-        end_date = date(year, month, monthrange(year, month)[1])
-        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
-        ctx["selected_salesperson"] = salesperson
+        reporting_month_start = date(reporting_year, reporting_month, 1)
+        _, days_in_month = monthrange(reporting_year, reporting_month)
+        reporting_month_end = date(reporting_year, reporting_month, days_in_month)
 
-        if not salesperson:
-            return ctx
+        target_salesperson = SalesPerson.objects.filter(id=selected_salesperson_id).first()
+        context["selected_salesperson"] = target_salesperson
 
-        # 2. FETCH DATA & TOTAL SALES
-        v_statuses = CustomerVoucherStatus.objects.filter(
-            sold_by=salesperson,
-            voucher_type__iexact="TAX INVOICE",
-            voucher_date__range=[start_date, end_date],
+        # --- 2. DATA LOOKUPS & RULES ---
+        # Mapping product names to their configuration rules
+        product_incentive_rules = {
+            rule.product.name.strip().lower(): rule
+            for rule in ProductIncentive.objects.select_related("product", "category").all()
+        }
+
+        # Mapping product IDs to their GST rates
+        product_gst_lookup = {
+            price.product_id: price
+            for price in ProductPrice.objects.only("product_id", "tax_rate")
+        }
+
+        # Set of customer IDs that have incentives disabled
+        blocked_customer_ids = set(
+            CustomerIncentiveTrigger.objects.filter(is_enabled=False).values_list('customer_id', flat=True)
         )
-        v_ids = v_statuses.values_list("voucher_id", flat=True).distinct()
-        v_status_map = {cvs.voucher_id: cvs for cvs in v_statuses}
 
-        # Calculate real total sales
-        ctx["total_sales"] = VoucherStockItem.objects.filter(
-            voucher_id__in=v_ids
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        # --- 3. HELPER: PRECISE CALCULATION ENGINE ---
+        def calculate_item_incentive(item_record, monthly_volume_total):
+            """Calculates the specific incentive for a single line item based on MSP and thresholds."""
+            rule = product_incentive_rules.get(item_record.item.name.strip().lower())
+            if not rule:
+                return Decimal("0")
 
-        stock_items = VoucherStockItem.objects.filter(voucher_id__in=v_ids).select_related("voucher", "item")
+            # MSP Check (GST Inclusive calculation)
+            unit_price_raw = Decimal(str(item_record.amount)) / Decimal(
+                str(item_record.quantity)) if item_record.quantity > 0 else 0
+            tax_rate = Decimal(str(product_gst_lookup.get(item_record.item_id).tax_rate)) if product_gst_lookup.get(
+                item_record.item_id) else 0
+            unit_price_with_tax = unit_price_raw * (Decimal("1") + (tax_rate / Decimal("100")))
 
-        # 3. MATCHING LOGIC (Cache by Name)
-        all_configs = ProductIncentive.objects.select_related("product", "category").all()
-        incentive_map = {cfg.product.name.strip().lower(): cfg for cfg in all_configs}
+            # Rounding logic for MSP comparison (₹1 buffer)
+            comparison_price = unit_price_with_tax
+            price_difference = rule.msp - unit_price_with_tax
+            if Decimal("0") < price_difference <= Decimal("1.00"):
+                comparison_price = unit_price_with_tax.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
-        # 4. PROCESSING CURRENT MONTH
-        rows, monthly_sales_calc = [], []
-        dynamic_product_keys = set()
+            if rule.msp > 0 and comparison_price < rule.msp:
+                return Decimal("0")
 
-        for si in stock_items:
-            if not si.item: continue
-            p_name_key = si.item.name.strip().lower()
-            config = incentive_map.get(p_name_key)
-            status = v_status_map.get(si.voucher_id)
-            is_fully_paid = bool(status and (status.is_fully_paid or status.unpaid_amount == 0))
+            # Determine Rate
+            asm_fixed_rate, _ = rule.get_effective_rates
+            if rule.has_dynamic_price:
+                # Company Policy: 1000 units -> ₹3, 4000 units -> ₹4
+                applied_rate = Decimal("4.00") if monthly_volume_total >= 4000 else (
+                    Decimal("3.00") if monthly_volume_total >= 1000 else Decimal("0.00"))
+            else:
+                applied_rate = asm_fixed_rate
 
-            if config:
-                if config.has_dynamic_price: dynamic_product_keys.add(p_name_key)
-                unit_p = Decimal(str(si.amount)) / Decimal(str(si.quantity)) if si.quantity > 0 else Decimal('0')
-                monthly_sales_calc.append({
-                    'name': si.item.name, 'config': config, 'qty': Decimal(str(si.quantity)),
-                    'is_paid': is_fully_paid, 'unit_p': unit_p, 'key': p_name_key
-                })
+            return (Decimal(str(item_record.quantity)) * rule.pack_size_multiplier) * applied_rate
 
-            payout_rec = IncentivePaymentStatus.objects.filter(voucher_status__voucher_id=si.voucher_id).first()
-            rows.append({
-                "date": si.voucher.date, "customer": si.voucher.party_name,
-                "voucher_id": si.voucher.id, "voucher_no": si.voucher.voucher_number,
-                "product": si.item.name, "quantity": si.quantity, "amount": si.amount,
-                "is_fully_paid": is_fully_paid, "has_incentive": config is not None,
-                "payout_done": bool(payout_rec and payout_rec.is_paid_to_asm and config is not None),
-                "payout_amount": payout_rec.amount_frozen if payout_rec else 0,
+        # --- 4. CURRENT MONTH PROCESSING ---
+        monthly_voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=target_salesperson,
+            voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[reporting_month_start, reporting_month_end]
+        )
+
+        voucher_id_list = monthly_voucher_statuses.values_list("voucher_id", flat=True)
+        voucher_status_lookup = {vs.voucher_id: vs for vs in monthly_voucher_statuses}
+        monthly_line_items = VoucherStockItem.objects.filter(voucher_id__in=voucher_id_list).select_related("item",
+                                                                                                            "voucher")
+
+        # Step 4a: Calculate Monthly Sheet Volume (Only items where Trigger is ON)
+        current_month_dynamic_volume = Decimal("0.00")
+        for item in monthly_line_items:
+            rule = product_incentive_rules.get(item.item.name.strip().lower())
+            voucher_status = voucher_status_lookup.get(item.voucher_id)
+            if rule and rule.has_dynamic_price and voucher_status:
+                if voucher_status.customer_id not in blocked_customer_ids:
+                    current_month_dynamic_volume += (item.quantity * rule.pack_size_multiplier)
+
+        # Step 4b: Build Dashboard Buckets
+        sales_log_data = []
+        product_breakdown_summary = {}
+        category_volume_summary = {}
+        grand_potential_total = Decimal("0.00")
+        payout_ready_total = Decimal("0.00")
+
+        for item in monthly_line_items:
+            rule = product_incentive_rules.get(item.item.name.strip().lower())
+            voucher_status = voucher_status_lookup.get(item.voucher_id)
+
+            is_customer_paid = bool(voucher_status.is_fully_paid or voucher_status.unpaid_amount == 0)
+            is_customer_trigger_on = voucher_status.customer_id not in blocked_customer_ids
+
+            # Calculate item earning
+            calculated_incentive = calculate_item_incentive(item, current_month_dynamic_volume)
+
+            # Check if Accountant has already finalized this payout
+            payout_record = IncentivePaymentStatus.objects.filter(voucher_status__voucher_id=item.voucher_id).first()
+
+            if is_customer_trigger_on:
+                grand_potential_total += calculated_incentive
+                if is_customer_paid:
+                    payout_ready_total += calculated_incentive
+
+                    if rule:
+                        # Update tables for the summary cards
+                        if rule.category:
+                            category_volume_summary[rule.category.name] = category_volume_summary.get(
+                                rule.category.name, 0) + (item.quantity * rule.pack_size_multiplier)
+
+                        if item.item.name not in product_breakdown_summary:
+                            asm_rate, _ = rule.get_effective_rates
+                            final_rate = (Decimal("4.00") if current_month_dynamic_volume >= 4000 else Decimal(
+                                "3.00")) if rule.has_dynamic_price else asm_rate
+                            product_breakdown_summary[item.item.name] = {"incentive": 0, "paid_qty": 0,
+                                                                         "rate": final_rate,
+                                                                         "multiplier": rule.pack_size_multiplier}
+
+                        product_breakdown_summary[item.item.name]["incentive"] += calculated_incentive
+                        product_breakdown_summary[item.item.name]["paid_qty"] += item.quantity
+
+            sales_log_data.append({
+                "date": item.voucher.date, "customer": item.voucher.party_name, "voucher_id": item.voucher.id,
+                "voucher_no": item.voucher.voucher_number,
+                "product": item.item.name, "quantity": item.quantity, "amount": item.amount,
+                "is_fully_paid": is_customer_paid,
+                "has_incentive": rule is not None, "payout_done": bool(payout_record and payout_record.is_paid_to_asm),
             })
 
-        # 5. DYNAMIC RATE CALCULATION
-        total_dynamic_qty = sum(
-            [Decimal(str(s['qty'])) * s['config'].pack_size_multiplier for s in monthly_sales_calc if
-             s['config'].has_dynamic_price])
-        if total_dynamic_qty < 500:
-            group_rate = Decimal("0.00")
-        elif total_dynamic_qty < 3000:
-            group_rate = Decimal("3.00")
-        else:
-            group_rate = Decimal("4.00")
+        # --- 5. ARREARS ENGINE (HISTORICAL UNPAID) ---
+        fiscal_year_start = date(reporting_year if reporting_month >= 4 else reporting_year - 1, 4, 1)
+        unpaid_past_months_list = []
+        total_historical_arrears = Decimal("0.00")
 
-        # 6. AGGREGATE CURRENT MONTH
-        product_totals, category_summary, grand_total = {}, {}, Decimal("0.00")
-        for s in monthly_sales_calc:
-            if not s['is_paid']: continue  # Payout card only shows Paid items
+        if fiscal_year_start < reporting_month_start:
+            for month_index in range(4, 13):  # Cycle through fiscal months April (4) to Dec (12) then Jan (1)
+                # Ensure we don't scan future months or the current month
+                scan_date = date(reporting_year, month_index, 1) if month_index >= 4 else date(reporting_year + 1,
+                                                                                               month_index, 1)
+                if scan_date >= reporting_month_start:
+                    break
 
-            cfg = s['config']
-            if cfg.category:
-                category_summary[cfg.category.name] = category_summary.get(cfg.category.name, Decimal('0')) + s['qty']
-
-            asm_base, _ = cfg.get_effective_rates
-            current_rate = group_rate if cfg.has_dynamic_price else asm_base
-            if cfg.msp > 0 and s['unit_p'] < cfg.msp: continue
-
-            val = s['qty'] * cfg.pack_size_multiplier * current_rate
-            grand_total += val
-
-            if s['name'] not in product_totals:
-                product_totals[s['name']] = {"incentive": 0, "rate": current_rate, "paid_qty": 0,
-                                             "multiplier": cfg.pack_size_multiplier, "is_pack": cfg.is_special_pack}
-            product_totals[s['name']]["incentive"] += val
-            product_totals[s['name']]["paid_qty"] += s['qty']
-
-        # 7. OUTSTANDING ENGINE (Performance Aware)
-        fiscal_start_date = date(year if month >= 4 else year - 1, 4, 1)
-        unpaid_months_data, total_unpaid_grand = [], Decimal("0.00")
-
-        all_year_vouchers = CustomerVoucherStatus.objects.filter(
-            sold_by=salesperson, voucher_date__range=[fiscal_start_date, end_date],
-            voucher_type__iexact="TAX INVOICE"
-        ).select_related('voucher')
-
-        if all_year_vouchers.exists():
-            month_bundles = {}
-            for v_status in all_year_vouchers:
-                m_num = v_status.voucher_date.month
-                is_payout_done = IncentivePaymentStatus.objects.filter(voucher_status=v_status).exists()
-                month_bundles.setdefault(m_num, {'all_items': [], 'unpaid_items': []})
-                items = VoucherStockItem.objects.filter(voucher=v_status.voucher)
-                for itm in items:
-                    month_bundles[m_num]['all_items'].append(itm)
-                    if not is_payout_done: month_bundles[m_num]['unpaid_items'].append(itm)
-
-            for m_num in sorted(month_bundles.keys(), key=lambda x: (x < 4, x)):
-                data = month_bundles[m_num]
-                m_dyn_qty, m_unpaid_sum = Decimal('0.00'), Decimal('0.00')
-                for item in data['all_items']:
-                    cfg = incentive_map.get(item.item.name.strip().lower())
-                    if cfg and cfg.has_dynamic_price:
-                        m_dyn_qty += Decimal(str(item.quantity)) * cfg.pack_size_multiplier
-                m_rate = Decimal('4.00') if m_dyn_qty >= 3000 else (
-                    Decimal('3.00') if m_dyn_qty >= 500 else Decimal('0.00'))
-                for item in data['unpaid_items']:
-                    cfg = incentive_map.get(item.item.name.strip().lower())
-                    if cfg:
-                        rate = m_rate if cfg.has_dynamic_price else cfg.get_effective_rates[0]
-                        m_unpaid_sum += (Decimal(str(item.quantity)) * cfg.pack_size_multiplier) * rate
-                if m_unpaid_sum > 0:
-                    unpaid_months_data.append({'month': date(2000, m_num, 1).strftime('%b'), 'amount': m_unpaid_sum})
-                    total_unpaid_grand += m_unpaid_sum
-
-        ctx.update({
-            "rows": rows, "product_totals": product_totals, "grand_total_incentive": grand_total,
-            "dynamic_group_qty": total_dynamic_qty, "dynamic_rate_used": group_rate,
-            "category_summary": category_summary, "unpaid_months_data": unpaid_months_data,
-            "total_unpaid_grand": total_unpaid_grand
-        })
-        return ctx
-
-    def post(self, request, *args, **kwargs):
-        self.request.GET = request.POST
-        action = request.POST.get("action")
-        salesperson_id = request.POST.get("salesperson")
-        month_picker = request.POST.get("month_picker")
-
-        all_configs = ProductIncentive.objects.select_related("product").all()
-        incentive_map = {cfg.product.name.strip().lower(): cfg for cfg in all_configs}
-
-        if action == "unpay":
-            v_id = request.POST.get("voucher_id")
-            IncentivePaymentStatus.objects.filter(voucher_status__voucher_id=v_id).delete()
-            messages.warning(request, "Payout record removed.")
-        else:
-            context = self.get_context_data()
-            rows = context.get('rows', [])
-            target_v_id = request.POST.get("voucher_id")
-            processed_count = 0
-            for r in rows:
-                if action == "pay_single" and str(r['voucher_id']) != str(target_v_id): continue
-                already_paid = IncentivePaymentStatus.objects.filter(
-                    voucher_status__voucher_id=r['voucher_id']).exists()
-                if already_paid or not r['is_fully_paid'] or not r['has_incentive']: continue
-
-                config = incentive_map.get(r['product'].strip().lower())
-                rate = context['dynamic_rate_used'] if config.has_dynamic_price else config.get_effective_rates[0]
-                frozen_val = (Decimal(str(r['quantity'])) * config.pack_size_multiplier) * Decimal(str(rate))
-
-                IncentivePaymentStatus.objects.update_or_create(
-                    voucher_status=CustomerVoucherStatus.objects.get(voucher_id=r['voucher_id']),
-                    defaults={'is_paid_to_asm': True, 'paid_at': timezone.now(), 'paid_by': request.user,
-                              'amount_frozen': frozen_val}
+                historical_statuses = CustomerVoucherStatus.objects.filter(
+                    sold_by=target_salesperson,
+                    voucher_date__month=month_index,
+                    voucher_date__year=scan_date.year,
+                    voucher_type__iexact="TAX INVOICE"
                 )
-                processed_count += 1
-            if processed_count > 0: messages.success(request, f"Processed {processed_count} items.")
+                if not historical_statuses.exists(): continue
 
-        return redirect(f"{request.path}?salesperson={salesperson_id}&month_picker={month_picker}")
+                month_unpaid_sum = Decimal("0.00")
+                historical_voucher_ids = historical_statuses.values_list("voucher_id", flat=True)
+                historical_line_items = VoucherStockItem.objects.filter(
+                    voucher_id__in=historical_voucher_ids).select_related('item')
 
+                # Calculate volume for that specific historical month
+                historical_monthly_volume = sum([
+                    hi.quantity * product_incentive_rules.get(hi.item.name.strip().lower()).pack_size_multiplier
+                    for hi in historical_line_items
+                    if product_incentive_rules.get(hi.item.name.strip().lower()) and
+                    product_incentive_rules.get(hi.item.name.strip().lower()).has_dynamic_price and
+                    hi.voucher_id in [vs.voucher_id for vs in historical_statuses if
+                                      vs.customer_id not in blocked_customer_ids]
+                ])
+
+                for hi in historical_line_items:
+                    # Is this historical voucher still waiting for Accountant sign-off?
+                    payout_exists = IncentivePaymentStatus.objects.filter(
+                        voucher_status__voucher_id=hi.voucher_id).exists()
+                    if not payout_exists:
+                        status_ref = historical_statuses.get(voucher_id=hi.voucher_id)
+                        if status_ref.customer_id not in blocked_customer_ids:
+                            month_unpaid_sum += calculate_item_incentive(hi, historical_monthly_volume)
+
+                if month_unpaid_sum > 0:
+                    unpaid_past_months_list.append({'month': scan_date.strftime('%b'), 'amount': month_unpaid_sum})
+                    total_historical_arrears += month_unpaid_sum
+
+        # --- 6. FINAL CONTEXT UPDATE ---
+        context.update({
+            "rows": sales_log_data,
+            "product_totals": product_breakdown_summary,
+            "grand_potential": grand_potential_total,
+            "payout_ready": payout_ready_total,
+            "total_sales": sum([Decimal(str(vs.voucher_amount or 0)) for vs in monthly_voucher_statuses]),
+            "dynamic_group_qty": current_month_dynamic_volume,
+            "dynamic_rate_used": Decimal("4.00") if current_month_dynamic_volume >= 4000 else (
+                Decimal("3.00") if current_month_dynamic_volume >= 1000 else 0),
+            "category_summary": category_volume_summary,
+            "current_month_pending": grand_potential_total - payout_ready_total,
+            "arrears_list": unpaid_past_months_list,
+            "total_arrears": total_historical_arrears
+        })
+        return context
+
+#21-8-26 kashish
+class SalesHeadDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "incentive_calculator/sales_head_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # 1. DATE AND CALENDAR SETUP
+        month_picker_value = self.request.GET.get("month_picker")
+        today = date.today()
+
+        if month_picker_value:
+            selected_year, selected_month = map(int, month_picker_value.split("-"))
+        else:
+            selected_year, selected_month = today.year, today.month
+
+        month_start_date = date(selected_year, selected_month, 1)
+        last_day_of_month = monthrange(selected_year, selected_month)[1]
+        month_end_date = date(selected_year, selected_month, last_day_of_month)
+
+        context.update({
+            "month_picker": month_picker_value or f"{selected_year}-{selected_month:02d}",
+            "display_month": month_start_date.strftime("%B, %Y")
+        })
+
+        # 2. CONFIGURATION & PRE-LOADING RULES
+        SALES_HEAD_NAME = "Bhavya"
+
+        # Get IDs of customers where incentives are disabled (Trigger: OFF)
+        blocked_customer_ids = set(
+            CustomerIncentiveTrigger.objects.filter(is_enabled=False).values_list('customer_id', flat=True)
+        )
+
+        # Create a map of product names to their incentive rules for fast lookup
+        product_rule_lookup = {
+            rule.product.name.strip().lower(): rule
+            for rule in ProductIncentive.objects.select_related("product", "category").all()
+        }
+
+        product_price_lookup = {
+            pp.product_id: pp
+            for pp in ProductPrice.objects.only(
+                "product_id",
+                "tax_rate"
+            )
+        }
+
+        # 3. FETCH VOUCHERS AND LINE ITEMS
+        monthly_voucher_statuses = CustomerVoucherStatus.objects.filter(
+            voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[month_start_date, month_end_date]
+        ).select_related('sold_by', 'sold_by__manager', 'customer', 'voucher')
+
+        voucher_id_list = monthly_voucher_statuses.values_list('voucher_id', flat=True)
+        all_line_items = VoucherStockItem.objects.filter(
+            voucher_id__in=voucher_id_list
+        ).select_related('item')
+
+        # Map voucher IDs to their status objects for easy access inside the item loop
+        voucher_status_lookup = {vs.voucher_id: vs for vs in monthly_voucher_statuses}
+
+        # ------------------------------------------------------------------
+        # PASS 1: CALCULATE TOTAL REVENUE & SHEET VOLUME PER SALESPERSON
+        # ------------------------------------------------------------------
+        salesperson_monthly_revenue = defaultdict(Decimal)
+        salesperson_dynamic_volume = defaultdict(Decimal)  # Used for Sheets (3/4 rate logic)
+
+        # Calculate revenue (Uses voucher_amount once per voucher)
+        for status in monthly_voucher_statuses:
+            if status.sold_by and status.sold_by.name != SALES_HEAD_NAME:
+                salesperson_monthly_revenue[status.sold_by.id] += Decimal(str(status.voucher_amount or 0))
+
+        # Calculate dynamic sheet volume
+        for item in all_line_items:
+
+            status = voucher_status_lookup.get(item.voucher_id)
+            if not status or not status.sold_by or status.sold_by.name == SALES_HEAD_NAME:
+                continue
+
+            rule = product_rule_lookup.get(item.item.name.strip().lower())
+            is_customer_trigger_on = status.customer_id not in blocked_customer_ids
+
+            if rule and rule.has_dynamic_price and is_customer_trigger_on:
+                salesperson_dynamic_volume[status.sold_by.id] += Decimal(str(item.quantity)) * rule.pack_size_multiplier
+
+        # ------------------------------------------------------------------
+        # PASS 2: CALCULATE TEAM OVERRIDES & STATUS BUCKETS
+        # ------------------------------------------------------------------
+        team_performance_report = {}
+        company_category_summary = {}
+        summary_totals = {
+            "potential": Decimal("0"),
+            "payable": Decimal("0"),
+            "pending": Decimal("0"),
+            "blocked": Decimal("0")
+        }
+
+        for item in all_line_items:
+            status = voucher_status_lookup.get(item.voucher_id)
+            if not status or not status.sold_by or status.sold_by.name == SALES_HEAD_NAME:
+                continue
+
+            salesperson = status.sold_by
+            is_asm = salesperson.manager is not None
+            is_rsm = not is_asm
+
+            # Initialize report entry for this salesperson
+            if salesperson.id not in team_performance_report:
+                required_target = 200000 if is_asm else 500000
+                team_performance_report[salesperson.id] = {
+                    "name": salesperson.name,
+                    "role": "ASM" if is_asm else "RSM",
+                    "rev": salesperson_monthly_revenue[salesperson.id],
+                    "target": required_target,
+                    "paid": Decimal("0"), "pending": Decimal("0"), "blocked": Decimal("0"),
+                    "asm_earned": Decimal("0"),
+                    "cats": {}, "items": []
+                }
+
+            rule = product_rule_lookup.get(item.item.name.strip().lower())
+            if not rule:
+                continue
+
+            # Check Status Flags
+            is_customer_trigger_on = status.customer_id not in blocked_customer_ids
+            is_invoice_paid = bool(status.is_fully_paid or status.unpaid_amount == 0)
+
+            # ----------------------------------------------------
+            # MSP Calculation
+            # ----------------------------------------------------
+
+            # Price excluding GST
+            unit_price_ex = (
+                Decimal(str(item.amount)) / Decimal(str(item.quantity))
+                if item.quantity > 0
+                else Decimal("0")
+            )
+
+            # GST %
+            product_price = product_price_lookup.get(item.item_id)
+            tax_rate = Decimal(str(product_price.tax_rate)) if product_price else Decimal("0")
+
+            # Selling price including GST
+            unit_price_inc = unit_price_ex * (
+                    Decimal("1") + (tax_rate / Decimal("100"))
+            )
+
+            comparison_price = unit_price_inc
+
+            difference = rule.msp - unit_price_inc
+
+            if Decimal("0") < difference <= Decimal("1.00"):
+                comparison_price = rule.msp
+
+            is_above_msp = (
+                    rule.msp == 0 or
+                    comparison_price >= rule.msp
+            )
+
+            # Update Category Summary
+            cat_name = rule.category.name if rule.category else "Other"
+            company_category_summary[cat_name] = company_category_summary.get(cat_name, 0) + int(item.quantity)
+            team_performance_report[salesperson.id]["cats"][cat_name] = team_performance_report[salesperson.id][
+                                                                            "cats"].get(cat_name, 0) + int(
+                item.quantity)
+
+            # Resolve Rates
+            asm_base_rate, rsm_cascade_rate = rule.get_effective_rates
+
+            # Dynamic Rate (Sheets logic: 3000 -> 4, 500 -> 3)
+            if rule.has_dynamic_price:
+                vol = salesperson_dynamic_volume[salesperson.id]
+                if vol < 1000:
+                    active_asm_rate = Decimal("0.00")
+                elif vol < 4000:
+                    active_asm_rate = Decimal("3.00")
+                else:
+                    active_asm_rate = Decimal("4.00")
+            else:
+                active_asm_rate = asm_base_rate
+
+            quantity_with_multiplier = Decimal(str(item.quantity)) * rule.pack_size_multiplier
+
+            # ASM Earnings
+            asm_incentive_amount = (
+                quantity_with_multiplier * active_asm_rate
+                if is_above_msp
+                else Decimal("0")
+            )
+            team_performance_report[salesperson.id]["asm_earned"] += asm_incentive_amount
+
+            # Sales Head Override Resolution
+            sales_head_override_amount = Decimal("0")
+            monthly_revenue_total = salesperson_monthly_revenue[salesperson.id]
+
+            # Qualifier: Must hit Revenue Target AND MSRP
+            if (
+                    monthly_revenue_total >= team_performance_report[salesperson.id]["target"]
+                    and is_above_msp
+            ):
+                if is_rsm:
+                    # RSM Sale: SH gets ₹1 for Sheets, else full RSM Cascade
+                    sales_head_override_amount = quantity_with_multiplier * (
+                        Decimal("1.00") if rule.has_dynamic_price else rsm_cascade_rate)
+                else:
+                    # ASM Sale: SH gets ₹1 for Sheets (if vol > 1000), else 50% of RSM Cascade
+                    if rule.has_dynamic_price:
+                        sales_head_override_amount = quantity_with_multiplier * Decimal("1.00") if vol >= 1000 else Decimal("0.00")
+                    else:
+                        sales_head_override_amount = quantity_with_multiplier * (rsm_cascade_rate * Decimal('0.5'))
+
+            # Sort into Payable, Pending, or Blocked Buckets
+            summary_totals["potential"] += sales_head_override_amount
+            row_status = "green"
+
+            if not is_customer_trigger_on:
+                summary_totals["blocked"] += sales_head_override_amount
+                team_performance_report[salesperson.id]["blocked"] += sales_head_override_amount
+                row_status = "blocked"
+            elif is_invoice_paid:
+                summary_totals["payable"] += sales_head_override_amount
+                team_performance_report[salesperson.id]["paid"] += sales_head_override_amount
+                row_status = "payable"
+            else:
+                summary_totals["pending"] += sales_head_override_amount
+                team_performance_report[salesperson.id]["pending"] += sales_head_override_amount
+                row_status = "pending"
+
+            # Add individual row to the table
+            team_performance_report[salesperson.id]["items"].append({
+                "date": status.voucher_date,
+                "customer": status.customer.name,
+                "trigger": is_customer_trigger_on,
+                "product": item.item.name,
+                "qty": item.quantity,
+                "asm": asm_incentive_amount,
+                "head": sales_head_override_amount,
+                "status": row_status
+            })
+
+        # Final Context Update
+        context.update({
+            "report": team_performance_report.values(),
+            "totals": summary_totals,
+            "cats": company_category_summary,
+            "sh_name": SALES_HEAD_NAME
+        })
+        return context
 
 class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
     template_name = "incentive_calculator/rsm_team_dashboard.html"
@@ -2090,6 +2621,199 @@ class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
         })
         return ctx
 
+#21-08-26 kashish
+class RSMTeamIncentiveDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "incentive_calculator/rsm_team_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        logged_in_user = self.request.user
+
+        # Find the SalesPerson profile linked to the logged-in user
+        user_sp_profile = SalesPerson.objects.filter(user=logged_in_user).first()
+
+        # Check if user is an Admin or Accountant
+        is_privileged_user = (
+                logged_in_user.is_superuser or
+                logged_in_user.is_accountant or
+                logged_in_user.groups.filter(name='Accountant').exists()
+        )
+
+        # ---------------------------------------------------------
+        # IDENTITY & DROPDOWN LOGIC
+        # ---------------------------------------------------------
+        # These are the individuals who act as Regional Heads (RSMs)
+        target_rsm_names = ["Ankush", "Aman"]
+
+        if is_privileged_user:
+            # Admins/Accountants can see any RSM in the target list
+            allowed_rsms = SalesPerson.objects.filter(
+                name__in=target_rsm_names
+            ).order_by("name")
+        elif user_sp_profile and user_sp_profile.name in target_rsm_names:
+            # If Ankush or Aman logs in, they can ONLY see their own name in the dropdown
+            allowed_rsms = SalesPerson.objects.filter(id=user_sp_profile.id)
+        else:
+            # Access denied for everyone else
+            allowed_rsms = SalesPerson.objects.none()
+
+        ctx["rsms"] = allowed_rsms
+
+        # ---------------------------------------------------------
+        # DATA SELECTION
+        # ---------------------------------------------------------
+        rsm_id = self.request.GET.get("rsm")
+        month_picker = self.request.GET.get("month_picker")
+
+        # If it's a regular RSM (Ankush/Aman), force the ID to be their own ID
+        if not is_privileged_user:
+            rsm_id = user_sp_profile.id if user_sp_profile else None
+
+        if not rsm_id or not month_picker:
+            return ctx
+
+        # Security check: Ensure the requested ID is within the allowed list
+        if not allowed_rsms.filter(id=rsm_id).exists():
+            return ctx
+
+        # ---------------------------------------------------------
+        # DATE & RULES SETUP
+        # ---------------------------------------------------------
+        try:
+            year, month = map(int, month_picker.split("-"))
+            start_date = date(year, month, 1)
+            end_date = date(year, month, monthrange(year, month)[1])
+        except (ValueError, TypeError):
+            return ctx
+
+        rsm_user = get_object_or_404(SalesPerson, id=rsm_id)
+        ctx.update({"selected_rsm": rsm_user, "year": year, "month": month})
+
+        # Fetch Rules and MSP Lookups
+        disabled_customer_ids = set(
+            CustomerIncentiveTrigger.objects.filter(is_enabled=False).values_list('customer_id', flat=True)
+        )
+        incentive_rules = {cfg.product.name.strip().lower(): cfg for cfg in
+                           ProductIncentive.objects.select_related("product", "category").all()}
+        product_price_lookup = {
+            pp.product_id: pp for pp in ProductPrice.objects.only("product_id", "tax_rate")
+        }
+
+        # ---------------------------------------------------------
+        # CALCULATION ENGINE (TEAM BREAKDOWN)
+        # ---------------------------------------------------------
+        team_report = []
+        team_category_summary = {}
+        grand_rsm_paid = Decimal("0.00")
+        grand_rsm_pending = Decimal("0.00")
+        grand_rsm_triggered_off = Decimal("0.00")
+
+        # Loop through ASMs that report to this RSM
+        for asm in rsm_user.team_members.all():
+            all_vouchers = CustomerVoucherStatus.objects.filter(
+                sold_by=asm, voucher_type__iexact="TAX INVOICE",
+                voucher_date__range=[start_date, end_date]
+            ).select_related('voucher')
+
+            asm_total_sheets_vol = Decimal("0.00")
+            asm_category_summary = {}
+            temp_item_list = []
+
+            for vs in all_vouchers:
+                is_trigger_on = vs.customer_id not in disabled_customer_ids
+                is_paid = bool(vs.is_fully_paid or vs.unpaid_amount == 0)
+                items = VoucherStockItem.objects.filter(voucher=vs.voucher).select_related('item')
+
+                for si in items:
+                    cfg = incentive_rules.get(si.item.name.strip().lower())
+                    if cfg:
+                        true_qty = Decimal(str(si.quantity)) * cfg.pack_size_multiplier
+                        if cfg.has_dynamic_price and is_trigger_on:
+                            asm_total_sheets_vol += true_qty
+
+                        if cfg.category:
+                            cat_name = cfg.category.name
+                            asm_category_summary[cat_name] = asm_category_summary.get(cat_name, 0) + int(si.quantity)
+                            team_category_summary[cat_name] = team_category_summary.get(cat_name, 0) + int(si.quantity)
+
+                        temp_item_list.append({
+                            'si': si, 'cfg': cfg, 'true_qty': true_qty, 'is_paid': is_paid,
+                            'is_trigger_on': is_trigger_on
+                        })
+
+            # TIERED RATE LOGIC (MATCHING ASM DASHBOARD)
+            rsm_sheet_rate = Decimal("1.00") if asm_total_sheets_vol >= 1000 else Decimal("0.00")
+            if asm_total_sheets_vol < 1000:
+                asm_m_rate = Decimal("0.00")
+            elif asm_total_sheets_vol < 4000:
+                asm_m_rate = Decimal("3.00")
+            else:
+                asm_m_rate = Decimal("4.00")
+
+            asm_paid, asm_pending, asm_triggered_off = Decimal('0'), Decimal('0'), Decimal('0')
+            rsm_from_asm_paid, rsm_from_asm_pending, rsm_triggered_off = Decimal('0'), Decimal('0'), Decimal('0')
+            detailed_products = []
+
+            for entry in temp_item_list:
+                si, cfg, t_qty, is_paid, is_trigger_on = entry['si'], entry['cfg'], entry['true_qty'], entry['is_paid'], \
+                entry['is_trigger_on']
+
+                # MSP Calculation
+                unit_price_ex = Decimal(str(si.amount)) / Decimal(str(si.quantity)) if si.quantity > 0 else 0
+                prod_price_meta = product_price_lookup.get(si.item_id)
+                tax_rate = Decimal(str(prod_price_meta.tax_rate)) if prod_price_meta else 0
+                unit_price_inc = unit_price_ex * (Decimal("1") + tax_rate / Decimal("100"))
+
+                # Robust rounding for MSP comparison
+                comparison_price = unit_price_inc
+                difference = cfg.msp - unit_price_inc
+                if Decimal("0") < difference <= Decimal("1.00"):
+                    comparison_price = unit_price_inc.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+                is_above_msp = (cfg.msp == 0 or comparison_price >= cfg.msp)
+
+                # Final Row Math
+                asm_base, rsm_base = cfg.get_effective_rates
+                final_asm_rate = asm_m_rate if cfg.has_dynamic_price else asm_base
+                final_rsm_rate = rsm_sheet_rate if cfg.has_dynamic_price else rsm_base
+
+                asm_val = t_qty * final_asm_rate if is_above_msp else 0
+                rsm_val = t_qty * final_rsm_rate if is_above_msp else 0
+
+                if not is_trigger_on:
+                    asm_triggered_off += asm_val
+                    rsm_triggered_off += rsm_val
+                elif is_paid:
+                    asm_paid += asm_val
+                    rsm_from_asm_paid += rsm_val
+                else:
+                    asm_pending += asm_val
+                    rsm_from_asm_pending += rsm_val
+
+                detailed_products.append({
+                    'name': si.item.name, 'qty': si.quantity, 'true_qty': t_qty,
+                    'asm_incentive': asm_val, 'rsm_incentive': rsm_val,
+                    'is_sheet': cfg.has_dynamic_price, 'is_paid': is_paid, 'is_trigger_on': is_trigger_on
+                })
+
+            if temp_item_list:
+                team_report.append({
+                    'asm_name': asm.name, 'total_sheets': asm_total_sheets_vol,
+                    'asm_paid': asm_paid, 'asm_pending': asm_pending,
+                    'rsm_paid': rsm_from_asm_paid, 'rsm_pending': rsm_from_asm_pending,
+                    'items': detailed_products, 'asm_categories': asm_category_summary,
+                    'asm_triggered_off': asm_triggered_off, 'rsm_triggered_off': rsm_triggered_off
+                })
+                grand_rsm_paid += rsm_from_asm_paid
+                grand_rsm_pending += rsm_from_asm_pending
+                grand_rsm_triggered_off += rsm_triggered_off
+
+        ctx.update({
+            "team_report": team_report, "grand_rsm_paid": grand_rsm_paid,
+            "grand_rsm_pending": grand_rsm_pending, "grand_rsm_potential": grand_rsm_paid + grand_rsm_pending,
+            "team_category_summary": team_category_summary, "grand_rsm_triggered_off": grand_rsm_triggered_off,
+        })
+        return ctx
 
 class ProductIncentiveListView(TemplateView):
     template_name = "incentive_calculator/product_incentive_list.html"

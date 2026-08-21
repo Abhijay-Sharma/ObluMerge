@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Dashboard | Sales Head</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-green: #00ff9d;
+            --neon-yellow: #ffc107;
+            --neon-red: #ff4d4d;
+            --bg: #0b0c0c;
+            --card-bg: #141616;
+            --border: #242626;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+        }
+
+        [data-bs-theme="light"] {
+            --bg: #f2f4f5;
+            --card-bg: #ffffff;
+            --border: #dee2e6;
+            --neon-green: #058f58;
+            --text-main: #212529;
+            --text-muted: #6c757d;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+
+        .dashboard-container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+
+        /* Compact Header */
+        .top-nav {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+
+        /* Executive Summary Section - Sleeker */
+        .exec-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .exec-stats { padding: 25px; }
+        .summary-label { color: var(--text-muted); text-transform: uppercase; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; }
+        .summary-main-val { font-size: 2.2rem; font-weight: 800; line-height: 1.2; margin: 5px 0; color: var(--text-main); }
+
+        .bucket-pill {
+            padding: 8px 15px;
+            border-radius: 8px;
+            background: rgba(128,128,128,0.05);
+            border: 1px solid var(--border);
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .category-panel {
+            background: rgba(128,128,128,0.03);
+            padding: 20px;
+            height: 100%;
+            border-left: 1px solid var(--border);
+        }
+
+        .cat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        /* Salesperson Block - Tightened */
+        .sp-block { margin-top: 40px; }
+        .sp-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sp-name { font-size: 1.3rem; font-weight: 700; margin: 0; color: var(--text-main); }
+        .badge-outline {
+            border: 1px solid var(--border);
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: rgba(128,128,128,0.05);
+        }
+
+        /* Compact Table */
+        .custom-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+        .custom-table thead th {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            padding: 8px 12px;
+            font-weight: 700;
+        }
+        .custom-table tbody tr {
+            background: var(--card-bg);
+            transition: background 0.2s;
+        }
+        .custom-table td {
+            padding: 10px 12px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .custom-table td:first-child { border-left: 1px solid var(--border); border-radius: 8px 0 0 8px; }
+        .custom-table td:last-child { border-right: 1px solid var(--border); border-radius: 0 8px 8px 0; }
+
+        .btn-neon {
+            background: var(--neon-green);
+            color: #fff;
+            font-weight: 700;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+        [data-bs-theme="light"] .btn-neon { color: #fff; }
+
+        .tr-tag {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            background: rgba(128,128,128,0.1);
+            border-radius: 4px;
+            color: var(--text-muted);
+        }
+
+        .text-green { color: var(--neon-green) !important; }
+        .text-yellow { color: var(--neon-yellow) !important; }
+        .text-red { color: var(--neon-red) !important; }
+
+        /* Input Fix for Light Theme */
+        [data-bs-theme="light"] .form-control {
+            background: #fff;
+            color: #212529;
+            border: 1px solid #ced4da;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav no-print">
+        <div class="dashboard-container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <div style="width: 6px; height: 20px; background: var(--neon-green); margin-right: 10px; border-radius: 2px;"></div>
+                <h6 class="fw-bold m-0" style="letter-spacing: -0.5px; color: var(--text-main);">SALES HEAD COMMAND</h6>
+            </div>
+            <button class="btn btn-sm py-1 px-3 border shadow-sm" id="themeToggle" style="font-size: 0.7rem; font-weight: bold; background: var(--card-bg); color: var(--text-main);">THEME</button>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+
+        <!-- Filter Section -->
+        <div class="no-print mb-4">
+            <form method="GET" class="row g-2 align-items-center">
+                <div class="col-md-3 col-6">
+                    <input type="month" name="month_picker" class="form-control form-control-sm shadow-sm" value="{{ month_picker }}">
+                </div>
+                <div class="col-md-2 col-6">
+                    <button type="submit" class="btn btn-neon w-100 shadow-sm">Calculate</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Grand Summary Dashboard -->
+        <div class="exec-card">
+            <div class="row g-0">
+                <div class="col-md-7">
+                    <div class="exec-stats">
+                        <span class="summary-label">Executive Summary for {{ sh_name }}</span>
+                        <div class="summary-main-val">₹{{ totals.potential|floatformat:2 }}</div>
+
+                        <div class="mt-3">
+                            <div class="bucket-pill">
+                                <small class="summary-label d-block mb-1">Payable</small>
+                                <span class="fw-bold text-green">₹{{ totals.payable|floatformat:2 }}</span>
+                            </div>
+                            <div class="bucket-pill">
+                                <small class="summary-label d-block mb-1">Pending</small>
+                                <span class="fw-bold text-yellow">₹{{ totals.pending|floatformat:2 }}</span>
+                            </div>
+                            <div class="bucket-pill">
+                                <small class="summary-label d-block mb-1">Blocked</small>
+                                <span class="fw-bold text-red">₹{{ totals.blocked|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="category-panel">
+                        <span class="summary-label mb-2 d-block">Category Volume</span>
+                        {% for c, count in cats.items %}
+                        <div class="cat-item">
+                            <span class="small opacity-75">{{ c }}</span>
+                            <span class="small fw-bold text-green">{{ count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Sections -->
+        {% for sp in report %}
+        <div class="sp-block">
+            <div class="sp-header-row">
+                <div>
+                    <div class="d-flex align-items-center mb-1">
+                        <h2 class="sp-name me-2">{{ sp.name }}</h2>
+                        <span class="badge-outline">{{ sp.role }}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold {% if sp.rev >= sp.target %}text-green{% else %}text-red{% endif %}">
+                            ₹{{ sp.rev|floatformat:0 }} <span class="text-muted fw-normal" style="font-size: 0.65rem;">/ Target ₹{{ sp.target|floatformat:0 }}</span>
+                        </span>
+                        {% for c, count in sp.cats.items %}<span class="badge-outline" style="font-size: 0.6rem;">{{ c }}: {{ count }}</span>{% endfor %}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="mb-1">
+                        <span class="summary-label" style="font-size: 0.55rem;">Combined Override</span>
+                        <h5 class="text-green fw-bold mb-0">₹{{ sp.paid|add:sp.pending|floatformat:2 }}</h5>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2" style="font-size: 0.7rem; font-weight: 600;">
+                        <span class="text-green">Paid: ₹{{ sp.paid|floatformat:2 }}</span>
+                        <span class="text-yellow">Pending: ₹{{ sp.pending|floatformat:2 }}</span>
+                        <span class="text-muted">ASM: ₹{{ sp.asm_earned|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Product & Customer</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-end">Field</th>
+                            <th class="text-end">Override</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in sp.items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3 text-center" style="line-height: 1;">
+                                        <small class="summary-label d-block" style="font-size: 0.5rem;">{{ i.date|date:"M" }}</small>
+                                        <span class="fw-bold" style="font-size: 0.9rem; color: var(--text-main);">{{ i.date|date:"d" }}</span>
+                                    </div>
+                                    <div>
+                                        <div class="small fw-bold opacity-50">{{ i.customer }} <span class="tr-tag ms-1">{% if i.trigger %}Active{% else %}Suspended{% endif %}</span></div>
+                                        <div class="text-green fw-bold" style="font-size: 0.8rem;">{{ i.product }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center fw-bold">{{ i.qty|floatformat:0 }}</td>
+                            <td class="text-end small text-muted">₹{{ i.asm|floatformat:0 }}</td>
+                            <td class="text-end fw-bold {% if i.status == 'payable' %}text-green{% elif i.status == 'pending' %}text-yellow{% else %}text-red{% endif %}">
+                                ₹{{ i.head|floatformat:2 }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        const btn = document.getElementById('themeToggle');
+        btn.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-bs-theme');
+            document.documentElement.setAttribute('data-bs-theme', current === 'dark' ? 'light' : 'dark');
+        });
+    </script>
+</body>
+</html>

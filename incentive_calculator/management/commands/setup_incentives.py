@@ -30,7 +30,7 @@ class Command(BaseCommand):
             "Curie Printer": {"asm": 5000.0, "rsm": 1000.0},
         }
 
-        file_path = r"C:\Users\Administrator\Desktop\incentive_price_list.xlsx"
+        file_path = r"C:\Users\Administrator\Desktop\incentive_price_list (1).xlsx"
         if not os.path.exists(file_path):
             self.stdout.write(self.style.ERROR(f'File not found at {file_path}'))
             return

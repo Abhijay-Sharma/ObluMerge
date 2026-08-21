@@ -3,128 +3,103 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASM Incentive Dashboard</title>
+<title>ASM Incentive Dashboard | Oblu Healthcare</title>
 
 <style>
-    /* LIGHT THEME UPDATED */
+    /* CSS VARIABLES FOR THEME SYNC */
+    :root {
+        color-scheme: dark; /* Tells browser to use dark UI for pickers */
+        --bg-primary: #0a0a0a;
+        --bg-card: #151515;
+        --bg-input: #ffffff;
+        --border-color: #333;
+        --text-main: #e0e0e0;
+        --text-muted: #888;
+        --accent-green: #00ff99;
+        --accent-red: #ff4d4d;
+        --accent-yellow: #ffd54d;
+        --table-hover: rgba(255, 255, 255, 0.03);
+    }
+
     body.light {
-        background: #f5f5f5;
-        color: #000;
+        color-scheme: light;
+        --bg-primary: #f5f5f5;
+        --bg-card: #ffffff;
+        --bg-input: #ffffff;
+        --border-color: #ddd;
+        --text-main: #000;
+        --text-muted: #666;
+        --accent-green: #0b9e63;
+        --accent-red: #d32f2f;
+        --accent-yellow: #f57c00;
+        --table-hover: rgba(0, 0, 0, 0.02);
     }
 
-    body.light h2,
-    body.light h3,
-    body.light th,
-    body.light td,
-    body.light a,
-    body.light .text-muted,
-    body.light .summary-card h2,
-    body.light .summary-card .text-muted,
-    body.light .breakdown-item,
-    body.light .breakdown-item b,
-    body.light .voucher-link,
-    body.light .product-green,
-    body.light .product-yellow,
-    body.light b[style*="color"] {
-        color: #000 !important;
-    }
-
-    body.light .card {
-        background: #ffffff;
-        border: 1px solid #ddd;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    body.light .filter-form select,
-    body.light .filter-form input {
-        background: #fff;
-        color: #000;
-        border: 1px solid #ccc;
-    }
-
-    body.light th {
-        background: #eee;
-    }
-
-    body.light td {
-        border-bottom: 1px solid #ddd;
-    }
-
-    body.light tr:hover {
-        background: #f0f0f0;
-    }
-
-    /* BASE THEME */
     body {
-        background:#0a0a0a; color:#e0e0e0;
+        background: var(--bg-primary); color: var(--text-main);
         font-family: 'Segoe UI', Roboto, sans-serif;
         padding: 15px; margin: 0; line-height: 1.4;
         transition: background 0.3s ease, color 0.3s ease;
     }
-    h2, h3 { color: #00ff99; margin-bottom: 15px; margin-top: 5px; }
+    h2, h3 { color: var(--accent-green); margin-bottom: 15px; margin-top: 5px; }
 
-    .container { max-width: 1400px; margin: 0 auto; }
+    .container { max-width: 1450px; margin: 0 auto; }
 
     .card {
-        background:#151515; border:1px solid #333;
+        background: var(--bg-card); border: 1px solid var(--border-color);
         border-radius: 12px; padding: 15px;
         margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        transition: background 0.3s ease, border 0.3s ease;
     }
 
-    /* FILTERS */
+    /* FILTERS  */
     .filter-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .filter-form select, .filter-form input, .filter-form button {
-        background: #222; border: 1px solid #444; color: white;
+        background: var(--bg-input); border: 1px solid var(--border-color); color:#222;
         padding: 10px 15px; border-radius: 8px; font-size: 14px;
     }
-    .filter-form button { background: #00ff99; color: #000; font-weight: bold; border: none; cursor: pointer; }
 
-    /* COMPACT SUMMARY GRID */
+    input[type="month"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        cursor: pointer;
+    }
+    body.light input[type="month"]::-webkit-calendar-picker-indicator {
+        filter: invert(0);
+    }
+
+    .filter-form button { background: var(--accent-green); color: #000; font-weight: bold; border: none; cursor: pointer; }
+
+    /* SUMMARY GRID */
     .summary-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         gap: 15px; margin-bottom: 15px;
     }
-    .summary-card {
-        display: flex; flex-direction: column; justify-content: center; min-height: 140px;
-    }
-    .summary-card h2 { font-size: 26px; margin: 5px 0; color: #fff; }
-    .text-muted { color: #aaa; font-size: 0.85em; }
+    .summary-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 160px; }
+    .summary-card h2 { font-size: 28px; margin: 5px 0; color: var(--text-main); font-weight: 800; }
 
-    /* CATEGORY BREAKDOWN LIST */
-    .breakdown-box { border-top: 1px solid #333; margin-top: 10px; padding-top: 8px; }
-    .breakdown-item { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
-    .breakdown-item b { color: #fff; }
+    .arrears-item { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; border-bottom: 1px solid var(--border-color); padding-bottom: 2px; }
 
     /* TABLES */
     .table-responsive { width: 100%; overflow-x: auto; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; min-width: 800px; }
-    th { background: #1a1a1a; color: #777; font-size: 11px; text-transform: uppercase; text-align: left; padding: 10px 15px; }
-    td { padding: 10px 15px; border-bottom: 1px solid #222; font-size: 13.5px; }
-    tr:hover { background: #1a1a1a; }
+    table { width: 100%; border-collapse: collapse; min-width: 900px; }
+    th { background: rgba(128, 128, 128, 0.05); color: var(--text-muted); font-size: 11px; text-transform: uppercase; text-align: left; padding: 12px 15px; }
+    td { padding: 12px 15px; border-bottom: 1px solid var(--border-color); font-size: 13.5px; }
+    tr:hover { background: var(--table-hover); }
 
     /* STATUS COLORS */
-    .product-green { color:#00ff99; font-weight:600; }
-    .product-yellow { color:#ffd54d; font-weight:600; }
-    .badge { font-size:10px; padding:2px 5px; border-radius:4px; font-weight: bold; margin-left: 5px; }
-    .badge.red { background:#ff4d4d; color: white; }
+    .product-green { color: var(--accent-green); font-weight: 600; }
+    .product-red { color: var(--accent-red); font-weight: 600; }
+    .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 5px; background: var(--accent-red); color: white; }
 
     /* TRIGGER BUTTON */
-    .btn-trigger {
-        font-size: 9px; padding: 3px 6px; border-radius: 4px; border: none; cursor: pointer; color: white; font-weight: bold;
-    }
+    .btn-trigger { font-size: 9px; padding: 3px 6px; border-radius: 4px; border: none; cursor: pointer; color: white; font-weight: bold; }
     .trigger-on { background: #333; }
-    .trigger-off { background: #ff4d4d; }
+    .trigger-off { background: var(--accent-red); }
 
-    /* LINKS */
-    a { color:#00ff99; text-decoration: none; }
-    .voucher-link { color: #fff; text-decoration: underline; font-size: 12px; }
+    a { color: var(--accent-green); text-decoration: none; }
+    .voucher-link { color: var(--text-main); text-decoration: underline; font-size: 12px; }
 
-    @media (max-width: 768px) {
-        .summary-grid { grid-template-columns: 1fr; }
-        .filter-form select, .filter-form input, .filter-form button { flex: 1 1 100%; }
-    }
+    @media (max-width: 768px) { .summary-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 
@@ -134,15 +109,8 @@
     <h2>ASM Incentive Dashboard</h2>
 
     <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-        <button onclick="toggleTheme()" id="themeBtn" style="
-            padding:8px 14px;
-            border-radius:20px;
-            border:none;
-            cursor:pointer;
-            background:#00ff99;
-            font-weight:bold;
-        ">
-            🌙 / ☀️
+        <button onclick="toggleTheme()" id="themeBtn" style="padding:8px 16px; border-radius:20px; border:none; cursor:pointer; background:var(--accent-green); font-weight:bold; color: #000;">
+            🌙 / ☀️ Toggle Theme
         </button>
     </div>
 
@@ -156,10 +124,8 @@
                 </option>
                 {% endfor %}
             </select>
-
             <input type="month" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}" required>
-
-            <button type="submit">GO</button>
+            <button type="submit">GENERATE REPORT</button>
         </form>
     </div>
 
@@ -167,50 +133,67 @@
         <!-- PERFORMANCE SUMMARY GRID -->
         <div class="summary-grid">
 
-            <!-- CARD 1: DYNAMIC QTY & BREAKDOWN -->
+            <!-- CARD 1: ARREARS HISTORY -->
+            <div class="card summary-card" style="border-left: 4px solid var(--accent-red); background: rgba(255,77,77,0.02);">
+                <div>
+                    <span style="font-weight: bold; color: var(--accent-red); font-size: 0.85em; text-transform: uppercase;">Past Months Unpaid</span>
+                    <div style="margin-top: 10px; max-height: 85px; overflow-y: auto; padding-right: 5px;">
+                        {% for item in historical_arrears_list %}
+                        <div class="arrears-item">
+                            <span>{{ item.month }} Balance:</span>
+                            <b style="color: var(--accent-red);">₹{{ item.amount|floatformat:2 }}</b>
+                        </div>
+                        {% empty %}
+                        <div style="color: var(--text-muted); font-size: 12px; font-style: italic; padding-top: 10px;">No arrears from previous months.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div style="border-top: 1px solid var(--border-color); padding-top: 8px; display: flex; justify-content: space-between;">
+                    <span class="small" style="color: var(--text-muted);">Total Backlog:</span>
+                    <b style="color: var(--accent-red);">₹{{ total_arrears_amount|floatformat:2 }}</b>
+                </div>
+            </div>
+
+            <!-- CARD 2: DYNAMIC QTY & BREAKDOWN -->
              <div class="card summary-card">
                 <div>
-                    <span class="text-muted">Dynamic Paid Quantity</span>
+                    <span style="color: var(--text-muted); font-size: 0.85em; text-transform: uppercase;">Dynamic Paid Quantity</span>
                     <h2>{{ dynamic_group_qty|floatformat:2 }}</h2>
-                    <span class="text-muted">Rate Used: <b style="color: #00ff99;">₹{{ dynamic_rate_used|floatformat:2 }}</b></span>
+                    <span style="color: var(--text-muted); font-size: 0.8em;">Rate Used: <b style="color: var(--accent-green);">₹{{ dynamic_rate_used|floatformat:2 }}</b></span>
                 </div>
-
-                <div class="breakdown-box">
+                <div style="border-top: 1px solid var(--border-color); padding-top: 8px;">
                     {% for cat_name, total_qty in category_summary.items %}
-                    <div class="breakdown-item">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px;">
                         <span>{{ cat_name }}:</span>
-                        <b>{{ total_qty|floatformat:0 }} Items</b>
+                        <b style="color: #fff;">{{ total_qty|floatformat:0 }} Items</b>
                     </div>
                     {% endfor %}
                 </div>
             </div>
 
-            <!-- CARD 2: TOTAL SALES -->
-            <div class="card summary-card">
-                <span class="text-muted">Total Sales Amount (Tax Inc.)</span>
+            <!-- CARD 3: TOTAL SALES -->
+            <div class="card summary-card" style="justify-content: center;">
+                <span style="color: var(--text-muted); font-size: 0.85em; text-transform: uppercase;">Total Sales (Tax Inc.)</span>
                 <h2>₹{{ total_sales|floatformat:2 }}</h2>
             </div>
 
-            <!--CARD 3: Grand Total Incentive (Potential) -->
-            <div class="card summary-card">
-                <span class="text-muted">Grand Total Incentive (Potential)</span>
-                <h2 style="color: #00ff99;">₹{{ grand_total_incentive|floatformat:2 }}</h2>
+            <!-- CARD 4: NET PAYABLE (CURRENT + ARREARS) -->
+            <div class="card summary-card" style="border-bottom: 4px solid var(--accent-green);">
+                <span style="color: var(--text-muted); font-size: 0.85em; font-weight: bold; text-transform: uppercase;">Net Payable Incentive</span>
+                <h2 style="color: var(--accent-green); font-size: 32px;">₹{{ grand_total_incentive|floatformat:2 }}</h2>
 
-                <div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 10px;">
-                    <!-- BUCKET 1: PAYABLE -->
+                <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px;">
                     <div style="display: flex; justify-content: space-between; font-size: 11px;">
-                        <span class="text-muted">Payable (Collected):</span>
-                        <b style="color: #00ff99;">₹{{ payable_incentive|floatformat:2 }}</b>
+                        <span>Current Month Potential:</span>
+                        <b>₹{{ current_month_potential|floatformat:2 }}</b>
                     </div>
-                    <!-- BUCKET 2: PENDING -->
                     <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
-                        <span class="text-muted">Pending (Unpaid Invoices):</span>
-                        <b style="color: #ffd54d;">₹{{ unpayable_incentive|floatformat:2 }}</b>
+                        <span>Arrears Added:</span>
+                        <b style="color: var(--accent-red);">+ ₹{{ total_arrears_amount|floatformat:2 }}</b>
                     </div>
-                    <!-- BUCKET 3: TRIGGERED OFF -->
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
-                        <span class="text-muted">Triggered Off (Admin):</span>
-                        <b style="color: #ff4d4d;">₹{{ triggered_off_incentive|floatformat:2 }}</b>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; border-top: 1px dashed var(--border-color); padding-top: 4px;">
+                        <span style="color: var(--accent-green); font-weight: bold;">Ready to Receive:</span>
+                        <b class="product-green">₹{{ payable_incentive|floatformat:2 }}</b>
                     </div>
                 </div>
             </div>
@@ -230,51 +213,44 @@
                             <th>Product</th>
                             <th>Qty</th>
                             <th>Amount</th>
-                            <th>Incentive Status</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for r in rows %}
-                        <tr class="{% if not r.is_fully_paid %}unpaid{% endif %}">
-                            <td class="text-muted">{{ r.date|date:"d M y" }}</td>
+                        {% for row in rows %}
+                        <tr>
+                            <td style="color: var(--text-muted);">{{ row.date|date:"d M y" }}</td>
                             <td>
-                                {% if r.customer_id %}
-                                    <a href="{% url 'customers:customerpaymentstatus' r.customer_id %}">{{ r.customer }}</a>
-
-                                    <!-- ADMIN TRIGGER BUTTON -->
+                                {% if row.customer_id %}
+                                    <a href="{% url 'customers:customerpaymentstatus' row.customer_id %}">{{ row.customer }}</a>
                                     {% if user.is_superuser %}
                                     <div style="margin-top: 5px;">
-                                        <button onclick="toggleIncentiveTrigger('{{ r.customer_id }}', {{ r.is_trigger_on|yesno:'true,false' }})"
-                                                class="btn-trigger {% if r.is_trigger_on %}trigger-on{% else %}trigger-off{% endif %}">
-                                            Trigger: {% if r.is_trigger_on %}ON{% else %}OFF{% endif %}
+                                        <button onclick="toggleIncentiveTrigger('{{ row.customer_id }}', {{ row.is_trigger_on|yesno:'true,false' }})"
+                                                class="btn-trigger {% if row.is_trigger_on %}trigger-on{% else %}trigger-off{% endif %}">
+                                            Trigger: {% if row.is_trigger_on %}ON{% else %}OFF{% endif %}
                                         </button>
                                     </div>
                                     {% endif %}
-
+                                {% else %}{{ row.customer }}{% endif %}
+                                {% if not row.is_fully_paid %}<span class="badge">Unpaid</span>{% endif %}
+                            </td>
+                            <td><a href="{% url 'voucher_detail' row.voucher_id %}" target="_blank" class="voucher-link">#{{ row.voucher_no }}</a></td>
+                            <td class="{% if row.has_incentive %}product-green{% else %}product-red{% endif %}">{{ row.product }}</td>
+                            <td>{{ row.quantity|floatformat:2 }}</td>
+                            <td>₹{{ row.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if not row.is_trigger_on %}
+                                    <span style="color: var(--accent-red); font-size: 11px; font-weight: bold;">✕ Trigger Off</span>
+                                {% elif row.payout_done %}
+                                    <span style="color: var(--accent-green); font-size: 11px; font-weight: bold;">✓ Paid by Admin</span>
+                                {% elif not row.is_fully_paid %}
+                                    <span style="color: var(--text-muted); font-size: 11px;">Waiting Payment</span>
+                                {% elif not row.has_incentive %}
+                                    <span style="color: var(--text-muted); font-size: 11px;">Non-Incentive</span>
+                                {% elif not row.is_above_msp %}
+                                    <span style="color: var(--accent-yellow); font-size: 11px; font-weight: bold;">✕ Below MSRP</span>
                                 {% else %}
-                                    {{ r.customer }}
-                                {% endif %}
-                                {% if not r.is_fully_paid %}<span class="badge red">Unpaid</span>{% endif %}
-                            </td>
-                            <td>
-                                <a href="{% url 'voucher_detail' r.voucher_id %}" target="_blank" class="voucher-link">
-                                    {{ r.voucher_no }}
-                                </a>
-                            </td>
-                            <td class="{% if r.has_incentive %}product-green{% else %}product-yellow{% endif %}">
-                                {{ r.product }}
-                            </td>
-                            <td>{{ r.quantity|floatformat:2 }}</td>
-                            <td>₹{{ r.amount|floatformat:2 }}</td>
-                            <td>
-                                {% if not r.is_trigger_on %}
-                                    <span style="color: #ff4d4d; font-size: 11px; font-weight: bold;">✕ Trigger Off</span>
-                                {% elif not r.is_fully_paid %}
-                                    <span class="text-muted" style="font-size: 11px;">Waiting Payment</span>
-                                {% elif r.has_incentive %}
                                     <span class="product-green" style="font-size: 11px;">✓ Calculated</span>
-                                {% else %}
-                                    <span class="text-muted" style="font-size: 11px;">Non-Incentive</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -286,15 +262,15 @@
 
         <!-- BREAKDOWN TABLE -->
         <div class="card">
-            <h3>Incentive Payout Breakdown</h3>
+            <h3>Payout Breakdown by Product</h3>
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
                             <th>Product Name</th>
-                            <th>Total Qty Sold</th>
+                            <th>Total Paid Qty</th>
                             <th>Applied Rate</th>
-                            <th style="text-align: right;">Total Potential Payout</th>
+                            <th style="text-align: right;">Realized Payout</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -302,10 +278,9 @@
                         <tr>
                             <td>{{ name }}</td>
                             <td>{{ data.paid_qty|floatformat:0 }}</td>
-                            <td>₹{{ data.rate|floatformat:2 }}</td>
+                            <td class="product-green">₹{{ data.rate|floatformat:2 }}</td>
                             <td style="text-align: right;">
-                                <div style="color: #fff; font-weight: bold;">₹{{ data.potential_payout|floatformat:2 }}</div>
-                                <div style="color: #00ff99; font-size: 10px;">Ready: ₹{{ data.ready_payout|floatformat:2 }}</div>
+                                <div style="color: var(--accent-green); font-weight: bold;">₹{{ data.ready_payout|floatformat:2 }}</div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -320,47 +295,25 @@
     function toggleTheme() {
         const body = document.body;
         body.classList.toggle("light");
-        if (body.classList.contains("light")) {
-            localStorage.setItem("theme", "light");
-        } else {
-            localStorage.setItem("theme", "dark");
-        }
+        localStorage.setItem("asm-dashboard-theme", body.classList.contains("light") ? "light" : "dark");
     }
 
     window.onload = function() {
-        const savedTheme = localStorage.getItem("theme");
-        if (savedTheme === "light") {
+        if (localStorage.getItem("asm-dashboard-theme") === "light") {
             document.body.classList.add("light");
         }
     }
 
-    /**
-     * NEW: TRIGGER TOGGLE FUNCTION
-     */
     function toggleIncentiveTrigger(custId, currentStatus) {
-        const action = currentStatus ? "TURN OFF" : "TURN ON";
-        if(!confirm(`Are you sure you want to ${action} incentives for this customer?`)) return;
-
+        if(!confirm(`Change incentive status for this customer?`)) return;
         let formData = new FormData();
         formData.append('customer_id', custId);
         formData.append('is_enabled', !currentStatus);
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-        fetch("{% url 'incentive_calculator:update_customer_trigger' %}", {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if(response.ok) {
-                location.reload(); // Refresh to recalculate and show 3 buckets correctly
-            } else {
-                alert("Error: Could not update trigger status.");
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("Network error occurred.");
-        });
+        fetch("{% url 'incentive_calculator:update_customer_trigger' %}", { method: 'POST', body: formData })
+        .then(response => { if(response.ok) location.reload(); else alert("Error updating trigger."); })
+        .catch(error => alert("Network error."));
     }
 </script>
 
