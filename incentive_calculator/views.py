@@ -1817,6 +1817,263 @@ class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
         })
         return context
 
+class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
+    template_name = "incentive_calculator/asm_incentive_monthly.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        logged_in_user = self.request.user
+
+        # --- 1. IDENTITY & PERMISSION CHECK ---
+        user_salesperson_profile = SalesPerson.objects.filter(user=logged_in_user).first()
+
+        if logged_in_user.is_superuser or logged_in_user.is_accountant:
+            allowed_salespersons_list = SalesPerson.objects.all().order_by("name")
+            requested_id = self.request.GET.get("salesperson")
+            target_salesperson = allowed_salespersons_list.filter(
+                id=requested_id).first() if requested_id else user_salesperson_profile
+        else:
+            target_salesperson = user_salesperson_profile
+            allowed_salespersons_list = SalesPerson.objects.filter(
+                id=target_salesperson.id) if target_salesperson else SalesPerson.objects.none()
+
+        # --- 2. DATE AND CALENDAR SETUP ---
+        selected_month_picker = self.request.GET.get("month_picker")
+        today_date = date.today()
+
+        if selected_month_picker:
+            reporting_year, reporting_month = map(int, selected_month_picker.split("-"))
+        else:
+            reporting_year, reporting_month = today_date.year, today_date.month
+
+        reporting_month_start = date(reporting_year, reporting_month, 1)
+        _, last_day_of_month = monthrange(reporting_year, reporting_month)
+        reporting_month_end = date(reporting_year, reporting_month, last_day_of_month)
+
+        # --- 3. INITIALIZE CONTEXT DEFAULTS ---
+        context.update({
+            "salespersons": allowed_salespersons_list,
+            "selected_salesperson": target_salesperson,
+            "year": reporting_year, "month": reporting_month,
+            "grand_total_incentive": Decimal("0.00"),
+            "payable_incentive": Decimal("0.00"),
+            "unpayable_incentive": Decimal("0.00"),
+            "triggered_off_incentive": Decimal("0.00"),
+            "total_sales": Decimal("0.00"),
+            "dynamic_group_qty": Decimal("0.00"),
+            "dynamic_rate_used": Decimal("0.00"),
+            "historical_arrears_list": [],
+            "total_arrears_amount": Decimal("0.00")
+        })
+
+        if not target_salesperson: return context
+
+        # --- 4. PRE-LOAD RULES AND LOOKUPS ---
+
+        all_incentive_rules = {
+            rule.product.name.strip().lower(): rule
+            for rule in ProductIncentive.objects.select_related("product", "category").all()
+        }
+        product_tax_rates = {
+            price.product_id: price for price in ProductPrice.objects.only("product_id", "tax_rate")
+        }
+        blocked_customer_ids = set(
+            CustomerIncentiveTrigger.objects.filter(is_enabled=False).values_list('customer_id', flat=True)
+        )
+
+        # Helper function for calculating specific item payout
+        def calculate_item_earning(item_obj, monthly_vol):
+            rule = all_incentive_rules.get(item_obj.item.name.strip().lower())
+            if not rule: return Decimal("0.00"), True
+
+
+            # ---------------------------------------------
+            # Step 1 : Price Excluding GST
+            # ---------------------------------------------
+            unit_price_ex = (
+                Decimal(str(item_obj.amount)) / Decimal(str(item_obj.quantity))
+                if item_obj.quantity > 0
+                else Decimal("0")
+            )
+
+            # ---------------------------------------------
+            # Step 2 : Fetch Product GST
+            # ---------------------------------------------
+            product_price_meta = product_tax_rates.get(item_obj.item_id)
+            tax_rate = Decimal(str(product_price_meta.tax_rate)) if product_price_meta else Decimal("0")
+
+            # ---------------------------------------------
+            # Step 3 : Calculate Invoice Selling Price
+            # ---------------------------------------------
+            unit_price_inc = unit_price_ex * (
+                    Decimal("1") + (tax_rate / Decimal("100"))
+            )
+
+            # ---------------------------------------------
+            # Step 4 : Comparison Price (With ₹1 Buffer)
+            # ---------------------------------------------
+            comparison_price = unit_price_inc
+            difference = rule.msp - unit_price_inc
+
+            if Decimal("0") < difference <= Decimal("1.00"):
+                comparison_price = unit_price_inc.quantize(
+                    Decimal("1"),
+                    rounding=ROUND_HALF_UP
+                )
+
+            is_above_msp = (rule.msp == 0 or comparison_price >= rule.msp)
+
+            if not is_above_msp:
+                return Decimal("0.00"), False
+
+            # Rate Resolution
+            asm_rate, _ = rule.get_effective_rates
+            if rule.has_dynamic_price:
+                applied_rate = Decimal("4.00") if monthly_vol >= 4000 else (
+                    Decimal("3.00") if monthly_vol >= 1000 else 0)
+            else:
+                applied_rate = asm_rate
+            earning = (Decimal(str(item_obj.quantity)) * rule.pack_size_multiplier) * applied_rate
+            return earning, True  # Returns money and True status
+
+        # --- 5. ARREARS ENGINE (SCANNING PAST MONTHS IN FY) ---
+        fiscal_year_start = date(reporting_year if reporting_month >= 4 else reporting_year - 1, 4, 1)
+        historical_arrears_total = Decimal("0.00")
+        historical_arrears_breakdown = []
+
+        if fiscal_year_start < reporting_month_start:
+            # Loop through months from April up to the month before current
+            for past_m_idx in range(4, 13):
+                # Setup scan date for this iteration
+                scan_date = date(reporting_year, past_m_idx, 1) if past_m_idx >= 4 else date(reporting_year + 1,
+                                                                                             past_m_idx, 1)
+                if scan_date >= reporting_month_start: break
+
+                past_month_statuses = CustomerVoucherStatus.objects.filter(
+                    sold_by=target_salesperson, voucher_date__month=past_m_idx,
+                    voucher_date__year=scan_date.year, voucher_type__iexact="TAX INVOICE"
+                )
+                if not past_month_statuses.exists(): continue
+
+                past_month_v_ids = past_month_statuses.values_list("voucher_id", flat=True)
+                past_month_items = VoucherStockItem.objects.filter(voucher_id__in=past_month_v_ids).select_related(
+                    'item')
+
+                # Calculate Volume for that specific past month
+                past_month_vol = sum([
+                    pi.quantity * all_incentive_rules.get(pi.item.name.strip().lower()).pack_size_multiplier
+                    for pi in past_month_items if all_incentive_rules.get(pi.item.name.strip().lower()) and
+                    all_incentive_rules.get(pi.item.name.strip().lower()).has_dynamic_price and
+                    pi.voucher_id in [v.voucher_id for v in past_month_statuses if
+                                      v.customer_id not in blocked_customer_ids]
+                ])
+
+                past_month_unpaid_sum = Decimal("0.00")
+                for pi in past_month_items:
+                    # Check if accountant has NOT yet finalized this payout
+                    if not IncentivePaymentStatus.objects.filter(voucher_status__voucher_id=pi.voucher_id).exists():
+                        if past_month_statuses.get(voucher_id=pi.voucher_id).customer_id not in blocked_customer_ids:
+                            earning, _ = calculate_item_earning(pi, past_month_vol)
+                            past_month_unpaid_sum += earning
+
+                if past_month_unpaid_sum > 0:
+                    historical_arrears_breakdown.append(
+                        {'month': scan_date.strftime('%b'), 'amount': past_month_unpaid_sum})
+                    historical_arrears_total += past_month_unpaid_sum
+
+        # --- 6. CURRENT MONTH CALCULATION ---
+        current_voucher_statuses = CustomerVoucherStatus.objects.filter(
+            sold_by=target_salesperson, voucher_type__iexact="TAX INVOICE",
+            voucher_date__range=[reporting_month_start, reporting_month_end]
+        )
+        current_v_ids = current_voucher_statuses.values_list("voucher_id", flat=True)
+        current_voucher_mapping = {vs.voucher_id: vs for vs in current_voucher_statuses}
+        current_line_items = VoucherStockItem.objects.filter(voucher_id__in=current_v_ids).select_related("item",
+                                                                                                          "voucher").prefetch_related(
+            "voucher__rows")
+
+        # Get Admin Payout Status
+        payout_status_map = {pr.voucher_status.voucher_id: True for pr in
+                             IncentivePaymentStatus.objects.filter(voucher_status__voucher_id__in=current_v_ids)}
+
+        # Current Monthly Volume
+        current_month_dynamic_volume = sum([
+            si.quantity * all_incentive_rules.get(si.item.name.strip().lower()).pack_size_multiplier
+            for si in current_line_items if all_incentive_rules.get(si.item.name.strip().lower()) and
+            all_incentive_rules.get(si.item.name.strip().lower()).has_dynamic_price and
+            current_voucher_mapping[si.voucher_id].customer_id not in blocked_customer_ids
+        ])
+
+        transaction_log_rows = []
+        product_totals_map = {}
+        category_summary_map = {}
+        current_month_potential = Decimal("0.00")
+        current_month_payable = Decimal("0.00")
+        current_month_unpayable = Decimal("0.00")
+        current_month_blocked = Decimal("0.00")
+        total_revenue_accumulated = Decimal("0.00")
+        processed_vouchers = set()
+
+        for item in current_line_items:
+            rule = all_incentive_rules.get(item.item.name.strip().lower())
+            status_obj = current_voucher_mapping.get(item.voucher_id)
+            is_trigger_on = status_obj.customer_id not in blocked_customer_ids
+            is_fully_paid = bool(status_obj and (status_obj.is_fully_paid or status_obj.unpaid_amount == 0))
+
+            # Revenue calculation
+            if item.voucher_id not in processed_vouchers:
+                processed_vouchers.add(item.voucher_id)
+                party_row = item.voucher.rows.filter(ledger__icontains=item.voucher.party_name.strip()).first()
+                total_revenue_accumulated += Decimal(str(party_row.amount if party_row else (item.voucher.amount or 0)))
+
+            earning, is_item_above_msp = calculate_item_earning(item, current_month_dynamic_volume)
+
+            if is_trigger_on:
+                current_month_potential += earning
+                if is_fully_paid:
+                    current_month_payable += earning
+                    if rule:
+                        if rule.category: category_summary_map[rule.category.name] = category_summary_map.get(
+                            rule.category.name, 0) + (item.quantity * rule.pack_size_multiplier)
+                        if item.item.name not in product_totals_map:
+                            asm_r, _ = rule.get_effective_rates
+                            final_r = (Decimal("4.00") if current_month_dynamic_volume >= 4000 else Decimal(
+                                "3.00")) if rule.has_dynamic_price else asm_r
+                            product_totals_map[item.item.name] = {"potential_payout": 0, "ready_payout": 0,
+                                                                  "paid_qty": 0, "rate": final_r}
+                        product_totals_map[item.item.name]["ready_payout"] += earning
+                else:
+                    current_month_unpayable += earning
+            else:
+                current_month_blocked += earning
+
+            transaction_log_rows.append({
+                "date": item.voucher.date, "customer": item.voucher.party_name,
+                "voucher_no": item.voucher.voucher_number,
+                "product": item.item.name, "quantity": item.quantity, "amount": item.amount,
+                "is_fully_paid": is_fully_paid, "has_incentive": rule is not None, "is_trigger_on": is_trigger_on,
+                "voucher_id": item.voucher.id, "customer_id": status_obj.customer_id,
+                "payout_done": payout_status_map.get(item.voucher_id, False),
+                "is_above_msp": is_item_above_msp,
+
+            })
+
+        # Final Summary Context
+        context.update({
+            "rows": transaction_log_rows, "product_totals": product_totals_map,
+            "category_summary": category_summary_map,
+            "total_sales": total_revenue_accumulated, "dynamic_group_qty": current_month_dynamic_volume,
+            "dynamic_rate_used": Decimal("4.00") if current_month_dynamic_volume >= 4000 else (
+                Decimal("3.00") if current_month_dynamic_volume >= 1000 else 0),
+            "historical_arrears_list": historical_arrears_breakdown,
+            "total_arrears_amount": historical_arrears_total,
+            "current_month_potential": current_month_potential,
+            "payable_incentive": current_month_payable,
+            "unpayable_incentive": current_month_unpayable,
+            "triggered_off_incentive": current_month_blocked,
+            "grand_total_incentive": current_month_potential + historical_arrears_total,
+        })
+        return context
 
 #21-8-26 kashish
 class ASMIncentivePaidUnpaidView(AccountantRequiredMixin, TemplateView):
