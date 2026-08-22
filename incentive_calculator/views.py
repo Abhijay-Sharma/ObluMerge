@@ -1558,7 +1558,7 @@ class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
         return context
 
 
-#21-8-26 kashish version to see below msp and previous unpaid incentive
+#21-8-26 kashish version to see below msp and previous unpaid incentive ...
 class ASMIncentiveCalculatorPaidOnlyView(LoginRequiredMixin, TemplateView):
     template_name = "incentive_calculator/asm_incentive_monthly.html"
 
