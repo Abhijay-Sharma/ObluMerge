@@ -9,6 +9,13 @@ from incentive_calculator.models import IncentiveCategory, ProductIncentive
 class Command(BaseCommand):
     help = 'Syncs incentives from Excel and sets Category Default Rates'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "file_path",
+            type=str,
+            help="Path to the Excel incentive price list"
+        )
+
     def safe_decimal(self, value):
         if pd.isna(value) or str(value).strip() == "" or value == 0:
             return None
@@ -18,6 +25,10 @@ class Command(BaseCommand):
             return Decimal('0.00')
 
     def handle(self, *args, **options):
+
+        # Get Excel file path from command
+        file_path = options["file_path"]
+
         # If a category in Excel matches one of these, it gets these rates.
         category_defaults = {
             "Sheets & Aligners": {"asm": 3.0, "rsm": 1.0},
@@ -30,7 +41,6 @@ class Command(BaseCommand):
             "Curie Printer": {"asm": 5000.0, "rsm": 1000.0},
         }
 
-        file_path = r"C:\Users\Administrator\Desktop\incentive_price_list (1).xlsx"
         if not os.path.exists(file_path):
             self.stdout.write(self.style.ERROR(f'File not found at {file_path}'))
             return
@@ -71,23 +81,27 @@ class Command(BaseCommand):
                 # Parsing remaining Excel columns
                 multiplier = self.safe_decimal(row.get('multiplier', 1)) or Decimal('1.00')
                 msp_val = self.safe_decimal(row.get('msp', 0)) or Decimal('0.00')
-                is_dyn = str(row.get('is_dynamic', 'FALSE')).upper() in ['TRUE', '1', 'YES', '1.0']
+                is_dynamic = str(row.get('is_dynamic', 'FALSE')).upper() in ['TRUE', '1', 'YES', '1.0']
 
-                # Create the product configuration
-                config = ProductIncentive.objects.create(
+                # Create or update the product configuration
+                config, created = ProductIncentive.objects.update_or_create(
                     product=inventory_item,
-                    category=category_obj,
-                    msp=msp_val,
-                    pack_size_multiplier=multiplier,
-                    is_special_pack=(multiplier > 1),
-                    has_dynamic_price=is_dyn
+                    defaults={
+                        'category': category_obj,
+                        'msp': msp_val,
+                        'pack_size_multiplier': multiplier,
+                        'is_special_pack': (multiplier > 1),
+                        'has_dynamic_price': is_dynamic
+                    }
                 )
 
                 # Apply overrides from Excel (if any)
-                asm_ov = self.safe_decimal(row.get('asm_override'))
-                rsm_ov = self.safe_decimal(row.get('rsm_override'))
-                if asm_ov: config.asm_override = asm_ov
-                if rsm_ov: config.rsm_override = rsm_ov
+                asm_override = self.safe_decimal(row.get('asm_override'))
+                rsm_override = self.safe_decimal(row.get('rsm_override'))
+                if asm_override:
+                    config.asm_override = asm_override
+                if rsm_override:
+                    config.rsm_override = rsm_override
 
                 config.save()
                 count += 1
