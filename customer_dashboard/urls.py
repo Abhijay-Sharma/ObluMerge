@@ -72,4 +72,14 @@ urlpatterns = [
         views.CustomerDetailView.as_view(),
         name="customer_detail",
     ),
+    path(
+        "cross-selling-matrix/",
+        views.CrossSellingMatrixView.as_view(),
+        name="cross_selling_matrix",
+    ),
+    path(
+        "cross-selling-matrix/export/",
+        views.export_cross_selling_matrix,
+        name="export_cross_selling_matrix",
+    ),
 ]

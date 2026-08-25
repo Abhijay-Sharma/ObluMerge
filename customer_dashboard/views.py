@@ -51,6 +51,10 @@ from django.template.loader import get_template
 from xhtml2pdf import pisa
 from datetime import date
 from tally_voucher.models import VoucherEmiPaymentAllocation
+from django.contrib.auth.decorators import login_required
+from .models import CustomerRemark, CrossSellingRemark
+
+
 
 class AdminSalesPersonCustomersViewLegacy(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
@@ -4704,3 +4708,692 @@ class CustomerDetailView(LoginRequiredMixin, TemplateView):
         ctx["payment_remarks"] = payment_remarks
 
         return ctx
+
+
+CROSS_SELLING_CATEGORIES = [
+    {
+        "id": "template_sheet",
+        "name": "Template Sheet",
+        "badge_color": "info",
+        "expected_items": "Erkolen 0.6mm, Erkodur al 0.6mm, Erkodur 0.6mm, Template U, Template E",
+    },
+    {
+        "id": "aligner_sheet",
+        "name": "Aligner Sheet",
+        "badge_color": "primary",
+        "expected_items": "Erkodur 0.8mm, Erkodur al 0.8mm, Zendura FLX 0.76mm, Zendura Viva 0.76mm, One S 0.76mm, Nova 0.76mm, Pro S 0.76mm, Pro Neo 0.76mm",
+    },
+    {
+        "id": "retainer_sheet",
+        "name": "Retainer Sheet",
+        "badge_color": "success",
+        "expected_items": "Erkodur 1mm, Erkodur al 1mm, Zendura A 0.76mm, One S 1mm, Pro S 1mm",
+    },
+    {
+        "id": "resin",
+        "name": "Resin",
+        "badge_color": "warning",
+        "expected_items": "Anycubic, Graphy Model Resin, Jamghe, Aqua Model Resin, Formlabs Model Resin",
+    },
+    {
+        "id": "other_consumable",
+        "name": "Other Consumables",
+        "badge_color": "secondary",
+        "expected_items": "Aligner Box, Chewies, Extractor",
+    },
+]
+
+
+def classify_cross_selling_category(item_name, category_name=""):
+    """
+    Classifies a product name (and optional category name) into one of the 5 cross-selling categories.
+    """
+    name = (item_name or "").strip().lower()
+    cat = (category_name or "").strip().lower()
+    combined = f"{name} {cat}"
+
+    # 1. Template Sheet (0.6mm / Erkolen / Template U / Template E)
+    if "template u" in combined or "templete u" in combined or "template e" in combined or "templete e" in combined:
+        return "template_sheet"
+    if "erkolen" in combined:
+        return "template_sheet"
+    if "erkodur" in combined and ("0.6" in combined or "0.60" in combined or "60" in combined):
+        return "template_sheet"
+    if "template sheet" in combined or "templete sheet" in combined:
+        return "template_sheet"
+
+    # 2. Aligner Sheet (0.8mm, 0.76mm, FLX, Viva, Nova, Pro Neo, One S 0.76, Pro S 0.76)
+    if "zendura flx" in combined or "zendura viva" in combined or "flx" in combined or "viva" in combined:
+        return "aligner_sheet"
+    if "pro neo" in combined or "proneo" in combined:
+        return "aligner_sheet"
+    if "nova" in combined and (
+            "0.76" in combined or "sheet" in combined or "aligner" in combined or "foil" in combined):
+        return "aligner_sheet"
+    if ("one s" in combined or "ones" in combined) and ("0.76" in combined or "76" in combined):
+        return "aligner_sheet"
+    if ("pro s" in combined or "pros" in combined) and ("0.76" in combined or "76" in combined):
+        return "aligner_sheet"
+    if "erkodur" in combined and ("0.8" in combined or "0.80" in combined or "80" in combined):
+        return "aligner_sheet"
+    if "aligner sheet" in combined or "aligner foil" in combined:
+        return "aligner_sheet"
+
+    # 3. Retainer Sheet (1mm, 1.0mm, Zendura A, One S 1mm, Pro S 1mm)
+    if "zendura a" in combined or "zendura-a" in combined:
+        return "retainer_sheet"
+    if ("one s" in combined or "ones" in combined) and (
+            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} "):
+        return "retainer_sheet"
+    if ("pro s" in combined or "pros" in combined) and (
+            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} "):
+        return "retainer_sheet"
+    if "erkodur" in combined and (
+            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} " or "1.00" in combined):
+        return "retainer_sheet"
+    if "retainer sheet" in combined or "retainer foil" in combined:
+        return "retainer_sheet"
+
+    # 4. Resin (Anycubic, Graphy, Jamghe, Aqua, Formlabs, Dtech, etc.)
+    if "anycubic" in combined or "graphy" in combined or "jamghe" in combined or "formlabs" in combined or "form labs" in combined:
+        return "resin"
+    if "aqua" in combined and ("model" in combined or "resin" in combined):
+        return "resin"
+    if ("dtech" in combined or "d-tech" in combined) and (
+            "resin" in combined or "model" in combined or "standard" in combined):
+        return "resin"
+    if "resin" in combined:
+        return "resin"
+
+    # 5. Other Consumables (Aligner box, Chewies, Extractor)
+    if "aligner box" in combined or "aligner case" in combined:
+        return "other_consumable"
+    if "chewie" in combined or "chewies" in combined or "chewer" in combined:
+        return "other_consumable"
+    if "extractor" in combined or "extraction" in combined or "aligner remover" in combined or "aligner tool" in combined:
+        return "other_consumable"
+
+
+def ensure_cross_selling_table():
+    """Ensures the isolated CrossSellingRemark table exists in the database."""
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS "customer_dashboard_crosssellingremark" (
+                    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    "remark" text NOT NULL,
+                    "created_at" datetime NOT NULL,
+                    "customer_id" bigint NOT NULL REFERENCES "customer_dashboard_customer" ("id") DEFERRABLE INITIALLY DEFERRED,
+                    "salesperson_id" bigint NULL REFERENCES "customer_dashboard_salesperson" ("id") DEFERRABLE INITIALLY DEFERRED
+                );
+            """)
+    except Exception:
+        pass
+
+
+def get_cross_selling_dataset():
+    """
+    Builds the dataset of all customers who bought at least one product
+    from the 5 target categories.
+    Returns:
+        dict: {
+            "customers": list of customer analysis dicts,
+            "all_qualifying_count": int,
+            "stats": dict of aggregate metrics
+        }
+    """
+    ensure_cross_selling_table()
+    # 1. Fetch all customers and map them by normalized name
+    customers = Customer.objects.select_related("salesperson").prefetch_related(
+        "cross_selling_remarks__salesperson").all()
+    customer_by_name = {}
+    customer_by_id = {}
+    for c in customers:
+        norm_name = c.name.strip().lower()
+        customer_by_name[norm_name] = c
+        customer_by_id[c.id] = c
+
+    # 2. Fetch stock items for TAX INVOICE / sale vouchers
+    stock_items = (
+        VoucherStockItem.objects.filter(
+            Q(voucher__voucher_type__iexact="TAX INVOICE") | Q(voucher__voucher_type__iexact="sale")
+        )
+        .select_related("item", "item__category", "voucher")
+        .order_by("-voucher__date")
+    )
+
+    # 3. Aggregate customer purchases per category
+    customer_cat_map = defaultdict(lambda: {
+        "categories": {cat["id"]: {"bought": False, "items": [], "total_qty": 0, "total_amt": 0} for cat in
+                       CROSS_SELLING_CATEGORIES},
+        "last_order_date": None,
+        "total_spend": 0,
+        "total_items_count": 0,
+    })
+
+    for si in stock_items:
+        party_name = (si.voucher.party_name or "").strip().lower()
+        if not party_name or party_name not in customer_by_name:
+            continue
+
+        customer = customer_by_name[party_name]
+        p_name = si.item.name if si.item else (si.item_name_text or "")
+        c_name = si.item.category.name if (si.item and si.item.category) else ""
+
+        cat_id = classify_cross_selling_category(p_name, c_name)
+        if not cat_id:
+            continue
+
+        c_data = customer_cat_map[customer.id]
+        c_data["categories"][cat_id]["bought"] = True
+        qty = float(si.quantity or 0)
+        amt = float(si.amount or 0)
+        c_data["categories"][cat_id]["total_qty"] += qty
+        c_data["categories"][cat_id]["total_amt"] += amt
+        c_data["categories"][cat_id]["items"].append({
+            "product_name": p_name,
+            "quantity": qty,
+            "amount": amt,
+            "date": si.voucher.date,
+            "voucher_number": si.voucher.voucher_number,
+            "voucher_id": si.voucher.id,
+        })
+        c_data["total_spend"] += amt
+        c_data["total_items_count"] += 1
+
+        if not c_data["last_order_date"] or si.voucher.date > c_data["last_order_date"]:
+            c_data["last_order_date"] = si.voucher.date
+
+    # 4. Build analysis list for customers who bought at least 1 category
+    today = date.today()
+    cutoff_date = today - timedelta(days=90)
+    analysis_list = []
+    category_bought_counts = {cat["id"]: 0 for cat in CROSS_SELLING_CATEGORIES}
+    category_missing_counts = {cat["id"]: 0 for cat in CROSS_SELLING_CATEGORIES}
+    score_distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+    for cust_id, p_info in customer_cat_map.items():
+        customer = customer_by_id.get(cust_id)
+        if not customer:
+            continue
+
+        bought_cats = [cat_id for cat_id, val in p_info["categories"].items() if val["bought"]]
+        bought_count = len(bought_cats)
+
+        if bought_count == 0:
+            continue
+
+        missing_cats = [cat for cat in CROSS_SELLING_CATEGORIES if not p_info["categories"][cat["id"]]["bought"]]
+        missing_cat_ids = [cat["id"] for cat in missing_cats]
+
+        # Update stats
+        score_distribution[bought_count] += 1
+        for cat in CROSS_SELLING_CATEGORIES:
+            if p_info["categories"][cat["id"]]["bought"]:
+                category_bought_counts[cat["id"]] += 1
+            else:
+                category_missing_counts[cat["id"]] += 1
+
+        # Cross-Selling Specific Customer Remarks (Ordered Oldest to Newest)
+        all_remarks = list(customer.cross_selling_remarks.select_related("salesperson").order_by("created_at"))
+        latest_remark = all_remarks[-1] if all_remarks else None
+
+        # Build 5-Category Checklist matching the user's diagram
+        # If bought: show the actual product name(s) bought with [✓]
+        # If missing: show the category name with [✗]
+        checklist_items = []
+        latest_vouchers_by_cat = []
+        vouchers_map = OrderedDict()
+
+        for cat in CROSS_SELLING_CATEGORIES:
+            cat_data = p_info["categories"][cat["id"]]
+            if cat_data["bought"]:
+                # Get unique bought product names
+                distinct_products = list(
+                    OrderedDict.fromkeys([it["product_name"] for it in cat_data["items"] if it.get("product_name")]))
+                prod_display = ", ".join(distinct_products) if distinct_products else cat["name"]
+
+                # Get the latest voucher specifically for this category
+                latest_cat_voucher = cat_data["items"][0] if cat_data["items"] else None
+                v_date = latest_cat_voucher.get("date") if latest_cat_voucher else None
+                days_ago = (today - v_date).days if v_date else None
+                is_within_90_days = bool(days_ago is not None and days_ago <= 90)
+
+                checklist_items.append({
+                    "category_id": cat["id"],
+                    "category_name": cat["name"],
+                    "bought": True,
+                    "display_text": prod_display,
+                    "badge_color": cat["badge_color"],
+                    "total_qty": round(cat_data["total_qty"], 2),
+                    "total_amt": round(cat_data["total_amt"], 2),
+                    "items": cat_data["items"],
+                    "latest_voucher": {
+                        "id": latest_cat_voucher.get("voucher_id") if latest_cat_voucher else None,
+                        "voucher_number": latest_cat_voucher.get("voucher_number") if latest_cat_voucher else "",
+                        "date": v_date,
+                        "days_ago": days_ago,
+                        "is_within_90_days": is_within_90_days,
+                        "product_name": latest_cat_voucher.get("product_name") if latest_cat_voucher else "",
+                    } if latest_cat_voucher else None,
+                })
+
+                if latest_cat_voucher:
+                    latest_vouchers_by_cat.append({
+                        "category_id": cat["id"],
+                        "category_name": cat["name"],
+                        "id": latest_cat_voucher.get("voucher_id"),
+                        "voucher_number": latest_cat_voucher.get("voucher_number"),
+                        "date": v_date,
+                        "days_ago": days_ago,
+                        "is_within_90_days": is_within_90_days,
+                        "product_name": latest_cat_voucher.get("product_name"),
+                    })
+
+                for it in cat_data["items"]:
+                    v_num = it.get("voucher_number")
+                    v_id = it.get("voucher_id")
+                    if v_num and v_num not in vouchers_map:
+                        vouchers_map[v_num] = {
+                            "id": v_id,
+                            "voucher_number": v_num,
+                            "date": it.get("date"),
+                            "product_name": it.get("product_name"),
+                        }
+            else:
+                checklist_items.append({
+                    "category_id": cat["id"],
+                    "category_name": cat["name"],
+                    "bought": False,
+                    "display_text": cat["name"],
+                    "badge_color": "secondary",
+                    "total_qty": 0,
+                    "total_amt": 0,
+                    "items": [],
+                    "latest_voucher": None,
+                    "expected_items": cat["expected_items"],
+                })
+
+        vouchers_list = list(vouchers_map.values())
+        vouchers_list.sort(key=lambda x: str(x.get("date") or ""), reverse=True)
+        latest_voucher = vouchers_list[0] if vouchers_list else None
+
+        # Build category status list for stats/export compatibility
+        cat_status_list = []
+        for cat in CROSS_SELLING_CATEGORIES:
+            cat_data = p_info["categories"][cat["id"]]
+            cat_status_list.append({
+                "id": cat["id"],
+                "name": cat["name"],
+                "badge_color": cat["badge_color"],
+                "expected_items": cat["expected_items"],
+                "bought": cat_data["bought"],
+                "items": cat_data["items"][:5],
+                "total_items": len(cat_data["items"]),
+                "total_qty": round(cat_data["total_qty"], 2),
+                "total_amt": round(cat_data["total_amt"], 2),
+            })
+
+        today = date.today()
+        cutoff_date = today - timedelta(days=90)
+        last_order_d = p_info["last_order_date"]
+        is_active = bool(last_order_d and last_order_d >= cutoff_date)
+        days_since_last = (today - last_order_d).days if last_order_d else None
+
+        analysis_list.append({
+            "customer": customer,
+            "is_active": is_active,
+            "is_inactive": not is_active,
+            "customer_status": "Active" if is_active else "Inactive",
+            "days_since_last_order": days_since_last,
+            "bought_count": bought_count,
+            "missing_count": len(missing_cats),
+            "bought_cats": bought_cats,
+            "missing_cat_ids": missing_cat_ids,
+            "missing_cats": missing_cats,
+            "checklist_items": checklist_items,
+            "latest_voucher": latest_voucher,
+            "latest_vouchers_by_cat": latest_vouchers_by_cat,
+            "vouchers_list": vouchers_list,
+            "other_vouchers_count": max(0, len(vouchers_list) - 1),
+            "cat_status_list": cat_status_list,
+            "categories_map": p_info["categories"],
+            "last_order_date": p_info["last_order_date"],
+            "total_spend": round(p_info["total_spend"], 2),
+            "latest_remark": latest_remark,
+            "all_remarks": all_remarks,
+            "total_remarks_count": len(all_remarks),
+        })
+
+    # Sort customers by bought_count (descending), then last_order_date
+    analysis_list.sort(key=lambda x: (-x["bought_count"], str(x["last_order_date"] or "")), reverse=False)
+
+    stats = {
+        "total_qualifying": len(analysis_list),
+        "active_count": sum(1 for c in analysis_list if c["is_active"]),
+        "inactive_count": sum(1 for c in analysis_list if not c["is_active"]),
+        "fully_converted": score_distribution[5],
+        "cross_sell_opportunities": len(analysis_list) - score_distribution[5],
+        "score_distribution": score_distribution,
+        "category_bought_counts": category_bought_counts,
+        "category_missing_counts": category_missing_counts,
+    }
+
+    return {
+        "customers": analysis_list,
+        "stats": stats,
+    }
+
+
+class CrossSellingMatrixView(LoginRequiredMixin, TemplateView):
+    """
+    Dedicated view for the 5-Category Customer Cross-Selling Matrix & Gap Analysis.
+    Allows sales teams to identify product gaps and add customer remarks directly.
+    """
+    template_name = "customers/cross_selling_matrix.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        dataset = get_cross_selling_dataset()
+        customers_list = dataset["customers"]
+        stats = dataset["stats"]
+
+        # Salespersons for filter dropdown
+        all_sp = SalesPerson.objects.all().order_by("name")
+        hide = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan", "test1"]
+        ctx["salespersons"] = [sp for sp in all_sp if sp.name.lower() not in hide]
+        ctx["categories"] = CROSS_SELLING_CATEGORIES
+
+        # Filters from GET params
+        sp_id = self.request.GET.get("salesperson", "").strip()
+        search_query = self.request.GET.get("q", "").strip()
+        missing_cat = self.request.GET.get("missing_cat", "").strip()
+        bought_cat = self.request.GET.get("bought_cat", "").strip()
+        score_filter = self.request.GET.get("score", "").strip()
+        status_filter = self.request.GET.get("status", "").strip()
+
+        filtered_customers = customers_list
+
+        if sp_id:
+            filtered_customers = [
+                c for c in filtered_customers
+                if c["customer"].salesperson and str(c["customer"].salesperson.id) == sp_id
+            ]
+
+        if search_query:
+            q_lower = search_query.lower()
+            filtered_customers = [
+                c for c in filtered_customers
+                if (
+                        q_lower in c["customer"].name.lower()
+                        or (c["customer"].phone and q_lower in c["customer"].phone.lower())
+                        or (c["customer"].state and q_lower in c["customer"].state.lower())
+                        or (c["customer"].district and q_lower in c["customer"].district.lower())
+                )
+            ]
+
+        if missing_cat:
+            filtered_customers = [
+                c for c in filtered_customers
+                if missing_cat in c["missing_cat_ids"]
+            ]
+
+        if bought_cat:
+            filtered_customers = [
+                c for c in filtered_customers
+                if bought_cat in c["bought_cats"]
+            ]
+
+        if score_filter and score_filter.isdigit():
+            s_val = int(score_filter)
+            filtered_customers = [
+                c for c in filtered_customers
+                if c["bought_count"] == s_val
+            ]
+
+        if status_filter == "active":
+            filtered_customers = [c for c in filtered_customers if c["is_active"]]
+        elif status_filter == "inactive":
+            filtered_customers = [c for c in filtered_customers if not c["is_active"]]
+
+        ctx["customers_data"] = filtered_customers
+        ctx["total_filtered"] = len(filtered_customers)
+        ctx["stats"] = stats
+
+        # Selected filters for maintaining state in template
+        ctx["selected_sp_id"] = sp_id
+        ctx["search_query"] = search_query
+        ctx["selected_missing_cat"] = missing_cat
+        ctx["selected_bought_cat"] = bought_cat
+        ctx["selected_score"] = score_filter
+        ctx["selected_status"] = status_filter
+
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """
+        Handles adding customer remarks directly from the Cross-Selling Matrix.
+        Supports both AJAX requests and standard POST form submissions.
+        """
+        is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest" or request.POST.get("is_ajax") == "true"
+        customer_id = request.POST.get("customer_id")
+        remark_text = request.POST.get("remark", "").strip()
+        delete_id = request.POST.get("delete_remark_id")
+
+        # Handle Delete Remark (accountant/admin only)
+        if delete_id and request.user.is_accountant:
+            remark = get_object_or_404(CrossSellingRemark, id=delete_id)
+            remark.delete()
+            if is_ajax:
+                return JsonResponse(
+                    {"success": True, "action": "deleted", "message": "Cross-selling remark deleted successfully."})
+            messages.success(request, "Remark deleted successfully 🗑️")
+            return redirect(request.get_full_path())
+
+        if not customer_id or not remark_text:
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Customer ID and Remark text are required."},
+                                    status=400)
+            messages.error(request, "Please enter a remark before saving.")
+            return redirect(request.get_full_path())
+
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        # Determine the user / salesperson saving the remark
+        salesperson = None
+        if hasattr(request.user, "salesperson_profile") and request.user.salesperson_profile.exists():
+            salesperson = request.user.salesperson_profile.first()
+        elif request.user.is_authenticated:
+            salesperson = (
+                    SalesPerson.objects.filter(user=request.user).first()
+                    or SalesPerson.objects.filter(name__iexact=request.user.username).first()
+                    or SalesPerson.objects.filter(name__iexact=request.user.get_full_name()).first()
+            )
+            if not salesperson:
+                display_name = request.user.get_full_name() or request.user.username or "User"
+                salesperson, _ = SalesPerson.objects.get_or_create(name=display_name)
+
+        if not salesperson:
+            salesperson = customer.salesperson or SalesPerson.objects.first()
+
+        new_remark = CrossSellingRemark.objects.create(
+            customer=customer,
+            salesperson=salesperson,
+            remark=remark_text
+        )
+
+        total_remarks = customer.cross_selling_remarks.count()
+
+        if is_ajax:
+            author_display = new_remark.salesperson.name if (
+                        new_remark.salesperson and new_remark.salesperson.name) else (
+                        request.user.get_full_name() or request.user.username or "User")
+            return JsonResponse({
+                "success": True,
+                "action": "created",
+                "total_count": total_remarks,
+                "remark": {
+                    "id": new_remark.id,
+                    "text": new_remark.remark,
+                    "salesperson": author_display,
+                    "created_at": new_remark.created_at.strftime("%d %b %Y, %I:%M %p"),
+                }
+            })
+
+        messages.success(request, f"Remark added for {customer.name} ✅")
+        redirect_url = request.get_full_path()
+        return redirect(f"{redirect_url}#customer-row-{customer_id}")
+
+
+@login_required
+def export_cross_selling_matrix(request):
+    """
+    Exports the Cross-Selling Gap Analysis dataset to an Excel spreadsheet.
+    """
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+    dataset = get_cross_selling_dataset()
+    customers_list = dataset["customers"]
+
+    # Apply filters if provided
+    sp_id = request.GET.get("salesperson", "").strip()
+    search_query = request.GET.get("q", "").strip()
+    missing_cat = request.GET.get("missing_cat", "").strip()
+    score_filter = request.GET.get("score", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+
+    if sp_id:
+        customers_list = [c for c in customers_list if
+                          c["customer"].salesperson and str(c["customer"].salesperson.id) == sp_id]
+    if search_query:
+        q_lower = search_query.lower()
+        customers_list = [
+            c for c in customers_list
+            if (
+                    q_lower in c["customer"].name.lower()
+                    or (c["customer"].phone and q_lower in c["customer"].phone.lower())
+                    or (c["customer"].state and q_lower in c["customer"].state.lower())
+            )
+        ]
+    if missing_cat:
+        customers_list = [c for c in customers_list if missing_cat in c["missing_cat_ids"]]
+    if score_filter and score_filter.isdigit():
+        customers_list = [c for c in customers_list if c["bought_count"] == int(score_filter)]
+    if status_filter == "active":
+        customers_list = [c for c in customers_list if c["is_active"]]
+    elif status_filter == "inactive":
+        customers_list = [c for c in customers_list if not c["is_active"]]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Cross-Selling Opportunities"
+
+    # Header styling
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+    bought_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
+    missing_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    active_fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+    inactive_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+
+    headers = [
+        "S.No",
+        "Customer Name",
+        "Customer Status",
+        "Phone",
+        "State",
+        "District",
+        "Salesperson",
+        "Template Sheet",
+        "Aligner Sheet",
+        "Retainer Sheet",
+        "Resin",
+        "Other Consumables",
+        "Score (Bought/5)",
+        "Missing Categories",
+        "Total Spend (₹)",
+        "Last Order Date",
+        "Remarks History",
+    ]
+
+    ws.append(headers)
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_align
+
+    for idx, c in enumerate(customers_list, start=1):
+        cust = c["customer"]
+        missing_names = ", ".join([cat["name"] for cat in c["missing_cats"]]) if c[
+            "missing_cats"] else "None (Fully Converted)"
+        if c.get("all_remarks"):
+            remark_text = " | \n".join([
+                                           f"[{r.created_at.strftime('%d-%m-%Y %I:%M %p')} - {r.salesperson.name if r.salesperson else 'User'}]: {r.remark}"
+                                           for r in c["all_remarks"]])
+        else:
+            remark_text = ""
+
+        row_values = [
+            idx,
+            cust.name,
+            "Active" if c["is_active"] else "Inactive",
+            cust.phone or "-",
+            cust.state or "-",
+            cust.district or "-",
+            str(cust.salesperson) if cust.salesperson else "Unassigned",
+            "✅ BOUGHT" if c["categories_map"]["template_sheet"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["aligner_sheet"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["retainer_sheet"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["resin"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["other_consumable"]["bought"] else "❌ MISSING",
+            f"{c['bought_count']}/5",
+            missing_names,
+            c["total_spend"],
+            c["last_order_date"].strftime("%d-%m-%Y") if c["last_order_date"] else "-",
+            remark_text,
+        ]
+        ws.append(row_values)
+
+        # Style status cells
+        row_num = idx + 1
+
+        # Style Customer Status cell (Col 3)
+        status_cell = ws.cell(row=row_num, column=3)
+        status_cell.alignment = center_align
+        if c["is_active"]:
+            status_cell.fill = active_fill
+            status_cell.font = Font(color="166534", bold=True)
+        else:
+            status_cell.fill = inactive_fill
+            status_cell.font = Font(color="991B1B", bold=True)
+
+        for cat_col_idx, cat_id in enumerate(
+                ["template_sheet", "aligner_sheet", "retainer_sheet", "resin", "other_consumable"], start=8):
+            cell = ws.cell(row=row_num, column=cat_col_idx)
+            cell.alignment = center_align
+            if c["categories_map"][cat_id]["bought"]:
+                cell.fill = bought_fill
+                cell.font = Font(color="065F46", bold=True)
+            else:
+                cell.fill = missing_fill
+                cell.font = Font(color="991B1B", bold=True)
+
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or "")) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="cross_selling_gap_analysis.xlsx"'
+    wb.save(response)
+    return response

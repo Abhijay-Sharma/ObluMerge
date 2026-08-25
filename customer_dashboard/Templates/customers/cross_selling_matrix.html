@@ -1,0 +1,700 @@
+{% extends 'customers/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 95% !important;
+    width: 95% !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .card {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .matrix-wrapper {
+    width: 100%;
+    color: #1e293b;
+  }
+  .kpi-card {
+    border: none;
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  }
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  }
+  .table-matrix th {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+    border: none;
+    padding: 14px 16px;
+  }
+  .table-matrix td {
+    vertical-align: top;
+    font-size: 0.92rem;
+    padding: 16px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .table-matrix tr:hover td {
+    background-color: #f8fafc;
+  }
+
+  /* Checklist styling matching handwritten notes */
+  .checklist-container {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+  }
+  .checklist-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    margin-bottom: 5px;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    transition: background 0.15s ease;
+  }
+  .checklist-row.bought {
+    background-color: #f0fdf4;
+    color: #166534;
+    border-left: 3px solid #22c55e;
+  }
+  .checklist-row.missing {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border-left: 3px solid #ef4444;
+  }
+  .checklist-bullet {
+    font-weight: bold;
+    margin-right: 6px;
+    color: #64748b;
+  }
+  .check-icon-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-left: 10px;
+    flex-shrink: 0;
+  }
+  .check-icon-box.bought {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+  }
+  .check-icon-box.missing {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+  }
+
+  /* Voucher badge list with 90-day active/inactive color coding */
+  .voucher-link-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    margin-bottom: 6px;
+    margin-right: 4px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .voucher-link-badge.voucher-recent {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #86efac;
+  }
+  .voucher-link-badge.voucher-recent:hover {
+    background-color: #dcfce7;
+    border-color: #22c55e;
+    color: #166534;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.25);
+  }
+  .voucher-link-badge.voucher-overdue {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+  }
+  .voucher-link-badge.voucher-overdue:hover {
+    background-color: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+  }
+
+  /* Remark Box */
+  .remark-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .remarks-feed {
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px;
+    max-height: 180px;
+    min-height: 60px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .remark-item-bubble {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #0284c7;
+    border-radius: 6px;
+    padding: 6px 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .remark-input-area {
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.86rem;
+  }
+  .remark-history-item {
+    border-bottom: 1px dashed #e2e8f0;
+    padding: 8px 0;
+  }
+  .remark-history-item:last-child {
+    border-bottom: none;
+  }
+  .filter-panel {
+    background-color: #f8fafc;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 25px;
+    border: 1px solid #e2e8f0;
+  }
+</style>
+
+<div class="matrix-wrapper">
+
+  <!-- TOP HEADER -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1" style="color: #0f172a;">
+        🎯 Cross-Selling Matrix
+      </h2>
+      <p class="text-muted mb-0">
+        Tracks customer purchases across the 5 core categories and highlights cross-selling product gaps.
+      </p>
+    </div>
+    <div class="mt-2 mt-md-0 d-flex gap-2">
+      <a href="{% url 'customers:export_cross_selling_matrix' %}?salesperson={{ selected_sp_id }}&q={{ search_query }}&missing_cat={{ selected_missing_cat }}&score={{ selected_score }}&status={{ selected_status }}"
+         class="btn btn-success fw-bold d-flex align-items-center gap-2 shadow-sm">
+        <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
+      </a>
+      <a href="{% url 'customers:cross_selling_matrix' %}" class="btn btn-outline-secondary fw-semibold">
+        <i class="bi bi-arrow-clockwise"></i> Reset
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI SUMMARY CARDS -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+      <div class="kpi-card card bg-dark text-white p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-white-50 small text-uppercase fw-semibold">Qualifying Customers</div>
+            <h3 class="fw-bold mb-0 mt-1">{{ stats.total_qualifying }}</h3>
+          </div>
+          <div class="fs-1 text-white-50">👥</div>
+        </div>
+        <div class="small text-white-50 mt-2">
+          <span class="text-success fw-bold">🟢 {{ stats.active_count }} Active</span> &bull;
+          <span class="text-danger fw-bold">🔴 {{ stats.inactive_count }} Inactive</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+      <div class="kpi-card card bg-success text-white p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-white-50 small text-uppercase fw-semibold">Fully Converted (5/5)</div>
+            <h3 class="fw-bold mb-0 mt-1">{{ stats.fully_converted }}</h3>
+          </div>
+          <div class="fs-1 text-white-50">🌟</div>
+        </div>
+        <div class="small text-white-50 mt-2">Bought all 5 categories</div>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+      <div class="kpi-card card bg-primary text-white p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-white-50 small text-uppercase fw-semibold">Cross-Sell Opportunities</div>
+            <h3 class="fw-bold mb-0 mt-1">{{ stats.cross_sell_opportunities }}</h3>
+          </div>
+          <div class="fs-1 text-white-50">🚀</div>
+        </div>
+        <div class="small text-white-50 mt-2">Missing 1 to 4 categories</div>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+      <div class="kpi-card card bg-light border p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-muted small text-uppercase fw-semibold">Currently Filtered</div>
+            <h3 class="fw-bold mb-0 mt-1 text-dark">{{ total_filtered }}</h3>
+          </div>
+          <div class="fs-1 text-muted">🔍</div>
+        </div>
+        <div class="small text-muted mt-2">Matching filter criteria</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER TOOLBAR -->
+  <div class="filter-panel">
+    <form method="GET" class="row g-3 align-items-end">
+      <!-- Search Input -->
+      <div class="col-md-3 col-sm-6">
+        <label class="form-label fw-bold small text-dark">Search Customer / Phone / State</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control" placeholder="Search name, phone, state..." value="{{ search_query }}">
+        </div>
+      </div>
+
+      <!-- Salesperson Filter -->
+      <div class="col-md-2 col-sm-6">
+        <label class="form-label fw-bold small text-dark">Salesperson</label>
+        <select name="salesperson" class="form-select">
+          <option value="">All Salespersons</option>
+          {% for sp in salespersons %}
+            <option value="{{ sp.id }}" {% if selected_sp_id == sp.id|stringformat:"s" %}selected{% endif %}>
+              {{ sp.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Customer Status Filter (Active / Inactive) -->
+      <div class="col-md-2 col-sm-6">
+        <label class="form-label fw-bold small text-dark">Customer Status</label>
+        <select name="status" class="form-select">
+          <option value="">All Statuses</option>
+          <option value="active" {% if selected_status == 'active' %}selected{% endif %}>🟢 Active (&le; 90 Days)</option>
+          <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>🔴 Inactive (&gt; 90 Days)</option>
+        </select>
+      </div>
+
+      <!-- Missing Category Filter -->
+      <div class="col-md-2 col-sm-6">
+        <label class="form-label fw-bold small text-dark">Missing Category</label>
+        <select name="missing_cat" class="form-select">
+          <option value="">Any Missing</option>
+          {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if selected_missing_cat == cat.id %}selected{% endif %}>
+              Missing {{ cat.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Score Filter -->
+      <div class="col-md-2 col-sm-6">
+        <label class="form-label fw-bold small text-dark">Categories Bought</label>
+        <select name="score" class="form-select">
+          <option value="">All Scores (1-5)</option>
+          <option value="5" {% if selected_score == '5' %}selected{% endif %}>5/5 (Fully Converted)</option>
+          <option value="4" {% if selected_score == '4' %}selected{% endif %}>4/5 (Needs 1 More)</option>
+          <option value="3" {% if selected_score == '3' %}selected{% endif %}>3/5 (Needs 2 More)</option>
+          <option value="2" {% if selected_score == '2' %}selected{% endif %}>2/5 (Needs 3 More)</option>
+          <option value="1" {% if selected_score == '1' %}selected{% endif %}>1/5 (Needs 4 More)</option>
+        </select>
+      </div>
+
+      <!-- Filter Action Buttons -->
+      <div class="col-md-1 col-sm-12 d-flex gap-1">
+        <button type="submit" class="btn btn-primary fw-bold w-100" title="Apply Filter">
+             Search
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- TABLE MATCHING USER'S 4-COLUMN FORMAT -->
+  <div class="card border-0 shadow-sm overflow-hidden mb-5">
+    <div class="table-responsive">
+      <table class="table table-hover table-matrix align-top mb-0">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Customer</th>
+            <th style="width: 33%;">Category / Product Status</th>
+            <th style="width: 22%;">
+              Voucher No.
+            </th>
+            <th style="width: 20%;">Remark Box</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if customers_data %}
+            {% for item in customers_data %}
+              {% with cust=item.customer %}
+                <tr id="customer-row-{{ cust.id }}">
+
+                  <!-- COL 1: CUSTOMER -->
+                  <td>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-dark text-white rounded-circle p-2" style="width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                        {{ forloop.counter }}
+                      </span>
+                      <div class="w-100">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                          <h5 class="fw-bold mb-0">
+                            <a href="{% url 'customers:customer_detail' pk=cust.id %}" class="text-decoration-none text-dark hover-primary" target="_blank">
+                              {{ cust.name }}
+                            </a>
+                          </h5>
+                          <!-- CUSTOMER STATUS BADGE (ACTIVE / INACTIVE) -->
+                          {% if item.is_active %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold" style="font-size: 0.72rem; padding: 2px 7px;" title="Active Customer: Purchased within last 90 days">
+                              <i class="bi bi-circle-fill text-success" style="font-size: 0.45rem; vertical-align: middle;"></i> Active
+                            </span>
+                          {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size: 0.72rem; padding: 2px 7px;" title="Inactive Customer: No purchase in last 90+ days">
+                              <i class="bi bi-circle-fill text-danger" style="font-size: 0.45rem; vertical-align: middle;"></i> Inactive
+                            </span>
+                          {% endif %}
+                        </div>
+
+                        <div class="small text-muted mb-1">
+                          <i class="bi bi-geo-alt-fill text-danger"></i>
+                          {% if cust.district %}{{ cust.district }}, {% endif %}{{ cust.state|default:"-" }}
+                        </div>
+
+                        <div class="small text-muted mb-2 d-flex flex-wrap align-items-center gap-2">
+                          <span><i class="bi bi-telephone-fill text-primary"></i> {{ cust.phone|default:"-" }}</span>
+                          {% if cust.phone %}
+                            <a href="https://wa.me/91{{ cust.phone|slice:'-10:' }}" target="_blank" class="badge bg-success text-decoration-none" title="WhatsApp">
+                              <i class="bi bi-whatsapp"></i> WA
+                            </a>
+                          {% endif %}
+                          {% if item.last_order_date %}
+                            <span class="text-muted" style="font-size: 0.78rem;">
+                              <i class="bi bi-calendar3"></i> Last: {{ item.last_order_date|date:"d M Y" }}
+                              {% if item.days_since_last_order is not None %}
+                                <span class="{% if item.is_active %}text-success{% else %}text-danger fw-semibold{% endif %}">({{ item.days_since_last_order }}d ago)</span>
+                              {% endif %}
+                            </span>
+                          {% endif %}
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-1">
+                          <span class="badge bg-light text-dark border">
+                            <i class="bi bi-person-badge"></i> {{ cust.salesperson.name|default:"Unassigned" }}
+                          </span>
+                          <span class="badge {% if item.bought_count == 5 %}bg-success{% elif item.bought_count >= 3 %}bg-primary{% else %}bg-warning text-dark{% endif %}">
+                            {{ item.bought_count }}/5 Categories Bought
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- COL 2: CATEGORY / PRODUCT CHECKLIST -->
+                  <td>
+                    <ul class="checklist-container">
+                      {% for check in item.checklist_items %}
+                        {% if check.bought %}
+                          <!-- BOUGHT PRODUCT WITH [✓] -->
+                          <li class="checklist-row bought"
+                              data-bs-toggle="popover"
+                              data-bs-trigger="hover focus"
+                              data-bs-html="true"
+                              data-bs-title="✅ {{ check.category_name }} Purchased"
+                              data-bs-content="
+                                <div class='small'>
+                                  <strong>Product:</strong> {{ check.display_text }}<br>
+                                  <strong>Total Qty:</strong> {{ check.total_qty }}<br>
+                                  <strong>Total Amount:</strong> ₹{{ check.total_amt }}
+                                </div>
+                              ">
+                            <div>
+                              <span class="checklist-bullet">—</span>
+                              <strong class="text-dark">{{ check.display_text }}</strong>
+                              <span class="badge bg-white text-success border border-success ms-1 small" style="font-size: 0.7rem;">
+                                {{ check.category_name }}
+                              </span>
+                            </div>
+                            <span class="check-icon-box bought" title="Bought">✓</span>
+                          </li>
+                        {% else %}
+                          <!-- MISSING CATEGORY WITH [✗] -->
+                          <li class="checklist-row missing"
+                              data-bs-toggle="popover"
+                              data-bs-trigger="hover focus"
+                              data-bs-html="true"
+                              data-bs-title="❌ {{ check.category_name }} Missing"
+                              data-bs-content="
+                                <div class='small text-muted'>
+                                  <strong>Not purchased yet!</strong><br><br>
+                                  <em>Target Products:</em><br>
+                                  {{ check.expected_items }}
+                                </div>
+                              ">
+                            <div>
+                              <span class="checklist-bullet">—</span>
+                              <span>{{ check.category_name }}</span>
+                            </div>
+                            <span class="check-icon-box missing" title="Missing">✗</span>
+                          </li>
+                        {% endif %}
+                      {% endfor %}
+                    </ul>
+                  </td>
+
+                  <!-- COL 3: LATEST VOUCHER PER BOUGHT CATEGORY (LINK TO VOUCHER PAGE) -->
+                  <td>
+                    {% if item.latest_vouchers_by_cat %}
+                      <div class="d-flex flex-column gap-1">
+                        {% for v in item.latest_vouchers_by_cat %}
+                          {% if v.id %}
+                            <a href="{% url 'voucher_detail' v.id %}"
+                               target="_blank"
+                               class="voucher-link-badge d-flex align-items-center justify-content-between mb-1 {% if v.is_within_90_days %}voucher-recent{% else %}voucher-overdue{% endif %}"
+                               title="{% if v.is_within_90_days %}Purchased within past 90 days (Active){% else %}Purchased over 90 days ago (Inactive){% endif %}">
+                              <div class="d-flex align-items-center gap-1 overflow-hidden">
+                                <span class="badge {% if v.is_within_90_days %}bg-success text-white{% else %}bg-danger text-white{% endif %}" style="font-size: 0.68rem;">{{ v.category_name }}</span>
+                                <span class="{% if v.is_within_90_days %}text-success{% else %}text-danger{% endif %} fw-bold">{{ v.voucher_number }}</span>
+                              </div>
+                              <div class="d-flex align-items-center gap-1 ms-2">
+                                {% if v.date %}
+                                  <small class="{% if v.is_within_90_days %}text-success{% else %}text-danger{% endif %} text-nowrap" style="font-size: 0.72rem;">({{ v.date|date:"d M Y" }})</small>
+                                {% endif %}
+                                <i class="bi bi-box-arrow-up-right {% if v.is_within_90_days %}text-success{% else %}text-danger{% endif %}" style="font-size: 0.72rem;"></i>
+                              </div>
+                            </a>
+                          {% else %}
+                            <div class="voucher-link-badge {% if v.is_within_90_days %}voucher-recent{% else %}voucher-overdue{% endif %} d-flex align-items-center justify-content-between mb-1">
+                              <div class="d-flex align-items-center gap-1">
+                                <span class="badge {% if v.is_within_90_days %}bg-success text-white{% else %}bg-danger text-white{% endif %}" style="font-size: 0.68rem;">{{ v.category_name }}</span>
+                                <span class="fw-bold {% if v.is_within_90_days %}text-success{% else %}text-danger{% endif %}">{{ v.voucher_number }}</span>
+                              </div>
+                              {% if v.date %}
+                                <small class="{% if v.is_within_90_days %}text-success{% else %}text-danger{% endif %} text-nowrap" style="font-size: 0.72rem;">({{ v.date|date:"d M Y" }})</small>
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <span class="text-muted small fst-italic">No voucher available</span>
+                    {% endif %}
+                  </td>
+
+                  <!-- COL 4: CROSS-SELLING REMARKS FEED & INPUT (OLD TO NEW) -->
+                  <td>
+                    <div class="remark-card" id="remark-box-{{ cust.id }}">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold text-uppercase text-secondary" style="font-size: 0.72rem;">
+                          <i class="bi bi-chat-left-text-fill text-primary"></i> Remarks
+                          (<span id="remark-count-{{ cust.id }}">{{ item.total_remarks_count }}</span>)
+                        </span>
+                      </div>
+
+                      <!-- Scrollable Remarks Feed (Oldest to Newest) -->
+                      <div id="remarks-feed-{{ cust.id }}" class="remarks-feed mb-2">
+                        {% if item.all_remarks %}
+                          {% for r in item.all_remarks %}
+                            <div class="remark-item-bubble" id="remark-bubble-{{ r.id }}">
+                              <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-white text-dark border small" style="font-size: 0.7rem;">
+                                  <i class="bi bi-person-fill text-secondary"></i> {{ r.salesperson.name|default:"User" }}
+                                </span>
+                                <small class="text-muted" style="font-size: 0.68rem;">
+                                  <i class="bi bi-clock"></i> {{ r.created_at|date:"d M Y, h:i A" }}
+                                </small>
+                              </div>
+                              <div class="text-dark small fw-semibold ps-1" style="word-break: break-word;">{{ r.remark }}</div>
+                            </div>
+                          {% endfor %}
+                        {% else %}
+                          <div id="empty-remark-notice-{{ cust.id }}" class="text-muted small fst-italic p-2 text-center">
+                            No remarks recorded yet.
+                          </div>
+                        {% endif %}
+                      </div>
+
+                      <!-- Quick Add Cross-Selling Remark Form -->
+                      <form onsubmit="submitRemarkAjax(event, {{ cust.id }})" class="d-flex flex-column gap-1">
+                        {% csrf_token %}
+                        <input type="hidden" name="customer_id" value="{{ cust.id }}">
+                        <textarea name="remark" id="remark-input-{{ cust.id }}" class="form-control form-control-sm remark-input-area" rows="2" placeholder="Write remark for this customer..." required></textarea>
+                        <button type="submit" class="btn btn-sm btn-primary fw-bold d-flex align-items-center justify-content-center gap-1" id="btn-submit-{{ cust.id }}">
+                          <i class="bi bi-send-fill"></i> Save Remark
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+
+                </tr>
+              {% endwith %}
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-5 text-muted">
+                <div class="fs-1 mb-2">🔍</div>
+                <h5>No qualifying customers found matching the filter criteria.</h5>
+                <p class="small">Try clearing filters or changing search keywords.</p>
+                <a href="{% url 'customers:cross_selling_matrix' %}" class="btn btn-secondary btn-sm mt-2">Reset Filters</a>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="remarkToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage">
+        Remark added successfully! ✅
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Initialize Bootstrap Popovers & Auto-Scroll Feeds
+  document.addEventListener('DOMContentLoaded', function () {
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function (popoverTriggerEl) {
+      return new bootstrap.Popover(popoverTriggerEl, {
+        container: 'body',
+        html: true
+      });
+    });
+
+    // Auto-scroll all remark feeds to show the newest remarks at the bottom
+    document.querySelectorAll('.remarks-feed').forEach(function (feedEl) {
+      feedEl.scrollTop = feedEl.scrollHeight;
+    });
+  });
+
+  // AJAX submission for customer remarks
+  function submitRemarkAjax(event, customerId) {
+    event.preventDefault();
+
+    const inputEl = document.getElementById(`remark-input-${customerId}`);
+    const remarkText = inputEl.value.trim();
+    const btnEl = document.getElementById(`btn-submit-${customerId}`);
+
+    if (!remarkText) return;
+
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+    const formData = new FormData();
+    formData.append('customer_id', customerId);
+    formData.append('remark', remarkText);
+    formData.append('is_ajax', 'true');
+
+    // Get CSRF Token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch("{% url 'customers:cross_selling_matrix' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      btnEl.disabled = false;
+      btnEl.innerHTML = '<i class="bi bi-send-fill"></i> Save Remark';
+
+      if (data.success && data.remark) {
+        inputEl.value = '';
+
+        // Remove empty notice if present
+        const emptyNoticeEl = document.getElementById(`empty-remark-notice-${customerId}`);
+        if (emptyNoticeEl) {
+          emptyNoticeEl.remove();
+        }
+
+        // Append new remark bubble to the feed (chronological oldest to newest)
+        const feedEl = document.getElementById(`remarks-feed-${customerId}`);
+        if (feedEl) {
+          const newBubble = document.createElement('div');
+          newBubble.className = 'remark-item-bubble';
+          newBubble.id = `remark-bubble-${data.remark.id}`;
+          newBubble.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="badge bg-white text-dark border small" style="font-size: 0.7rem;">
+                <i class="bi bi-person-fill text-secondary"></i> ${data.remark.salesperson}
+              </span>
+              <small class="text-muted" style="font-size: 0.68rem;">
+                <i class="bi bi-clock"></i> ${data.remark.created_at}
+              </small>
+            </div>
+            <div class="text-dark small fw-semibold ps-1" style="word-break: break-word;">${data.remark.text}</div>
+          `;
+          feedEl.appendChild(newBubble);
+
+          // Auto-scroll to the newest remark at the bottom
+          feedEl.scrollTop = feedEl.scrollHeight;
+        }
+
+        // Update count badge
+        const countEl = document.getElementById(`remark-count-${customerId}`);
+        if (countEl) {
+          countEl.innerText = data.total_count || (parseInt(countEl.innerText || '0') + 1);
+        }
+
+        // Show Toast Notification
+        const toastEl = document.getElementById('remarkToast');
+        const toast = new bootstrap.Toast(toastEl);
+        document.getElementById('toastMessage').innerText = "Remark saved successfully! ✅";
+        toast.show();
+      } else {
+        alert(data.error || "Failed to save remark. Please try again.");
+      }
+    })
+    .catch(error => {
+      btnEl.disabled = false;
+      btnEl.innerHTML = '<i class="bi bi-send-fill"></i> Save Remark';
+      console.error("Error saving remark:", error);
+      alert("An error occurred while saving the remark. Please try again.");
+    });
+  }
+</script>
+{% endblock %}
