@@ -388,3 +388,20 @@ class CustomerUnitMembership(models.Model):
 
     def __str__(self):
         return f"{self.customer.name} → {self.unit.name}"
+
+
+class CrossSellingRemark(models.Model):
+    """
+    Dedicated remark model specifically for the 5-Category Cross-Selling Matrix.
+    Isolated from payment follow-up remarks and general customer remarks.
+    """
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="cross_selling_remarks")
+    salesperson = models.ForeignKey(SalesPerson, null=True, blank=True, on_delete=models.SET_NULL, related_name="cross_selling_remarks")
+    remark = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.customer.name} - {self.remark[:30]}"
