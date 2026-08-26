@@ -4,7 +4,7 @@ from .models import ProformaInvoice, ProformaInvoiceItem, ProformaPriceChangeReq
 from customer_dashboard.models import Customer, SalesPerson
 from tally_voucher.models import Voucher, VoucherRow
 from inventory.models import InventoryItem
-
+from .models import ProformaInvoice, ProformaInvoiceItem, ProformaPriceChangeRequest,QuotationMaker,QuotationMakerItem
 
 class ProformaInvoiceForm(forms.ModelForm):
     class Meta:
@@ -81,7 +81,7 @@ class ProformaPriceChangeRequestForm(forms.ModelForm):
 
     class Meta:
         model = ProformaPriceChangeRequest
-        fields = ["reason"]   # product + courier handled manually in view
+        fields = ["reason","invoice", "quotation"]   # product + courier handled manually in view
         widgets = {
             "reason": forms.Textarea(attrs={
                 "rows": 3,
@@ -91,12 +91,29 @@ class ProformaPriceChangeRequestForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        self.invoice = kwargs.pop("invoice", None)
+        if 'invoice' in self.fields:
+            self.fields['invoice'].required = False
+        if 'quotation' in self.fields:
+            self.fields['quotation'].required = False
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
         # Optional: make reason required
-        self.fields["reason"].required = False
+        self.fields["reason"].required = True
+
+    def __init__(self, *args, **kwargs):
+        # 1. Pop 'user' BEFORE calling super
+        self.user = kwargs.pop("user", None)
+
+        # 2. Call super() to initialize self.fields
+        super().__init__(*args, **kwargs)
+
+        # 3. Now you can safely access self.fields
+        if 'invoice' in self.fields:
+            self.fields['invoice'].required = False
+        if 'quotation' in self.fields:
+            self.fields['quotation'].required = False
+        self.fields["reason"].required = True
 
 
 class NewProformaCustomerForm(forms.ModelForm):
@@ -165,3 +182,85 @@ class NewProformaCustomerForm(forms.ModelForm):
                 self.add_error('name', f"❌ Error: This exact customer ('{name}' in {state}) already exists.")
 
         return cleaned_data
+
+
+
+
+
+class QuotationMakerForm(forms.ModelForm):
+    class Meta:
+        model = QuotationMaker
+        # Note: If you added shipping_customer to the model, add it here too
+        fields = ['customer', 'created_by']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        if 'created_by' in self.fields:
+            self.fields['created_by'].required = False
+
+            # 2. Hide it for non-accountants
+            if user and not (user.is_accountant or user.is_superuser):
+                self.fields['created_by'].widget = forms.HiddenInput()
+
+
+class QuotationMakerItemForm(forms.ModelForm):
+    class Meta:
+        model = QuotationMakerItem
+        fields = ['product', 'quantity']
+        widgets = {
+            # Hidden because the product is usually selected via a
+            # custom JS picker/search in the UI
+            "product": forms.HiddenInput(),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        product = cleaned_data.get("product")
+        quantity = cleaned_data.get("quantity")
+
+        if product and quantity:
+            # ✅ Check minimum requirement from the Pricing config
+            # I am assuming your ProductPrice model is linked via 'proforma_price'
+            pricing_config = getattr(product, "proforma_price", None)
+
+            if pricing_config:
+                min_req = pricing_config.min_requirement
+                if quantity < min_req:
+                    raise forms.ValidationError(
+                        f"Quantity for {product.name} cannot be less than the minimum requirement ({min_req})."
+                    )
+
+            # 💡 Note: Stock check is omitted here because Quotations
+            # are often used to provide pricing for items currently out of stock.
+
+        return cleaned_data
+
+
+# --- Formset for the View ---
+class BaseQuotationMakerItemFormSet(BaseModelFormSet):
+    """
+    Custom FormSet for Quotations that safely injects the
+    user object into each item form.
+    """
+    def __init__(self, *args, **kwargs):
+        # Pop the user so it doesn't interfere with BaseModelFormSet init
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+    def _construct_form(self, i, **kwargs):
+        # Check if the form's __init__ method accepts 'user'
+        # This allows us to use the same FormSet logic even if the form changes
+        if 'user' in self.form.__init__.__code__.co_varnames:
+            kwargs["user"] = self.user
+        return super()._construct_form(i, **kwargs)
+
+# This is the actual FormSet used in your View
+QuotationMakerItemFormSet = modelformset_factory(
+    QuotationMakerItem,
+    form=QuotationMakerItemForm,
+    formset=BaseQuotationMakerItemFormSet,
+    extra=1, # Provides one empty row by default
+    can_delete=True
+)

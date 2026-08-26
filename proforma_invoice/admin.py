@@ -13,4 +13,6 @@ admin.site.register(ProformaPriceChangeRequest)
 admin.site.register(ApprovedPriceMemory)
 admin.site.register(ProformaStockShortageRequest)
 admin.site.register(ProformaRemark)
-
+admin.site.register(QuotationMaker)
+admin.site.register(QuotationMakerItem)
+admin.site.register(CreditPeriodOverdueByPassRequest)

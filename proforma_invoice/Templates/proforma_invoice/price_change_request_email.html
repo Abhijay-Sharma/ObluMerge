@@ -45,7 +45,8 @@
                             <td>{{ item.product.name }}</td>
                             <td>{{ item.quantity}}</td>
                             <td align="right">₹ {{ item.unit_price|floatformat:2 }}</td>
-                            <td align="right">₹ {{ new_price|floatformat:2 }}</td>
+                <!-- FIX: Access .requested_price from the dict -->
+                            <td align="right">₹ {{ item_data.requested_price|floatformat:2 }}</td>
                         </tr>
                         {% endif %}
                     {% endwith %}
@@ -55,7 +56,7 @@
     </table>
 
     {% if requested_courier_charge %}
-    <h3 style="margin-top:20px;">Requested Courier Change</h3>
+   f <h3 style="margin-top:20px;">Requested Courier Change</h3>
     <p>
         <strong>Old Courier Charge:</strong>
         ₹ {{ invoice.courier_charge|floatformat:2 }}<br>

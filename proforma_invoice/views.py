@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import ProformaInvoice, ProformaInvoiceItem , ProformaPriceChangeRequest,ProformaStockShortageRequest,ProformaRemark, CourierMode, CourierCharge
+from .models import ProformaInvoice, ProformaInvoiceItem , ProformaPriceChangeRequest,ProformaStockShortageRequest,ProformaRemark, CourierMode, CourierCharge,QuotationMakerItem
 from .models import ApprovedPriceMemory, ProformaPriceChangeRequest, CreditPeriodOverdueByPassRequest # Ensure these are imported
 
 from .forms import ProformaInvoiceForm, ProformaItemFormSet, ProformaPriceChangeRequestForm,NewProformaCustomerForm
@@ -51,6 +51,8 @@ from django.views.decorators.http import require_POST
 import logging
 from collections import defaultdict
 from tally_voucher.models import VoucherEmiPaymentAllocation
+from .forms import ProformaInvoiceForm, ProformaItemFormSet, ProformaPriceChangeRequestForm,NewProformaCustomerForm,QuotationMakerForm,QuotationMakerItemFormSet,QuotationMakerItemForm
+
 
 logger = logging.getLogger(__name__)
 
@@ -3102,71 +3104,6 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
         except Exception as e:
             print(f"Email error: {e}")
 
-class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
-    model = ProformaPriceChangeRequest
-    template_name = "proforma_invoice/price_change_request_list.html"
-    context_object_name = "requests"
-
-    def get_queryset(self):
-        # Default ordering: Latest first
-        queryset = ProformaPriceChangeRequest.objects.select_related(
-            "invoice", "requested_by", "reviewed_by"
-        ).prefetch_related(
-            "invoice__items__product",
-            "invoice__remarks__user"
-        ).order_by("-created_at")
-
-        # logic: Super Admin sees all, but we can default filter
-        if self.request.user.is_superuser:
-            return queryset # superuser sees all by default now
-
-            # If no specific filter is selected, show 'Under MSRP' by default
-            # if not self.request.GET.get('f_status'):
-            #     queryset = queryset.filter(is_under_msrp=True)
-
-        # Get values from the URL
-        f_id = self.request.GET.get('f_id')
-        f_inv = self.request.GET.get('f_inv')
-        f_user = self.request.GET.get('f_user')
-        f_status = self.request.GET.get('f_status')
-        f_date = self.request.GET.get('f_date')
-
-        # Apply Filters
-        if f_id:
-            queryset = queryset.filter(id__icontains=f_id)
-        if f_inv:
-            queryset = queryset.filter(invoice__id__icontains=f_inv)
-        if f_user:
-            queryset = queryset.filter(requested_by__username__icontains=f_user)
-        if f_status:
-            queryset = queryset.filter(status=f_status)
-        if f_date:
-            queryset = queryset.filter(created_at__date=f_date)
-
-        return queryset
-
-    # In your views.py (the one that renders the dashboard)
-    from django.db.models import Prefetch
-
-    def price_change_requests_list(request):
-        # Get all requests
-        all_requests = ProformaPriceChangeRequest.objects.all().order_by('-created_at')
-
-        # Logic to group them by Invoice in memory
-        grouped_data = {}
-        for req in all_requests:
-            inv_id = req.invoice.id
-            if inv_id not in grouped_data:
-                grouped_data[inv_id] = {
-                    'invoice': req.invoice,
-                    'items': [],
-                    'status': 'PENDING',  # You can calculate aggregate status
-                    'requested_by': req.requested_by,
-                    'created_at': req.created_at,
-                }
-            grouped_data[inv_id]['items'].append(req)
-
-        return render(request, 'price_change_request_list.html', {'grouped_requests': grouped_data.values()})
 
 class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
     model = ProformaPriceChangeRequest
@@ -3401,6 +3338,136 @@ class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
 
         return render(request, 'price_change_request_list.html', {'grouped_requests': grouped_data.values()})
 
+
+class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
+    model = ProformaPriceChangeRequest
+    template_name = "proforma_invoice/price_change_request_list.html"
+    context_object_name = "requests"
+
+    def get_queryset(self):
+        # Default ordering: Latest first
+        queryset = ProformaPriceChangeRequest.objects.select_related(
+            "invoice", "quotation","requested_by", "reviewed_by", "customer"          #added quotaion here
+        ).prefetch_related(
+            "invoice__items", "quotation__items",
+            "invoice__remarks__user"
+        ).order_by("-created_at")
+
+        # # logic: Super Admin sees all, but we can default filter
+        # if self.request.user.is_superuser:
+        #     return queryset # superuser sees all by default now
+
+            # If no specific filter is selected, show 'Under MSRP' by default
+            # if not self.request.GET.get('f_status'):
+            #     queryset = queryset.filter(is_under_msrp=True)
+
+        # Get values from the URL
+        f_id = self.request.GET.get('f_id')
+        if f_id: queryset = queryset.filter(id__icontains=f_id)
+
+        f_inv = self.request.GET.get('f_inv')
+        f_user = self.request.GET.get('f_user')
+        f_status = self.request.GET.get('f_status')
+        f_date = self.request.GET.get('f_date')
+
+        # Apply Filters
+        if f_id:
+            queryset = queryset.filter(id__icontains=f_id)
+        if f_inv:
+            queryset = queryset.filter(Q(invoice__id__icontains=f_inv) | Q(quotation__id__icontains=f_inv)
+)
+        if f_user:
+            queryset = queryset.filter(requested_by__username__icontains=f_user)
+        if f_status:
+            queryset = queryset.filter(status=f_status)
+        if f_date:
+            queryset = queryset.filter(created_at__date=f_date)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        queryset = self.object_list
+
+        grouped_data = {}
+        for req in queryset:
+            # 1. Determine if this is an Invoice request or a Quotation request
+            if req.invoice:
+                group_id = f"INV-{req.invoice.id}"
+                parent_obj = req.invoice
+                d_type = "Proforma"  # 👈 Store the type here
+
+            elif req.quotation:
+                group_id = f"QUO-{req.quotation.id}"
+                parent_obj = req.quotation
+                d_type = "Quotation"  # 👈 Store the type here
+
+            else:
+                # Skip if neither exists (safety check)
+                continue
+
+            # 2. Initialize the group if this ID hasn't been seen yet
+            if group_id not in grouped_data:
+                grouped_data[group_id] = {
+                    # We keep the key name 'invoice' so your HTML template doesn't break,
+                    # but it will now hold either an Invoice or a Quotation object.
+                    'invoice': parent_obj,
+                    'requests': [],
+                    'display_type': d_type,
+                    'all_reviewers': [],
+                    'is_pending': False,
+                    'start_time': req.created_at,
+                    'end_time': None,
+                }
+
+            group = grouped_data[group_id]
+            group['requests'].append(req)
+
+            if req.reviewed_by:
+                group['all_reviewers'].append(req.reviewed_by.username)
+
+            if req.status == 'pending':
+                group['is_pending'] = True
+
+            # 3. Track the latest review time for duration calculation
+            if req.status != 'pending' and req.reviewed_at:
+                if not group['end_time'] or req.reviewed_at > group['end_time']:
+                    group['end_time'] = req.reviewed_at
+
+        # 4. Final calculation for duration and unique reviewers
+        for group in grouped_data.values():
+            group['unique_reviewers'] = list(dict.fromkeys(group['all_reviewers']))
+
+            # Duration calc
+            calc_end = group['end_time'] if (not group['is_pending'] and group['end_time']) else timezone.now()
+            diff = calc_end - group['start_time']
+            group['duration_display'] = f"{diff.days}d {diff.seconds // 3600}h {(diff.seconds // 60) % 60}m"
+            group['is_running'] = group['is_pending']
+
+        context['grouped_requests'] = grouped_data.values()
+        return context
+
+
+    def price_change_requests_list(request):
+        # Get all requests
+        all_requests = ProformaPriceChangeRequest.objects.all().order_by('-created_at')
+
+        # Logic to group them by Invoice in memory
+        grouped_data = {}
+        for req in all_requests:
+            inv_id = req.invoice.id
+            if inv_id not in grouped_data:
+                grouped_data[inv_id] = {
+                    'invoice': req.invoice,
+                    'items': [],
+                    'status': 'PENDING',  # You can calculate aggregate status
+                    'requested_by': req.requested_by,
+                    'created_at': req.created_at,
+                }
+            grouped_data[inv_id]['items'].append(req)
+
+        return render(request, 'price_change_request_list.html', {'grouped_requests': grouped_data.values()})
+
 def can_user_approve_request(user, price_request):
     if user.is_superuser or getattr(user, 'is_accountant', False):
         return True
@@ -3408,577 +3475,6 @@ def can_user_approve_request(user, price_request):
         return True
     return False
 
-
-class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"], status="pending")
-        invoice = price_request.invoice
-
-        # --- 1. PERMISSION CHECK (MSRP BLOCKER) ---
-        if price_request.is_under_msrp and not request.user.is_superuser:
-            try:
-                subject = f"🚨 Approval Needed: Below MSRP Request (Inv #{invoice.id})"
-                to_email = ["swasti.obluhc@gmail.com"]
-                context = {
-                    "price_request": price_request,
-                    "accountant": request.user.username,
-                    "site_url": "https://oblutools.com/proforma/price-change-requests/"
-                }
-                html_content = render_to_string("proforma_invoice/msrp_notification_email.html", context)
-                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_email)
-                msg.attach_alternative(html_content, "text/html")
-                msg.send()
-                messages.success(request, "✅ Below MSRP detected. Notification sent to Nitin Sir.")
-            except Exception as e:
-                messages.error(request, f"Mail failed: {str(e)}")
-            return redirect("proforma_price_change_requests")
-
-        # --- 2. PROCESSING GRANULAR APPROVAL ---
-        with transaction.atomic():
-            updated_json = price_request.requested_product_prices
-
-            if updated_json:
-                for item_id, data in updated_json.items():
-                    try:
-                        item = invoice.items.get(id=item_id)
-
-                        # Data Upgrade Check (Old string vs New Dict)
-                        if isinstance(data, dict):
-                            req_p = Decimal(str(data.get('requested_price', 0)))
-                            rec_p = Decimal(str(data.get('recommended_price', 0)))
-                        else:
-                            req_p = Decimal(str(data))
-                            pricing = getattr(item.product, 'proforma_price', None)
-                            rec_p = pricing.price if pricing else Decimal(0)
-                            # Upgrade JSON on the fly
-                            updated_json[item_id] = {'requested_price': str(req_p), 'recommended_price': str(rec_p)}
-                            data = updated_json[item_id]
-
-                        # --- FETCH DECISION FROM POST ---
-                        # IMPORTANT: Matches <input name="status_{{item.id}}">
-                        item_decision = request.POST.get(f'status_{item_id}', 'rejected')  # Default to rejected for safety
-
-                        # DEBUG: See decisions in terminal
-                        print(f"ITEM {item_id} DECISION: {item_decision}")
-
-                        if item_decision == 'approved':
-                            final_price = req_p
-                            data['decision'] = 'approved'
-
-                            # Update Memory for future auto-approvals
-                            memory_obj, created = ApprovedPriceMemory.objects.get_or_create(
-                                customer=invoice.customer,
-                                product=item.product,
-                                defaults={'min_approved_price': req_p, 'base_price_at_approval': rec_p}
-                            )
-                            if not created and memory_obj.base_price_at_approval == rec_p:
-                                if req_p < memory_obj.min_approved_price:
-                                    memory_obj.min_approved_price = req_p
-                                    memory_obj.save()
-                        else:
-                            # If 'rejected' or data is missing from POST
-                            final_price = rec_p
-                            data['decision'] = 'rejected'
-
-                        # Update Invoice Item snapshot
-                        item.current_price = final_price
-                        item.custom_price = float(final_price)
-                        item.save()
-
-                    except Exception as e:
-                        print(f"Error on item {item_id}: {e}")
-                        continue
-
-            # --- 3. COURIER DECISION ---
-            courier_decision = request.POST.get(f'courier_status_{price_request.id}', 'rejected')
-            print(f"COURIER DECISION: {courier_decision}")
-
-            if courier_decision == 'approved' and price_request.requested_courier_charge is not None:
-                invoice.courier_charge = price_request.requested_courier_charge
-                price_request.courier_status = 'approved'
-            else:
-                # Revert to original if rejected or missing
-                price_request.courier_status = 'rejected'
-
-            # --- 4. FINALIZE REQUEST STATUS ---
-            price_request.requested_product_prices = updated_json
-            price_request.status = "approved"  # The 'Request' itself is now processed
-            price_request.reviewed_by = request.user
-            price_request.reviewed_at = timezone.now()
-
-            if request.user.is_superuser:
-                price_request.superuser_approved = True
-            else:
-                price_request.accountant_approved = True
-
-            price_request.save()
-
-            # Unlock the invoice for the Salesperson
-            invoice.is_price_altered = True
-            invoice.save()
-
-        # --- 5. REMARKS & NOTIFICATIONS ---
-        remark_text = request.POST.get('review_remark', '').strip()
-        if remark_text:
-            append_remark(invoice, request.user, f"REVIEW COMPLETED: {remark_text}")
-        else:
-            append_remark(invoice, request.user, "Price change request processed.")
-
-        # Email logic
-        try:
-            invoice_url = "https://oblutools.com/proforma/" + str(invoice.id)
-            email_context = {
-                "request_obj": price_request,
-                "invoice": invoice,
-                "user": price_request.requested_by,
-                "status": "reviewed",
-                "remark": remark_text,
-                "invoice_url": invoice_url,
-            }
-            html_content = render_to_string("proforma_invoice/price_change_request_status_email.html", email_context)
-            subject = f"✅ Price Request Reviewed (Proforma #{invoice.id})"
-            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", [price_request.requested_by.email])
-            msg.attach_alternative(html_content, "text/html")
-            msg.send()
-        except Exception as e:
-            print(f"Email failed: {e}")
-
-        messages.success(request, f"Decisions saved for Invoice #{invoice.id}")
-        return redirect("proforma_price_change_requests")
-
-
-class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        # 1. Fetch the request and linked invoice
-        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"], status="pending")
-        invoice = price_request.invoice
-
-        # --- 2. PERMISSION CHECK (MSRP BLOCKER) ---
-        # Keeps your original logic for Nitin Sir's final unlock
-        if price_request.is_under_msrp and not request.user.is_superuser:
-            try:
-                subject = f"🚨 Approval Needed: Below MSRP Request (Inv #{invoice.id})"
-                to_email = ["swasti.obluhc@gmail.com","abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]
-                context = {
-                    "price_request": price_request,
-                    "accountant": request.user.username,
-                    "site_url": "https://oblutools.com/proforma/price-change-requests/"
-                }
-                html_content = render_to_string("proforma_invoice/msrp_notification_email.html", context)
-                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_email)
-                msg.attach_alternative(html_content, "text/html")
-                msg.send()
-                messages.success(request, "✅ Request contains items below MSRP. Notification sent to Nitin Sir.")
-            except Exception as e:
-                messages.error(request, f"Mail failed: {str(e)}")
-            return redirect("proforma_price_change_requests")
-
-        # --- 3. PROCESSING APPROVAL ---
-        # Get decision from the dynamic name "status_ID" used in HTML
-        decision = request.POST.get(f'status_{price_request.id}', 'approved')
-
-        with transaction.atomic():
-            # Handle Product Price Change
-            if price_request.is_product_request and price_request.product:
-                # Find the specific item in the invoice matching this product
-                item = invoice.items.filter(product=price_request.product).first()
-
-                if item:
-                    # Get decision from POST (matches name="status_{{req.id}}")
-                    # Note: We use the price_request.id because the model is now per-item
-                    # item_decision = request.POST.get(f'status_{price_request.id}', 'approved')
-
-                    if decision  == 'approved':
-                        final_price = price_request.requested_price
-                        rec_p = price_request.recommended_price or Decimal(0)
-
-                        # UPDATE MEMORY
-                        memory_obj, created = ApprovedPriceMemory.objects.get_or_create(
-                            customer=invoice.customer,
-                            product=item.product,
-                            defaults={'min_approved_price': final_price, 'base_price_at_approval': rec_p}
-                        )
-                        if not created and memory_obj.base_price_at_approval == rec_p:
-                            if final_price < memory_obj.min_approved_price:
-                                memory_obj.min_approved_price = final_price
-                                memory_obj.save()
-
-                        # Apply to invoice item
-                        item.current_price = final_price
-                        item.custom_price = float(final_price)
-                        item.save()
-
-                    price_request.status = decision  # 'approved' or 'rejected'
-                else:
-                    messages.error(request, f"Product {price_request.product} not found in this invoice.")
-
-            # --- 4. COURIER DECISION ---
-            # CASE B: Courier Charge Change
-            elif not price_request.is_product_request and price_request.requested_courier_charge is not None:
-                if decision == 'approved':
-                    invoice.courier_charge = price_request.requested_courier_charge
-
-                # Update status and specific courier flag if model has it
-                price_request.status = decision
-                if hasattr(price_request, 'courier_status'):
-                    price_request.courier_status = decision
-
-            # --- 5. FINALIZE REQUEST ---
-            price_request.reviewed_by = request.user
-            price_request.reviewed_at = timezone.now()
-
-            # Identify who approved for the "Reviewed By" column
-            if request.user.is_superuser:
-                price_request.superuser_approved = True
-            else:
-                price_request.accountant_approved = True
-
-            price_request.save()
-
-            # Unlock the Proforma for viewing/dispatch by Salesperson
-            invoice.is_price_altered = True
-            invoice.save()
-
-        # --- 6. REMARKS & EMAILS ---
-        remark_text = request.POST.get('review_remark', '').strip()
-        history_summary = f"Price review finished. Decisions saved to history."
-        if remark_text:
-            append_remark(invoice, request.user, f"REVIEW NOTES: {remark_text}")
-        else:
-            append_remark(invoice, request.user, history_summary)
-
-        # Notify Salesperson
-        try:
-            invoice_url = "https://oblutools.com/proforma/" + str(invoice.id)
-            email_context = {
-                "request_obj": price_request,
-                "invoice": invoice,
-                "user": price_request.requested_by,
-                "status": "reviewed",
-                "remark": remark_text or history_summary,
-                "invoice_url": invoice_url,
-            }
-            html_content = render_to_string("proforma_invoice/price_change_request_status_email.html", email_context)
-            subject = f"✅ Price Request Decision (Proforma #{invoice.id})"
-            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", [price_request.requested_by.email])
-            msg.attach_alternative(html_content, "text/html")
-            msg.send()
-        except Exception as e:
-            print(f"Notification Email failed: {e}")
-
-        messages.success(request, f"Decisions finalized for Invoice #{invoice.id}")
-        return redirect("proforma_price_change_requests")
-
-class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        # 1. Fetch the request and linked invoice
-        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"], status="pending")
-        invoice = price_request.invoice
-        # Get decision: 'approved' or 'rejected'
-        decision = request.POST.get(f'status_{price_request.id}', 'approved')
-        # --- 1. REJECT LOGIC (Always allowed for everyone) ---
-        if decision == 'rejected':
-            price_request.status = 'rejected'
-            price_request.reviewed_by = request.user
-            price_request.reviewed_at = timezone.now()
-            price_request.accountant_approved = False  # Reset flag
-            price_request.save()
-            messages.info(request,
-                          f"Request for {price_request.product.name if price_request.product else 'Courier'} rejected.")
-            return redirect("proforma_price_change_requests")
-
-        # --- 2. APPROVE LOGIC ---
-        if decision == 'approved':
-            # CASE A: Accountant (Non-Admin) approving Under-MSRP
-            if not request.user.is_superuser and price_request.is_under_msrp:
-                try:
-                    to_emails = ["abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]  # Add Nitin Sir's email here
-                    email_context = {
-                        "invoice": invoice,
-                        "price_request": price_request,
-                        "accountant_name": request.user.username,
-                        "review_url": "https://oblutools.com/proforma/price-change-requests/"
-                    }
-                    # Ensure this template filename is correct in your folder
-                    html_content = render_to_string("proforma_invoice/msrp_notification_email.html", email_context)
-
-                    subject = f"⚖️ MSRP Review Required: Inv #{invoice.id}"
-                    msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails)
-                    msg.attach_alternative(html_content, "text/html")
-                    msg.send()
-
-                    price_request.accountant_approved = True  # This locks the UI
-                    price_request.save()
-                    messages.success(request, "✅ Under MSRP: Admin notified for final approval.")
-                except Exception as e:
-                    messages.error(request, f"Email failed: {str(e)}")
-                return redirect("proforma_price_change_requests")
-
-        # --- 3. PROCESSING APPROVAL ---
-
-        with transaction.atomic():
-            # Handle Product Price Change
-            if price_request.is_product_request and price_request.product:
-                # Find the specific item in the invoice matching this product
-                item = invoice.items.filter(product=price_request.product).first()
-
-                if item:
-                    # Get decision from POST (matches name="status_{{req.id}}")
-                    # Note: We use the price_request.id because the model is now per-item
-                    # item_decision = request.POST.get(f'status_{price_request.id}', 'approved')
-
-                    if decision  == 'approved':
-                        final_price = price_request.requested_price
-                        rec_p = price_request.recommended_price or Decimal(0)
-
-                        # UPDATE MEMORY
-                        memory_obj, created = ApprovedPriceMemory.objects.get_or_create(
-                            customer=invoice.customer,
-                            product=item.product,
-                            defaults={'min_approved_price': final_price, 'base_price_at_approval': rec_p}
-                        )
-                        if not created and memory_obj.base_price_at_approval == rec_p:
-                            if final_price < memory_obj.min_approved_price:
-                                memory_obj.min_approved_price = final_price
-                                memory_obj.save()
-
-                        # Apply to invoice item
-                        item.current_price = final_price
-                        item.custom_price = float(final_price)
-                        item.save()
-
-                    price_request.status = decision  # 'approved' or 'rejected'
-                else:
-                    messages.error(request, f"Product {price_request.product} not found in this invoice.")
-
-            # --- 4. COURIER DECISION ---
-            # CASE B: Courier Charge Change
-            elif not price_request.is_product_request and price_request.requested_courier_charge is not None:
-                if decision == 'approved':
-                    invoice.courier_charge = price_request.requested_courier_charge
-
-                # Update status and specific courier flag if model has it
-                price_request.status = decision
-                if hasattr(price_request, 'courier_status'):
-                    price_request.courier_status = decision
-
-            # --- 5. FINALIZE REQUEST ---
-            price_request.reviewed_by = request.user
-            price_request.reviewed_at = timezone.now()
-
-            # Identify who approved for the "Reviewed By" column
-            if request.user.is_superuser:
-                price_request.superuser_approved = True
-            else:
-                price_request.accountant_approved = True
-
-            price_request.save()
-
-            # Unlock the Proforma for viewing/dispatch by Salesperson
-            invoice.is_price_altered = True
-            invoice.save()
-
-        # --- 6. REMARKS & EMAILS ---
-        remark_text = request.POST.get('review_remark', '').strip()
-        # history_summary = f"Price review finished. Decisions saved to history."
-        if remark_text:
-            append_remark(invoice, request.user, f"REVIEW NOTES: {remark_text}")
-        # else:
-        #     append_remark(invoice, request.user, history_summary)
-
-        # Notify Salesperson
-        try:
-            invoice_url = "https://oblutools.com/proforma/" + str(invoice.id)
-            email_context = {
-                "request_obj": price_request,
-                "invoice": invoice,
-                "user": price_request.requested_by,
-                "status": "reviewed",
-                "remark": remark_text ,
-                "invoice_url": invoice_url,
-            }
-            html_content = render_to_string("proforma_invoice/price_change_request_status_email.html", email_context)
-            subject = f"✅ Price Request Decision (Proforma #{invoice.id})"
-            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", [price_request.requested_by.email,'abhijay.obluhc@gmail.com'])
-            msg.attach_alternative(html_content, "text/html")
-            msg.send()
-        except Exception as e:
-            print(f"Notification Email failed: {e}")
-
-        # --- FINAL REVIEW CHECK ---
-        # Check if there are ANY other items for this invoice still 'pending'
-        any_pending = invoice.price_requests.filter(status='pending').exists()
-
-        if not any_pending:
-            # ---------------- ALL REVIEWED EMAIL ----------------
-            # Trigger only when the last item is processed
-            try:
-                to_emails = [price_request.requested_by.email]
-                cc_emails = ["swasti.obluhc@gmail.com"]  # Accountant CC
-
-                # Gather all requests for this invoice to show in the email table
-                final_requests = invoice.price_requests.all()
-
-                email_context = {
-                    "invoice": invoice,
-                    "requested_by": price_request.requested_by,
-                    "reviewed_by": request.user,
-                    "requests": final_requests,
-                    "review_url": f"https://oblutools.com/proforma/{invoice.id}/",
-                }
-
-                html_content = render_to_string(
-                    "proforma_invoice/price_review_complete_email.html",
-                    email_context
-                )
-
-                subject = f"✅ Price Change Review Complete (Proforma #{invoice.id})"
-                from_email = "proforma@oblutools.com"
-
-                msg = EmailMultiAlternatives(
-                    subject,
-                    "",
-                    from_email,
-                    to_emails,
-                    cc=cc_emails
-                )
-                msg.attach_alternative(html_content, "text/html")
-                msg.send()
-            except Exception as e:
-                print(f"Final Notification Email failed: {e}")
-            # -----------------------------------------------------
-
-        messages.success(request, f"Decisions finalized for Invoice #{invoice.id}")
-        return redirect("proforma_price_change_requests")
-
-
-#stock under 50% not allowed to non super user
-class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"])
-        parent_obj = price_request.invoice or price_request.quotation
-
-        if price_request.status != "pending":
-            messages.warning(request, "Request already processed.")
-            return redirect("proforma_price_change_requests")
-
-        decision = request.POST.get(f'status_{price_request.id}', 'approved')
-
-        # --- 1. REJECT LOGIC ---
-        if decision == 'rejected':
-            price_request.status = 'rejected'
-            price_request.reviewed_by = request.user
-            price_request.reviewed_at = timezone.now()
-            price_request.save()
-            self.check_and_send_final_email(request, parent_obj, price_request)
-            return redirect("proforma_price_change_requests")
-
-        # --- 2. STRICT ACCOUNTANT BLOCK (FOR COURIER AND MSRP) ---
-        if decision == 'approved' and not request.user.is_superuser:
-
-            # --- COURIER CHECK ---
-            if not price_request.is_product_request:
-                # Get values and ensure they are Decimals
-                req_amt = Decimal(str(price_request.requested_courier_charge or 0))
-                rec_amt = Decimal(str(price_request.recommended_courier_charge or 0))
-
-                # If rec_amt is 0, try to get it from the parent object directly
-                if rec_amt == 0:
-                    rec_amt = Decimal(str(parent_obj.courier_charge()))
-
-
-                # CALCULATE: Is 200 < (1800 / 2)?
-                if rec_amt > 0 and req_amt < (rec_amt / 2):
-                    # print("DEBUG: DEEP DISCOUNT DETECTED - FORCING ADMIN NOTIFICATION")
-                    return self.trigger_admin_notification(request, parent_obj, price_request,
-                                                           "DEEP COURIER DISCOUNT (>50%)")
-
-            # --- PRODUCT MSRP CHECK ---
-            elif price_request.is_product_request:
-                if price_request.is_under_msrp:
-                    # print("DEBUG: UNDER MSRP DETECTED - FORCING ADMIN NOTIFICATION")
-                    return self.trigger_admin_notification(request, parent_obj, price_request, "BELOW MSRP")
-
-        # --- 3. FINAL PROCESSING (Only reached if Admin or Safe Discount) ---
-        with transaction.atomic():
-            if price_request.is_product_request:
-                item = parent_obj.items.filter(product=price_request.product).first()
-                if item:
-                    item.requested_price = price_request.requested_price
-                    if hasattr(item, 'current_price'):
-                        item.current_price = price_request.requested_price
-                    item.save()
-
-            price_request.status = 'approved'
-            price_request.reviewed_by = request.user
-            price_request.reviewed_at = timezone.now()
-
-            if request.user.is_superuser:
-                price_request.superuser_approved = True
-            else:
-                price_request.accountant_approved = True
-
-            price_request.save()
-            parent_obj.is_price_altered = True
-            parent_obj.save()
-
-        self.check_and_send_final_email(request, parent_obj, price_request)
-        messages.success(request, "Request approved successfully.")
-        return redirect("proforma_price_change_requests")
-
-    # HELPER METHOD TO SEND TO NITIN SIR
-    def trigger_admin_notification(self, request, parent_obj, price_request, violation_type):
-        try:
-            to_emails = ["abhijay.obluhc@gmail.com","nitin.a@obluhc.com"]  # Nitin Sir
-            email_context = {
-                "invoice": parent_obj,
-                "price_request": price_request,
-                "accountant_name": request.user.username,
-                "violation_type": violation_type,
-                "review_url": "https://oblutools.com/proforma/price-change-requests/"
-            }
-            html_content = render_to_string("proforma_invoice/msrp_notification_email.html", email_context)
-            subject = f"🚨 Admin Review Required ({violation_type}): #{parent_obj.id}"
-
-            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails)
-            msg.attach_alternative(html_content, "text/html")
-            msg.send()
-
-            price_request.accountant_approved = True
-            price_request.is_under_msrp = True  # Mark it true so template shows "Sent to Admin"
-            price_request.save()
-
-            messages.warning(request, f"⚠️ {violation_type}: Nitin Sir notified for final approval.")
-        except Exception as e:
-            messages.error(request, f"Error notifying Admin: {str(e)}")
-
-        return redirect("proforma_price_change_requests")
-
-
-    def check_and_send_final_email(self, request, parent_obj, price_request):
-        """ Indented correctly inside the class """
-        any_pending = parent_obj.price_requests.filter(status='pending').exists()
-        if not any_pending:
-            try:
-                to_emails = [price_request.requested_by.email]
-                cc_emails = ["swasti.obluhc@gmail.com"]
-                all_requests = parent_obj.price_requests.select_related('product').all()
-                email_context = {
-                    "invoice": parent_obj,
-                    "customer_name": parent_obj.customer.name,
-                    "requested_by": price_request.requested_by.username,
-                    "reviewed_by": request.user.username,
-                    "requests": all_requests,
-                    "proforma_url": f"https://oblutools.com/proforma/{parent_obj.id}/",
-                }
-                html_content = render_to_string("proforma_invoice/q.html", email_context)
-                subject = f"✅ Reviewed: #{parent_obj.id} ({parent_obj.customer.name})"
-                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
-                msg.attach_alternative(html_content, "text/html")
-                msg.send()
-            except Exception as e:
-                print(f"Summary Email Error: {e}")
-        pass
 
 
 # page does not reload functionality by appending ajax in post function
@@ -4333,6 +3829,210 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
             except Exception as e:
                 print(f"Summary Email Error: {e}")
         pass
+
+
+# quotation + proforma merge
+class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"])
+        parent_obj = price_request.invoice or price_request.quotation
+        # --- NEW: Check for AJAX ---
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+        if price_request.status != "pending":
+            if is_ajax:
+                return JsonResponse({"status": "error", "message": "Already processed"})
+            messages.warning(request, "Request already processed.")
+            return redirect("proforma_price_change_requests")
+
+        decision = request.POST.get(f'status_{price_request.id}', 'approved')
+
+        # --- 1. REJECT LOGIC ---
+        if decision == 'rejected':
+            price_request.status = 'rejected'
+            price_request.reviewed_by = request.user
+            price_request.reviewed_at = timezone.now()
+            price_request.save()
+            self.check_and_send_final_email(request, parent_obj, price_request)
+            if is_ajax:
+                return JsonResponse({"status": "ok", "decision": "rejected"})
+            return redirect("proforma_price_change_requests")
+
+
+        # --- 2. STRICT ACCOUNTANT BLOCK (FOR COURIER AND MSRP) ---
+        if decision == 'approved' and not request.user.is_superuser:
+
+            # --- COURIER CHECK ---
+            if not price_request.is_product_request:
+                # Get values and ensure they are Decimals
+                req_amt = Decimal(str(price_request.requested_courier_charge or 0))
+                rec_amt = Decimal(str(price_request.recommended_courier_charge or 0))
+
+                # If rec_amt is 0, try to get it from the parent object directly
+                if rec_amt == 0:
+                    rec_amt = Decimal(str(parent_obj.courier_charge()))
+
+
+                # CALCULATE: Is 200 < (1800 / 2)?
+                if rec_amt > 0 and req_amt < (rec_amt / 2):
+                    # print("DEBUG: DEEP DISCOUNT DETECTED - FORCING ADMIN NOTIFICATION")
+                    return self.trigger_admin_notification(request, parent_obj, price_request,
+                                                           "DEEP COURIER DISCOUNT (>50%)")
+
+            # --- PRODUCT MSRP CHECK ---
+            elif price_request.is_product_request:
+                if price_request.is_under_msrp:
+                    # print("DEBUG: UNDER MSRP DETECTED - FORCING ADMIN NOTIFICATION")
+                    return self.trigger_admin_notification(request, parent_obj, price_request, "BELOW MSRP")
+
+        # --- 3. FINAL PROCESSING (Only reached if Admin or Safe Discount) ---
+        with transaction.atomic():
+            if price_request.is_product_request and price_request.product:
+                item = parent_obj.items.filter(product=price_request.product).first()
+                if item and decision == 'approved':
+                # Get decision from POST (matches name="status_{{req.id}}")
+                # Note: We use the price_request.id because the model is now per-item
+                # item_decision = request.POST.get(f'status_{price_request.id}', 'approved')
+
+                        final_price = price_request.requested_price
+                        rec_p = price_request.recommended_price or Decimal(0)
+
+                        # UPDATE MEMORY
+                        memory_obj, created = ApprovedPriceMemory.objects.get_or_create(
+                            customer=parent_obj.customer,
+                            product=item.product,
+                            defaults={'min_approved_price': final_price, 'base_price_at_approval': rec_p}
+                        )
+                        # If memory exists, update it if the new approved price is lower
+                        if not created and memory_obj.base_price_at_approval == rec_p:
+                            if final_price < memory_obj.min_approved_price:
+                                memory_obj.min_approved_price = final_price
+                                memory_obj.save()
+
+                        # Apply price to current proforma item
+                        item.current_price = final_price
+                        item.save()
+
+
+                # CASE B: Courier Charge Approval
+            elif not price_request.is_product_request and price_request.requested_courier_charge is not None:
+                if decision == 'approved':
+                    # ✅ FIXED: Force update the Main Invoice Courier field
+                    parent_obj.courier_charge = price_request.requested_courier_charge
+                    # Some models use a function or property, but we must save to field
+                    price_request.courier_status = 'approved'
+
+            price_request.status = 'approved'
+            price_request.reviewed_by = request.user
+            price_request.reviewed_at = timezone.now()
+
+            if request.user.is_superuser:
+                price_request.superuser_approved = True
+            else:
+                price_request.accountant_approved = True
+
+            price_request.save()
+            parent_obj.is_price_altered = True
+            parent_obj.save()
+
+
+        self.check_and_send_final_email(request, parent_obj, price_request)
+        if is_ajax: return JsonResponse({"status": "ok", "decision": "approved"})
+
+        messages.success(request, "Request approved successfully.")
+        return redirect("proforma_price_change_requests")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["invoice"] = self.invoice
+        items = self.invoice.items.select_related("product")
+
+        # 1. Fetch all processed requests (Approved/Rejected) for this invoice
+        # We exclude 'pending' because we only want to show historical results
+        item_requests = ProformaPriceChangeRequest.objects.filter(
+            invoice=self.invoice,
+            is_product_request=True
+        ).exclude(status="pending").order_by('id')
+
+        # 2. Map product_id to its latest status
+        status_map = {}
+        for req in item_requests:
+            status_map[req.product_id] = req.status  # stores "approved" or "rejected"
+
+        # 3. Attach status to each item
+        for item in items:
+            item.last_processed_status = status_map.get(item.product.id)
+
+        context["items"] = items
+
+        # 4. Same for Courier
+        context["courier_status"] = ProformaPriceChangeRequest.objects.filter(
+            invoice=self.invoice,
+            is_product_request=False
+        ).exclude(status="pending").last()
+
+        return context
+
+
+    # HELPER METHOD TO SEND TO NITIN SIR
+    def trigger_admin_notification(self, request, parent_obj, price_request, violation_type):
+        try:
+            to_emails = ["abhijay.obluhc@gmail.com"]  # Nitin Sir
+            email_context = {
+                "invoice": parent_obj,
+                "price_request": price_request,
+                "accountant_name": request.user.username,
+                "violation_type": violation_type,
+                "review_url": "https://oblutools.com/proforma/price-change-requests/"
+            }
+            html_content = render_to_string("proforma_invoice/msrp_notification_email.html", email_context)
+            subject = f"🚨 Admin Review Required ({violation_type}): #{parent_obj.id}"
+
+            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails)
+            msg.attach_alternative(html_content, "text/html")
+            msg.send()
+
+            price_request.accountant_approved = True
+            price_request.is_under_msrp = True  # Mark it true so template shows "Sent to Admin"
+            price_request.save()
+            # --- NEW: AJAX Return for Admin Notification ---
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({"status": "admin_notified", "violation": violation_type})
+
+
+
+            messages.warning(request, f"⚠️ {violation_type}: Nitin Sir notified for final approval.")
+        except Exception as e:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({"status": "error", "message": str(e)})
+            messages.error(request, f"Error notifying Admin: {str(e)}")
+
+        return redirect("proforma_price_change_requests")
+
+
+    def check_and_send_final_email(self, request, parent_obj, price_request):
+        """ Indented correctly inside the class """
+        any_pending = parent_obj.price_requests.filter(status='pending').exists()
+        if not any_pending:
+            try:
+                to_emails = [price_request.requested_by.email]
+                cc_emails = ["swasti.obluhc@gmail.com"]
+                all_requests = parent_obj.price_requests.select_related('product').all()
+                email_context = {
+                    "invoice": parent_obj,
+                    "customer_name": parent_obj.customer.name,
+                    "requested_by": price_request.requested_by.username,
+                    "reviewed_by": request.user.username,
+                    "requests": all_requests,
+                    "proforma_url": f"https://oblutools.com/proforma/{parent_obj.id}/",
+                }
+                html_content = render_to_string("proforma_invoice/q.html", email_context)
+                subject = f"✅ Reviewed: #{parent_obj.id} ({parent_obj.customer.name})"
+                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+            except Exception as e:
+                print(f"Summary Email Error: {e}")
 
 class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
     def post(self, request, *args, **kwargs):
@@ -5192,3 +4892,683 @@ def delete_approved_price(request, pk):
     memory.delete()
     messages.success(request, "Approved price memory deleted successfully.")
     return redirect('approved_price_list')
+
+
+
+
+#26-8-26
+# new proforma + quotation merge views
+
+class CreateQuotationMakerView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        # Initializing forms
+        quotation_form  = QuotationMakerForm(user=request.user)
+        formset = QuotationMakerItemFormSet(queryset=QuotationMakerItem.objects.none(), user=request.user)
+
+        customers = self._get_customers(request)
+        categories = Category.objects.all().order_by("name")
+
+        # Filter active items
+        items = (
+            InventoryItem.objects
+            .select_related("category", "proforma_price")
+            .prefetch_related("proforma_price__price_tiers", "courier_sheets")
+            .filter(proforma_price__price__gt=0)
+            .exclude(id__in=DISABLED_PROFORMA_PRODUCT_IDS)
+            .order_by("name")
+        )
+
+        return render(request, "proforma_invoice/create_quotation_maker.html", {
+            "quotation_form": quotation_form,
+            "formset": formset,
+            "customers": customers,
+            "categories": categories,
+            "items": items,
+        })
+
+    def check_is_permitted(self, customer, product, requested_price, current_recommended):
+        """ Checks if this price was already approved for this customer historically. """
+        memory = ApprovedPriceMemory.objects.filter(customer=customer, product=product).first()
+        if memory:
+            if memory.base_price_at_approval == current_recommended:
+                if requested_price >= memory.min_approved_price:
+                    return True
+        # return False
+
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get("action", "save")
+        quotation_form = QuotationMakerForm(request.POST, user=request.user)
+        formset = QuotationMakerItemFormSet(request.POST, queryset=QuotationMakerItem.objects.none(), user=request.user)
+
+        # Customer resolution
+        customer_id = request.POST.get("customer", "")
+        selected_customer = Customer.objects.filter(id=customer_id).first() if customer_id.isdigit() else None
+        shipping_id = request.POST.get("shipping_customer", "")
+        shipping_customer = Customer.objects.filter(
+            id=shipping_id).first() if shipping_id.isdigit() else selected_customer
+
+        if not selected_customer:
+            quotation_form.add_error(None, "Please select a valid customer.")
+            return self._render_error(request, quotation_form, formset, selected_customer)
+
+        if quotation_form.is_valid() and formset.is_valid():
+            valid_forms = [f for f in formset if f.cleaned_data and f.cleaned_data.get("product")]
+
+            if not valid_forms:
+                quotation_form.add_error(None, "❌ Please add at least one product.")
+                return self._render_error(request, quotation_form, formset, selected_customer)
+
+            # ================= 1. DATA GATHERING & VALIDATION =================
+            courier_mode = request.POST.get("courier_mode", "surface")
+            RESTRICTED_CATEGORIES = ["THERMOFORMING SHEETS", "BAY MATERIALS", "COHERZ"]
+
+            restricted_qty = 0
+            has_resin = False
+            has_stock_warning = False  # Changed from issue to warning for Quotations
+            shortage_details = {}
+
+            for f in valid_forms:
+                p = f.cleaned_data['product']
+                qty = f.cleaned_data['quantity']
+
+                # Min Quantity Check
+                pricing_config = ProductPrice.objects.filter(product=p).first()
+                if pricing_config and qty < pricing_config.min_requirement:
+                    quotation_form.add_error(None,
+                                            f"❌ '{p.name}' requires min quantity {pricing_config.min_requirement}.")
+                    return self._render_error(request, quotation_form, formset, selected_customer)
+
+                cat_name = p.category.name.upper()
+                if cat_name in RESTRICTED_CATEGORIES: restricted_qty += qty
+                if "RESIN" in cat_name: has_resin = True
+
+                # Check stock but don't block (it's just a quotation)
+                available = getattr(p, 'quantity', 0)
+                if qty > available:
+                    has_stock_warning = True
+                    shortage_details[p.name] = f"Req: {qty}, Stock: {available}"
+
+            # ================= 2. COURIER LOGIC RULES =================
+            if courier_mode == "surface" and 0 < restricted_qty < 200:
+                quotation_form.add_error(None, "❌ Surface rejected: Sheets < 200 must be Air.")
+                return self._render_error(request, quotation_form, formset, selected_customer)
+
+            if courier_mode == "air" and has_resin:
+                quotation_form.add_error(None, "❌ Air rejected: Resin products cannot be sent by Air.")
+                return self._render_error(request, quotation_form, formset, selected_customer)
+
+            # ================= 3. SAVE PROCESS =================
+            try:
+                with transaction.atomic():
+                    proposal = quotation_form.save(commit=False)
+                    proposal.customer = selected_customer
+                    proposal.shipping_customer = shipping_customer
+                    proposal.courier_mode = courier_mode
+                    proposal.created_by = request.user.username
+                    proposal.save()
+
+                    has_price_issue = False
+                    any_under_msrp = False
+
+                    req_prices_list = request.POST.getlist("requested_unit_price")
+                    req_courier = request.POST.get("requested_courier_charge", "").strip()
+                    req_reason = request.POST.get("request_reason", "").strip()
+
+                    for index, f in enumerate(valid_forms):
+                        product_obj = f.cleaned_data.get('product')
+                        qty = f.cleaned_data.get('quantity')
+
+                        item = f.save(commit=False)
+                        item.quotation = proposal  # Link to the new Quotation model
+                        item.save()
+
+                        # Pricing Snapshots
+                        pricing = getattr(product_obj, "proforma_price", None)
+                        standard_price = pricing.price if pricing else Decimal("0.00")
+                        msrp = pricing.msrp or Decimal("0.00")
+
+                        if pricing and pricing.has_dynamic_price:
+                            tier = pricing.price_tiers.filter(min_quantity__lte=qty).order_by("-min_quantity").first()
+                            if tier: standard_price = tier.unit_price
+
+                        # User Input Price
+                        user_val = standard_price
+                        if index < len(req_prices_list):
+                            u_val = req_prices_list[index].strip()
+                            if u_val: user_val = Decimal(u_val)
+
+                        is_permitted = self.check_is_permitted(selected_customer, product_obj, user_val, standard_price)
+
+                        if user_val < standard_price:
+                            if is_permitted:
+                                item.current_price = user_val
+                            else:
+                                has_price_issue = True
+                                is_under_msrp = user_val < msrp
+                                if is_under_msrp: any_under_msrp = True
+
+                                # Create Proposal Price Request
+                                ProformaPriceChangeRequest.objects.create(
+                                    quotation=proposal,
+                                    customer=selected_customer,
+                                    product=product_obj,
+                                    requested_by=request.user,
+                                    is_product_request=True,
+                                    requested_price=user_val,
+                                    recommended_price=standard_price,
+                                    msrp_snapshot=msrp,
+                                    is_under_msrp=is_under_msrp,
+                                    reason=req_reason,
+                                    status="pending"
+                                )
+                                item.current_price = standard_price  # Revert until approved
+                        else:
+                            item.current_price = standard_price
+
+                        item.save()
+
+                    # ================= 4.  HANDLE COURIER REQUEST =================
+                    has_courier_issue = False
+                    if req_courier != "" and not request.user.is_superuser:
+                        has_courier_issue = True
+                        ProformaPriceChangeRequest.objects.create(
+                            quotation=proposal,
+                            customer=selected_customer,
+                            requested_by=request.user,
+                            is_product_request=False,
+                            requested_courier_charge=Decimal(req_courier),
+                            reason=req_reason,
+                            status="pending"
+                        )
+
+                    needs_approval = (has_price_issue or has_courier_issue)
+
+                    if needs_approval and not request.user.is_superuser:
+                        proposal.is_price_altered = True
+                        proposal.save()
+
+
+                        if any_under_msrp:
+                            messages.warning(request, "⚠️ Contains items below MSRP. Super Admin approval required.")
+
+                        messages.success(request, f"✅ Price approval request for Quotation #{proposal.id} sent.")
+                        return redirect("quotation_list")
+
+                    if has_stock_warning:
+                        messages.warning(request, "✅ Quotation created, but some items are currently out of stock.")
+                    else:
+                        messages.success(request, "✅ Quotation created successfully.")
+
+                    return redirect("quotation_detail", pk=proposal.pk)
+
+            except Exception as e:
+                quotation_form.add_error(None, f"Error: {str(e)}")
+                return self._render_error(request, quotation_form, formset, selected_customer)
+
+        return self._render_error(request, quotation_form, formset, selected_customer)
+
+    def _get_customers(self, request):
+        """ Logical filtering for Salespeople vs Accountants """
+        if request.user.is_accountant or request.user.is_superuser:
+            return Customer.objects.all()
+        if hasattr(request.user, "salesperson_profile"):
+            sp = request.user.salesperson_profile.first()
+            return Customer.objects.filter(salesperson=sp)
+        return Customer.objects.none()
+
+    # --- CORRECTED VERSION ---
+    def _render_error(self, request, quotation_form, formset, selected_customer):
+        # 1. Get raw input
+        requested_prices = request.POST.getlist("requested_unit_price")
+        shipping_id = request.POST.get("shipping_customer", "")
+
+        # 2. Safely resolve shipping customer (Fix for the ValueError)
+        shipping_customer = None
+        if shipping_id and shipping_id.isdigit():
+            shipping_customer = Customer.objects.filter(id=shipping_id).first()
+
+        # 3. Manually attach values to formset for UI persistence
+        for i, form in enumerate(formset):
+            if i < len(requested_prices):
+                form.manual_price = requested_prices[i]
+
+        return render(request, "proforma_invoice/create_quotation_maker.html", {
+            "quotation_form": quotation_form,
+            "formset": formset,
+            "customers": self._get_customers(request),
+            "categories": Category.objects.all().order_by("name"),
+            "items": InventoryItem.objects.filter(proforma_price__price__gt=0).order_by("name"),
+            "selected_customer": selected_customer,
+            "shipping_customer": shipping_customer,  # Pass the resolved object
+            "requested_courier": request.POST.get("requested_courier_charge", ""),
+            "request_reason": request.POST.get("request_reason", ""),
+        })
+
+from django.views.generic import DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import redirect
+from django.conf import settings
+from decimal import Decimal, ROUND_HALF_UP
+from num2words import num2words
+import os
+
+# Assuming your model names are QuotationMaker and QuotationMakerItem
+from .models import QuotationMaker, ProformaPriceChangeRequest
+
+
+class QuotationMakerDetailView(LoginRequiredMixin, DetailView):
+    model = QuotationMaker
+    template_name = "proforma_invoice/quotation_maker_detail.html"
+    context_object_name = "quotation"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        quotation = self.object
+
+        # 1. Superuser/Accountant Master Bypass
+        if request.user.is_superuser or getattr(request.user, 'is_accountant', False):
+            return super().get(request, *args, **kwargs)
+
+        # 2. Access Control (Salesperson can only see their own quotes)
+        if hasattr(request.user, 'salesperson_profile'):
+            if quotation.customer.salesperson != request.user.salesperson_profile.first():
+                from django.contrib import messages
+                messages.error(request, "Access denied to this quotation.")
+                return redirect("quotation_list")
+
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        quotation = self.object
+
+        # =========================
+        # 🔹 Load Signature (Same as PI)
+        # =========================
+        signature_path = os.path.join(settings.BASE_DIR, "proforma_invoice", "assets", "sujal_signature_base64.txt")
+        try:
+            with open(signature_path, "r") as f:
+                context["signature_base64"] = f.read().strip()
+        except FileNotFoundError:
+            context["signature_base64"] = ""
+
+        # Optimized item fetching
+        items_qs = quotation.items.select_related("product__proforma_price").prefetch_related(
+            "product__proforma_price__price_tiers")
+        context["items"] = items_qs
+
+        # =========================================================
+        # 🔹 1. RESOLVE PRICE SOURCE (Override Logic)
+        # =========================================================
+        latest_price_req = quotation.price_requests.all().order_by("-id").first()
+        altered_prices = {}
+        use_requested_values = False
+
+        if latest_price_req:
+            # Change template to the 'altered' layout if a request is active
+            if latest_price_req.status in ["approved", "pending"]:
+                self.template_name = "proforma_invoice/quotation_detail_altered.html"
+
+            # Build dictionary of approved prices
+            if latest_price_req.status == "approved":
+                use_requested_values = True
+                approved_reqs = quotation.price_requests.filter(status="approved", is_product_request=True)
+                for req in approved_reqs:
+                    if req.product:
+                        altered_prices[str(req.product.id)] = req.requested_price
+
+        # =========================================================
+        # 🔹 2. PRODUCT CALCULATION (GST & TAXABLE VALUE)
+        # =========================================================
+        recalculated_items = []
+        subtotal_excl = Decimal("0.00")
+        total_product_gst = Decimal("0.00")
+
+        for item in items_qs:
+            qty = Decimal(str(item.quantity or 0))
+            gst_rate = Decimal(str(item.taxrate() or 0))
+
+            # --- PRIORITY 1: APPROVED OVERRIDE ---
+            if use_requested_values and str(item.product.id) in altered_prices:
+                unit_price_incl = Decimal(str(altered_prices[str(item.product.id)]))
+
+            # --- PRIORITY 2: PERMITTED SNAPSHOT (from save) ---
+            elif item.current_price:
+                unit_price_incl = item.current_price
+
+            # --- PRIORITY 3: SYSTEM MASTER PRICE ---
+            else:
+                unit_price_incl = Decimal(str(item.unit_price()))
+
+            # Tally-style Reverse GST Calculations
+            divisor = Decimal("1.00") + (gst_rate / Decimal("100"))
+            unit_price_excl = (unit_price_incl / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            taxable_value = (unit_price_excl * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            product_gst = (taxable_value * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            amount_incl = (taxable_value + product_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            subtotal_excl += taxable_value
+            total_product_gst += product_gst
+
+            recalculated_items.append({
+                "item": item,
+                "unit_price_incl": unit_price_incl,
+                "unit_price_excl": unit_price_excl,
+                "taxable_value": taxable_value,
+                "amount_incl": amount_incl,
+                "gst_amount": product_gst,
+                "gst_rate": gst_rate,
+            })
+
+        # =========================================================
+        # 🔹 3. COURIER CHARGES (Approved vs Actual)
+        # =========================================================
+        courier_req = quotation.price_requests.filter(
+            requested_courier_charge__isnull=False,
+            status="approved"
+        ).first()
+
+        if courier_req:
+            courier_charge = Decimal(str(courier_req.requested_courier_charge))
+        else:
+            raw_courier = quotation.courier_charge() if callable(quotation.courier_charge) else quotation.courier_charge
+            courier_charge = Decimal(str(raw_courier or 0))
+
+        # Calculate Courier GST based on proportional product GST rate
+        if subtotal_excl > 0:
+            combined_gst_rate = (total_product_gst / subtotal_excl * Decimal("100")).quantize(Decimal("0.01"),
+                                                                                              rounding=ROUND_HALF_UP)
+        else:
+            combined_gst_rate = Decimal("0.00")
+
+        courier_gst = (courier_charge * combined_gst_rate / Decimal("100")).quantize(Decimal("0.01"),
+                                                                                     rounding=ROUND_HALF_UP)
+        total_gst = (total_product_gst + courier_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # =========================
+        # 🔹 4. TOTALS & ROUNDING
+        # =========================
+        gross_total = (subtotal_excl + courier_charge + total_gst).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        rounded_total = gross_total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        round_off = (rounded_total - gross_total).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Word Conversion
+        Amount_in_words = num2words(rounded_total, lang="en_IN").title() + " Rupees Only"
+
+        # Split GST for Template
+        if quotation.is_intra_state():
+            cgst = (total_gst / 2).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            sgst = total_gst - cgst
+            igst = Decimal("0.00")
+        else:
+            igst = total_gst
+            cgst, sgst = Decimal("0.00"), Decimal("0.00")
+
+        # =========================
+        # 🔹 5. CONTEXT UPDATE
+        # =========================
+        context.update({
+            "recalculated_items": recalculated_items,
+            "recalculated_subtotal": subtotal_excl,
+            "courier_charge": courier_charge,
+            "igst": igst,
+            "cgst": cgst,
+            "sgst": sgst,
+            "total_gst": total_gst,
+            "gross_total": gross_total,
+            "round_off": round_off,
+            "grand_total": rounded_total,
+            "Amount_in_words": Amount_in_words,
+            "gst_type": quotation.gst_type(),
+        })
+        return context
+
+
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from .models import QuotationMaker, ProformaInvoice, ProformaInvoiceItem
+
+
+class QuotationListView(LoginRequiredMixin, ListView):
+    model = QuotationMaker
+    template_name = "proforma_invoice/quotation_list.html"  # Create this template
+    context_object_name = "quotations"
+
+    def get_queryset(self):
+        user = self.request.user
+        # Accountants see all, Sales see only theirs
+        qs = QuotationMaker.objects.all() if user.is_accountant else QuotationMaker.objects.filter(
+            created_by=user.username)
+        qs = qs.prefetch_related('price_requests')
+
+        # Apply your existing filter logic here (Customer, Date, etc.)
+        return qs.order_by("-date_created")
+
+
+# views.py
+
+@login_required
+def convert_quotation_to_pi(request, q_id):
+    quotation = get_object_or_404(QuotationMaker, id=q_id)
+    selected_customer = quotation.customer
+
+    # 1. Create the PI Header
+    pi = ProformaInvoice.objects.create(
+        customer=quotation.customer,
+        shipping_customer=quotation.shipping_customer,
+        created_by=request.user.username,
+        courier_mode=quotation.courier_mode,
+
+    )
+    quotation.price_requests.update(invoice=pi)
+
+    # --- NEW CREDIT LOGIC START ---
+    actual_credit_req_created = False
+
+    # Get all vouchers that are overdue and unpaid
+    all_overdue = CustomerVoucherStatus.objects.filter(
+        customer=selected_customer,
+        is_credit_period_crossed=True
+    ).filter(Q(is_unpaid=True) | Q(is_partially_paid=True)).select_related('voucher')
+
+    if all_overdue.exists():
+        # Filter out those covered by EMI
+        overdue_ids = all_overdue.values_list('voucher_id', flat=True)
+        vouchers_with_emi = VoucherEmiPaymentAllocation.objects.filter(
+            voucher__voucher_id__in=overdue_ids
+        ).values_list('voucher__voucher_id', flat=True).distinct()
+
+        # These are the "Hard Blocks" (Overdue & No EMI)
+        real_overdue_records = all_overdue.exclude(voucher_id__in=vouchers_with_emi)
+
+        if real_overdue_records.exists():
+            # Automatically raise a Credit Bypass Request
+            from .models import CreditPeriodOverdueByPassRequest
+            CreditPeriodOverdueByPassRequest.objects.get_or_create(
+                customer=selected_customer,
+                proforma_invoice=pi,
+                requested_by=request.user,
+                defaults={'status': 'pending'}
+            )
+            actual_credit_req_created = True
+            # (Optional: Add your email notification trigger here)
+    # --- NEW CREDIT LOGIC END ---
+
+    shortage_found = False
+    shortage_data = {}
+
+    # 2. Convert Items & Check Stock
+    for item in quotation.items.all():
+        # Create the PI item
+        ProformaInvoiceItem.objects.create(
+            invoice=pi,
+            product=item.product,
+            quantity=item.quantity,
+            requested_price=item.requested_price,
+            current_price = item.current_price,
+
+        )
+
+        # STOCK CHECK LOGIC
+        available_stock = item.product.quantity  # Assuming your InventoryItem has a .quantity field
+        if item.quantity > available_stock:
+            shortage_found = True
+            shortage_data[item.product.name] = f"Requested: {item.quantity}, Available: {available_stock}"
+
+    # 3. Handle Auto-Stock Request if shortage exists
+    if shortage_found :
+        from .models import ProformaStockShortageRequest
+        ProformaStockShortageRequest.objects.create(
+            invoice=pi,
+            requested_by=request.user,
+            shortage_details=shortage_data,
+            status='pending'  # This triggers the "STOCK REVIEW" lock in your template
+        )
+        # Note: You can trigger your email function here to notify Accounts
+        # send_stock_alert_email(pi.id, shortage_data)
+
+    # If there was a credit issue or stock issue, lock the PI
+    if shortage_found or actual_credit_req_created:
+        pi.is_price_altered = True
+        pi.save()
+
+    # 4. Mark Quotation as converted
+    quotation.is_converted_to_proforma = True
+    quotation.converted_at = timezone.now()  # <--- Add this line
+
+    quotation.save()
+    if actual_credit_req_created:
+        messages.error(request, f"Converted to PI #{pi.id}, but LOCKED due to Credit Overdue. Request sent to Admin.")
+    elif shortage_found:
+        messages.warning(request, f"Converted to PI #{pi.id}. Locked due to Stock Shortage.")
+    else:
+        messages.success(request, f"Quotation converted to PI #{pi.id} successfully.")
+
+    return redirect('proforma_list')
+
+    # messages.warning(request,
+    #                  "Converted to PI. Some items are out of stock and require approval.") if shortage_found else messages.success(
+    #     request, "Converted successfully.")
+    #
+    # return redirect('proforma_list')
+
+
+class QuotationRequestDetailsApiView(LoginRequiredMixin, View):
+    def get_value(self, obj, field_name):
+        """Helper to safely get decimal/int values as floats for JSON"""
+        val = getattr(obj, field_name, None)
+        return float(val) if val is not None else 0.0
+
+    def get(self, request, quotation_id, *args, **kwargs):
+        # 1. Fetch the Quotation
+        quotation = get_object_or_404(QuotationMaker, id=quotation_id)
+
+        # 2. Filter requests by 'quotation' - fetching both product and courier types
+        all_requests = ProformaPriceChangeRequest.objects.filter(
+            quotation=quotation
+        ).select_related('product', 'reviewed_by').order_by('-created_at')
+
+        product_list = []
+        courier_list = []
+
+        for req in all_requests:
+            if req.is_product_request:
+                # --- Handle Product Requests ---
+                if req.product:
+                    product_list.append({
+                        'name': req.product.name,
+                        'requested_price': self.get_value(req, 'requested_price'),
+                        # Fallback to current product MSRP if snapshot is missing
+                        'msrp': self.get_value(req, 'msrp_snapshot') or self.get_value(req.product, 'msrp'),
+                        'status': req.status.upper(),
+                        'reason': req.reason or "N/A",
+                        'reviewed_by': req.reviewed_by.username if req.reviewed_by else "Pending",
+                    })
+            else:
+                # --- Handle Courier Requests ---
+                courier_list.append({
+                    'requested': self.get_value(req, 'requested_courier_charge'),
+                    'recommended': self.get_value(req, 'recommended_courier_charge'),
+                    'status': req.status.upper(),
+                    'reason': req.reason or "N/A",
+                    'reviewed_by': req.reviewed_by.username if req.reviewed_by else "Pending",
+                    'date': req.created_at.strftime('%d %b %Y')
+                })
+
+        # 3. Final JSON Structure
+        data = {
+            'id': quotation.id,
+            'customer_name': quotation.customer.name,
+            'products': product_list,
+            'courier_history': courier_list  # Now contains actual data
+        }
+
+        return JsonResponse(data)
+
+
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.utils import timezone
+
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.utils.timezone import localtime
+
+
+class ManageInvoiceRemarkView(LoginRequiredMixin, View):
+
+    def get_object(self, pk, obj_type):
+        """Helper to get either Quotation or Proforma"""
+        if obj_type == "Quotation":
+            return get_object_or_404(QuotationMaker, id=pk)
+        return get_object_or_404(ProformaInvoice, id=pk)
+
+    def get(self, request, pk, *args, **kwargs):
+        """Used to load the chat history"""
+        obj_type = request.GET.get('obj_type')  # JS sends this as ?obj_type=...
+        obj = self.get_object(pk, obj_type)
+
+        # Fetch remarks linked to either quotation or invoice
+        remarks_qs = obj.remarks.all().order_by('created_at')
+
+        remarks_list = []
+        for r in remarks_qs:
+            # Determine role for CSS bubble classes (b-sales, b-accounts, b-admin)
+            role = "admin" if r.user.is_superuser else ("accounts" if r.user.is_accountant else "sales")
+
+            remarks_list.append({
+                'user': r.user.username,
+                'text': r.remark,
+                'role': role,
+                'time': localtime(r.created_at).strftime('%d %b, %H:%M')
+            })
+
+        return JsonResponse({'remarks': remarks_list})
+
+    def post(self, request, pk, *args, **kwargs):
+        obj_type = request.POST.get('obj_type')
+        text = request.POST.get('remark')
+
+        if not text:
+            return JsonResponse({'status': 'error', 'message': 'Empty remark'}, status=400)
+
+        obj = self.get_object(pk, obj_type)
+
+        from .models import ProformaRemark
+        # Create the remark and assign fields based on type
+        if obj_type == "Quotation":
+            new_remark = ProformaRemark.objects.create(
+                user=request.user,
+                remark=text,
+                quotation=obj,
+                invoice=None  # Explicitly None
+            )
+        else:
+            new_remark = ProformaRemark.objects.create(
+                user=request.user,
+                remark=text,
+                invoice=obj,
+                quotation=None
+            )
+
+        return JsonResponse({'status': 'ok'})
