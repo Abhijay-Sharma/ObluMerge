@@ -3,7 +3,9 @@ from .models import RequestLog
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView, DetailView
 from inventory.mixins import AccountantRequiredMixin
-
+import os
+import json
+from django.conf import settings
 
 def logs_dashboard(request):
 
@@ -90,3 +92,17 @@ class SessionTimelineView(AccountantRequiredMixin,ListView):
         return RequestLog.objects.filter(
             session_id=session_id
         ).order_by("created_at")
+
+
+def history_view(request):
+    archive_file = os.path.join(settings.BASE_DIR, '..', 'logs_history.jsonl')
+    logs = []
+
+    if os.path.exists(archive_file):
+        with open(archive_file, 'r') as f:
+            # We only show the last 100 lines so the page is fast
+            lines = f.readlines()
+            for line in reversed(lines[-100:]):
+                logs.append(json.loads(line))
+
+    return render(request, "request_logs/history.html", {"logs": logs})

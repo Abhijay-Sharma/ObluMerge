@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><title>History Archive</title></head>
+<body>
+    <h2>Old Request Logs (From Text File)</h2>
+    <table border="1">
+        <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Path</th>
+            <th>Status</th>
+        </tr>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.time }}</td>
+            <td>{{ log.user }}</td>
+            <td>{{ log.path }}</td>
+            <td>{{ log.status }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <p><i>Showing the last 100 history entries from the JSONL backup.</i></p>
+</body>
+</html>

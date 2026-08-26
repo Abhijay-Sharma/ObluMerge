@@ -9,4 +9,5 @@ urlpatterns = [
     path("", views.LogsDashboardView.as_view(), name="logs_dashboard"),
     path("<int:log_id>/", views.LogDetailView.as_view(), name="log_detail"),
     path("sessions/<str:session_id>/", views.SessionTimelineView.as_view(), name="session_timeline"),
+    path("history/", views.history_view, name="log_history"),
 ]
