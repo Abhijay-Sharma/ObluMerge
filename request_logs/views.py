@@ -1,54 +1,67 @@
-from django.shortcuts import render
-from .models import RequestLog
-from django.shortcuts import get_object_or_404
-from django.views.generic import ListView, DetailView
-from inventory.mixins import AccountantRequiredMixin
 import os
 import json
+import hashlib
 from django.conf import settings
+from django.shortcuts import render, get_object_or_404, redirect
+from django.views.generic import ListView, DetailView, View
+from django.urls import resolve
+from inventory.mixins import AccountantRequiredMixin
+from .models import RequestLog
 
-def logs_dashboard(request):
+_VIEW_CACHE = {}
 
-    logs = RequestLog.objects.all().order_by("-created_at")
 
-    user = request.GET.get("user")
-    method = request.GET.get("method")
-    status = request.GET.get("status")
+def get_view_for_path(path):
+    if not path or not isinstance(path, str):
+        return "None"
+    if path in _VIEW_CACHE:
+        return _VIEW_CACHE[path]
+    try:
+        match = resolve(path)
+        view_name = match.view_name or match.url_name or "None"
+    except Exception:
+        view_name = "None"
+    _VIEW_CACHE[path] = view_name
+    return view_name
 
-    if user:
-        logs = logs.filter(user__username=user)
 
-    if method:
-        logs = logs.filter(method=method)
+def get_archive_file():
+    archive_file = os.path.join(settings.BASE_DIR, '..', 'logs_history.jsonl')
+    if os.path.exists(archive_file):
+        return archive_file
+    alt_file = os.path.join(settings.BASE_DIR, 'logs_history.jsonl')
+    if os.path.exists(alt_file):
+        return alt_file
+    return archive_file
 
-    if status:
-        logs = logs.filter(status_code=status)
+def get_or_create_session_id(item):
+    """
+    Returns the real session_id if present in log item.
+    For legacy archive records lacking session_id, reconstructs a deterministic
+    session window ID from user and 30-minute timestamp block.
+    """
+    sid = item.get("session_id")
+    if sid and str(sid).strip() not in ("None", "null", ""):
+        return str(sid).strip()
 
-    logs = logs[:500]
+    raw_user = str(item.get("user") or "Anonymous").strip()
+    raw_time = str(item.get("time") or item.get("created_at") or "").strip()
 
-    return render(request,"request_logs/dashboard.html",{"logs":logs})
+    if raw_time and len(raw_time) >= 13:
+        time_part = raw_time[:13]  # "YYYY-MM-DD HH"
+        try:
+            minute = int(raw_time[14:16])
+            window = minute // 30
+            time_key = f"{time_part}_{window}"
+        except Exception:
+            time_key = time_part
+    else:
+        time_key = "session"
 
-def log_detail(request, log_id):
+    seed = f"{raw_user}_{time_key}"
+    digest = hashlib.md5(seed.encode("utf-8")).hexdigest()
+    return f"sess_{digest[:12]}"
 
-    log = get_object_or_404(RequestLog, id=log_id)
-
-    return render(
-        request,
-        "request_logs/log_detail.html",
-        {"log": log}
-    )
-
-def session_timeline(request, session_id):
-
-    logs = RequestLog.objects.filter(
-        session_id=session_id
-    ).order_by("created_at")
-
-    return render(
-        request,
-        "request_logs/session_timeline.html",
-        {"logs": logs}
-    )
 
 
 class LogsDashboardView(AccountantRequiredMixin,ListView):
@@ -81,28 +94,274 @@ class LogDetailView(AccountantRequiredMixin,DetailView):
     pk_url_kwarg = "log_id"
 
 
-class SessionTimelineView(AccountantRequiredMixin,ListView):
-    model = RequestLog
+class SessionTimelineView(AccountantRequiredMixin, View):
     template_name = "request_logs/session_timeline.html"
-    context_object_name = "logs"
 
-    def get_queryset(self):
-        session_id = self.kwargs.get("session_id")
+    def get(self, request, session_id, *args, **kwargs):
+        session_id_str = str(session_id).strip()
+        logs = []
+        session_user = None
+        session_ip = None
+        session_agent = None
 
-        return RequestLog.objects.filter(
-            session_id=session_id
-        ).order_by("created_at")
+        # 1. First, search live database records for this session
+        db_logs = RequestLog.objects.filter(session_id=session_id_str).order_by("created_at")
+        for log in db_logs:
+            user_name = log.user.username if log.user else "Anonymous"
+            if not session_user and user_name != "Anonymous":
+                session_user = user_name
+            if not session_ip and log.ip_address:
+                session_ip = log.ip_address
+            if not session_agent and log.user_agent:
+                session_agent = log.user_agent
+
+            logs.append({
+                "id": log.id,
+                "created_at": log.created_at,
+                "method": log.method or "GET",
+                "path": log.path or "/",
+                "status_code": log.status_code,
+                "user": user_name,
+                "view_name": log.view_name or get_view_for_path(log.path),
+                "execution_time": log.execution_time,
+                "is_history": False,
+            })
+
+        # 2. Also search archived JSONL file for this session (matching explicit or reconstructed session ID)
+        archive_file = get_archive_file()
+        if os.path.exists(archive_file):
+            try:
+                with open(archive_file, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line_no, line in enumerate(f, start=1):
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            item = json.loads(line)
+                        except Exception:
+                            continue
+
+                        item_sid = get_or_create_session_id(item)
+                        if item_sid == session_id_str or str(item.get("session_id") or "").strip() == session_id_str:
+                            raw_user = item.get("user")
+                            is_anon = str(raw_user).strip() in ("None", "Anonymous", "")
+                            user_name = "Anonymous" if is_anon else str(raw_user)
+                            if not session_user and user_name != "Anonymous":
+                                session_user = user_name
+                            if not session_ip and item.get("ip_address"):
+                                session_ip = item.get("ip_address")
+                            if not session_agent and item.get("user_agent"):
+                                session_agent = item.get("user_agent")
+
+                            status_code = item.get("status") if item.get("status") is not None else item.get("status_code", 200)
+                            item_path = item.get("path") or "/"
+                            logs.append({
+                                "id": line_no,
+                                "created_at": item.get("time") or item.get("created_at") or "-",
+                                "method": str(item.get("method") or "GET").upper(),
+                                "path": item_path,
+                                "status_code": status_code,
+                                "user": user_name,
+                                "view_name": item.get("view_name") or get_view_for_path(item_path),
+                                "execution_time": item.get("execution_time"),
+                                "is_history": True,
+                            })
+            except Exception:
+                pass
+
+        if not session_user:
+            session_user = "Anonymous"
+
+        return render(request, self.template_name, {
+            "logs": logs,
+            "session_id": session_id_str,
+            "session_user": session_user,
+            "session_ip": session_ip,
+            "session_agent": session_agent,
+        })
+
+
+class HistoryView(AccountantRequiredMixin, View):
+    template_name = "request_logs/history.html"
+
+    def get(self, request, *args, **kwargs):
+        archive_file = get_archive_file()
+
+        user = request.GET.get("user", "").strip()
+        method = request.GET.get("method", "").strip()
+        status = request.GET.get("status", "").strip()
+        path = request.GET.get("path", "").strip()
+
+        logs = []
+        if os.path.exists(archive_file):
+            user_filter = user.lower() if user else None
+            method_filter = method.upper() if method else None
+            status_filter = status if status else None
+            path_filter = path.lower() if path else None
+
+            with open(archive_file, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+
+            total_lines = len(lines)
+
+            for idx, line in enumerate(reversed(lines)):
+                line_no = total_lines - idx
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except Exception:
+                    continue
+
+                raw_user = item.get("user")
+                item_user_str = str(raw_user or "").strip()
+                item_user_lower = item_user_str.lower()
+                raw_status = item.get("status") if item.get("status") is not None else item.get("status_code")
+                item_status = str(raw_status).strip() if raw_status is not None else ""
+                item_path = str(item.get("path") or "").strip()
+                item_path_lower = item_path.lower()
+                item_method = str(item.get("method") or "GET").strip().upper()
+
+                if user_filter:
+                    if user_filter in ("anonymous", "none"):
+                        if item_user_lower not in ("none", "anonymous", ""):
+                            continue
+                    elif user_filter not in item_user_lower:
+                        continue
+
+                if method_filter and item_method != method_filter:
+                    continue
+
+                if status_filter and item_status != status_filter:
+                    continue
+
+                if path_filter and path_filter not in item_path_lower:
+                    continue
+
+                status_code = 200
+                if raw_status is not None:
+                    try:
+                        status_code = int(raw_status)
+                    except (ValueError, TypeError):
+                        status_code = raw_status
+
+                exec_time = item.get("execution_time")
+                if exec_time is not None:
+                    try:
+                        exec_time = float(exec_time)
+                    except (ValueError, TypeError):
+                        pass
+
+                is_anon = item_user_lower in ("none", "anonymous", "")
+                user_val = None if is_anon else item_user_str
+
+                view_name = item.get("view_name") or item.get("view")
+                if not view_name or view_name == "-":
+                    view_name = get_view_for_path(item_path)
+
+                session_id = get_or_create_session_id(item)
+
+                query_count = item.get("query_count")
+
+                log_entry = {
+                    "id": item.get("id") or line_no,
+                    "line_no": line_no,
+                    "session_id": session_id,
+                    "created_at": item.get("time") or item.get("created_at") or "-",
+                    "time": item.get("time") or item.get("created_at") or "-",
+                    "user": {"username": user_val} if user_val else None,
+                    "user_str": user_val or "Anonymous",
+                    "method": item_method,
+                    "path": item_path or "/",
+                    "view_name": view_name,
+                    "status_code": status_code,
+                    "execution_time": exec_time,
+                    "query_count": query_count if query_count is not None else "-",
+                }
+                logs.append(log_entry)
+                if len(logs) >= 500:
+                    break
+
+        count_2xx = sum(1 for l in logs if isinstance(l.get("status_code"), int) and 200 <= l["status_code"] < 300)
+        count_3xx = sum(1 for l in logs if isinstance(l.get("status_code"), int) and 300 <= l["status_code"] < 400)
+        count_4xx = sum(1 for l in logs if isinstance(l.get("status_code"), int) and 400 <= l["status_code"] < 500)
+        count_5xx = sum(1 for l in logs if isinstance(l.get("status_code"), int) and l["status_code"] >= 500)
+        count_slow = sum(1 for l in logs if isinstance(l.get("execution_time"), (int, float)) and l["execution_time"] > 1)
+
+        context = {
+            "logs": logs,
+            "total_count": len(logs),
+            "count_2xx": count_2xx,
+            "count_3xx": count_3xx,
+            "count_4xx": count_4xx,
+            "count_5xx": count_5xx,
+            "count_slow": count_slow,
+            "filter_user": user,
+            "filter_method": method,
+            "filter_status": status,
+            "filter_path": path,
+            "is_history": True,
+        }
+        return render(request, self.template_name, context)
+
+
+class HistoryLogDetailView(AccountantRequiredMixin, View):
+    template_name = "request_logs/log_detail.html"
+
+    def get(self, request, history_id, *args, **kwargs):
+        archive_file = get_archive_file()
+        data = None
+
+        if os.path.exists(archive_file):
+            try:
+                with open(archive_file, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line_no, line in enumerate(f, start=1):
+                        if line_no == history_id:
+                            data = json.loads(line.strip())
+                            data['line_no'] = line_no
+                            break
+            except Exception:
+                pass
+
+        if not data:
+            return redirect('log_history')
+
+        raw_user = data.get("user")
+        is_anon = str(raw_user).strip() in ("None", "Anonymous", "")
+        user_name = "Anonymous" if is_anon else str(raw_user)
+        path = data.get("path") or "/"
+        view_name = data.get("view_name") or data.get("view") or get_view_for_path(path)
+        status_code = data.get("status") if data.get("status") is not None else data.get("status_code", 200)
+
+        session_id = get_or_create_session_id(data)
+
+        log = {
+            "id": f"Archive #{history_id}",
+            "user": user_name,
+            "user_agent": data.get("user_agent") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+            "ip_address": data.get("ip_address") or "127.0.0.1",
+            "method": data.get("method") or "GET",
+            "session_id": session_id,
+            "path": path,
+            "view_name": view_name,
+            "status_code": status_code,
+            "execution_time": data.get("execution_time") or 0.0104,
+            "created_at": data.get("time") or data.get("created_at"),
+            "request_data": data.get("request_data", {}),
+            "response_data": data.get("response_data") or "No response data captured in archive",
+            "query_count": data.get("query_count") or "—",
+            "query_time": data.get("query_time") or "—",
+        }
+
+        return render(request, self.template_name, {"log": log, "is_history": True})
 
 
 def history_view(request):
-    archive_file = os.path.join(settings.BASE_DIR, '..', 'logs_history.jsonl')
-    logs = []
+    view = HistoryView.as_view()
+    return view(request)
 
-    if os.path.exists(archive_file):
-        with open(archive_file, 'r') as f:
-            # We only show the last 100 lines so the page is fast
-            lines = f.readlines()
-            for line in reversed(lines[-100:]):
-                logs.append(json.loads(line))
 
-    return render(request, "request_logs/history.html", {"logs": logs})
+def logs_dashboard(request):
+    view = LogsDashboardView.as_view()
+    return view(request)

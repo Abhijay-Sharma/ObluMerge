@@ -1,24 +1,975 @@
 <!DOCTYPE html>
-<html>
-<head><title>History Archive</title></head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Logs History Archive</title>
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --border-subtle: #edf2f7;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --text-soft: #94a3b8;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #eff6ff;
+
+            --success-bg: #ecfdf5;
+            --success-text: #059669;
+            --success-border: #a7f3d0;
+
+            --info-bg: #eff6ff;
+            --info-text: #2563eb;
+            --info-border: #bfdbfe;
+
+            --warning-bg: #fffbeb;
+            --warning-text: #d97706;
+            --warning-border: #fde68a;
+
+            --danger-bg: #fef2f2;
+            --danger-text: #dc2626;
+            --danger-border: #fecaca;
+
+            --slow-bg: #fef9c3;
+            --slow-text: #a16207;
+            --slow-border: #fef08a;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+            --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1560px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ── Top Header ─────────────────────────────────────────── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, #4f46e5, #3b82f6);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .archive-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid var(--border);
+            padding: 3px 9px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .archive-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #64748b;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ── Navigation Tabs ───────────────────────────────────── */
+        .nav-tabs-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #e2e8f0;
+            padding: 4px;
+            border-radius: var(--radius-md);
+        }
+
+        .tab-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            color: #64748b;
+            transition: all 0.15s ease;
+        }
+
+        .tab-link:hover {
+            color: var(--text-main);
+        }
+
+        .tab-link.active {
+            background: #ffffff;
+            color: var(--primary-dark);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        /* ── Stats Summary Bar ──────────────────────────────────── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.1;
+            margin-top: 2px;
+        }
+
+        .stat-card.success .stat-value { color: var(--success-text); }
+        .stat-card.info .stat-value { color: var(--info-text); }
+        .stat-card.warning .stat-value { color: var(--warning-text); }
+        .stat-card.danger .stat-value { color: var(--danger-text); }
+        .stat-card.slow .stat-value { color: var(--slow-text); }
+
+        /* ── Filter Card ────────────────────────────────────────── */
+        .filter-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-form {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .filter-group label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .filter-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-input-wrap i {
+            position: absolute;
+            left: 11px;
+            color: var(--text-soft);
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        .form-control,
+        .form-select {
+            width: 100%;
+            height: 38px;
+            padding: 0 12px 0 32px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-main);
+            font-size: 12px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.15s ease;
+        }
+
+        .form-select {
+            padding-left: 32px;
+            cursor: pointer;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .btn {
+            height: 38px;
+            padding: 0 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--primary-dark);
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: #ffffff;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+            color: var(--text-main);
+            border-color: #cbd5e1;
+        }
+
+        /* ── Table Card ─────────────────────────────────────────── */
+        .table-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .table-header-bar {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            background: #ffffff;
+        }
+
+        .table-info-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .table-info-text strong {
+            color: var(--text-main);
+        }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .logs-table {
+            width: 100%;
+            min-width: 960px;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .logs-table thead th {
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .logs-table tbody tr {
+            border-bottom: 1px solid var(--border-subtle);
+            transition: background 0.12s ease;
+        }
+
+        .logs-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .logs-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .logs-table tbody tr.row-slow {
+            background: #fefce8;
+        }
+
+        .logs-table tbody tr.row-slow:hover {
+            background: #fef9c3;
+        }
+
+        .logs-table td {
+            padding: 10px 14px;
+            vertical-align: middle;
+            font-size: 12px;
+            color: var(--text-main);
+        }
+
+        /* ── Badge & Pill Styles ────────────────────────────────── */
+        .session-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid var(--border);
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .session-link:hover {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            border-color: var(--info-border);
+        }
+
+        .time-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #64748b;
+            white-space: nowrap;
+        }
+
+        .user-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 20px;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .user-pill.anonymous {
+            color: #94a3b8;
+            font-style: italic;
+            font-weight: 500;
+            background: transparent;
+            border-style: dashed;
+        }
+
+        .method-badge {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .method-get    { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .method-post   { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+        .method-put    { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        .method-delete { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .method-patch  { background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+        .method-head   { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+        .path-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            color: #0f172a;
+            max-width: 320px;
+            word-break: break-all;
+            display: inline-block;
+        }
+
+        .view-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #64748b;
+            max-width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .status-2xx { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); }
+        .status-3xx { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-border); }
+        .status-4xx { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); }
+        .status-5xx { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
+
+        .exec-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            white-space: nowrap;
+        }
+
+        .exec-time.slow {
+            color: #b45309;
+            background: #fef08a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .query-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        /* ── Empty State ────────────────────────────────────────── */
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 40px;
+            color: #cbd5e1;
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        .empty-state h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .empty-state p {
+            font-size: 12px;
+            color: var(--text-soft);
+        }
+
+        /* ── Responsive adjustments for mobile ──────────────────── */
+        @media (max-width: 900px) {
+            body {
+                padding: 16px 12px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 14px;
+            }
+
+            .nav-tabs-wrapper {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .tab-link {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .filter-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                min-width: 100%;
+            }
+
+            .filter-actions {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .filter-actions .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .header-title {
+                font-size: 18px;
+            }
+
+            .header-icon {
+                width: 38px;
+                height: 38px;
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
 <body>
-    <h2>Old Request Logs (From Text File)</h2>
-    <table border="1">
-        <tr>
-            <th>Time</th>
-            <th>User</th>
-            <th>Path</th>
-            <th>Status</th>
-        </tr>
-        {% for log in logs %}
-        <tr>
-            <td>{{ log.time }}</td>
-            <td>{{ log.user }}</td>
-            <td>{{ log.path }}</td>
-            <td>{{ log.status }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    <p><i>Showing the last 100 history entries from the JSONL backup.</i></p>
+
+<div class="container">
+
+<!--    &lt;!&ndash; ── Header ─────────────────────────────────────────── &ndash;&gt;-->
+<!--    <header class="page-header">-->
+<!--        <div class="header-title-wrap">-->
+<!--            <div class="header-icon">-->
+<!--                <i class="bi bi-archive-fill"></i>-->
+<!--            </div>-->
+<!--            <div>-->
+<!--                <h1 class="header-title">-->
+<!--                    Request Logs Archive-->
+<!--                    <span class="archive-badge">-->
+<!--                        <span class="dot"></span>-->
+<!--                        JSONL History-->
+<!--                    </span>-->
+<!--                </h1>-->
+<!--                <p class="header-subtitle">-->
+<!--                    Historical request logs preserved from disk storage archive.-->
+<!--                </p>-->
+<!--            </div>-->
+<!--        </div>-->
+
+<!--        <nav class="nav-tabs-wrapper">-->
+<!--            <a href="{% url 'logs_dashboard' %}" class="tab-link">-->
+<!--                <i class="bi bi-activity"></i>-->
+<!--                Live Logs-->
+<!--            </a>-->
+<!--            <a href="{% url 'log_history' %}" class="tab-link active">-->
+<!--                <i class="bi bi-clock-history"></i>-->
+<!--                History Archive-->
+<!--            </a>-->
+<!--        </nav>-->
+<!--    </header>-->
+
+<!--    &lt;!&ndash; ── Summary Statistics ─────────────────────────────── &ndash;&gt;-->
+<!--    <section class="stats-grid">-->
+<!--        <div class="stat-card">-->
+<!--            <div class="stat-label">-->
+<!--                <span>Total Loaded</span>-->
+<!--                <i class="bi bi-list-ul"></i>-->
+<!--            </div>-->
+<!--            <div class="stat-value">{{ total_count|default:logs|length }}</div>-->
+<!--        </div>-->
+
+<!--        <div class="stat-card success">-->
+<!--            <div class="stat-label">-->
+<!--                <span>2xx Success</span>-->
+<!--                <i class="bi bi-check-circle-fill"></i>-->
+<!--            </div>-->
+<!--            <div class="stat-value">{{ count_2xx|default:0 }}</div>-->
+<!--        </div>-->
+
+<!--        <div class="stat-card info">-->
+<!--            <div class="stat-label">-->
+<!--                <span>3xx Redirect</span>-->
+<!--                <i class="bi bi-arrow-repeat"></i>-->
+<!--            </div>-->
+<!--            <div class="stat-value">{{ count_3xx|default:0 }}</div>-->
+<!--        </div>-->
+
+<!--        <div class="stat-card warning">-->
+<!--            <div class="stat-label">-->
+<!--                <span>4xx Client Err</span>-->
+<!--                <i class="bi bi-exclamation-triangle-fill"></i>-->
+<!--            </div>-->
+<!--            <div class="stat-value">{{ count_4xx|default:0 }}</div>-->
+<!--        </div>-->
+
+<!--        <div class="stat-card danger">-->
+<!--            <div class="stat-label">-->
+<!--                <span>5xx Server Err</span>-->
+<!--                <i class="bi bi-x-circle-fill"></i>-->
+<!--            </div>-->
+<!--            <div class="stat-value">{{ count_5xx|default:0 }}</div>-->
+<!--        </div>-->
+
+<!--        <div class="stat-card slow">-->
+<!--            <div class="stat-label">-->
+<!--                <span>Slow (&gt;1s)</span>-->
+<!--                <i class="bi bi-stopwatch-fill"></i>-->
+<!--            </div>-->
+<!--            <div class="stat-value">{{ count_slow|default:0 }}</div>-->
+<!--        </div>-->
+<!--    </section>-->
+
+<!--    &lt;!&ndash; ── Filter Controls ────────────────────────────────── &ndash;&gt;-->
+<!--    <section class="filter-card">-->
+<!--        <form method="get" class="filter-form">-->
+
+<!--            <div class="filter-group">-->
+<!--                <label for="filterUser">User</label>-->
+<!--                <div class="filter-input-wrap">-->
+<!--                    <i class="bi bi-person"></i>-->
+<!--                    <input-->
+<!--                        type="text"-->
+<!--                        id="filterUser"-->
+<!--                        name="user"-->
+<!--                        class="form-control"-->
+<!--                        placeholder="Search user..."-->
+<!--                        value="{{ filter_user|default:'' }}"-->
+<!--                    >-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class="filter-group" style="max-width: 160px;">-->
+<!--                <label for="filterMethod">Method</label>-->
+<!--                <div class="filter-input-wrap">-->
+<!--                    <i class="bi bi-code-slash"></i>-->
+<!--                    <select id="filterMethod" name="method" class="form-select">-->
+<!--                        <option value="">All Methods</option>-->
+<!--                        <option value="GET" {% if filter_method == 'GET' %}selected{% endif %}>GET</option>-->
+<!--                        <option value="POST" {% if filter_method == 'POST' %}selected{% endif %}>POST</option>-->
+<!--                        <option value="PUT" {% if filter_method == 'PUT' %}selected{% endif %}>PUT</option>-->
+<!--                        <option value="DELETE" {% if filter_method == 'DELETE' %}selected{% endif %}>DELETE</option>-->
+<!--                        <option value="PATCH" {% if filter_method == 'PATCH' %}selected{% endif %}>PATCH</option>-->
+<!--                        <option value="HEAD" {% if filter_method == 'HEAD' %}selected{% endif %}>HEAD</option>-->
+<!--                    </select>-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class="filter-group" style="max-width: 160px;">-->
+<!--                <label for="filterStatus">Status</label>-->
+<!--                <div class="filter-input-wrap">-->
+<!--                    <i class="bi bi-hash"></i>-->
+<!--                    <input-->
+<!--                        type="text"-->
+<!--                        id="filterStatus"-->
+<!--                        name="status"-->
+<!--                        class="form-control"-->
+<!--                        placeholder="e.g. 200, 404"-->
+<!--                        value="{{ filter_status|default:'' }}"-->
+<!--                    >-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class="filter-group" style="flex: 2;">-->
+<!--                <label for="filterPath">Path</label>-->
+<!--                <div class="filter-input-wrap">-->
+<!--                    <i class="bi bi-search"></i>-->
+<!--                    <input-->
+<!--                        type="text"-->
+<!--                        id="filterPath"-->
+<!--                        name="path"-->
+<!--                        class="form-control"-->
+<!--                        placeholder="Path contains (e.g. /customers, /api)..."-->
+<!--                        value="{{ filter_path|default:'' }}"-->
+<!--                    >-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class="filter-actions">-->
+<!--                <button type="submit" class="btn btn-primary">-->
+<!--                    <i class="bi bi-funnel-fill"></i>-->
+<!--                    Filter-->
+<!--                </button>-->
+<!--                <a href="{% url 'log_history' %}" class="btn btn-secondary" title="Clear Filters">-->
+<!--                    <i class="bi bi-x-lg"></i>-->
+<!--                    Reset-->
+<!--                </a>-->
+<!--            </div>-->
+
+<!--        </form>-->
+<!--    </section>-->
+
+    <!-- ── Logs Table ─────────────────────────────────────── -->
+    <section class="table-card">
+        <div class="table-header-bar">
+            <span class="table-info-text">
+                Showing up to <strong>{{ logs|length }}</strong> archived entries from <code>logs_history.jsonl</code>
+            </span>
+            {% if filter_user or filter_method or filter_status or filter_path %}
+                <span class="archive-badge" style="background:#eff6ff;color:#2563eb;border-color:#bfdbfe;">
+                    <i class="bi bi-funnel"></i> Filters Active
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="table-scroll">
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th>Session</th>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Method</th>
+                        <th>Path</th>
+                        <th>View</th>
+                        <th>Status</th>
+                        <th>Execution</th>
+                        <th>Queries</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="{% if log.execution_time and log.execution_time > 1 %}row-slow{% endif %}"
+                        onclick="window.location='/logs/history/{{ log.line_no }}/'"
+                        style="cursor:pointer;">
+
+                        <!-- Session -->
+                        <td>
+                            {% if log.session_id and log.session_id != "None" %}
+                                <a href="/logs/sessions/{{ log.session_id }}/" class="session-link" onclick="event.stopPropagation();" title="{{ log.session_id }}">
+                                    <i class="bi bi-fingerprint"></i>
+                                    {{ log.session_id|slice:":8" }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted" style="color:#94a3b8;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Time -->
+                        <td>
+                            <span class="time-text">{{ log.created_at|default:log.time }}</span>
+                        </td>
+
+                        <!-- User -->
+                        <td>
+                            {% if log.user %}
+                                <span class="user-pill">
+                                    <i class="bi bi-person-fill"></i>
+                                    {{ log.user.username|default:log.user }}
+                                </span>
+                            {% elif log.user_str and log.user_str != "Anonymous" and log.user_str != "None" %}
+                                <span class="user-pill">
+                                    <i class="bi bi-person-fill"></i>
+                                    {{ log.user_str }}
+                                </span>
+                            {% else %}
+                                <span class="user-pill anonymous">
+                                    Anonymous
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Method -->
+                        <td>
+                            <span class="method-badge method-{{ log.method|lower }}">
+                                {{ log.method|default:"GET" }}
+                            </span>
+                        </td>
+
+                        <!-- Path -->
+                        <td>
+                            <span class="path-code" title="{{ log.path }}">
+                                {{ log.path }}
+                            </span>
+                        </td>
+
+                        <!-- View -->
+                        <td>
+                            {% if log.view_name and log.view_name != "-" %}
+                                <span class="view-code" title="{{ log.view_name }}">{{ log.view_name }}</span>
+                            {% else %}
+                                <span class="text-muted" style="color:#94a3b8;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Status -->
+                        <td>
+                            {% if log.status_code < 300 %}
+                                <span class="status-pill status-2xx">
+                                    <i class="bi bi-check2"></i>
+                                    {{ log.status_code }}
+                                </span>
+                            {% elif log.status_code < 400 %}
+                                <span class="status-pill status-3xx">
+                                    <i class="bi bi-arrow-right-short"></i>
+                                    {{ log.status_code }}
+                                </span>
+                            {% elif log.status_code < 500 %}
+                                <span class="status-pill status-4xx">
+                                    <i class="bi bi-exclamation"></i>
+                                    {{ log.status_code }}
+                                </span>
+                            {% else %}
+                                <span class="status-pill status-5xx">
+                                    <i class="bi bi-x"></i>
+                                    {{ log.status_code }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Execution Time -->
+                        <td>
+                            {% if log.execution_time is not None and log.execution_time != "-" %}
+                                <span class="exec-time {% if log.execution_time > 1 %}slow{% endif %}">
+                                    {{ log.execution_time|floatformat:3 }}s
+                                </span>
+                            {% else %}
+                                <span class="text-muted" style="color:#94a3b8;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Queries -->
+                        <td>
+                            {% if log.query_count is not None and log.query_count != "-" %}
+                                <span class="query-count">{{ log.query_count }}</span>
+                            {% else %}
+                                <span class="text-muted" style="color:#94a3b8;">—</span>
+                            {% endif %}
+                        </td>
+
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="bi bi-inbox"></i>
+                            <h3>No archived logs found</h3>
+                            <p>Try adjusting your search filters or clear the filter query.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+
 </body>
 </html>
