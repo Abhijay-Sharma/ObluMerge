@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        .container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+        .header { background: #2c3e50; color: #ffffff; padding: 18px; text-align: center; }
+        .content { padding: 20px; line-height: 1.6; }
+        .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .table th { background: #f8f9fa; border-bottom: 2px solid #dee2e6; padding: 10px; text-align: left; font-size: 13px; }
+        .table td { border-bottom: 1px solid #eee; padding: 10px; font-size: 13px; }
+        .status-approved { color: #28a745; font-weight: bold; }
+        .status-rejected { color: #dc3545; font-weight: bold; }
+        .footer { background: #f1f1f1; padding: 12px; text-align: center; font-size: 12px; color: #777; }
+        .btn { display: inline-block; padding: 9px 18px; background: #3498db; color: #ffffff !important; text-decoration: none; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 style="margin:0;">Price Review Summary</h2>
+            <p style="margin:5px 0 0 0;">{{ doc_type }} #{{ parent_obj.id }}</p>
+        </div>
+
+        <div class="content">
+            <p>Hello <strong>{{ requested_by }}</strong>,</p>
+            <p>The price change requests for <strong>{{ customer_name }}</strong> have been reviewed by <strong>{{ reviewed_by }}</strong>.</p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item / Description</th>
+                        <th>Requested Price</th>
+                        <th>Decision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr>
+                        <td>
+                            {% if req.is_product_request %}
+                                <strong>{{ req.product.name }}</strong>
+                            {% else %}
+                                🚚 <strong>Courier Charge</strong>
+                            {% endif %}
+                        </td>
+                        <td>
+                            ₹{{ req.requested_price|default:req.requested_courier_charge|floatformat:2 }}
+                        </td>
+                        <td>
+                            {% if req.status == 'approved' %}
+                                <span class="status-approved">APPROVED</span>
+                            {% elif req.status == 'rejected' %}
+                                <span class="status-rejected">REJECTED</span>
+                            {% else %}
+                                <span style="color: #666;">PENDING</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="text-align: center; margin-top: 25px;">
+                <a href="{{ view_url }}" class="btn">View Updated {{ doc_type }}</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Oblu Tools | Automated Price Notification</p>
+        </div>
+    </div>
+</body>
+</html>

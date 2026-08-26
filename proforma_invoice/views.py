@@ -52,7 +52,7 @@ import logging
 from collections import defaultdict
 from tally_voucher.models import VoucherEmiPaymentAllocation
 from .forms import ProformaInvoiceForm, ProformaItemFormSet, ProformaPriceChangeRequestForm,NewProformaCustomerForm,QuotationMakerForm,QuotationMakerItemFormSet,QuotationMakerItemForm
-
+from django.http import Http404
 
 logger = logging.getLogger(__name__)
 
@@ -3104,6 +3104,150 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
         except Exception as e:
             print(f"Email error: {e}")
 
+class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
+    template_name = "proforma_invoice/request_price_change.html"
+    form_class = ProformaPriceChangeRequestForm
+
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Dynamically determine if the request is for an Invoice or Quotation,
+        and verify permissions.
+        """
+        self.invoice_id = self.kwargs.get("invoice_id")  # <-- ADD/EDIT: Resolve invoice_id
+        self.quotation_id = self.kwargs.get("quotation_id")  # <-- ADD/EDIT: Resolve quotation_id
+
+        if self.invoice_id:  # <-- ADD/EDIT: Invoice branch
+            self.parent_obj = get_object_or_404(ProformaInvoice, id=self.invoice_id)  #[cite: 2]
+            self.doc_type = "Proforma"  # <-- ADD/EDIT: Tag document type
+            self.has_pending = ProformaPriceChangeRequest.objects.filter(invoice=self.parent_obj, status="pending").exists()  #[cite: 2]
+            self.redirect_url_name = "proforma_detail"  #[cite: 2]
+        elif self.quotation_id:  # <-- ADD/EDIT: Quotation branch
+            self.parent_obj = get_object_or_404(QuotationMaker, id=self.quotation_id)  #[cite: 2]
+            self.doc_type = "Quotation"  # <-- ADD/EDIT: Tag document type
+            self.has_pending = ProformaPriceChangeRequest.objects.filter(quotation=self.parent_obj, status="pending").exists()  #[cite: 2, 3]
+            self.redirect_url_name = "quotation_detail"  #[cite: 2]
+        else:
+            from django.http import Http404
+            raise Http404("Document reference not found.")  # <-- ADD/EDIT: Fail safe
+
+        if request.user.is_superuser:  #[cite: 2]
+            messages.error(request, "Super users cannot request price changes.")  #[cite: 2]
+            return redirect(self.redirect_url_name, pk=self.parent_obj.id)  #[cite: 2]
+
+        if self.has_pending:  #[cite: 2]
+            messages.warning(request, f"There is already a pending request for this {self.doc_type}.")  # <-- ADD/EDIT: Document specific warning
+            return redirect(self.redirect_url_name, pk=self.parent_obj.id)  #[cite: 2]
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        """
+        Add unified document and items to template context.
+        """
+        context = super().get_context_data(**kwargs)
+        context["parent_obj"] = self.parent_obj  # <-- ADD/EDIT: Generic document object
+        context["doc_type"] = self.doc_type  # <-- ADD/EDIT: Pass doc type ('Proforma' or 'Quotation')
+        context["items"] = self.parent_obj.items.select_related("product")  #[cite: 2]
+        return context
+
+    def form_valid(self, form):
+        items = self.parent_obj.items.select_related("product__proforma_price")  #[cite: 2]
+        any_needs_accountant = False  #[cite: 2]
+        req_reason = form.cleaned_data.get('reason')  #[cite: 2]
+        created_requests = []  # <-- ADD/EDIT: Container for email context
+
+        # 1. LOOP THROUGH PRODUCTS
+        for item in items:  #[cite: 2]
+            raw_val = self.request.POST.get(f"new_price_{item.id}")  #[cite: 2]
+            if raw_val:  #[cite: 2]
+                requested_price = Decimal(raw_val)  #[cite: 2]
+                needs_req, needs_acc = check_price_needs_approval(self.request.user, item.product, requested_price)  #[cite: 2]
+
+                if needs_req:  #[cite: 2]
+                    pricing = getattr(item.product, 'proforma_price', None)  #[cite: 2]
+                    standard_price = pricing.price if pricing else Decimal("0.00")  #[cite: 2]
+                    msrp = pricing.msrp if pricing else Decimal("0.00")  #[cite: 2]
+
+                    # <-- ADD/EDIT: Save request linked to either Invoice or Quotation
+                    p_req = ProformaPriceChangeRequest.objects.create(
+                        invoice=self.parent_obj if self.doc_type == "Proforma" else None,  #[cite: 2, 3]
+                        quotation=self.parent_obj if self.doc_type == "Quotation" else None,  #[cite: 2, 3]
+                        customer=self.parent_obj.customer,  #[cite: 2]
+                        requested_by=self.request.user,  #[cite: 2]
+                        product=item.product,  #[cite: 2]
+                        is_product_request=True,  #[cite: 2]
+                        requested_price=requested_price,  #[cite: 2]
+                        recommended_price=standard_price,  #[cite: 2]
+                        msrp_snapshot=msrp,  #[cite: 2]
+                        is_under_msrp=needs_acc,  #[cite: 2]
+                        reason=req_reason,  #[cite: 2]
+                        status="pending"  #[cite: 2]
+                    )
+                    created_requests.append(p_req)  # <-- ADD/EDIT: Record for email
+
+                    if needs_acc:  #[cite: 2]
+                        any_needs_accountant = True  #[cite: 2]
+
+        # 2. COURIER LOGIC
+        requested_courier_charge = self.request.POST.get("new_courier_charge")  #[cite: 2]
+        if requested_courier_charge:  #[cite: 2]
+            new_courier = Decimal(requested_courier_charge)  #[cite: 2]
+            curr_courier = self.parent_obj.courier_charge() if callable(self.parent_obj.courier_charge) else self.parent_obj.courier_charge  #[cite: 2, 3]
+
+            if new_courier != curr_courier:  #[cite: 2]
+                c_req = ProformaPriceChangeRequest.objects.create(
+                    invoice=self.parent_obj if self.doc_type == "Proforma" else None,  # <-- ADD/EDIT: Link properly[cite: 3]
+                    quotation=self.parent_obj if self.doc_type == "Quotation" else None,  # <-- ADD/EDIT: Link properly[cite: 3]
+                    customer=self.parent_obj.customer,  #[cite: 2]
+                    requested_by=self.request.user,  #[cite: 2]
+                    is_product_request=False,  #[cite: 2]
+                    requested_courier_charge=new_courier,  #[cite: 2]
+                    recommended_courier_charge=curr_courier,  # <-- ADD/EDIT: Snapshot base courier
+                    reason=req_reason,  #[cite: 2]
+                    status="pending"  #[cite: 2]
+                )
+                created_requests.append(c_req)  # <-- ADD/EDIT: Record for email
+
+        # 3. EMAIL LOGIC
+        if created_requests:  # <-- ADD/EDIT: Only send email if at least one request was created
+            if any_needs_accountant:  #[cite: 2]
+                to_emails = ["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com","nitin.obluhc@gmail.com"]  #[cite: 2]
+                subject_prefix = f"🚨 DEEP DISCOUNT ({self.doc_type})"  # <-- ADD/EDIT: Dynamic subject prefix
+            else:
+                to_emails = ["bhavya.obluhc@gmail.com"]  #[cite: 2]
+                subject_prefix = f"🔔 Price Request ({self.doc_type})"  # <-- ADD/EDIT: Dynamic subject prefix
+
+            cc_emails = ["abhijay.obluhc@gmail.com"]  # <-- ADD/EDIT: Default CC
+            if self.request.user.email:  #[cite: 2]
+                cc_emails.append(self.request.user.email)  #[cite: 2]
+
+            try:
+                email_context = {
+                    "doc_type": self.doc_type,  # <-- ADD/EDIT: Context for template
+                    "parent_obj": self.parent_obj,  # <-- ADD/EDIT: Context for template
+                    "customer": self.parent_obj.customer,  # <-- ADD/EDIT: Context for template
+                    "requested_by": self.request.user,  #[cite: 2]
+                    "reason": req_reason,  #[cite: 2]
+                    "price_requests": created_requests,  # <-- ADD/EDIT: Pass list to template
+                    "review_url": "https://oblutools.com/proforma/price-change-requests/"  #[cite: 2]
+                }
+                html_content = render_to_string("proforma_invoice/price_change_request_email_v2.html", email_context)  #[cite: 2]
+                subject = f"{subject_prefix} #{self.parent_obj.id} - {self.parent_obj.customer.name}"  # <-- ADD/EDIT: Subject format
+                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)  #[cite: 2]
+                msg.attach_alternative(html_content, "text/html")  #[cite: 2]
+                msg.send()  #[cite: 2]
+            except Exception as e:  #[cite: 2]
+                logger.error(f"Email error when submitting request: {e}")  #[cite: 2]
+
+            # Lock parent document
+            self.parent_obj.is_price_altered = True  # <-- ADD/EDIT: Lock document
+            self.parent_obj.save()  # <-- ADD/EDIT: Persist lock[cite: 2, 3]
+
+            messages.success(self.request, f"Your price change request for {self.doc_type} #{self.parent_obj.id} has been submitted.")  # <-- ADD/EDIT: Dynamic success message
+        else:
+            messages.info(self.request, "No price changes were requested.")  # <-- ADD/EDIT: Fallback if blank
+
+        return redirect(self.redirect_url_name, pk=self.parent_obj.id)  # <-- ADD/EDIT: Dynamic redirect[cite: 2]
 
 class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
     model = ProformaPriceChangeRequest
@@ -3343,7 +3487,7 @@ class ProformaPriceChangeRequestListView(AccountantRequiredMixin, ListView):
     model = ProformaPriceChangeRequest
     template_name = "proforma_invoice/price_change_request_list.html"
     context_object_name = "requests"
-
+    paginate_by = 40
     def get_queryset(self):
         # Default ordering: Latest first
         queryset = ProformaPriceChangeRequest.objects.select_related(
@@ -4016,7 +4160,7 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
         if not any_pending:
             try:
                 to_emails = [price_request.requested_by.email]
-                cc_emails = ["swasti.obluhc@gmail.com"]
+                cc_emails = ["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com", "nitin.obluhc@gmail.com"]
                 all_requests = parent_obj.price_requests.select_related('product').all()
                 email_context = {
                     "invoice": parent_obj,
@@ -4026,13 +4170,14 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
                     "requests": all_requests,
                     "proforma_url": f"https://oblutools.com/proforma/{parent_obj.id}/",
                 }
-                html_content = render_to_string("proforma_invoice/q.html", email_context)
+                html_content = render_to_string("proforma_invoice/price_review_decision_email.html", email_context)
                 subject = f"✅ Reviewed: #{parent_obj.id} ({parent_obj.customer.name})"
                 msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
                 msg.attach_alternative(html_content, "text/html")
                 msg.send()
             except Exception as e:
                 print(f"Summary Email Error: {e}")
+        pass
 
 class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
     def post(self, request, *args, **kwargs):
@@ -4070,6 +4215,52 @@ class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
         messages.info(request, f"Request #{price_request.id} has been rejected.")
         return redirect("proforma_price_change_requests")
 
+class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"], status="pending")
+        parent_obj = price_request.invoice or price_request.quotation  # <-- ADD/EDIT: Resolve Proforma or Quotation
+
+        remark_text = request.POST.get('review_remark', '')
+        append_remark(parent_obj, request.user, f"REJECTED: {remark_text}")  # <-- ADD/EDIT: Universal append remark
+
+        price_request.status = "rejected"
+        price_request.reviewed_by = request.user
+        price_request.reviewed_at = timezone.now()
+        price_request.save()
+
+        # Send review summary mail if everything is reviewed
+        self.check_and_send_final_email(request, parent_obj,
+                                        price_request)  # <-- ADD/EDIT: Trigger email on single rejection
+
+        messages.info(request, f"Request #{price_request.id} has been rejected.")
+        return redirect("proforma_price_change_requests")
+
+    def check_and_send_final_email(self, request, parent_obj, price_request):
+        """Dispatches summary email when all requests for the quotation/invoice are resolved."""
+        any_pending = parent_obj.price_requests.filter(status='pending').exists()
+        if not any_pending and price_request.requested_by.email:
+            try:
+                d_type = "Quotation" if price_request.quotation else "Proforma"
+                target_url = f"https://oblutools.com/proforma/{'quotations' if d_type == 'Quotation' else 'proformas'}/{parent_obj.id}/"
+
+                context = {
+                    "doc_type": d_type,
+                    "parent_obj": parent_obj,
+                    "customer_name": parent_obj.customer.name,
+                    "requested_by": price_request.requested_by.get_full_name() or price_request.requested_by.username,
+                    "reviewed_by": request.user.get_full_name() or request.user.username,
+                    "requests": parent_obj.price_requests.select_related('product').all(),
+                    "view_url": target_url,
+                }
+                html_content = render_to_string("proforma_invoice/price_review_decision_email.html", context)
+                subject = f"✅ Reviewed: {d_type} #{parent_obj.id} ({parent_obj.customer.name})"
+
+                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", [price_request.requested_by.email],
+                                             cc=["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com", "nitin.obluhc@gmail.com"])
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+            except Exception as e:
+                logger.error(f"Error sending decision review mail: {e}")
 
 def notify_remark_added(request_obj, author):
     """
