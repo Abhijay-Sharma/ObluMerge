@@ -1,86 +1,119 @@
 <!DOCTYPE html>
 <html>
-<body style="font-family: Arial, sans-serif;">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.5; padding: 15px; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .table th, .table td { border: 1px solid #ddd; padding: 10px; font-size: 13px; }
+        .table th { background: #f4f4f4; }
+        .text-left { text-align: left; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .badge-alert { color: #dc3545; font-weight: bold; font-size: 11px; }
+        .btn { display: inline-block; padding: 10px 20px; background: #198754; color: #ffffff !important; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; }
+        .box { background: #f9f9f9; border: 1px solid #e5e5e5; padding: 12px; border-radius: 6px; margin-top: 15px; }
+        .badge-type { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #fff; font-size: 12px; text-transform: uppercase; }
+        .bg-quotation { background-color: #9b59b6; }
+        .bg-proforma { background-color: #2980b9; }
+    </style>
+</head>
+<body>
+    <h2>
+        <!-- Dynamic Document Badge -->
+        <span class="badge-type {% if doc_type == 'Quotation' or parent_obj.quotation %}bg-quotation{% else %}bg-proforma{% endif %}">
+            {{ doc_type|default:"Proforma" }}
+        </span>
+        Price Change Request Submitted
+    </h2>
 
-    <h2>💰 Price Change Request Submitted</h2>
-
-    <p><strong>Requested By:</strong> {{ requested_by }}</p>
-
-    <p><strong>Customer:</strong> {{ customer.name }}</p>
-
-    <p><strong>Proforma ID:</strong> #{{ invoice.id }}</p>
+    <p>
+        <strong>Requested By:</strong> {{ requested_by.get_full_name|default:requested_by.username|default:requested_by }}<br>
+        <strong>Customer:</strong> {{ customer.name|default:parent_obj.customer.name }}<br>
+        <strong>{{ doc_type|default:"Document" }} ID:</strong> #{{ parent_obj.id|default:invoice.id }}<br>
+        <strong>Reason:</strong> {{ reason|default:"No reason provided." }}
+    </p>
 
     {% if any_under_msrp %}
-        <div style="background:#ffdddd;padding:12px;border:1px solid red;margin-bottom:15px;">
-            <strong>⚠ One or more items are BELOW MSRP</strong>
+        <div style="background:#ffdddd; padding:12px; border-left: 4px solid #dc3545; color:#721c24; margin-bottom:15px; font-weight:bold;">
+            ⚠️ Notice: One or more requested items are BELOW MSRP (Admin approval required).
         </div>
     {% endif %}
 
-    <h3>Requested Price Changes</h3>
+    <!-- Requested Price Changes Table -->
+    {% if price_requests %}
+    <h3 style="margin-top: 20px;">Requested Price Changes</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th class="text-left">Product</th>
+                <th class="text-center">Quantity</th>
+                <th class="text-right">Recommended</th>
+                <th class="text-right">Requested</th>
+                <th class="text-right">MSRP</th>
+                <th class="text-center">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in price_requests %}
+            <tr>
+                <td class="text-left">
+                    {% if req.is_product_request or req.product %}
+                        📦 <strong>{{ req.product.name }}</strong>
+                    {% else %}
+                        🚚 <strong>Courier Charge</strong>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {{ req.quantity|default:"-" }}
+                </td>
+                <td class="text-right">
+                    ₹{{ req.recommended_price|default:"0.00"|floatformat:2 }}
+                </td>
 
-    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width:100%;">
-        <tr>
-            <th>Product</th>
-            <th>Recommended Price</th>
-            <th>Requested Price</th>
-            <th>MSRP</th>
-            <th>Status</th>
-        </tr>
-
-        {% for req in price_requests %}
-        <tr>
-            <td>{{ req.product.name }}</td>
-            <td>₹{{ req.recommended_price }}</td>
-            <td>₹{{ req.requested_price }}</td>
-            <td>₹{{ req.msrp }}</td>
-
-            <td>
-                {% if req.is_under_msrp %}
-                    <span style="color:red;font-weight:bold;">
-                        BELOW MSRP
-                    </span>
-                {% else %}
-                    OK
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
+                <td class="text-right" style="color: #0d6efd; font-weight: bold;">
+                    {% if req.requested_price %}
+                        ₹{{ req.requested_price|floatformat:2 }}
+                    {% elif req.requested_courier_charge %}
+                        ₹{{ req.requested_courier_charge|floatformat:2 }}
+                    {% else %}
+                        ₹0.00
+                    {% endif %}
+                </td>
+                <td class="text-right">
+                    {% if req.is_product_request or req.product %}
+                        ₹{{ req.msrp_snapshot|default:req.msrp|default:"0.00"|floatformat:2 }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {% if req.is_under_msrp %}
+                        <span class="badge-alert">BELOW MSRP</span>
+                    {% else %}
+                        <span style="color: #198754; font-weight: bold;">OK</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
+    {% endif %}
 
-    <br>
+    <!-- Requested Courier Change Box -->
+    {% if requested_courier_charge %}
+    <div class="box">
+        <h4 style="margin: 0 0 8px 0;">🚚 Requested Courier Charge</h4>
+        <strong>Standard Courier:</strong> ₹{{ parent_obj.courier_charge|default:invoice.courier_charge|default:"0.00"|floatformat:2 }}<br>
+        <strong>Requested Courier:</strong> <span style="color: #0d6efd; font-weight: bold;">₹{{ requested_courier_charge|floatformat:2 }}</span>
+    </div>
+    {% endif %}
 
-    <h3>All Products in Proforma</h3>
-
-    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width:100%;">
-        <tr>
-            <th>Product</th>
-            <th>Qty</th>
-            <th>Current Price</th>
-        </tr>
-
-        {% for item in all_items %}
-        <tr>
-            <td>{{ item.product.name }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>₹{{ item.current_price }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <br>
-
-    <p>
-        <strong>Reason:</strong><br>
-        {{ reason }}
-    </p>
-
-    <br>
-
-    <a href="{{ review_url }}"
-       style="background:#198754;color:white;padding:10px 18px;text-decoration:none;border-radius:6px;">
-        Review Price Requests
-    </a>
-
+    <!-- Link to Dashboard -->
+    <div style="margin-top: 25px;">
+        <a href="{{ review_url|default:'https://oblutools.com/proforma/price-change-requests/' }}" class="btn">
+            Open Review Dashboard
+        </a>
+    </div>
 </body>
 </html>
-```

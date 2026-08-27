@@ -452,42 +452,43 @@
         </div>
     </div>
     <!-- 2. PAGINATION (Directly below table container) -->
+<!-- UPDATED: Robust Pagination with Dynamic Filter Persistence -->
     {% if is_paginated %}
     <div class="pagination-wrapper">
         <div class="pagination-info">
             Showing page <b>{{ page_obj.number }}</b> of <b>{{ paginator.num_pages }}</b>
-            <span style="opacity: 0.5;">({{ paginator.count }} total records)</span>
+            <span style="opacity: 0.5;">({{ paginator.count }} total orders/proposals)</span>
         </div>
 
         <div class="pagination-controls">
             <!-- First Page -->
-            <a href="?page=1{% if request.GET.f_inv %}&f_inv={{ request.GET.f_inv }}{% endif %}{% if request.GET.f_user %}&f_user={{ request.GET.f_user }}{% endif %}{% if request.GET.f_status %}&f_status={{ request.GET.f_status }}{% endif %}"
+            <a href="?page=1{{ preserved_filters }}"
                class="page-link {% if not page_obj.has_previous %}disabled{% endif %}" title="First Page">«</a>
 
             <!-- Prev Page -->
-            <a href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}{% if request.GET.f_inv %}&f_inv={{ request.GET.f_inv }}{% endif %}{% if request.GET.f_user %}&f_user={{ request.GET.f_user }}{% endif %}{% if request.GET.f_status %}&f_status={{ request.GET.f_status }}{% endif %}{% else %}#{% endif %}"
+            <a href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}{{ preserved_filters }}{% else %}#{% endif %}"
                class="page-link {% if not page_obj.has_previous %}disabled{% endif %}" title="Previous Page">‹</a>
 
-            <!-- Dynamic Page Numbers (Shows window of +/- 2 pages) -->
+            <!-- Page Number Windows -->
             {% for num in paginator.page_range %}
                 {% if page_obj.number == num %}
                     <span class="page-link active">{{ num }}</span>
                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                    <a href="?page={{ num }}{% if request.GET.f_inv %}&f_inv={{ request.GET.f_inv }}{% endif %}{% if request.GET.f_user %}&f_user={{ request.GET.f_user }}{% endif %}{% if request.GET.f_status %}&f_status={{ request.GET.f_status }}{% endif %}"
-                       class="page-link">{{ num }}</a>
+                    <a href="?page={{ num }}{{ preserved_filters }}" class="page-link">{{ num }}</a>
                 {% endif %}
             {% endfor %}
 
             <!-- Next Page -->
-            <a href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}{% if request.GET.f_inv %}&f_inv={{ request.GET.f_inv }}{% endif %}{% if request.GET.f_user %}&f_user={{ request.GET.f_user }}{% endif %}{% if request.GET.f_status %}&f_status={{ request.GET.f_status }}{% endif %}{% else %}#{% endif %}"
+            <a href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}{{ preserved_filters }}{% else %}#{% endif %}"
                class="page-link {% if not page_obj.has_next %}disabled{% endif %}" title="Next Page">›</a>
 
             <!-- Last Page -->
-            <a href="?page={{ paginator.num_pages }}{% if request.GET.f_inv %}&f_inv={{ request.GET.f_inv }}{% endif %}{% if request.GET.f_user %}&f_user={{ request.GET.f_user }}{% endif %}{% if request.GET.f_status %}&f_status={{ request.GET.f_status }}{% endif %}"
+            <a href="?page={{ paginator.num_pages }}{{ preserved_filters }}"
                class="page-link {% if not page_obj.has_next %}disabled{% endif %}" title="Last Page">»</a>
         </div>
     </div>
     {% endif %}
+
 </div>
 
 

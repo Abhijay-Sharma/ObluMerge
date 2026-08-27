@@ -148,6 +148,25 @@
       {% endfor %}
     {% endif %}
 
+      <!-- Add this right after the messages block and before <form> -->
+{% if quotation_form.errors or formset.errors or formset.non_form_errors %}
+<div class="alert alert-danger" style="border-radius: 12px; margin-bottom: 20px;">
+    <strong>⚠️ Validation Errors Found:</strong>
+    <ul style="margin: 10px 0 0 20px;">
+        {% for error in quotation_form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        {% for form in formset %}
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>Row {{ forloop.parentloop.parentloop.counter }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
     <form method="post" id="quotation-form">
       {% csrf_token %}
 

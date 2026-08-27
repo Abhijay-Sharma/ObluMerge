@@ -65,10 +65,10 @@
 <div class="request-container">
     <div class="header-section">
         <h2>Request Price Change</h2>
-        <p>Invoice #{{ invoice.id }} | {{ invoice.customer.name }}</p>
+<!--        <p>Invoice #{{ invoice.id }} | {{ invoice.customer.name }}</p>-->
     </div>
 
-    <form method="post">
+    <form method="post" >
         {% csrf_token %}
 
         <table class="custom-table">
@@ -145,7 +145,9 @@
                 <h6>🚚 Courier Charge</h6>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ invoice.courier_charge|floatformat:2 }}</div>
+<!--                        <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ invoice.courier_charge|floatformat:2 }}</div>-->
+                        <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ parent_obj.courier_charge|floatformat:2 }}</div>
+
                         <span style="font-size: 0.6rem; color: #00d2ff; text-transform: uppercase;">Current System Calculation</span>
                     </div>
                     {% if courier_status_history %}
@@ -170,8 +172,18 @@
         </div>
 
         <button type="submit" class="btn-submit">🚀 Submit Request to Admin</button>
+
+<!--        -->
+<!--        <div style="text-align: center; margin-top: 15px;">-->
+<!--            <a href="{% url 'proforma_detail' invoice.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>-->
+<!--        </div>-->
+
         <div style="text-align: center; margin-top: 15px;">
-            <a href="{% url 'proforma_detail' invoice.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>
+            {% if doc_type == "Proforma" %}
+                <a href="{% url 'proforma_detail' pk=parent_obj.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>
+            {% else %}
+                <a href="{% url 'quotation_detail' pk=parent_obj.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>
+            {% endif %}
         </div>
     </form>
 

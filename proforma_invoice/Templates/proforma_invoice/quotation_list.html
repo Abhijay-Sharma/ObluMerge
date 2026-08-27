@@ -234,6 +234,12 @@
                                 </div>
                             </div>
 
+                            <!-- Inside your Quotation row action block -->
+<a href="{% url 'quotation_request_price_change' q.id %}"
+   class="btn btn-sm btn-info text-white fw-bold"
+   style="border-radius: 20px; padding: 5px 14px; font-size: 0.75rem; text-decoration: none; margin-top: 5px; display: inline-block;">
+    🔄 REQUEST PRICE CHANGE
+</a>
                             <div class="w-100 mt-2">
                                 {% if q.is_converted_to_proforma %}
                                     <div class="text-center p-2 border rounded bg-light w-100">
