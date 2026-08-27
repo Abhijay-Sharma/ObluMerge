@@ -20,6 +20,11 @@ urlpatterns = [
     path("products/", views.ProformaProductListView.as_view(), name="proforma_product_list"),
 
     path("<int:invoice_id>/request-price-change/",views.ProformaPriceChangeRequestCreateView.as_view(),name='proforma_price_change_request_create'),
+    path(
+            "quotation/<int:quotation_id>/request-price-change/",
+            views.ProformaPriceChangeRequestCreateView.as_view(),
+            name='quotation_request_price_change'  # <-- Fixes the NoReverseMatch error
+        ),
 
     path(
             "price-change-requests/",views.ProformaPriceChangeRequestListView.as_view(),
