@@ -1546,7 +1546,7 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
                                 )
                                 item.current_price = standard_price
                                 price_change_requests_for_email.append({
-                                    "product": product_obj, "requested_price": user_val,
+                                    "product": product_obj, "quantity": qty, "requested_price": user_val,
                                     "recommended_price": standard_price, "msrp": msrp,
                                     "is_under_msrp": is_under_msrp, "reason": current_row_reason,"requested_courier_charge": None,
                                 })
