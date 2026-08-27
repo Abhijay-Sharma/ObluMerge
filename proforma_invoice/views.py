@@ -3543,9 +3543,8 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
 
         return redirect(self.redirect_url_name, pk=self.parent_obj.id)  # <-- ADD/EDIT: Dynamic redirect[cite: 2]
 
-class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
+class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, View):
     template_name = "proforma_invoice/request_price_change.html"
-    form_class = ProformaPriceChangeRequestForm
 
     def dispatch(self, request, *args, **kwargs):
         self.invoice_id = self.kwargs.get("invoice_id")
@@ -3575,48 +3574,54 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
 
         return super().dispatch(request, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["parent_obj"] = self.parent_obj
-        context["doc_type"] = self.doc_type
-        context["invoice"] = self.parent_obj  # Compatibility alias
-
+    def get_context_data(self):
         items = self.parent_obj.items.select_related("product__proforma_price")
 
-        # Fetch history records linked to this document or converted quote
+        # Fetch history records linked to this document
         if self.doc_type == "Proforma":
             all_past_reqs = ProformaPriceChangeRequest.objects.filter(invoice=self.parent_obj).order_by("-created_at")
         else:
             all_past_reqs = ProformaPriceChangeRequest.objects.filter(quotation=self.parent_obj).order_by("-created_at")
 
-        # Attach history to each product item
         for item in items:
             item_reqs = [r for r in all_past_reqs if r.is_product_request and r.product_id == item.product_id]
             item.last_processed_req = item_reqs[0] if item_reqs else None
             item.price_history = item_reqs
 
-        # Courier history
         courier_reqs = [r for r in all_past_reqs if not r.is_product_request]
-        context["courier_status_history"] = courier_reqs[0] if courier_reqs else None
-        context["courier_history"] = courier_reqs
-        context["items"] = items
-        return context
 
-    def form_valid(self, form):
+        return {
+            "parent_obj": self.parent_obj,
+            "doc_type": self.doc_type,
+            "invoice": self.parent_obj,
+            "items": items,
+            "courier_status_history": courier_reqs[0] if courier_reqs else None,
+            "courier_history": courier_reqs,
+        }
+
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_data()
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
         items = self.parent_obj.items.select_related("product__proforma_price")
         any_needs_accountant = False
-        general_reason = form.cleaned_data.get('reason') or ""
+        general_reason = request.POST.get('reason', '').strip()
         created_requests = []
 
         # 1. Product Price Change Loop
         for item in items:
-            raw_val = self.request.POST.get(f"new_price_{item.id}")
-            item_reason = self.request.POST.get(f"reason_{item.id}", "").strip()
+            raw_val = request.POST.get(f"new_price_{item.id}")
+            item_reason = request.POST.get(f"reason_{item.id}", "").strip()
             final_reason = item_reason if item_reason else general_reason
 
             if raw_val and str(raw_val).strip() != "":
-                requested_price = Decimal(raw_val)
-                needs_req, needs_acc = check_price_needs_approval(self.request.user, item.product, requested_price)
+                try:
+                    requested_price = Decimal(str(raw_val).strip())
+                except Exception:
+                    continue
+
+                needs_req, needs_acc = check_price_needs_approval(request.user, item.product, requested_price)
 
                 if needs_req:
                     pricing = getattr(item.product, 'proforma_price', None)
@@ -3627,7 +3632,7 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
                         invoice=self.parent_obj if self.doc_type == "Proforma" else None,
                         quotation=self.parent_obj if self.doc_type == "Quotation" else None,
                         customer=self.parent_obj.customer,
-                        requested_by=self.request.user,
+                        requested_by=request.user,
                         product=item.product,
                         is_product_request=True,
                         quantity=item.quantity,
@@ -3654,34 +3659,39 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
                         any_needs_accountant = True
 
         # 2. Courier Price Change
-        requested_courier_charge = self.request.POST.get("new_courier_charge")
-        if requested_courier_charge and str(requested_courier_charge).strip() != "":
-            new_courier = Decimal(requested_courier_charge)
-            curr_courier = self.parent_obj.courier_charge() if callable(self.parent_obj.courier_charge) else self.parent_obj.courier_charge
+        requested_courier_charge = request.POST.get("new_courier_charge")
+        parsed_courier = None
 
-            if new_courier != curr_courier:
-                c_req = ProformaPriceChangeRequest.objects.create(
-                    invoice=self.parent_obj if self.doc_type == "Proforma" else None,
-                    quotation=self.parent_obj if self.doc_type == "Quotation" else None,
-                    customer=self.parent_obj.customer,
-                    requested_by=self.request.user,
-                    is_product_request=False,
-                    requested_courier_charge=new_courier,
-                    recommended_courier_charge=curr_courier,
-                    reason=general_reason,
-                    status="pending"
-                )
-                created_requests.append({
-                    "product": None,
-                    "quantity": None,
-                    "requested_price": None,
-                    "recommended_price": curr_courier,
-                    "msrp": None,
-                    "msrp_snapshot": None,
-                    "is_under_msrp": False,
-                    "is_product_request": False,
-                    "requested_courier_charge": new_courier
-                })
+        if requested_courier_charge and str(requested_courier_charge).strip() != "":
+            try:
+                parsed_courier = Decimal(str(requested_courier_charge).strip())
+                curr_courier = self.parent_obj.courier_charge() if callable(self.parent_obj.courier_charge) else self.parent_obj.courier_charge
+
+                if parsed_courier != curr_courier:
+                    c_req = ProformaPriceChangeRequest.objects.create(
+                        invoice=self.parent_obj if self.doc_type == "Proforma" else None,
+                        quotation=self.parent_obj if self.doc_type == "Quotation" else None,
+                        customer=self.parent_obj.customer,
+                        requested_by=request.user,
+                        is_product_request=False,
+                        requested_courier_charge=parsed_courier,
+                        recommended_courier_charge=curr_courier,
+                        reason=general_reason,
+                        status="pending"
+                    )
+                    created_requests.append({
+                        "product": None,
+                        "quantity": None,
+                        "requested_price": None,
+                        "recommended_price": curr_courier,
+                        "msrp": None,
+                        "msrp_snapshot": None,
+                        "is_under_msrp": False,
+                        "is_product_request": False,
+                        "requested_courier_charge": parsed_courier
+                    })
+            except Exception as e:
+                print(f"Courier parse error: {e}")
 
         # 3. Email Submission
         if created_requests:
@@ -3693,8 +3703,8 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
                 subject_prefix = f"🔔 Price Request ({self.doc_type})"
 
             cc_emails = ["abhijay.obluhc@gmail.com"]
-            if self.request.user.email:
-                cc_emails.append(self.request.user.email)
+            if request.user.email:
+                cc_emails.append(request.user.email)
 
             try:
                 email_context = {
@@ -3702,11 +3712,11 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
                     "parent_obj": self.parent_obj,
                     "invoice": self.parent_obj,
                     "customer": self.parent_obj.customer,
-                    "requested_by": self.request.user,
+                    "requested_by": request.user,
                     "reason": general_reason,
                     "price_requests": created_requests,
                     "any_under_msrp": any_needs_accountant,
-                    "requested_courier_charge": Decimal(requested_courier_charge) if requested_courier_charge else None,
+                    "requested_courier_charge": parsed_courier,
                     "review_url": "https://oblutools.com/proforma/price-change-requests/"
                 }
                 html_content = render_to_string("proforma_invoice/price_change_request_email_v2.html", email_context)
@@ -3720,9 +3730,9 @@ class ProformaPriceChangeRequestCreateView(LoginRequiredMixin, FormView):
 
             self.parent_obj.is_price_altered = True
             self.parent_obj.save()
-            messages.success(self.request, f"Price change request for {self.doc_type} #{self.parent_obj.id} submitted.")
+            messages.success(request, f"✅ Price change request for {self.doc_type} #{self.parent_obj.id} submitted.")
         else:
-            messages.info(self.request, "No price changes were entered.")
+            messages.warning(request, "⚠️ No price change entered. Please enter a new price to submit.")
 
         return redirect(self.redirect_url_name, pk=self.parent_obj.id)
 
