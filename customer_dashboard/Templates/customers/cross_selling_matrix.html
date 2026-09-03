@@ -195,9 +195,21 @@
   <!-- TOP HEADER -->
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
     <div>
-      <h2 class="fw-bold mb-1" style="color: #0f172a;">
-        🎯 Cross-Selling Matrix
-      </h2>
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+        <h2 class="fw-bold mb-0" style="color: #0f172a;">
+          🎯 Cross-Selling Matrix
+        </h2>
+        {% if is_rsm %}
+          <span class="badge bg-primary text-white fw-semibold px-2 py-1 shadow-sm">
+            <i class="bi bi-people-fill"></i> {{ rsm_team_label }}
+          </span>
+        {% elif is_asm and current_sp %}
+          <span class="badge bg-secondary text-white fw-semibold px-2 py-1 shadow-sm">
+            <i class="bi bi-person-badge"></i> Salesperson: {{ current_sp.name }}
+          </span>
+
+        {% endif %}
+      </div>
       <p class="text-muted mb-0">
         Tracks customer purchases across the 5 core categories and highlights cross-selling product gaps.
       </p>
@@ -284,10 +296,13 @@
       </div>
 
       <!-- Salesperson Filter -->
+      {% if can_select_salesperson %}
       <div class="col-md-2 col-sm-6">
-        <label class="form-label fw-bold small text-dark">Salesperson</label>
+        <label class="form-label fw-bold small text-dark">
+          {% if is_rsm %}Team Member{% else %}Salesperson{% endif %}
+        </label>
         <select name="salesperson" class="form-select">
-          <option value="">All Salespersons</option>
+          <option value="">{% if is_rsm %}All Team Members{% else %}All Salespersons{% endif %}</option>
           {% for sp in salespersons %}
             <option value="{{ sp.id }}" {% if selected_sp_id == sp.id|stringformat:"s" %}selected{% endif %}>
               {{ sp.name }}
@@ -295,6 +310,12 @@
           {% endfor %}
         </select>
       </div>
+      {% else %}
+      <div class="col-md-2 col-sm-6">
+        <label class="form-label fw-bold small text-dark">Salesperson</label>
+        <input type="text" class="form-control bg-light text-muted fw-semibold" value="{{ current_sp.name|default:'My Customers' }}" readonly disabled title="You can only view your own customers">
+      </div>
+      {% endif %}
 
       <!-- Customer Status Filter (Active / Inactive) -->
       <div class="col-md-2 col-sm-6">
@@ -409,8 +430,8 @@
                         </div>
 
                         <div class="d-flex flex-wrap gap-1">
-                          <span class="badge bg-light text-dark border">
-                            <i class="bi bi-person-badge"></i> {{ cust.salesperson.name|default:"Unassigned" }}
+                          <span class="badge bg-light text-dark border fw-semibold" title="Assigned Salesperson">
+                            <i class="bi bi-person-fill text-primary"></i> SP: {{ cust.salesperson.name|default:"Unassigned" }}
                           </span>
                           <span class="badge {% if item.bought_count == 5 %}bg-success{% elif item.bought_count >= 3 %}bg-primary{% else %}bg-warning text-dark{% endif %}">
                             {{ item.bought_count }}/5 Categories Bought

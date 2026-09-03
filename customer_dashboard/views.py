@@ -5085,6 +5085,247 @@ def get_cross_selling_dataset():
         "stats": stats,
     }
 
+CROSS_SELLING_RSM_TEAMS = {
+    "ankush": {
+        "label": "Ankush's Team (Ankush, Naveen, Satish)",
+        "rsm_name": "Ankush",
+        "asms": ["naveen", "satish"],
+        "all_members": ["ankush", "naveen", "satish"],
+    },
+    "aman": {
+        "label": "Aman's Team (Aman, Kaushik, Rushikesh, Aditya, Avinash)",
+        "rsm_name": "Aman",
+        "asms": ["kaushik", "rushikesh", "aditya", "avinash"],
+        "all_members": ["aman", "kaushik", "rushikesh", "aditya", "avinash"],
+    },
+}
+
+
+def _clean_string_tokens(s):
+    if not s:
+        return []
+    cleaned = "".join(ch.lower() if ch.isalnum() else " " for ch in str(s))
+    return [t for t in cleaned.split() if t]
+
+
+def _sp_matches_target_names(sp, target_names):
+    """
+    Checks whether a SalesPerson instance matches any of the target names.
+    Supports exact match, word tokens (e.g. 'Satish Kumar' matches 'satish'),
+    and prefix matching on tokens.
+    """
+    if not sp or not sp.name:
+        return False
+    sp_tokens = _clean_string_tokens(sp.name)
+    sp_name_lower = sp.name.strip().lower()
+
+    for target in target_names:
+        t_clean = target.strip().lower()
+        if t_clean == sp_name_lower or t_clean in sp_tokens:
+            return True
+        if any(tok.startswith(t_clean) or t_clean.startswith(tok) for tok in sp_tokens if len(tok) >= 3 and len(t_clean) >= 3):
+            return True
+    return False
+
+
+def get_cross_selling_user_permissions(user):
+    """
+    Evaluates permissions and role for the Cross-Selling Matrix:
+      1. Accountants / Superusers:
+         - See all customers
+         - Full salesperson dropdown with all salespeople
+         - Can select any salesperson or view all
+      2. RSMs (Ankush and Aman):
+         - Can only see their own and their team's customers
+         - Dropdown only displays their team members (with 'All Team Members' default)
+         - Ankush's team: Ankush, Naveen, Satish
+         - Aman's team: Aman, Kaushik, Rushikesh, Aditya, Avinash
+      3. ASMs / Salespersons:
+         - Can only see their own customers
+         - No access to the salesperson dropdown
+    """
+    all_sp = SalesPerson.objects.all().order_by("name")
+    hide = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan", "test1"]
+
+    # 1. Check if user is an accountant / superuser
+    is_accountant = bool(user.is_superuser or getattr(user, "is_accountant", False))
+    if is_accountant:
+        allowed_sp = [sp for sp in all_sp if sp.name.lower() not in hide]
+        return {
+            "is_accountant": True,
+            "is_rsm": False,
+            "is_asm": False,
+            "rsm_key": None,
+            "rsm_team_label": "",
+            "user_sp": None,
+            "allowed_salespersons": allowed_sp,
+            "can_select_salesperson": True,
+            "team_member_names": [],
+        }
+
+    # 2. Resolve the SalesPerson profile of the logged-in user
+    user_sp = None
+    if hasattr(user, "salesperson_profile") and user.salesperson_profile.exists():
+        user_sp = user.salesperson_profile.first()
+    if not user_sp:
+        user_sp = (
+            SalesPerson.objects.filter(user=user).first()
+            or SalesPerson.objects.filter(name__iexact=user.username).first()
+            or SalesPerson.objects.filter(name__iexact=user.get_full_name()).first()
+        )
+    if not user_sp:
+        u_tokens = _clean_string_tokens(f"{user.username} {user.get_full_name()}")
+        for sp in all_sp:
+            if _sp_matches_target_names(sp, u_tokens):
+                user_sp = sp
+                break
+
+    # 3. Check if the user is an RSM (Ankush or Aman)
+    user_ident_tokens = _clean_string_tokens(
+        f"{user.username} {user.get_full_name()} {user.first_name} {user_sp.name if user_sp else ''}"
+    )
+
+    rsm_key = None
+    if "ankush" in user_ident_tokens:
+        rsm_key = "ankush"
+    elif "aman" in user_ident_tokens:
+        rsm_key = "aman"
+
+    if rsm_key:
+        team_info = CROSS_SELLING_RSM_TEAMS[rsm_key]
+        team_members = team_info["all_members"]
+
+        team_salespersons = []
+        for sp in all_sp:
+            if sp.name.lower() in hide:
+                continue
+            # Match against team member names
+            if _sp_matches_target_names(sp, team_members):
+                team_salespersons.append(sp)
+            # Or if manager is set to this RSM
+            elif sp.manager and _sp_matches_target_names(sp.manager, [rsm_key]):
+                if sp not in team_salespersons:
+                    team_salespersons.append(sp)
+            elif user_sp and sp.manager_id == user_sp.id:
+                if sp not in team_salespersons:
+                    team_salespersons.append(sp)
+
+        if user_sp and user_sp not in team_salespersons:
+            team_salespersons.insert(0, user_sp)
+
+        return {
+            "is_accountant": False,
+            "is_rsm": True,
+            "is_asm": False,
+            "rsm_key": rsm_key,
+            "rsm_team_label": team_info["label"],
+            "user_sp": user_sp,
+            "allowed_salespersons": team_salespersons,
+            "can_select_salesperson": True,
+            "team_member_names": team_members,
+        }
+
+    # 4. ASM / Individual Salesperson
+    return {
+        "is_accountant": False,
+        "is_rsm": False,
+        "is_asm": True,
+        "rsm_key": None,
+        "rsm_team_label": "",
+        "user_sp": user_sp,
+        "allowed_salespersons": [user_sp] if user_sp else [],
+        "can_select_salesperson": False,
+        "team_member_names": [user_sp.name.lower()] if user_sp else [],
+    }
+
+
+def filter_cross_selling_customers(customers_list, perm, selected_sp_id=""):
+    """
+    Applies role-based visibility to customers_list.
+    Returns:
+      (base_accessible_customers, scoped_customers)
+    where base_accessible_customers is the set of all customers the user can see (for KPI calculations),
+    and scoped_customers is further filtered by selected_sp_id if applicable.
+    """
+    # 1. Accountant / Superuser
+    if perm["is_accountant"]:
+        base_customers = customers_list
+        if selected_sp_id:
+            scoped = [
+                c for c in base_customers
+                if c["customer"].salesperson and str(c["customer"].salesperson.id) == selected_sp_id
+            ]
+        else:
+            scoped = base_customers
+        return base_customers, scoped
+
+    # 2. RSM (Ankush or Aman)
+    if perm["is_rsm"]:
+        allowed_sp_ids = {sp.id for sp in perm["allowed_salespersons"]}
+        team_members = perm["team_member_names"]
+
+        def _is_in_rsm_team(c):
+            sp = c["customer"].salesperson
+            if not sp:
+                return False
+            if sp.id in allowed_sp_ids:
+                return True
+            return _sp_matches_target_names(sp, team_members)
+
+        base_customers = [c for c in customers_list if _is_in_rsm_team(c)]
+
+        # If a valid team salesperson is selected in dropdown
+        if selected_sp_id and selected_sp_id in {str(sp_id) for sp_id in allowed_sp_ids}:
+            scoped = [
+                c for c in base_customers
+                if c["customer"].salesperson and str(c["customer"].salesperson.id) == selected_sp_id
+            ]
+        else:
+            # Default to whole team
+            scoped = base_customers
+
+        return base_customers, scoped
+
+    # 3. ASM / Salesperson (own customers only, dropdown ignored)
+    user_sp = perm["user_sp"]
+    if not user_sp:
+        return [], []
+
+    def _is_own_customer(c):
+        sp = c["customer"].salesperson
+        if not sp:
+            return False
+        if sp.id == user_sp.id:
+            return True
+        return _sp_matches_target_names(sp, [user_sp.name])
+
+    base_customers = [c for c in customers_list if _is_own_customer(c)]
+    return base_customers, base_customers
+
+
+def compute_cross_selling_stats(customer_list):
+    """Computes summary KPI statistics for a given list of customer analysis dicts."""
+    total = len(customer_list)
+    active = sum(1 for c in customer_list if c.get("is_active"))
+    inactive = total - active
+    fully_converted = sum(1 for c in customer_list if c.get("bought_count") == 5)
+    cross_sell = total - fully_converted
+
+    score_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for c in customer_list:
+        b_cnt = c.get("bought_count", 0)
+        if b_cnt in score_distribution:
+            score_distribution[b_cnt] += 1
+
+    return {
+        "total_qualifying": total,
+        "active_count": active,
+        "inactive_count": inactive,
+        "fully_converted": fully_converted,
+        "cross_sell_opportunities": cross_sell,
+        "score_distribution": score_distribution,
+    }
+
 
 class CrossSellingMatrixView(LoginRequiredMixin, TemplateView):
     """
@@ -5098,12 +5339,16 @@ class CrossSellingMatrixView(LoginRequiredMixin, TemplateView):
 
         dataset = get_cross_selling_dataset()
         customers_list = dataset["customers"]
-        stats = dataset["stats"]
 
-        # Salespersons for filter dropdown
-        all_sp = SalesPerson.objects.all().order_by("name")
-        hide = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan", "test1"]
-        ctx["salespersons"] = [sp for sp in all_sp if sp.name.lower() not in hide]
+        perm = get_cross_selling_user_permissions(self.request.user)
+
+        ctx["is_accountant"] = perm["is_accountant"]
+        ctx["is_rsm"] = perm["is_rsm"]
+        ctx["is_asm"] = perm["is_asm"]
+        ctx["rsm_team_label"] = perm["rsm_team_label"]
+        ctx["can_select_salesperson"] = perm["can_select_salesperson"]
+        ctx["current_sp"] = perm["user_sp"]
+        ctx["salespersons"] = perm["allowed_salespersons"]
         ctx["categories"] = CROSS_SELLING_CATEGORIES
 
         # Filters from GET params
@@ -5114,13 +5359,12 @@ class CrossSellingMatrixView(LoginRequiredMixin, TemplateView):
         score_filter = self.request.GET.get("score", "").strip()
         status_filter = self.request.GET.get("status", "").strip()
 
-        filtered_customers = customers_list
+        # Apply role-based visibility and salesperson filter
+        base_accessible_customers, scoped_customers = filter_cross_selling_customers(
+            customers_list, perm, sp_id
+        )
 
-        if sp_id:
-            filtered_customers = [
-                c for c in filtered_customers
-                if c["customer"].salesperson and str(c["customer"].salesperson.id) == sp_id
-            ]
+        filtered_customers = scoped_customers
 
         if search_query:
             q_lower = search_query.lower()
@@ -5160,10 +5404,10 @@ class CrossSellingMatrixView(LoginRequiredMixin, TemplateView):
 
         ctx["customers_data"] = filtered_customers
         ctx["total_filtered"] = len(filtered_customers)
-        ctx["stats"] = stats
+        ctx["stats"] = compute_cross_selling_stats(base_accessible_customers)
 
         # Selected filters for maintaining state in template
-        ctx["selected_sp_id"] = sp_id
+        ctx["selected_sp_id"] = sp_id if perm["can_select_salesperson"] else ""
         ctx["search_query"] = search_query
         ctx["selected_missing_cat"] = missing_cat
         ctx["selected_bought_cat"] = bought_cat
@@ -5258,16 +5502,20 @@ def export_cross_selling_matrix(request):
     dataset = get_cross_selling_dataset()
     customers_list = dataset["customers"]
 
+    perm = get_cross_selling_user_permissions(request.user)
+
     # Apply filters if provided
     sp_id = request.GET.get("salesperson", "").strip()
     search_query = request.GET.get("q", "").strip()
     missing_cat = request.GET.get("missing_cat", "").strip()
+    bought_cat = request.GET.get("bought_cat", "").strip()
     score_filter = request.GET.get("score", "").strip()
     status_filter = request.GET.get("status", "").strip()
 
-    if sp_id:
-        customers_list = [c for c in customers_list if
-                          c["customer"].salesperson and str(c["customer"].salesperson.id) == sp_id]
+    # Role-based visibility scoping
+    _, scoped_customers = filter_cross_selling_customers(customers_list, perm, sp_id)
+    customers_list = scoped_customers
+
     if search_query:
         q_lower = search_query.lower()
         customers_list = [
@@ -5280,6 +5528,8 @@ def export_cross_selling_matrix(request):
         ]
     if missing_cat:
         customers_list = [c for c in customers_list if missing_cat in c["missing_cat_ids"]]
+    if bought_cat:
+        customers_list = [c for c in customers_list if bought_cat in c["bought_cats"]]
     if score_filter and score_filter.isdigit():
         customers_list = [c for c in customers_list if c["bought_count"] == int(score_filter)]
     if status_filter == "active":
