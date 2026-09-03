@@ -5384,6 +5384,162 @@ class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
             except Exception as e:
                 logger.error(f"Decision Review Email Error: {e}")
 
+
+class ProformaPriceChangeRequestApproveView(AccountantRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"])
+        parent_obj = price_request.invoice or price_request.quotation
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+        if price_request.status != "pending":
+            if is_ajax:
+                return JsonResponse({"status": "error", "message": "Already processed"})
+            messages.warning(request, "Request already processed.")
+            return redirect("proforma_price_change_requests")
+
+        decision = request.POST.get(f'status_{price_request.id}', 'approved')
+
+        # --- 1. REJECT LOGIC ---
+        if decision == 'rejected':
+            price_request.status = 'rejected'
+            price_request.reviewed_by = request.user
+            price_request.reviewed_at = timezone.now()
+            price_request.save()
+            self.check_and_send_final_email(request, parent_obj, price_request)
+            if is_ajax:
+                return JsonResponse({"status": "ok", "decision": "rejected"})
+            return redirect("proforma_price_change_requests")
+
+        # --- 2. STRICT ACCOUNTANT BLOCK (COURIER & MSRP) ---
+        if decision == 'approved' and not request.user.is_superuser:
+            if not price_request.is_product_request:
+                req_amt = Decimal(str(price_request.requested_courier_charge or 0))
+                rec_amt = Decimal(str(price_request.recommended_courier_charge or 0))
+
+                # Safe fallback if recommended is 0
+                if rec_amt == 0 and hasattr(parent_obj, 'courier_charge'):
+                    raw_val = parent_obj.courier_charge() if callable(getattr(parent_obj, 'courier_charge')) else getattr(parent_obj, 'courier_charge', 0)
+                    rec_amt = Decimal(str(raw_val or 0))
+
+                # Only block if recommended was actually > 0 and discount is >50%
+                if rec_amt > 0 and req_amt < (rec_amt / 2):
+                    return self.trigger_admin_notification(
+                        request, parent_obj, price_request, "DEEP COURIER DISCOUNT (>50%)"
+                    )
+
+            elif price_request.is_product_request:
+                if price_request.is_under_msrp:
+                    return self.trigger_admin_notification(
+                        request, parent_obj, price_request, "BELOW MSRP"
+                    )
+
+        # --- 3. FINAL APPROVAL PROCESSING ---
+        with transaction.atomic():
+            if price_request.is_product_request and price_request.product:
+                item = parent_obj.items.filter(product=price_request.product).first()
+                if item and decision == 'approved':
+                    final_price = price_request.requested_price
+                    rec_p = price_request.recommended_price or Decimal("0.00")
+
+                    memory_obj, created = ApprovedPriceMemory.objects.get_or_create(
+                        customer=parent_obj.customer,
+                        product=item.product,
+                        defaults={'min_approved_price': final_price, 'base_price_at_approval': rec_p}
+                    )
+                    if not created and memory_obj.base_price_at_approval == rec_p:
+                        if final_price < memory_obj.min_approved_price:
+                            memory_obj.min_approved_price = final_price
+                            memory_obj.save()
+
+                    item.current_price = final_price
+                    item.save()
+
+            # Safe Courier Update (Handles method vs field)
+            elif not price_request.is_product_request and price_request.requested_courier_charge is not None:
+                if decision == 'approved':
+                    if hasattr(parent_obj, 'courier_charge') and not callable(getattr(parent_obj, 'courier_charge')):
+                        parent_obj.courier_charge = price_request.requested_courier_charge
+                    price_request.courier_status = 'approved'
+
+            price_request.status = 'approved'
+            price_request.reviewed_by = request.user
+            price_request.reviewed_at = timezone.now()
+
+            if request.user.is_superuser:
+                price_request.superuser_approved = True
+            else:
+                price_request.accountant_approved = True
+
+            price_request.save()
+            parent_obj.is_price_altered = True
+            parent_obj.save()
+
+        self.check_and_send_final_email(request, parent_obj, price_request)
+        if is_ajax:
+            return JsonResponse({"status": "ok", "decision": "approved"})
+
+        messages.success(request, "Request approved successfully.")
+        return redirect("proforma_price_change_requests")
+
+    def trigger_admin_notification(self, request, parent_obj, price_request, violation_type):
+        try:
+            to_emails = ["abhijay.obluhc@gmail.com"]
+            email_context = {
+                "invoice": parent_obj,
+                "price_request": price_request,
+                "accountant_name": request.user.username,
+                "violation_type": violation_type,
+                "review_url": "https://oblutools.com/proforma/price-change-requests/"
+            }
+            html_content = render_to_string("proforma_invoice/msrp_notification_email.html", email_context)
+            subject = f"🚨 Admin Review Required ({violation_type}): #{parent_obj.id}"
+
+            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails)
+            msg.attach_alternative(html_content, "text/html")
+            msg.send(fail_silently=True)
+
+            price_request.accountant_approved = True
+            price_request.is_under_msrp = True
+            price_request.save()
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({"status": "admin_notified", "violation": violation_type})
+
+            messages.warning(request, f"⚠️ {violation_type}: Nitin Sir notified for final approval.")
+        except Exception as e:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({"status": "error", "message": str(e)})
+            messages.error(request, f"Error notifying Admin: {str(e)}")
+
+        return redirect("proforma_price_change_requests")
+
+    def check_and_send_final_email(self, request, parent_obj, price_request):
+        pending_count = parent_obj.price_requests.filter(status='pending').count()
+        if pending_count == 0 and price_request.requested_by.email:
+            try:
+                d_type = "Quotation" if getattr(price_request, 'quotation', None) else "Proforma"
+                target_url = f"https://oblutools.com/proforma/{'quotations' if d_type == 'Quotation' else 'proformas'}/{parent_obj.id}/"
+                to_emails = [price_request.requested_by.email]
+                cc_emails = ["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com", "nitin.obluhc@gmail.com"]
+
+                email_context = {
+                    "doc_type": d_type,
+                    "parent_obj": parent_obj,
+                    "customer_name": parent_obj.customer.name,
+                    "requested_by": price_request.requested_by.get_full_name() or price_request.requested_by.username,
+                    "reviewed_by": request.user.get_full_name() or request.user.username,
+                    "requests": parent_obj.price_requests.select_related('product').all(),
+                    "view_url": target_url,
+                }
+                html_content = render_to_string("proforma_invoice/price_review_decision_email.html", email_context)
+                subject = f"✅ Price Review Completed: {d_type} #{parent_obj.id} ({parent_obj.customer.name})"
+
+                msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
+                msg.attach_alternative(html_content, "text/html")
+                msg.send(fail_silently=True)
+            except Exception as e:
+                logger.error(f"Decision Review Email Error: {e}")
+
 class ProformaPriceChangeRequestRejectView(AccountantRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         price_request = get_object_or_404(ProformaPriceChangeRequest, id=kwargs["pk"], status="pending")

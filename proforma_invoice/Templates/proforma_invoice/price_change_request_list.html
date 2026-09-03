@@ -410,32 +410,37 @@
                                                         <small style="opacity: 0.5;">Min: ₹{{ req.recommended_price|default:invoice.courier_charge|divide:2|floatformat:0 }}</small>
                                                     {% endif %}
                                                 </td>
-                                        <td style="text-align: center;" id="action-cell-{{ req.id }}">
-                                            {% if req.status == 'pending' %}
-                                                {% if not user.is_superuser %}
-                                                    {% if req.accountant_approved %}
-                                                        <!-- Case 1: Already Notified -->
-                                                        <button class="btn-core" style="background: #444; color: #888; cursor: not-allowed; border: 1px solid #555; width: 100px;" disabled>NOTIFIED</button>
-                                                    {% else %}
-                                                        <!-- Case 2: Check for violations to show Notify Admin -->
-                                                        {% if req.is_product_request and req.requested_price < req.msrp_snapshot or not req.is_product_request and req.requested_courier_charge < req.recommended_price|default:invoice.courier_charge|divide:2 %}
-                                                            <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core" style="background: green; color: white; border: none; width: 60px; font-size: 0.6rem; font-weight: 800;">
-                                                                NOTIFY ADMIN
-                                                            </button>
-                                                        {% else %}
-                                                            <!-- Case 3: Safe price, standard submit -->
-                                                            <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
-                                                        {% endif %}
-                                                    {% endif %}
-                                                {% else %}
-                                                    <!-- Case 4: Superuser always sees Submit -->
-                                                    <form action="{% url 'proforma_price_change_approve' req.id %}" method="post" id="form-{{ req.id }}" style="display: inline;">
-                                                        {% csrf_token %}
-                                                        <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
-                                                    </form>
-                                                {% endif %}
-                                            {% endif %}
-                                        </td>
+<!--                                                &#45;&#45;&#45;&#45;chngesss-&#45;&#45;&#45;&#45;-->
+<td style="text-align: center;" id="action-cell-{{ req.id }}">
+    {% if req.status == 'pending' %}
+        {% if not user.is_superuser %}
+            {% if req.accountant_approved %}
+                <!-- Case 1: Already Notified -->
+                <button type="button" class="btn-core" style="background: #444; color: #888; cursor: not-allowed; border: 1px solid #555; width: 100px;" disabled>NOTIFIED</button>
+            {% else %}
+                <!-- Case 2: Check for violations to show Notify Admin -->
+                {% with base_courier=req.recommended_price|default:invoice.courier_charge|default:0 %}
+                    {% if req.is_product_request and req.msrp_snapshot and req.requested_price < req.msrp_snapshot %}
+                        <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core" style="background: #28a745; color: white; border: none; width: 85px; font-size: 0.6rem; font-weight: 800;">
+                            NOTIFY ADMIN
+                        </button>
+                    {% elif not req.is_product_request and base_courier > 0 and req.requested_courier_charge < base_courier|divide:2 %}
+                        <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core" style="background: #28a745; color: white; border: none; width: 85px; font-size: 0.6rem; font-weight: 800;">
+                            NOTIFY ADMIN
+                        </button>
+                    {% else %}
+                        <!-- Case 3: Safe price, standard submit -->
+                        <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
+                    {% endif %}
+                {% endwith %}
+            {% endif %}
+        {% else %}
+            <!-- Case 4: Superuser (NO <form> wrapper here, targets ajax-form directly) -->
+            <button type="submit" form="ajax-form-{{ req.id }}" class="btn-core btn-appr" style="padding: 4px 12px; font-size: 0.65rem; width: 60px;">SUBMIT</button>
+        {% endif %}
+    {% endif %}
+</td>
+
                                             </tr>
                                             {% endfor %}
                                         </tbody>
