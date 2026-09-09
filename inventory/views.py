@@ -2660,7 +2660,7 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
         })
 
 #kashissh version
-class PurchaseOrderView(AccountantRequiredMixin, View):
+class PurchaseOrderViewPrev(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order.html"
 
     # ─────────────────────────────────────────────────────────────────────────
