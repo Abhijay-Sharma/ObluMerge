@@ -5591,7 +5591,7 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
 #fixing bugs
 
 
-class PurchaseOrderViewPause(AccountantRequiredMixin, View):
+class PurchaseOrderView(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order.html"
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -5601,12 +5601,12 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
     @staticmethod
     def _preload_voucher_data():
         """
-        Returns:
-          sales_map               : item_id -> [{"date","qty","party"}]        — TAX INVOICE
-          credit_note_map         : item_id -> [{"date","qty","party"}]        — CREDIT NOTE
-          internal_customer_map   : item_id -> [{"date","qty","party"}]        — TAX INVOICE to AMEND/SMILIGN
-          po_map                  : item_id -> [{"date","qty","voucher_number","party"}] — PURCHASE ORDER
-          gst_map                 : item_id -> [{"date","qty","voucher_number","party"}] — GST PURCHASE / Purchase
+        Returns three dicts keyed by item_id (int):
+          sales_rows   : list of {"date": date, "qty": float}   — TAX INVOICE
+          po_rows      : list of {"date": date, "qty": float, "voucher_number": str, "party": str}
+                         — PURCHASE ORDER vouchers
+          gst_rows     : list of {"date": date, "qty": float, "voucher_number": str, "party": str}
+                         — GST PURCHASE (received stock)
         """
         APRIL_2025 = datetime.date(2025, 4, 1)
 
@@ -5616,12 +5616,13 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
         gst_map = defaultdict(list)
         internal_customer_map = defaultdict(list)
 
-        # ── All TAX INVOICE stock rows
+        # ── All TAX INVOICE stock rows (from April 2025 onwards for sales calc)
+        # We also need older data for 1-year growth, so pull everything and filter in Python
         for row in (
-            VoucherStockItem.objects
-            .filter(voucher__voucher_type__iexact="TAX INVOICE")
-            .select_related("voucher")
-            .values("item_id", "quantity", "voucher__date", "voucher__party_name")
+                VoucherStockItem.objects
+                        .filter(voucher__voucher_type__iexact="TAX INVOICE")
+                        .select_related("voucher")
+                        .values("item_id", "quantity", "voucher__date", "voucher__party_name")
         ):
             iid = row["item_id"]
             if not iid:
@@ -5632,12 +5633,14 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 "party": row["voucher__party_name"] or "Unknown",
             })
 
-        # ── CREDIT NOTE rows
         for row in (
-            VoucherStockItem.objects
-            .filter(voucher__voucher_type__iexact="CREDIT NOTE")
-            .select_related("voucher")
-            .values("item_id", "quantity", "voucher__date", "voucher__party_name")
+                VoucherStockItem.objects
+                        .filter(
+                    voucher__voucher_type__iexact="CREDIT NOTE"
+                )
+                        .select_related("voucher")
+                        .values("item_id", "quantity", "voucher__date", "voucher__party_name")
+
         ):
             iid = row["item_id"]
             if not iid:
@@ -5648,18 +5651,27 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 "party": row["voucher__party_name"] or "Unknown",
             })
 
-        # ── Internal-customer TAX INVOICE rows (AMEND / SMILIGN)
         for row in (
-            VoucherStockItem.objects
-            .filter(voucher__voucher_type__iexact="TAX INVOICE")
-            .select_related("voucher")
-            .values("item_id", "quantity", "voucher__date", "voucher__party_name")
+                VoucherStockItem.objects
+                        .filter(voucher__voucher_type__iexact="TAX INVOICE")
+                        .select_related("voucher")
+                        .values(
+                    "item_id",
+                    "quantity",
+                    "voucher__date",
+                    "voucher__party_name"
+                )
         ):
             party = (row["voucher__party_name"] or "").upper()
-            if not ("AMEND" in party or "SMILIGN" in party):
+
+            if not (
+                    "AMEND" in party
+                    or "SMILIGN" in party
+            ):
                 continue
 
             iid = row["item_id"]
+
             if not iid:
                 continue
 
@@ -5669,13 +5681,13 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 "party": row["voucher__party_name"],
             })
 
-        # ── PURCHASE ORDER vouchers (PO we make)
+        # ── PURCHASE ORDER vouchers (PO we make, from Dec 2024 onward)
         for row in (
-            VoucherStockItem.objects
-            .filter(voucher__voucher_type__iexact="PURCHASE ORDER")
-            .select_related("voucher")
-            .values("item_id", "quantity", "voucher__date",
-                    "voucher__voucher_number", "voucher__party_name")
+                VoucherStockItem.objects
+                        .filter(voucher__voucher_type__iexact="PURCHASE ORDER")
+                        .select_related("voucher")
+                        .values("item_id", "quantity", "voucher__date",
+                                "voucher__voucher_number", "voucher__party_name")
         ):
             iid = row["item_id"]
             if not iid:
@@ -5689,15 +5701,15 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
         # ── GST PURCHASE (received/booked into stock)
         for row in (
-            VoucherStockItem.objects
-            .filter(
-                voucher__voucher_type__in=[
-                    "GST PURCHASE", "Purchase", "gst purchase", "purchase"
-                ]
-            )
-            .select_related("voucher")
-            .values("item_id", "quantity", "voucher__date",
-                    "voucher__voucher_number", "voucher__party_name")
+                VoucherStockItem.objects
+                        .filter(
+                    voucher__voucher_type__in=[
+                        "GST PURCHASE", "Purchase", "gst purchase", "purchase"
+                    ]
+                )
+                        .select_related("voucher")
+                        .values("item_id", "quantity", "voucher__date",
+                                "voucher__voucher_number", "voucher__party_name")
         ):
             iid = row["item_id"]
             if not iid:
@@ -5724,30 +5736,46 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
     @staticmethod
     def _preload_tracking_data():
         """
-        Returns dict keyed by InventoryItem.id -> [PurchaseOrderTrackingItem, ...]
-        for POs with status == "active".
+        Returns dict keyed by InventoryItem.id
+
+        {
+            item_id: PurchaseOrderTrackingItem
+        }
         """
+
+        from collections import defaultdict
+
         tracking_map = defaultdict(list)
 
         tracking_items = (
             PurchaseOrderTrackingItem.objects
-            .filter(purchase_order__status="active")
-            .select_related("purchase_order", "inventory_item")
-            .prefetch_related("purchase_order__stage_logs__stage")
+            .filter(purchase_order__status__in=["active", "arrived"])
+            .select_related(
+                "purchase_order",
+                "inventory_item",
+            )
+            .prefetch_related(
+                "purchase_order__stage_logs__stage"
+            )
         )
 
         for tracking_item in tracking_items:
+
             if tracking_item.inventory_item_id:
                 tracking_map[tracking_item.inventory_item_id].append(tracking_item)
 
         return tracking_map
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Monthly / daily sales aggregation (for the drill-down modal)
+    # Monthly sales aggregation (from tally data)
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _monthly_sales(sales_rows, from_date=None):
+        """
+        Returns sorted list of {"month": "YYYY-MM", "qty": float}
+        Optional from_date to filter.
+        """
         by_month = defaultdict(float)
         for row in sales_rows:
             d = row["date"]
@@ -5760,47 +5788,66 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
     @staticmethod
     def _daily_sales(sales_rows, credit_note_rows, internal_rows):
-        """
-        Returns dict keyed by "YYYY-MM" -> list of rows, each tagged with
-        whether it was included in the net sales figure and why not, so the
-        modal can show accountants exactly what was netted out and why.
-        """
+
         by_month = defaultdict(list)
 
+        # Normal Sales
+
+        INTERNAL_CUSTOMERS = (
+            "AMEND",
+            "SMILIGN",
+        )
         for row in sales_rows:
+
             d = row["date"]
+
             if not d:
                 continue
+
             by_month[d.strftime("%Y-%m")].append({
+
                 "date": d.strftime("%Y-%m-%d"),
                 "party": row.get("party", "Unknown"),
                 "qty": row["qty"],
                 "status": "Included",
                 "reason": "",
+
             })
 
+        # Credit Notes
         for row in credit_note_rows:
+
             d = row["date"]
+
             if not d:
                 continue
+
             by_month[d.strftime("%Y-%m")].append({
+
                 "date": d.strftime("%Y-%m-%d"),
                 "qty": row["qty"],
                 "party": row.get("party", "Unknown"),
                 "status": "Excluded",
                 "reason": "Credit Note",
+
             })
 
+        # Internal Customers
         for row in internal_rows:
+
             d = row["date"]
+
             if not d:
                 continue
+
             by_month[d.strftime("%Y-%m")].append({
+
                 "date": d.strftime("%Y-%m-%d"),
                 "qty": row["qty"],
                 "party": row.get("party", "Unknown"),
                 "status": "Excluded",
                 "reason": "Internal Customer",
+
             })
 
         for month in by_month:
@@ -5810,18 +5857,26 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
     @staticmethod
     def _net_sales(item_sales, item_credit_notes):
-        """FIFO-cancel each Credit Note against the same party's earlier sales."""
+
         if not item_sales:
             return []
+
         if not item_credit_notes:
             return item_sales
 
+        # Work on a copy so we never modify the original sales_map
         sales = [
-            {"date": row["date"], "qty": float(row["qty"]), "party": row.get("party", "Unknown")}
+            {
+                "date": row["date"],
+                "qty": float(row["qty"]),
+                "party": row.get("party", "Unknown"),
+            }
             for row in item_sales
         ]
 
+        # Process every Credit Note
         for credit in item_credit_notes:
+
             remaining_credit = float(credit["qty"])
             credit_party = credit.get("party")
             credit_date = credit.get("date")
@@ -5829,59 +5884,85 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
             if remaining_credit <= 0:
                 continue
 
+            # Oldest sale first (FIFO)
             for sale in sorted(sales, key=lambda x: x["date"]):
+
                 if remaining_credit <= 0:
                     break
+
+                # Same customer only
                 if sale["party"] != credit_party:
                     continue
+
+                # Credit Note cannot cancel a future sale
                 if sale["date"] > credit_date:
                     continue
 
                 available = sale["qty"]
+
                 if available <= 0:
                     continue
 
                 deduction = min(available, remaining_credit)
+
                 sale["qty"] -= deduction
                 remaining_credit -= deduction
 
+        # Remove fully cancelled sales
         return [row for row in sales if row["qty"] > 0]
 
     @staticmethod
     def _remove_internal_sales(item_sales, internal_sales):
-        """FIFO-remove sales to internal customers (AMEND / SMILIGN)."""
+
         if not item_sales:
             return []
+
         if not internal_sales:
             return item_sales
 
+        # Work on a copy
         sales = [
-            {"date": row["date"], "qty": float(row["qty"]), "party": row.get("party", "Unknown")}
+            {
+                "date": row["date"],
+                "qty": float(row["qty"]),
+                "party": row.get("party", "Unknown"),
+            }
             for row in item_sales
         ]
 
+        # FIFO deduction (same logic as Credit Notes)
         for internal in internal_sales:
+
             remaining_qty = float(internal["qty"])
+            internal_party = internal.get("party")
             internal_date = internal.get("date")
 
             if remaining_qty <= 0:
                 continue
 
             for sale in sorted(sales, key=lambda x: x["date"]):
+
                 if remaining_qty <= 0:
                     break
 
                 sale_party = (sale.get("party") or "").upper()
-                if not ("AMEND" in sale_party or "SMILIGN" in sale_party):
+
+                if not (
+                        "AMEND" in sale_party or
+                        "SMILIGN" in sale_party
+                ):
                     continue
+
                 if sale["date"] > internal_date:
                     continue
 
                 available = sale["qty"]
+
                 if available <= 0:
                     continue
 
                 deduction = min(available, remaining_qty)
+
                 sale["qty"] -= deduction
                 remaining_qty -= deduction
 
@@ -5893,6 +5974,9 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
     @staticmethod
     def _avg_daily_from_tally(sales_rows):
+        """
+        Avg daily = total qty sold since April 2025 / number of days since April 2025.
+        """
         APRIL_2025 = datetime.date(2025, 4, 1)
         today = datetime.date.today()
         total_qty = sum(
@@ -5908,6 +5992,12 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
     @staticmethod
     def _growth_windows(sales_rows):
+        """
+        growth_1y : last 12 months total vs previous 12 months total (all tally data)
+        growth_3m : last  3 months total vs previous  3 months total (tally data)
+
+        Returns (growth_1y, growth_3m) as % floats or None.
+        """
         if not sales_rows:
             return None, None
 
@@ -5924,21 +6014,31 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 total += by_month.get(key, 0)
             return total
 
-        r1y = _sum_window(0, 12); p1y = _sum_window(12, 12)
-        r3m = _sum_window(0, 3);  p3m = _sum_window(3, 3)
+        r1y = _sum_window(0, 12);
+        p1y = _sum_window(12, 12)
+        r3m = _sum_window(0, 3);
+        p3m = _sum_window(3, 3)
 
         growth_1y = round((r1y - p1y) / p1y * 100, 1) if p1y else None
         growth_3m = round((r3m - p3m) / p3m * 100, 1) if p3m else None
         return growth_1y, growth_3m
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Sales forecast (growth-adjusted, 20% YoY / 80% last-3m blend, capped at 40%)
+    # Sales forecast (growth-adjusted)
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _forecast_next_3_months(avg_daily, growth_1y, growth_3m, is_dead):
+        """
+        Blended monthly growth = average of growth_1y/12 (monthly equiv) and growth_3m/3.
+        Apply compounding to avg_daily → project M+1, M+2, M+3 monthly totals.
+        Returns (pred_m1, pred_m2, pred_m3) or (None, None, None).
+        """
         if is_dead or avg_daily <= 0:
             return None, None, None
+
+        # Convert annual / 3-month growth to per-month growth rates
+        rates = []
 
         rate_1y = (growth_1y / 12 / 100) if growth_1y is not None else None
         rate_3m = (growth_3m / 3 / 100) if growth_3m is not None else None
@@ -5946,14 +6046,14 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
         if rate_1y is not None and rate_3m is not None:
             monthly_growth = 0.20 * rate_1y + 0.80 * rate_3m
         elif rate_3m is not None:
-            monthly_growth = rate_3m
+            monthly_growth = rate_3m  # only 3m available
         elif rate_1y is not None:
-            monthly_growth = rate_1y
+            monthly_growth = rate_1y  # only 1y available
         else:
             monthly_growth = 0.0
-
-        monthly_growth = min(monthly_growth, 0.40)  # cap growth at 40%/month
-
+        # adding max 40% growth to
+        monthly_growth = min(monthly_growth, 0.40)
+        # ---------
         base_monthly = avg_daily * 30
         m1 = max(0, round(base_monthly * (1 + monthly_growth)))
         m2 = max(0, round(base_monthly * (1 + monthly_growth) ** 2))
@@ -5966,37 +6066,66 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
     @staticmethod
     def _calc_order(
-        current_stock,
-        avg_daily,
-        delivery_days,
-        incoming_shipments,     # list of tracking-detail dicts (multi-PO aware)
-        pred_m1, pred_m2, pred_m3,
-        monthly_growth_rate,
-        moq,
-        is_dead,
+            current_stock,
+            avg_daily,
+            delivery_days,
+            incoming_shipments,
+            pred_m1, pred_m2, pred_m3,
+            monthly_growth_rate,  # decimal e.g. 0.03 for 3%
+            moq,
+            is_dead,
     ):
         """
-        Same algorithm as before (project demand -> find runway -> reorder
-        point -> shortfall over next 3 months -> round to MOQ), with the
-        incoming-shipment boundary bug fixed. See the "# FIX:" comment below.
+        ALGORITHM
+        ─────────
+        Inputs:
+          • current_stock
+          • incoming_qty / incoming_date  (open PO, if any within delivery window)
+          • avg_daily                     (from tally, April 2025 onwards)
+          • monthly_growth_rate           (blended from 1y + 3m growth)
+          • delivery_days                 (lead time for this product)
+          • pred_m1/m2/m3                 (growth-adjusted monthly forecast)
+          • 20% buffer stock (hardcoded)
+          • moq
+
+        Steps:
+          1. Project daily consumption with growth for each future day.
+          2. Stack current_stock + incoming_qty (if arriving before new batch).
+          3. Find the day stock (with buffer) runs out → "runway".
+          4. Reorder point = runway_day − delivery_days.
+             If reorder_point <= 0 → order NOW.
+          5. Calculate qty needed to cover 3 months from the reorder-arrival date,
+             adjusted for growth, plus 20% buffer, minus incoming (if arriving after).
+          6. Round up to MOQ if needed.
+
+        Returns a dict with all intermediate values for template rendering + graphing.
         """
         BUFFER = 1.20  # 20% safety buffer
+
         today = datetime.date.today()
 
         shipments = []
+
         for shipment in incoming_shipments:
-            if not shipment["eta"]:
+            arrival_day = shipment.get("arrival_day")
+
+            if arrival_day is None:
                 continue
+
             shipments.append({
-                "arrival_day": max(0, (shipment["eta"] - today).days),
-                "qty": shipment["incoming_qty"],
-                "po_number": shipment["po_number"],
-                "stage": shipment["stage"],
-                "eta": shipment["eta"],
-                "remaining_days": shipment["remaining_days"],
-                "days_in_stage": shipment["days_in_stage"],
+                "arrival_day": max(0, int(arrival_day)),
+                "qty": float(shipment.get("incoming_qty") or 0),
+                "po_number": shipment.get("po_number"),
+                "stage": shipment.get("stage"),
+                "eta": shipment.get("eta"),
+                "remaining_days": shipment.get("remaining_days"),
+                "days_in_stage": shipment.get("days_in_stage"),
+                "type": shipment.get("type"),
             })
-        shipments.sort(key=lambda x: x["arrival_day"])
+
+        shipments.sort(
+            key=lambda x: x["arrival_day"]
+        )
 
         if is_dead:
             return {
@@ -6012,7 +6141,7 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 "calc_steps": {"note": "Product is dead stock — no order recommended."},
             }
 
-        # ── Step 1: daily growth-adjusted demand projection (180-day horizon)
+        # ── Step 1: daily growth-adjusted demand projection (180 days horizon)
         horizon = 180
         daily_demand = []
         for day in range(horizon):
@@ -6020,28 +6149,41 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
             rate = (1 + monthly_growth_rate) ** month_offset
             daily_demand.append(avg_daily * rate)
 
-        # ── Step 2: simulate stock day-by-day to find runway / stockout / graph
+        # # ── Step 2: determine when incoming PO arrives relative to today
+        # incoming_arrives_in = None   # days from today
+        # if incoming_qty > 0 and incoming_date:
+        #     incoming_arrives_in = max(0, (incoming_date - today).days)
+
+        # ── Step 3: simulate stock level day-by-day to find runway
         stock = float(current_stock)
         stockout_day = None
         runway_days = None
-        graph_data = []
+
+        graph_data = []  # for chart: day → {stock, demand_per_day}
 
         for day in range(horizon):
+            # Add incoming stock on its arrival day
             events_today = []
+
             for shipment in shipments:
+
                 if shipment["arrival_day"] == day:
                     stock += shipment["qty"]
+
                     events_today.append({
+
                         "po": shipment["po_number"],
                         "qty": shipment["qty"],
                         "stage": shipment["stage"],
                         "eta": shipment["eta"],
                         "remaining_days": shipment["remaining_days"],
                         "days_in_stage": shipment["days_in_stage"],
+                        "type": shipment.get("type"),
+
                     })
 
             demand = daily_demand[day]
-            buffer_threshold = demand * 30 * 3 * BUFFER
+            buffer_threshold = demand * 30 * 3 * BUFFER  # 3-month buffered demand
 
             graph_data.append({
                 "day": day,
@@ -6056,65 +6198,81 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
             if stockout_day is None and stock <= 0:
                 stockout_day = day
+
+            # Runway = first day stock goes below 0 (without buffer first)
             if runway_days is None and stock <= 0:
                 runway_days = day
 
         if runway_days is None:
-            runway_days = horizon
+            runway_days = horizon  # Stock lasts beyond horizon
 
-        # ── Step 3: reorder point
+        # ── Step 4: reorder point (days from today)
         reorder_point_days = runway_days - delivery_days
+
+        # ── Step 5: should we order now?
         order_now = reorder_point_days <= 0
 
+        # Arrival date of NEW batch if ordered today
         new_batch_arrival_day = delivery_days
 
         for point in graph_data:
-            point["reorder_day"] = (point["day"] == reorder_point_days)
-            point["new_order_arrival"] = (point["day"] == delivery_days)
+            point["reorder_day"] = (
+                    point["day"] == reorder_point_days
+            )
 
-        # ── Step 4: stock on hand when a NEW order (placed today) would arrive
+            point["new_order_arrival"] = (
+                    point["day"] == delivery_days
+            )
+
+        # Stock on hand when NEW batch arrives
         stock_at_arrival = float(current_stock)
-        for d in range(new_batch_arrival_day):
+
+        for d in range(new_batch_arrival_day + 1):
+
+            # Add all existing PO quantities arriving on this day
             for shipment in shipments:
                 if shipment["arrival_day"] == d:
                     stock_at_arrival += shipment["qty"]
-            stock_at_arrival -= daily_demand[d] if d < len(daily_demand) else avg_daily
 
-        # FIX: credit shipments that arrive exactly ON new_batch_arrival_day.
-        # Previously these were dropped entirely — not counted here (the loop
-        # above stops at new_batch_arrival_day - 1) and not counted in
-        # incoming_after_new_batch below (which requires strictly >). Since
-        # delivery_days is derived from tracking data, this is the normal
-        # case for a single open PO, which is why incoming_qty edits had no
-        # visible effect on the recommended order.
-        stock_at_arrival += sum(
-            s["qty"] for s in shipments if s["arrival_day"] == new_batch_arrival_day
-        )
+            # Consume demand only for days BEFORE the new PO arrives
+            if d < new_batch_arrival_day:
+                stock_at_arrival -= (
+                    daily_demand[d]
+                    if d < len(daily_demand)
+                    else avg_daily
+                )
 
         stock_at_arrival = max(0, stock_at_arrival)
 
-        # ── Step 5: demand for 3 months AFTER the new batch arrives (buffered)
+        # Demand for 3 months AFTER new batch arrives (with buffer)
+        demand_3m_after = 0.0
         if pred_m1 is not None:
             demand_3m_after = (pred_m1 + pred_m2 + pred_m3) * BUFFER
             demand_source = f"forecast {pred_m1}+{pred_m2}+{pred_m3} × 1.20 buffer"
         else:
             demand_3m_after = avg_daily * 90 * BUFFER
             demand_source = f"flat avg {round(avg_daily, 2)}/day × 90 × 1.20 buffer"
+
         demand_3m_after = round(demand_3m_after)
 
-        # Shipments arriving strictly AFTER the new batch — still help later.
-        # (Unaffected by the fix: the ==day shipments are now claimed by
-        # stock_at_arrival above, so there's no double count here.)
+        # Incoming that arrives AFTER new batch (still helps)
         incoming_after_new_batch = sum(
+
             shipment["qty"]
+
             for shipment in shipments
+
             if shipment["arrival_day"] > new_batch_arrival_day
+
         )
 
         shortfall = max(0, demand_3m_after - stock_at_arrival - incoming_after_new_batch)
 
-        # ── Step 6: urgency / recommended order
-        if shortfall == 0:
+        # ── Step 6: urgency
+        if not order_now and shortfall == 0:
+            order_recommended = 0
+            order_urgency = "ok"
+        elif shortfall == 0:
             order_recommended = 0
             order_urgency = "ok"
         else:
@@ -6126,14 +6284,15 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
         order_final = order_recommended
         if moq and order_recommended > 0 and order_recommended < moq:
             moq_note = moq
-            order_final = moq
+            order_final = moq  # round up to MOQ
 
-        # ── How long will the order last (months)
+        # ── How long will order last (months)
         order_lasts_months = None
         if avg_daily > 0 and order_final > 0:
             total_after = stock_at_arrival + order_final + incoming_after_new_batch
             order_lasts_months = round(total_after / (avg_daily * 30), 1)
 
+        # ── Runway in months (current trajectory)
         runway_months = round(runway_days / 30, 1) if runway_days < horizon else None
 
         calc_steps = {
@@ -6172,7 +6331,7 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
             "runway_days": runway_days,
             "runway_months": runway_months,
             "reorder_point_days": reorder_point_days,
-            "graph_data": graph_data[:90],
+            "graph_data": graph_data[:90],  # send 90 days to template
             "calc_steps": calc_steps,
             "stockout_day": stockout_day,
         }
@@ -6184,6 +6343,7 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
     def get(self, request):
         today = datetime.date.today()
         ninety_days_ago = today - timedelta(days=90)
+        APRIL_2025 = datetime.date(2025, 4, 1)
 
         categories = Category.objects.all().order_by("name")
         selected_category_id = request.GET.get("category")
@@ -6195,9 +6355,11 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 "selected_category_id": None,
             })
 
+        # ── Pre-load all voucher data (one DB hit per type)
         sales_map, credit_note_map, internal_customer_map, po_map, gst_map = (
             PurchaseOrderView._preload_voucher_data()
         )
+
         tracking_item_map = PurchaseOrderView._preload_tracking_data()
 
         items = (
@@ -6213,45 +6375,69 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
             iid = item.id
             current_stock = float(item.quantity or 0)
 
+            # ── Tally sales rows for this item
             item_sales = sales_map.get(iid, [])
 
             item_credit_notes = credit_note_map.get(iid, [])
-            item_sales = PurchaseOrderView._net_sales(item_sales, item_credit_notes)
 
-            item_internal_sales = internal_customer_map.get(iid, [])
-            item_sales = PurchaseOrderView._remove_internal_sales(item_sales, item_internal_sales)
-
-            monthly_sales_breakdown = PurchaseOrderView._monthly_sales(item_sales)
-            daily_sales_breakdown = PurchaseOrderView._daily_sales(
-                item_sales, item_credit_notes, item_internal_sales
+            item_sales = PurchaseOrderView._net_sales(
+                item_sales,
+                item_credit_notes,
             )
 
+            item_internal_sales = internal_customer_map.get(iid, [])
+
+            item_sales = PurchaseOrderView._remove_internal_sales(
+                item_sales,
+                item_internal_sales,
+            )
+
+            # abhijay change to make modal that shows monthly rpoduct sales
+            monthly_sales_breakdown = PurchaseOrderView._monthly_sales(item_sales)
+
+            daily_sales_breakdown = PurchaseOrderView._daily_sales(
+                item_sales,
+                item_credit_notes,
+                item_internal_sales,
+            )
+            # Dead stock = no TAX INVOICE sale in last 90 days
             is_dead = not any(
                 row["date"] and row["date"] >= ninety_days_ago
                 for row in item_sales
             )
+
             if hide_dead and is_dead:
                 continue
 
+            # ── Avg daily (tally, April 2025 onwards)
             avg_daily = PurchaseOrderView._avg_daily_from_tally(item_sales)
+
+            # ── Growth
             growth_1y, growth_3m = PurchaseOrderView._growth_windows(item_sales)
 
+            # Blended monthly growth rate (decimal)
+            rates = []
+            # NEW — weighted: 20% YoY, 80% last-3m
             rate_1y = (growth_1y / 12 / 100) if growth_1y is not None else None
             rate_3m = (growth_3m / 3 / 100) if growth_3m is not None else None
+
             if rate_1y is not None and rate_3m is not None:
                 monthly_growth_rate = 0.20 * rate_1y + 0.80 * rate_3m
             elif rate_3m is not None:
-                monthly_growth_rate = rate_3m
+                monthly_growth_rate = rate_3m  # only 3m available
             elif rate_1y is not None:
-                monthly_growth_rate = rate_1y
+                monthly_growth_rate = rate_1y  # only 1y available
             else:
                 monthly_growth_rate = 0.0
+            # adding 40% cap on growth
             monthly_growth_rate = min(monthly_growth_rate, 0.4)
-
+            # -------
+            # ── Forecast
             pred_m1, pred_m2, pred_m3 = PurchaseOrderView._forecast_next_3_months(
                 avg_daily, growth_1y, growth_3m, is_dead
             )
 
+            # ── PO data (purchase order vouchers we made)
             item_po_rows = sorted(
                 po_map.get(iid, []),
                 key=lambda r: r["date"] or datetime.date.min,
@@ -6261,43 +6447,104 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
 
             incoming_qty = 0
             incoming_date = None
+
             tracking_details = []
+
             tracking_items = tracking_item_map.get(item.id, [])
 
+            print("=" * 80)
+            print(item.name)
+            print("Tracking items:", len(tracking_items))
+
+            for t in tracking_items:
+                print(
+                    "PO:",
+                    t.purchase_order.id,
+                    "Status:",
+                    t.purchase_order.status,
+                    "Ordered:",
+                    t.ordered_quantity,
+                    "Arrived:",
+                    t.arrived_quantity,
+                )
+
             if tracking_items:
+
                 for tracking_item in tracking_items:
                     po = tracking_item.purchase_order
 
                     current_stage = get_current_stage(po)
+
                     remaining_days = get_remaining_days(po)
                     days_in_stage = get_days_in_current_stage(po)
+                    print("=" * 60)
+                    print("PO:", po.tally_voucher.voucher_number)
+
+                    # Print every date-related field on PurchaseOrderTracking
+                    print("arrival_datetime:", po.arrival_datetime)
+
+                    # If you have any of these fields, print them too:
+                    # print("expected_arrival_date:", po.expected_arrival_date)
+                    # print("eta:", po.eta)
+
+                    print("Function ETA:", get_expected_arrival_date(po))
                     incoming_date = get_expected_arrival_date(po)
 
-                    incoming_qty = max(
-                        0,
-                        float(tracking_item.ordered_quantity)
-                        - float(tracking_item.arrived_quantity or 0)
+                    ordered_qty = float(
+                        tracking_item.ordered_quantity or 0
                     )
 
-                    tracking_details.append({
-                        "po_number": po.tally_voucher.voucher_number,
-                        "incoming_qty": incoming_qty,
-                        "stage": current_stage.stage.name if current_stage else None,
-                        "days_in_stage": (
-                            float(days_in_stage) if days_in_stage is not None else None
-                        ),
-                        "remaining_days": (
-                            float(remaining_days) if remaining_days is not None else None
-                        ),
-                        "eta": incoming_date,
-                    })
+                    arrived_qty = float(
+                        tracking_item.arrived_quantity or 0
+                    )
+
+                    pending_qty = max(
+                        0,
+                        ordered_qty - arrived_qty
+                    )
+
+                    # Only pending quantity should appear in transit table
+                    if pending_qty > 0:
+                        tracking_details.append({
+                            "po_number": po.tally_voucher.voucher_number,
+
+                            # Already physically received
+                            "arrived_qty": arrived_qty,
+
+                            # Still waiting to arrive
+                            "incoming_qty": pending_qty,
+
+                            "stage": (
+                                current_stage.stage.name
+                                if current_stage
+                                else None
+                            ),
+
+                            "days_in_stage": (
+                                float(days_in_stage)
+                                if days_in_stage is not None
+                                else None
+                            ),
+
+                            "remaining_days": (
+                                float(remaining_days)
+                                if remaining_days is not None
+                                else None
+                            ),
+
+                            "eta": incoming_date,
+
+                            "type": "pending",
+                        })
 
             elif latest_po and item.expected_delivery_days:
                 expected_dt = latest_po["date"] + timedelta(days=item.expected_delivery_days)
+
                 if expected_dt > today:
                     incoming_qty = latest_po["qty"]
                     incoming_date = expected_dt
 
+            # ── GST purchase data (received stock)
             item_gst_rows = sorted(
                 gst_map.get(iid, []),
                 key=lambda r: r["date"] or datetime.date.min,
@@ -6305,29 +6552,83 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
             )
             latest_gst = item_gst_rows[0] if item_gst_rows else None
 
-            if tracking_items and tracking_details:
-                delivery_days = max(
-                    1,
-                    round(min(
-                        t["remaining_days"]
-                        for t in tracking_details
-                        if t["remaining_days"] is not None
-                    ))
-                )
-            else:
-                delivery_days = item.expected_delivery_days or 30
+            # ── Core order calculation
 
-            total_incoming_qty = sum(t["incoming_qty"] for t in tracking_details)
+            delivery_days = item.expected_delivery_days or 30
+
+            total_incoming_qty = sum(
+                t["incoming_qty"]
+                for t in tracking_details
+            )
+
             earliest_eta = min(
-                (t["eta"] for t in tracking_details if t["eta"]),
+                (
+                    t["eta"]
+                    for t in tracking_details
+                    if t["eta"]
+                ),
                 default=None
             )
+
+            incoming_shipments = []
+
+            for t in tracking_details:
+
+                # Quantity already physically received
+                arrived_qty = float(t.get("arrived_qty") or 0)
+                pending_qty = float(t.get("incoming_qty") or 0)
+
+                if arrived_qty > 0:
+                    incoming_shipments.append({
+                        "incoming_qty": arrived_qty,
+                        "arrival_day": 0,
+                        "po_number": t["po_number"],
+                        "stage": "Arrived",
+                        "eta": today,
+                        "remaining_days": 0,
+                        "days_in_stage": t.get("days_in_stage"),
+                        "type": "arrived",
+                    })
+
+                if pending_qty > 0 and t.get("eta"):
+                    arrival_day = max(0, (t["eta"] - today).days)
+
+                    incoming_shipments.append({
+                        "incoming_qty": pending_qty,
+                        "arrival_day": arrival_day,
+                        "po_number": t["po_number"],
+                        "stage": t.get("stage"),
+                        "eta": t["eta"],
+                        "remaining_days": t.get("remaining_days"),
+                        "days_in_stage": t.get("days_in_stage"),
+                        "type": "pending",
+                    })
+
+            # ── FALLBACK: no tracking data, use latest Tally PO
+            if not incoming_shipments and latest_po and item.expected_delivery_days:
+                expected_dt = latest_po["date"] + timedelta(
+                    days=item.expected_delivery_days
+                )
+
+                if expected_dt > today:
+                    arrival_day = max(0, (expected_dt - today).days)
+
+                    incoming_shipments.append({
+                        "incoming_qty": float(latest_po["qty"]),
+                        "arrival_day": arrival_day,
+                        "po_number": latest_po["voucher_number"],
+                        "stage": "Tally PO",
+                        "eta": expected_dt,
+                        "remaining_days": arrival_day,
+                        "days_in_stage": None,
+                        "type": "tally_fallback",
+                    })
 
             calc = PurchaseOrderView._calc_order(
                 current_stock=current_stock,
                 avg_daily=avg_daily,
                 delivery_days=delivery_days,
-                incoming_shipments=tracking_details,
+                incoming_shipments=incoming_shipments,
                 pred_m1=pred_m1,
                 pred_m2=pred_m2,
                 pred_m3=pred_m3,
@@ -6336,12 +6637,14 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 is_dead=is_dead,
             )
 
+            # ── Stock runway (months current stock lasts at flat avg)
             months_of_stock = (
                 round(current_stock / (avg_daily * 30), 1)
                 if avg_daily > 0 else None
             )
             is_overstocked = months_of_stock is not None and months_of_stock >= 9
 
+            # 1. Sanitize graph data for JSON (Convert Decimals/Dates)
             json_graph_data = []
             for d in calc.get("graph_data", []):
                 json_graph_data.append({
@@ -6355,20 +6658,48 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                             "qty": float(e["qty"]),
                             "stage": e["stage"],
                             "eta": e["eta"].isoformat() if e["eta"] else None,
+                            "type": e.get("type"),
+
                         } for e in d.get("events", [])
                     ]
                 })
 
+            # 2. Sanitize tracking details for JSON
             json_tracking_details = [
                 {
                     "po_number": t["po_number"],
                     "incoming_qty": float(t["incoming_qty"]),
+                    "arrived_qty": float(t.get("arrived_qty") or 0),
+
                     "stage": t["stage"],
-                    "eta": t["eta"].isoformat() if t["eta"] else None,
-                    "remaining_days": (
-                        float(t["remaining_days"]) if t["remaining_days"] is not None else None
+
+                    "eta": (
+                        t["eta"].isoformat()
+                        if t["eta"]
+                        else None
                     ),
-                } for t in tracking_details
+
+                    "remaining_days": (
+                        float(t["remaining_days"])
+                        if t["remaining_days"] is not None
+                        else None
+                    ),
+
+                    # Used by the graph to identify an already-arrived PO
+                    "type": t.get("type"),
+
+                    # Already-arrived quantity is available on Day 0
+                    "arrival_day": (
+                        0
+                        if t.get("arrived_qty", 0) > 0 and t.get("incoming_qty", 0) == 0
+                        else (
+                            round(float(t["remaining_days"]))
+                            if t.get("incoming_qty", 0) > 0 and t["remaining_days"] is not None
+                            else 0
+                        )
+                    ),
+                }
+                for t in tracking_details
             ]
 
             products_data.append({
@@ -6385,19 +6716,24 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 "pred_m2": pred_m2,
                 "pred_m3": pred_m3,
                 "is_dead": is_dead,
+                # product monthly sales modal
                 "monthly_sales_json": json.dumps(monthly_sales_breakdown),
                 "daily_sales_json": json.dumps(daily_sales_breakdown),
-                "po_rows": item_po_rows,
+                # PO data
+                "po_rows": item_po_rows,  # all POs (for modal)
                 "latest_po_qty": latest_po["qty"] if latest_po else None,
                 "latest_po_date": latest_po["date"] if latest_po else None,
                 "latest_po_number": latest_po["voucher_number"] if latest_po else None,
-                "gst_rows": item_gst_rows,
+                # GST purchase data
+                "gst_rows": item_gst_rows,  # all GST purchases (for modal)
                 "latest_gst_qty": latest_gst["qty"] if latest_gst else None,
                 "latest_gst_date": latest_gst["date"] if latest_gst else None,
+                # Transit
                 "incoming_qty": total_incoming_qty,
                 "incoming_date": earliest_eta,
                 "tracking_details": tracking_details,
                 "expected_delivery_days": item.expected_delivery_days,
+                # Order calc
                 "order_recommended": calc["order_recommended"],
                 "order_final": calc["order_final"],
                 "order_urgency": calc["order_urgency"],
@@ -6409,6 +6745,7 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                 "reorder_point_days": calc.get("reorder_point_days"),
                 "graph_data": calc.get("graph_data", []),
                 "calc_steps": calc["calc_steps"],
+                # Overstock
                 "months_of_stock": months_of_stock,
                 "is_overstocked": is_overstocked,
                 "graph_data_json": json.dumps(json_graph_data),
@@ -6418,6 +6755,7 @@ class PurchaseOrderViewPause(AccountantRequiredMixin, View):
                     "stockout_day": calc.get("stockout_day"),
                     "shipments": json_tracking_details,
                     "today": 0,
+
                 }),
             })
 
