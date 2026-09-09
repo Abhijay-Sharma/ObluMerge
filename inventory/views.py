@@ -5590,89 +5590,76 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
 
 #fixing bugs
 
+
 class PurchaseOrderView(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order.html"
 
     # ─────────────────────────────────────────────────────────────────────────
-    # PRELOAD TALLY DATA
+    # Pre-load ALL voucher data once, slice it per item in the loop
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _preload_voucher_data():
+        """
+        Returns:
+          sales_map               : item_id -> [{"date","qty","party"}]        — TAX INVOICE
+          credit_note_map         : item_id -> [{"date","qty","party"}]        — CREDIT NOTE
+          internal_customer_map   : item_id -> [{"date","qty","party"}]        — TAX INVOICE to AMEND/SMILIGN
+          po_map                  : item_id -> [{"date","qty","voucher_number","party"}] — PURCHASE ORDER
+          gst_map                 : item_id -> [{"date","qty","voucher_number","party"}] — GST PURCHASE / Purchase
+        """
+        APRIL_2025 = datetime.date(2025, 4, 1)
+
         sales_map = defaultdict(list)
         credit_note_map = defaultdict(list)
         po_map = defaultdict(list)
         gst_map = defaultdict(list)
         internal_customer_map = defaultdict(list)
 
-        # TAX INVOICE
+        # ── All TAX INVOICE stock rows
         for row in (
             VoucherStockItem.objects
             .filter(voucher__voucher_type__iexact="TAX INVOICE")
             .select_related("voucher")
-            .values(
-                "item_id",
-                "quantity",
-                "voucher__date",
-                "voucher__party_name",
-            )
+            .values("item_id", "quantity", "voucher__date", "voucher__party_name")
         ):
             iid = row["item_id"]
-
             if not iid:
                 continue
-
             sales_map[iid].append({
                 "date": row["voucher__date"],
                 "qty": float(row["quantity"] or 0),
                 "party": row["voucher__party_name"] or "Unknown",
             })
 
-        # CREDIT NOTES
+        # ── CREDIT NOTE rows
         for row in (
             VoucherStockItem.objects
             .filter(voucher__voucher_type__iexact="CREDIT NOTE")
             .select_related("voucher")
-            .values(
-                "item_id",
-                "quantity",
-                "voucher__date",
-                "voucher__party_name",
-            )
+            .values("item_id", "quantity", "voucher__date", "voucher__party_name")
         ):
             iid = row["item_id"]
-
             if not iid:
                 continue
-
             credit_note_map[iid].append({
                 "date": row["voucher__date"],
                 "qty": float(row["quantity"] or 0),
                 "party": row["voucher__party_name"] or "Unknown",
             })
 
-        # INTERNAL CUSTOMERS
+        # ── Internal-customer TAX INVOICE rows (AMEND / SMILIGN)
         for row in (
             VoucherStockItem.objects
             .filter(voucher__voucher_type__iexact="TAX INVOICE")
             .select_related("voucher")
-            .values(
-                "item_id",
-                "quantity",
-                "voucher__date",
-                "voucher__party_name",
-            )
+            .values("item_id", "quantity", "voucher__date", "voucher__party_name")
         ):
             party = (row["voucher__party_name"] or "").upper()
-
-            if not (
-                "AMEND" in party
-                or "SMILIGN" in party
-            ):
+            if not ("AMEND" in party or "SMILIGN" in party):
                 continue
 
             iid = row["item_id"]
-
             if not iid:
                 continue
 
@@ -5682,24 +5669,17 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
                 "party": row["voucher__party_name"],
             })
 
-        # PURCHASE ORDERS FROM TALLY
+        # ── PURCHASE ORDER vouchers (PO we make)
         for row in (
             VoucherStockItem.objects
             .filter(voucher__voucher_type__iexact="PURCHASE ORDER")
             .select_related("voucher")
-            .values(
-                "item_id",
-                "quantity",
-                "voucher__date",
-                "voucher__voucher_number",
-                "voucher__party_name",
-            )
+            .values("item_id", "quantity", "voucher__date",
+                    "voucher__voucher_number", "voucher__party_name")
         ):
             iid = row["item_id"]
-
             if not iid:
                 continue
-
             po_map[iid].append({
                 "date": row["voucher__date"],
                 "qty": float(row["quantity"] or 0),
@@ -5707,31 +5687,21 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
                 "party": row["voucher__party_name"],
             })
 
-        # GST PURCHASE / RECEIVED STOCK
+        # ── GST PURCHASE (received/booked into stock)
         for row in (
             VoucherStockItem.objects
             .filter(
                 voucher__voucher_type__in=[
-                    "GST PURCHASE",
-                    "Purchase",
-                    "gst purchase",
-                    "purchase",
+                    "GST PURCHASE", "Purchase", "gst purchase", "purchase"
                 ]
             )
             .select_related("voucher")
-            .values(
-                "item_id",
-                "quantity",
-                "voucher__date",
-                "voucher__voucher_number",
-                "voucher__party_name",
-            )
+            .values("item_id", "quantity", "voucher__date",
+                    "voucher__voucher_number", "voucher__party_name")
         ):
             iid = row["item_id"]
-
             if not iid:
                 continue
-
             gst_map[iid].append({
                 "date": row["voucher__date"],
                 "qty": float(row["quantity"] or 0),
@@ -5748,524 +5718,250 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
         )
 
     # ─────────────────────────────────────────────────────────────────────────
-    # PRELOAD PO TRACKING
-    #
-    # IMPORTANT CHANGE:
-    #
-    # We do NOT filter only status="active".
-    #
-    # Instead, we load tracking records and later determine whether there is
-    # actually any quantity still outstanding.
-    #
-    # This protects us from a bad status entry such as:
-    #
-    #   status = arrived
-    #   ordered = 20,000
-    #   arrived = 5,000
-    #
-    # which still means:
-    #
-    #   15,000 incoming
+    # Pre-load Purchase Order Tracking data
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _preload_tracking_data():
-
+        """
+        Returns dict keyed by InventoryItem.id -> [PurchaseOrderTrackingItem, ...]
+        for POs with status == "active".
+        """
         tracking_map = defaultdict(list)
 
         tracking_items = (
             PurchaseOrderTrackingItem.objects
-            .select_related(
-                "purchase_order",
-                "inventory_item",
-                "purchase_order__tally_voucher",
-            )
-            .prefetch_related(
-                "purchase_order__stage_logs__stage"
-            )
+            .filter(purchase_order__status="active")
+            .select_related("purchase_order", "inventory_item")
+            .prefetch_related("purchase_order__stage_logs__stage")
         )
 
         for tracking_item in tracking_items:
-
-            if not tracking_item.inventory_item_id:
-                continue
-
-            ordered = float(
-                tracking_item.ordered_quantity or 0
-            )
-
-            arrived = float(
-                tracking_item.arrived_quantity or 0
-            )
-
-            remaining = max(
-                0,
-                ordered - arrived
-            )
-
-            # Only keep POs that actually have stock outstanding.
-            #
-            # A PO with:
-            #   ordered = 20,000
-            #   arrived = 20,000
-            #
-            # is completely received and therefore contributes ZERO incoming.
-            if remaining <= 0:
-                continue
-
-            tracking_map[
-                tracking_item.inventory_item_id
-            ].append(tracking_item)
+            if tracking_item.inventory_item_id:
+                tracking_map[tracking_item.inventory_item_id].append(tracking_item)
 
         return tracking_map
 
     # ─────────────────────────────────────────────────────────────────────────
-    # SALES
+    # Monthly / daily sales aggregation (for the drill-down modal)
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _monthly_sales(sales_rows, from_date=None):
-
         by_month = defaultdict(float)
-
         for row in sales_rows:
-
             d = row["date"]
-
             if not d:
                 continue
-
             if from_date and d < from_date:
                 continue
-
-            by_month[
-                d.strftime("%Y-%m")
-            ] += row["qty"]
-
-        return [
-            {
-                "month": month,
-                "qty": qty,
-            }
-            for month, qty
-            in sorted(by_month.items())
-        ]
+            by_month[d.strftime("%Y-%m")] += row["qty"]
+        return [{"month": m, "qty": q} for m, q in sorted(by_month.items())]
 
     @staticmethod
-    def _daily_sales(
-        sales_rows,
-        credit_note_rows,
-        internal_rows,
-    ):
-
+    def _daily_sales(sales_rows, credit_note_rows, internal_rows):
+        """
+        Returns dict keyed by "YYYY-MM" -> list of rows, each tagged with
+        whether it was included in the net sales figure and why not, so the
+        modal can show accountants exactly what was netted out and why.
+        """
         by_month = defaultdict(list)
 
-        # Normal sales
         for row in sales_rows:
-
             d = row["date"]
-
             if not d:
                 continue
-
-            by_month[
-                d.strftime("%Y-%m")
-            ].append({
+            by_month[d.strftime("%Y-%m")].append({
                 "date": d.strftime("%Y-%m-%d"),
-                "party": row.get(
-                    "party",
-                    "Unknown"
-                ),
+                "party": row.get("party", "Unknown"),
                 "qty": row["qty"],
                 "status": "Included",
                 "reason": "",
             })
 
-        # Credit notes
         for row in credit_note_rows:
-
             d = row["date"]
-
             if not d:
                 continue
-
-            by_month[
-                d.strftime("%Y-%m")
-            ].append({
+            by_month[d.strftime("%Y-%m")].append({
                 "date": d.strftime("%Y-%m-%d"),
                 "qty": row["qty"],
-                "party": row.get(
-                    "party",
-                    "Unknown"
-                ),
+                "party": row.get("party", "Unknown"),
                 "status": "Excluded",
                 "reason": "Credit Note",
             })
 
-        # Internal customers
         for row in internal_rows:
-
             d = row["date"]
-
             if not d:
                 continue
-
-            by_month[
-                d.strftime("%Y-%m")
-            ].append({
+            by_month[d.strftime("%Y-%m")].append({
                 "date": d.strftime("%Y-%m-%d"),
                 "qty": row["qty"],
-                "party": row.get(
-                    "party",
-                    "Unknown"
-                ),
+                "party": row.get("party", "Unknown"),
                 "status": "Excluded",
                 "reason": "Internal Customer",
             })
 
         for month in by_month:
-            by_month[month].sort(
-                key=lambda x: x["date"]
-            )
+            by_month[month].sort(key=lambda x: x["date"])
 
         return dict(by_month)
 
     @staticmethod
-    def _net_sales(
-        item_sales,
-        item_credit_notes,
-    ):
-
+    def _net_sales(item_sales, item_credit_notes):
+        """FIFO-cancel each Credit Note against the same party's earlier sales."""
         if not item_sales:
             return []
-
         if not item_credit_notes:
             return item_sales
 
         sales = [
-            {
-                "date": row["date"],
-                "qty": float(row["qty"]),
-                "party": row.get(
-                    "party",
-                    "Unknown"
-                ),
-            }
+            {"date": row["date"], "qty": float(row["qty"]), "party": row.get("party", "Unknown")}
             for row in item_sales
         ]
 
         for credit in item_credit_notes:
-
-            remaining_credit = float(
-                credit["qty"]
-            )
-
+            remaining_credit = float(credit["qty"])
             credit_party = credit.get("party")
             credit_date = credit.get("date")
 
             if remaining_credit <= 0:
                 continue
 
-            for sale in sorted(
-                sales,
-                key=lambda x: x["date"]
-            ):
-
+            for sale in sorted(sales, key=lambda x: x["date"]):
                 if remaining_credit <= 0:
                     break
-
                 if sale["party"] != credit_party:
                     continue
-
                 if sale["date"] > credit_date:
                     continue
 
                 available = sale["qty"]
-
                 if available <= 0:
                     continue
 
-                deduction = min(
-                    available,
-                    remaining_credit
-                )
-
+                deduction = min(available, remaining_credit)
                 sale["qty"] -= deduction
                 remaining_credit -= deduction
 
-        return [
-            row
-            for row in sales
-            if row["qty"] > 0
-        ]
+        return [row for row in sales if row["qty"] > 0]
 
     @staticmethod
-    def _remove_internal_sales(
-        item_sales,
-        internal_sales,
-    ):
-
+    def _remove_internal_sales(item_sales, internal_sales):
+        """FIFO-remove sales to internal customers (AMEND / SMILIGN)."""
         if not item_sales:
             return []
-
         if not internal_sales:
             return item_sales
 
         sales = [
-            {
-                "date": row["date"],
-                "qty": float(row["qty"]),
-                "party": row.get(
-                    "party",
-                    "Unknown"
-                ),
-            }
+            {"date": row["date"], "qty": float(row["qty"]), "party": row.get("party", "Unknown")}
             for row in item_sales
         ]
 
         for internal in internal_sales:
-
-            remaining_qty = float(
-                internal["qty"]
-            )
-
+            remaining_qty = float(internal["qty"])
             internal_date = internal.get("date")
 
             if remaining_qty <= 0:
                 continue
 
-            for sale in sorted(
-                sales,
-                key=lambda x: x["date"]
-            ):
-
+            for sale in sorted(sales, key=lambda x: x["date"]):
                 if remaining_qty <= 0:
                     break
 
-                sale_party = (
-                    sale.get("party") or ""
-                ).upper()
-
-                if not (
-                    "AMEND" in sale_party
-                    or "SMILIGN" in sale_party
-                ):
+                sale_party = (sale.get("party") or "").upper()
+                if not ("AMEND" in sale_party or "SMILIGN" in sale_party):
                     continue
-
                 if sale["date"] > internal_date:
                     continue
 
                 available = sale["qty"]
-
                 if available <= 0:
                     continue
 
-                deduction = min(
-                    available,
-                    remaining_qty
-                )
-
+                deduction = min(available, remaining_qty)
                 sale["qty"] -= deduction
                 remaining_qty -= deduction
 
-        return [
-            row
-            for row in sales
-            if row["qty"] > 0
-        ]
+        return [row for row in sales if row["qty"] > 0]
 
     # ─────────────────────────────────────────────────────────────────────────
-    # AVERAGE DAILY SALES
+    # Average daily sales (tally data, from April 2025)
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _avg_daily_from_tally(sales_rows):
-
-        APRIL_2025 = datetime.date(
-            2025,
-            4,
-            1
-        )
-
+        APRIL_2025 = datetime.date(2025, 4, 1)
         today = datetime.date.today()
-
         total_qty = sum(
-            row["qty"]
-            for row in sales_rows
-            if (
-                row["date"]
-                and row["date"] >= APRIL_2025
-            )
+            row["qty"] for row in sales_rows
+            if row["date"] and row["date"] >= APRIL_2025
         )
-
-        days_elapsed = (
-            today - APRIL_2025
-        ).days or 1
-
-        return round(
-            total_qty / days_elapsed,
-            4
-        )
+        days_elapsed = (today - APRIL_2025).days or 1
+        return round(total_qty / days_elapsed, 4)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # GROWTH
+    # Growth windows
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _growth_windows(sales_rows):
-
         if not sales_rows:
             return None, None
 
         today = datetime.date.today()
-
         by_month = defaultdict(float)
-
         for row in sales_rows:
-
             if row["date"]:
-                by_month[
-                    row["date"].strftime("%Y-%m")
-                ] += row["qty"]
+                by_month[row["date"].strftime("%Y-%m")] += row["qty"]
 
-        def _sum_window(
-            offset_start,
-            count,
-        ):
-
+        def _sum_window(offset_start, count):
             total = 0.0
-
-            for i in range(
-                offset_start,
-                offset_start + count
-            ):
-
-                key = (
-                    today.replace(day=1)
-                    - relativedelta(months=i)
-                ).strftime("%Y-%m")
-
-                total += by_month.get(
-                    key,
-                    0
-                )
-
+            for i in range(offset_start, offset_start + count):
+                key = (today.replace(day=1) - relativedelta(months=i)).strftime("%Y-%m")
+                total += by_month.get(key, 0)
             return total
 
-        r1y = _sum_window(0, 12)
-        p1y = _sum_window(12, 12)
+        r1y = _sum_window(0, 12); p1y = _sum_window(12, 12)
+        r3m = _sum_window(0, 3);  p3m = _sum_window(3, 3)
 
-        r3m = _sum_window(0, 3)
-        p3m = _sum_window(3, 3)
-
-        growth_1y = (
-            round(
-                (r1y - p1y) / p1y * 100,
-                1
-            )
-            if p1y
-            else None
-        )
-
-        growth_3m = (
-            round(
-                (r3m - p3m) / p3m * 100,
-                1
-            )
-            if p3m
-            else None
-        )
-
+        growth_1y = round((r1y - p1y) / p1y * 100, 1) if p1y else None
+        growth_3m = round((r3m - p3m) / p3m * 100, 1) if p3m else None
         return growth_1y, growth_3m
 
     # ─────────────────────────────────────────────────────────────────────────
-    # FORECAST
+    # Sales forecast (growth-adjusted, 20% YoY / 80% last-3m blend, capped at 40%)
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _forecast_next_3_months(
-        avg_daily,
-        growth_1y,
-        growth_3m,
-        is_dead,
-    ):
-
+    def _forecast_next_3_months(avg_daily, growth_1y, growth_3m, is_dead):
         if is_dead or avg_daily <= 0:
             return None, None, None
 
-        rate_1y = (
-            growth_1y / 12 / 100
-            if growth_1y is not None
-            else None
-        )
+        rate_1y = (growth_1y / 12 / 100) if growth_1y is not None else None
+        rate_3m = (growth_3m / 3 / 100) if growth_3m is not None else None
 
-        rate_3m = (
-            growth_3m / 3 / 100
-            if growth_3m is not None
-            else None
-        )
-
-        if (
-            rate_1y is not None
-            and rate_3m is not None
-        ):
-
-            monthly_growth = (
-                0.20 * rate_1y
-                + 0.80 * rate_3m
-            )
-
+        if rate_1y is not None and rate_3m is not None:
+            monthly_growth = 0.20 * rate_1y + 0.80 * rate_3m
         elif rate_3m is not None:
-
             monthly_growth = rate_3m
-
         elif rate_1y is not None:
-
             monthly_growth = rate_1y
-
         else:
-
             monthly_growth = 0.0
 
-        monthly_growth = min(
-            monthly_growth,
-            0.40
-        )
+        monthly_growth = min(monthly_growth, 0.40)  # cap growth at 40%/month
 
-        base_monthly = (
-            avg_daily * 30
-        )
-
-        m1 = max(
-            0,
-            round(
-                base_monthly
-                * (1 + monthly_growth)
-            )
-        )
-
-        m2 = max(
-            0,
-            round(
-                base_monthly
-                * (1 + monthly_growth) ** 2
-            )
-        )
-
-        m3 = max(
-            0,
-            round(
-                base_monthly
-                * (1 + monthly_growth) ** 3
-            )
-        )
-
+        base_monthly = avg_daily * 30
+        m1 = max(0, round(base_monthly * (1 + monthly_growth)))
+        m2 = max(0, round(base_monthly * (1 + monthly_growth) ** 2))
+        m3 = max(0, round(base_monthly * (1 + monthly_growth) ** 3))
         return m1, m2, m3
 
     # ─────────────────────────────────────────────────────────────────────────
-    # CORE ORDER CALCULATION
-    #
-    # THIS IS THE IMPORTANT PART
+    # Order calculation
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -6273,78 +5969,36 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
         current_stock,
         avg_daily,
         delivery_days,
-        incoming_shipments,
-        pred_m1,
-        pred_m2,
-        pred_m3,
+        incoming_shipments,     # list of tracking-detail dicts (multi-PO aware)
+        pred_m1, pred_m2, pred_m3,
         monthly_growth_rate,
         moq,
         is_dead,
     ):
-
-        BUFFER = 1.20
-
+        """
+        Same algorithm as before (project demand -> find runway -> reorder
+        point -> shortfall over next 3 months -> round to MOQ), with the
+        incoming-shipment boundary bug fixed. See the "# FIX:" comment below.
+        """
+        BUFFER = 1.20  # 20% safety buffer
         today = datetime.date.today()
 
-        # ─────────────────────────────────────────────────────────────────────
-        # Convert all incoming POs into clean shipment records
-        # ─────────────────────────────────────────────────────────────────────
-
         shipments = []
-
         for shipment in incoming_shipments:
-
-            eta = shipment.get("eta")
-
-            qty = float(
-                shipment.get(
-                    "incoming_qty",
-                    0
-                ) or 0
-            )
-
-            if not eta:
+            if not shipment["eta"]:
                 continue
-
-            if qty <= 0:
-                continue
-
-            arrival_day = max(
-                0,
-                (eta - today).days
-            )
-
             shipments.append({
-                "arrival_day": arrival_day,
-                "qty": qty,
-                "po_number": shipment.get(
-                    "po_number"
-                ),
-                "stage": shipment.get(
-                    "stage"
-                ),
-                "eta": eta,
-                "remaining_days": shipment.get(
-                    "remaining_days"
-                ),
-                "days_in_stage": shipment.get(
-                    "days_in_stage"
-                ),
+                "arrival_day": max(0, (shipment["eta"] - today).days),
+                "qty": shipment["incoming_qty"],
+                "po_number": shipment["po_number"],
+                "stage": shipment["stage"],
+                "eta": shipment["eta"],
+                "remaining_days": shipment["remaining_days"],
+                "days_in_stage": shipment["days_in_stage"],
             })
-
-        shipments.sort(
-            key=lambda x: (
-                x["arrival_day"],
-                x["po_number"] or ""
-            )
-        )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # DEAD STOCK
-        # ─────────────────────────────────────────────────────────────────────
+        shipments.sort(key=lambda x: x["arrival_day"])
 
         if is_dead:
-
             return {
                 "is_dead": True,
                 "order_recommended": 0,
@@ -6353,521 +6007,174 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
                 "moq_note": None,
                 "order_lasts_months": None,
                 "runway_days": None,
-                "runway_months": None,
                 "reorder_point_days": None,
                 "graph_data": [],
-                "calc_steps": {
-                    "note":
-                        "Product is dead stock — "
-                        "no order recommended."
-                },
-                "stockout_day": None,
+                "calc_steps": {"note": "Product is dead stock — no order recommended."},
             }
 
-        # ─────────────────────────────────────────────────────────────────────
-        # DAILY DEMAND PROJECTION
-        # ─────────────────────────────────────────────────────────────────────
-
+        # ── Step 1: daily growth-adjusted demand projection (180-day horizon)
         horizon = 180
-
         daily_demand = []
-
         for day in range(horizon):
-
             month_offset = day // 30
+            rate = (1 + monthly_growth_rate) ** month_offset
+            daily_demand.append(avg_daily * rate)
 
-            rate = (
-                1 + monthly_growth_rate
-            ) ** month_offset
-
-            daily_demand.append(
-                avg_daily * rate
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # CURRENT RUNWAY
-        #
-        # Simulate:
-        #
-        # current stock
-        #     ↓
-        # demand
-        #     ↓
-        # PO1 arrives
-        #     ↓
-        # demand
-        #     ↓
-        # PO2 arrives
-        #     ↓
-        # etc.
-        #
-        # Every PO remains independent.
-        # ─────────────────────────────────────────────────────────────────────
-
+        # ── Step 2: simulate stock day-by-day to find runway / stockout / graph
         stock = float(current_stock)
-
-        runway_days = None
         stockout_day = None
-
+        runway_days = None
         graph_data = []
 
         for day in range(horizon):
-
             events_today = []
-
-            # Add ALL POs arriving today
             for shipment in shipments:
-
                 if shipment["arrival_day"] == day:
-
                     stock += shipment["qty"]
-
                     events_today.append({
-                        "po":
-                            shipment["po_number"],
-                        "qty":
-                            shipment["qty"],
-                        "stage":
-                            shipment["stage"],
-                        "eta":
-                            shipment["eta"],
-                        "remaining_days":
-                            shipment["remaining_days"],
-                        "days_in_stage":
-                            shipment["days_in_stage"],
+                        "po": shipment["po_number"],
+                        "qty": shipment["qty"],
+                        "stage": shipment["stage"],
+                        "eta": shipment["eta"],
+                        "remaining_days": shipment["remaining_days"],
+                        "days_in_stage": shipment["days_in_stage"],
                     })
 
             demand = daily_demand[day]
-
-            buffer_threshold = (
-                demand
-                * 30
-                * 3
-                * BUFFER
-            )
+            buffer_threshold = demand * 30 * 3 * BUFFER
 
             graph_data.append({
                 "day": day,
-                "stock": round(
-                    max(0, stock),
-                    1
-                ),
-                "buffer_line": round(
-                    buffer_threshold,
-                    1
-                ),
-                "demand": round(
-                    demand,
-                    2
-                ),
+                "stock": round(max(0, stock), 1),
+                "buffer_line": round(buffer_threshold, 1),
+                "demand": round(demand, 2),
                 "events": events_today,
                 "today": day == 0,
             })
 
             stock -= demand
 
-            if (
-                stockout_day is None
-                and stock <= 0
-            ):
+            if stockout_day is None and stock <= 0:
                 stockout_day = day
-
-            if (
-                runway_days is None
-                and stock <= 0
-            ):
+            if runway_days is None and stock <= 0:
                 runway_days = day
 
         if runway_days is None:
             runway_days = horizon
 
-        # ─────────────────────────────────────────────────────────────────────
-        # NEW PO LEAD TIME
-        #
-        # IMPORTANT:
-        #
-        # This is NOT the remaining days of an existing PO.
-        #
-        # It is the lead time for a NEW PO ordered TODAY.
-        # ─────────────────────────────────────────────────────────────────────
-
-        delivery_days = max(
-            1,
-            int(
-                round(
-                    delivery_days
-                )
-            )
-        )
+        # ── Step 3: reorder point
+        reorder_point_days = runway_days - delivery_days
+        order_now = reorder_point_days <= 0
 
         new_batch_arrival_day = delivery_days
 
-        # ─────────────────────────────────────────────────────────────────────
-        # REORDER POINT
-        # ─────────────────────────────────────────────────────────────────────
-
-        reorder_point_days = (
-            runway_days
-            - delivery_days
-        )
-
-        order_now = (
-            reorder_point_days <= 0
-        )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # MARK GRAPH
-        # ─────────────────────────────────────────────────────────────────────
-
         for point in graph_data:
+            point["reorder_day"] = (point["day"] == reorder_point_days)
+            point["new_order_arrival"] = (point["day"] == delivery_days)
 
-            point["reorder_day"] = (
-                point["day"]
-                == reorder_point_days
-            )
-
-            point["new_order_arrival"] = (
-                point["day"]
-                == new_batch_arrival_day
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # STOCK AVAILABLE WHEN NEW PO ARRIVES
-        #
-        # We simulate every existing PO independently.
-        #
-        # IMPORTANT:
-        # A PO arriving ON the same day as the new PO is included.
-        # ─────────────────────────────────────────────────────────────────────
-
-        stock_at_new_po_arrival = float(
-            current_stock
-        )
-
-        demand_until_new_po = 0.0
-
-        for day in range(
-            new_batch_arrival_day
-        ):
-
-            # Demand for this day
-            demand_until_new_po += (
-                daily_demand[day]
-                if day < len(daily_demand)
-                else avg_daily
-            )
-
-            # Existing POs arriving on this day
+        # ── Step 4: stock on hand when a NEW order (placed today) would arrive
+        stock_at_arrival = float(current_stock)
+        for d in range(new_batch_arrival_day):
             for shipment in shipments:
+                if shipment["arrival_day"] == d:
+                    stock_at_arrival += shipment["qty"]
+            stock_at_arrival -= daily_demand[d] if d < len(daily_demand) else avg_daily
 
-                if (
-                    shipment["arrival_day"]
-                    == day
-                ):
-                    stock_at_new_po_arrival += (
-                        shipment["qty"]
-                    )
-
-            stock_at_new_po_arrival -= (
-                daily_demand[day]
-                if day < len(daily_demand)
-                else avg_daily
-            )
-
-        # Do not allow negative usable stock.
-        #
-        # If stock would have run out before the new PO arrives,
-        # we treat the available stock as zero.
-        stock_at_new_po_arrival = max(
-            0,
-            stock_at_new_po_arrival
+        # FIX: credit shipments that arrive exactly ON new_batch_arrival_day.
+        # Previously these were dropped entirely — not counted here (the loop
+        # above stops at new_batch_arrival_day - 1) and not counted in
+        # incoming_after_new_batch below (which requires strictly >). Since
+        # delivery_days is derived from tracking data, this is the normal
+        # case for a single open PO, which is why incoming_qty edits had no
+        # visible effect on the recommended order.
+        stock_at_arrival += sum(
+            s["qty"] for s in shipments if s["arrival_day"] == new_batch_arrival_day
         )
 
-        # ─────────────────────────────────────────────────────────────────────
-        # 3 MONTH DEMAND AFTER NEW PO ARRIVAL
-        # ─────────────────────────────────────────────────────────────────────
+        stock_at_arrival = max(0, stock_at_arrival)
 
-        if (
-            pred_m1 is not None
-            and pred_m2 is not None
-            and pred_m3 is not None
-        ):
-
-            demand_3m_after = (
-                pred_m1
-                + pred_m2
-                + pred_m3
-            ) * BUFFER
-
-            demand_source = (
-                f"forecast "
-                f"{pred_m1}+{pred_m2}+{pred_m3} "
-                f"× 1.20 buffer"
-            )
-
+        # ── Step 5: demand for 3 months AFTER the new batch arrives (buffered)
+        if pred_m1 is not None:
+            demand_3m_after = (pred_m1 + pred_m2 + pred_m3) * BUFFER
+            demand_source = f"forecast {pred_m1}+{pred_m2}+{pred_m3} × 1.20 buffer"
         else:
+            demand_3m_after = avg_daily * 90 * BUFFER
+            demand_source = f"flat avg {round(avg_daily, 2)}/day × 90 × 1.20 buffer"
+        demand_3m_after = round(demand_3m_after)
 
-            demand_3m_after = (
-                avg_daily
-                * 90
-                * BUFFER
-            )
-
-            demand_source = (
-                f"flat avg "
-                f"{round(avg_daily, 2)}/day "
-                f"× 90 × 1.20 buffer"
-            )
-
-        demand_3m_after = round(
-            demand_3m_after
-        )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # EXISTING INCOMING AFTER NEW PO ARRIVAL
-        #
-        # Only POs arriving AFTER the new PO are placed here.
-        #
-        # POs arriving ON or BEFORE the new PO have already been included
-        # in stock_at_new_po_arrival.
-        # ─────────────────────────────────────────────────────────────────────
-
+        # Shipments arriving strictly AFTER the new batch — still help later.
+        # (Unaffected by the fix: the ==day shipments are now claimed by
+        # stock_at_arrival above, so there's no double count here.)
         incoming_after_new_batch = sum(
             shipment["qty"]
             for shipment in shipments
-            if (
-                shipment["arrival_day"]
-                > new_batch_arrival_day
-            )
+            if shipment["arrival_day"] > new_batch_arrival_day
         )
 
-        # ─────────────────────────────────────────────────────────────────────
-        # FINAL SHORTFALL
-        #
-        # This is the number that drives the purchase recommendation.
-        #
-        # Therefore:
-        #
-        # More incoming stock
-        #       ↓
-        # More stock available
-        #       ↓
-        # Lower shortfall
-        #       ↓
-        # Lower recommended purchase
-        # ─────────────────────────────────────────────────────────────────────
+        shortfall = max(0, demand_3m_after - stock_at_arrival - incoming_after_new_batch)
 
-        shortfall = max(
-            0,
-            demand_3m_after
-            - stock_at_new_po_arrival
-            - incoming_after_new_batch
-        )
-
-        order_recommended = int(
-            round(shortfall)
-        )
-
-        if shortfall <= 0:
-
+        # ── Step 6: urgency / recommended order
+        if shortfall == 0:
+            order_recommended = 0
             order_urgency = "ok"
-
         else:
+            order_recommended = int(round(shortfall))
+            order_urgency = "urgent" if reorder_point_days <= 0 else "warn"
 
-            order_urgency = (
-                "urgent"
-                if order_now
-                else "warn"
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # MOQ
-        # ─────────────────────────────────────────────────────────────────────
-
+        # ── MOQ check
         moq_note = None
-
         order_final = order_recommended
-
-        if (
-            moq
-            and order_recommended > 0
-            and order_recommended < moq
-        ):
-
+        if moq and order_recommended > 0 and order_recommended < moq:
             moq_note = moq
             order_final = moq
 
-        # ─────────────────────────────────────────────────────────────────────
-        # HOW LONG ORDER LASTS
-        # ─────────────────────────────────────────────────────────────────────
-
+        # ── How long will the order last (months)
         order_lasts_months = None
+        if avg_daily > 0 and order_final > 0:
+            total_after = stock_at_arrival + order_final + incoming_after_new_batch
+            order_lasts_months = round(total_after / (avg_daily * 30), 1)
 
-        if (
-            avg_daily > 0
-            and order_final > 0
-        ):
-
-            total_after = (
-                stock_at_new_po_arrival
-                + order_final
-                + incoming_after_new_batch
-            )
-
-            order_lasts_months = round(
-                total_after
-                / (avg_daily * 30),
-                1
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # RUNWAY MONTHS
-        # ─────────────────────────────────────────────────────────────────────
-
-        runway_months = (
-            round(
-                runway_days / 30,
-                1
-            )
-            if runway_days < horizon
-            else None
-        )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # CALCULATION DEBUG DATA
-        # ─────────────────────────────────────────────────────────────────────
+        runway_months = round(runway_days / 30, 1) if runway_days < horizon else None
 
         calc_steps = {
-
-            "current_stock":
-                current_stock,
-
-            "avg_daily":
-                avg_daily,
-
-            # NEW PO lead time
-            "delivery_days":
-                delivery_days,
-
-            "monthly_growth_rate_pct":
-                round(
-                    monthly_growth_rate * 100,
-                    2
-                ),
-
-            # All incoming POs
-            "incoming_shipments":
-                incoming_shipments,
-
-            "total_incoming_qty":
-                sum(
-                    shipment["qty"]
-                    for shipment in shipments
-                ),
-
-            "stock_at_new_po_arrival":
-                round(
-                    stock_at_new_po_arrival,
-                    2
-                ),
-
-            "demand_until_new_po":
-                round(
-                    demand_until_new_po,
-                    2
-                ),
-
-            "demand_3m_after":
-                demand_3m_after,
-
-            "demand_source":
-                demand_source,
-
-            "incoming_after_new_batch":
-                incoming_after_new_batch,
-
-            "shortfall":
-                round(shortfall),
-
-            "order_urgency":
-                order_urgency,
-
-            "moq":
-                moq,
-
-            "moq_note":
-                moq_note,
-
-            "order_final":
-                order_final,
-
-            "order_lasts_months":
-                order_lasts_months,
-
-            "runway_days":
-                runway_days,
-
-            "runway_months":
-                runway_months,
-
-            "reorder_point_days":
-                reorder_point_days,
-
-            "order_now":
-                order_now,
-
-            "pred_m1":
-                pred_m1,
-
-            "pred_m2":
-                pred_m2,
-
-            "pred_m3":
-                pred_m3,
-
-            "buffer_pct":
-                20,
+            "current_stock": current_stock,
+            "avg_daily": avg_daily,
+            "delivery_days": delivery_days,
+            "monthly_growth_rate_pct": round(monthly_growth_rate * 100, 2),
+            "incoming_shipments": incoming_shipments,
+            "stock_at_arrival": stock_at_arrival,
+            "demand_3m_after": demand_3m_after,
+            "demand_source": demand_source,
+            "shortfall": round(shortfall),
+            "order_urgency": order_urgency,
+            "moq": moq,
+            "moq_note": moq_note,
+            "order_final": order_final,
+            "order_lasts_months": order_lasts_months,
+            "runway_days": runway_days,
+            "runway_months": runway_months,
+            "reorder_point_days": reorder_point_days,
+            "order_now": order_now,
+            "pred_m1": pred_m1,
+            "pred_m2": pred_m2,
+            "pred_m3": pred_m3,
+            "buffer_pct": 20,
+            "incoming_after_new_batch": incoming_after_new_batch,
         }
 
         return {
-
-            "is_dead":
-                False,
-
-            "order_recommended":
-                order_recommended,
-
-            "order_final":
-                int(
-                    round(order_final)
-                ),
-
-            "order_urgency":
-                order_urgency,
-
-            "moq_note":
-                moq_note,
-
-            "order_lasts_months":
-                order_lasts_months,
-
-            "runway_days":
-                runway_days,
-
-            "runway_months":
-                runway_months,
-
-            "reorder_point_days":
-                reorder_point_days,
-
-            "graph_data":
-                graph_data[:90],
-
-            "calc_steps":
-                calc_steps,
-
-            "stockout_day":
-                stockout_day,
+            "is_dead": False,
+            "order_recommended": int(round(order_recommended)),
+            "order_final": int(round(order_final)),
+            "order_urgency": order_urgency,
+            "moq_note": moq_note,
+            "order_lasts_months": order_lasts_months,
+            "runway_days": runway_days,
+            "runway_months": runway_months,
+            "reorder_point_days": reorder_point_days,
+            "graph_data": graph_data[:90],
+            "calc_steps": calc_steps,
+            "stockout_day": stockout_day,
         }
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -6875,857 +6182,252 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
     # ─────────────────────────────────────────────────────────────────────────
 
     def get(self, request):
-
         today = datetime.date.today()
+        ninety_days_ago = today - timedelta(days=90)
 
-        ninety_days_ago = (
-            today
-            - timedelta(days=90)
-        )
-
-        categories = (
-            Category.objects
-            .all()
-            .order_by("name")
-        )
-
-        selected_category_id = (
-            request.GET.get("category")
-        )
-
-        hide_dead = (
-            request.GET.get("hide_dead")
-            == "1"
-        )
+        categories = Category.objects.all().order_by("name")
+        selected_category_id = request.GET.get("category")
+        hide_dead = request.GET.get("hide_dead") == "1"
 
         if not selected_category_id:
+            return render(request, self.template_name, {
+                "categories": categories, "products": None,
+                "selected_category_id": None,
+            })
 
-            return render(
-                request,
-                self.template_name,
-                {
-                    "categories":
-                        categories,
-
-                    "products":
-                        None,
-
-                    "selected_category_id":
-                        None,
-                }
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # LOAD DATA
-        # ─────────────────────────────────────────────────────────────────────
-
-        (
-            sales_map,
-            credit_note_map,
-            internal_customer_map,
-            po_map,
-            gst_map,
-        ) = (
-            PurchaseOrderView
-            ._preload_voucher_data()
+        sales_map, credit_note_map, internal_customer_map, po_map, gst_map = (
+            PurchaseOrderView._preload_voucher_data()
         )
-
-        tracking_item_map = (
-            PurchaseOrderView
-            ._preload_tracking_data()
-        )
+        tracking_item_map = PurchaseOrderView._preload_tracking_data()
 
         items = (
             InventoryItem.objects
-            .filter(
-                category_id=selected_category_id
-            )
+            .filter(category_id=selected_category_id)
             .select_related("category")
             .order_by("name")
         )
 
         products_data = []
 
-        # ─────────────────────────────────────────────────────────────────────
-        # PRODUCT LOOP
-        # ─────────────────────────────────────────────────────────────────────
-
         for item in items:
-
             iid = item.id
+            current_stock = float(item.quantity or 0)
 
-            current_stock = float(
-                item.quantity or 0
+            item_sales = sales_map.get(iid, [])
+
+            item_credit_notes = credit_note_map.get(iid, [])
+            item_sales = PurchaseOrderView._net_sales(item_sales, item_credit_notes)
+
+            item_internal_sales = internal_customer_map.get(iid, [])
+            item_sales = PurchaseOrderView._remove_internal_sales(item_sales, item_internal_sales)
+
+            monthly_sales_breakdown = PurchaseOrderView._monthly_sales(item_sales)
+            daily_sales_breakdown = PurchaseOrderView._daily_sales(
+                item_sales, item_credit_notes, item_internal_sales
             )
-
-            # ─────────────────────────────────────────────────────────────────
-            # SALES
-            # ─────────────────────────────────────────────────────────────────
-
-            item_sales = (
-                sales_map.get(
-                    iid,
-                    []
-                )
-            )
-
-            item_credit_notes = (
-                credit_note_map.get(
-                    iid,
-                    []
-                )
-            )
-
-            item_sales = (
-                PurchaseOrderView
-                ._net_sales(
-                    item_sales,
-                    item_credit_notes,
-                )
-            )
-
-            item_internal_sales = (
-                internal_customer_map.get(
-                    iid,
-                    []
-                )
-            )
-
-            item_sales = (
-                PurchaseOrderView
-                ._remove_internal_sales(
-                    item_sales,
-                    item_internal_sales,
-                )
-            )
-
-            monthly_sales_breakdown = (
-                PurchaseOrderView
-                ._monthly_sales(
-                    item_sales
-                )
-            )
-
-            daily_sales_breakdown = (
-                PurchaseOrderView
-                ._daily_sales(
-                    item_sales,
-                    item_credit_notes,
-                    item_internal_sales,
-                )
-            )
-
-            # ─────────────────────────────────────────────────────────────────
-            # DEAD STOCK
-            # ─────────────────────────────────────────────────────────────────
 
             is_dead = not any(
-                row["date"]
-                and row["date"] >= ninety_days_ago
+                row["date"] and row["date"] >= ninety_days_ago
                 for row in item_sales
             )
-
             if hide_dead and is_dead:
                 continue
 
-            # ─────────────────────────────────────────────────────────────────
-            # SALES RATE
-            # ─────────────────────────────────────────────────────────────────
+            avg_daily = PurchaseOrderView._avg_daily_from_tally(item_sales)
+            growth_1y, growth_3m = PurchaseOrderView._growth_windows(item_sales)
 
-            avg_daily = (
-                PurchaseOrderView
-                ._avg_daily_from_tally(
-                    item_sales
-                )
-            )
-
-            # ─────────────────────────────────────────────────────────────────
-            # GROWTH
-            # ─────────────────────────────────────────────────────────────────
-
-            growth_1y, growth_3m = (
-                PurchaseOrderView
-                ._growth_windows(
-                    item_sales
-                )
-            )
-
-            rate_1y = (
-                growth_1y / 12 / 100
-                if growth_1y is not None
-                else None
-            )
-
-            rate_3m = (
-                growth_3m / 3 / 100
-                if growth_3m is not None
-                else None
-            )
-
-            if (
-                rate_1y is not None
-                and rate_3m is not None
-            ):
-
-                monthly_growth_rate = (
-                    0.20 * rate_1y
-                    + 0.80 * rate_3m
-                )
-
+            rate_1y = (growth_1y / 12 / 100) if growth_1y is not None else None
+            rate_3m = (growth_3m / 3 / 100) if growth_3m is not None else None
+            if rate_1y is not None and rate_3m is not None:
+                monthly_growth_rate = 0.20 * rate_1y + 0.80 * rate_3m
             elif rate_3m is not None:
-
                 monthly_growth_rate = rate_3m
-
             elif rate_1y is not None:
-
                 monthly_growth_rate = rate_1y
-
             else:
-
                 monthly_growth_rate = 0.0
+            monthly_growth_rate = min(monthly_growth_rate, 0.4)
 
-            monthly_growth_rate = min(
-                monthly_growth_rate,
-                0.40
+            pred_m1, pred_m2, pred_m3 = PurchaseOrderView._forecast_next_3_months(
+                avg_daily, growth_1y, growth_3m, is_dead
             )
-
-            # ─────────────────────────────────────────────────────────────────
-            # FORECAST
-            # ─────────────────────────────────────────────────────────────────
-
-            (
-                pred_m1,
-                pred_m2,
-                pred_m3,
-            ) = (
-                PurchaseOrderView
-                ._forecast_next_3_months(
-                    avg_daily,
-                    growth_1y,
-                    growth_3m,
-                    is_dead,
-                )
-            )
-
-            # ─────────────────────────────────────────────────────────────────
-            # TALLY PO DATA
-            #
-            # Kept for your PO modal/history.
-            # It is NOT used as the source of incoming stock when tracking data
-            # exists.
-            # ─────────────────────────────────────────────────────────────────
 
             item_po_rows = sorted(
-                po_map.get(
-                    iid,
-                    []
-                ),
-                key=lambda r:
-                    r["date"]
-                    or datetime.date.min,
+                po_map.get(iid, []),
+                key=lambda r: r["date"] or datetime.date.min,
                 reverse=True,
             )
+            latest_po = item_po_rows[0] if item_po_rows else None
 
-            latest_po = (
-                item_po_rows[0]
-                if item_po_rows
-                else None
-            )
-
-            # ─────────────────────────────────────────────────────────────────
-            # BUILD MULTIPLE INCOMING SHIPMENTS
-            # ─────────────────────────────────────────────────────────────────
-
+            incoming_qty = 0
+            incoming_date = None
             tracking_details = []
+            tracking_items = tracking_item_map.get(item.id, [])
 
-            tracking_items = (
-                tracking_item_map.get(
-                    iid,
-                    []
-                )
-            )
+            if tracking_items:
+                for tracking_item in tracking_items:
+                    po = tracking_item.purchase_order
 
-            for tracking_item in tracking_items:
+                    current_stage = get_current_stage(po)
+                    remaining_days = get_remaining_days(po)
+                    days_in_stage = get_days_in_current_stage(po)
+                    incoming_date = get_expected_arrival_date(po)
 
-                po = (
-                    tracking_item
-                    .purchase_order
-                )
-
-                ordered_qty = float(
-                    tracking_item
-                    .ordered_quantity
-                    or 0
-                )
-
-                arrived_qty = float(
-                    tracking_item
-                    .arrived_quantity
-                    or 0
-                )
-
-                remaining_qty = max(
-                    0,
-                    ordered_qty
-                    - arrived_qty
-                )
-
-                # This is the ACTUAL incoming quantity.
-                #
-                # If:
-                # ordered = 20,000
-                # arrived = 5,000
-                #
-                # incoming = 15,000
-                if remaining_qty <= 0:
-                    continue
-
-                current_stage = (
-                    get_current_stage(po)
-                )
-
-                remaining_days = (
-                    get_remaining_days(po)
-                )
-
-                days_in_stage = (
-                    get_days_in_current_stage(po)
-                )
-
-                eta = (
-                    get_expected_arrival_date(
-                        po
+                    incoming_qty = max(
+                        0,
+                        float(tracking_item.ordered_quantity)
+                        - float(tracking_item.arrived_quantity or 0)
                     )
-                )
-
-                # If the tracking helper gives no ETA but the PO has a known
-                # expected delivery date, fall back to that.
-                if not eta:
-
-                    if (
-                        po.arrival_datetime
-                        and hasattr(
-                            po.arrival_datetime,
-                            "date"
-                        )
-                    ):
-                        eta = (
-                            po.arrival_datetime
-                            .date()
-                        )
-
-                tracking_details.append({
-
-                    "po_number":
-                        po.tally_voucher.voucher_number,
-
-                    "incoming_qty":
-                        remaining_qty,
-
-                    "stage":
-                        (
-                            current_stage.stage.name
-                            if current_stage
-                            else None
-                        ),
-
-                    "days_in_stage":
-                        (
-                            float(days_in_stage)
-                            if days_in_stage
-                            is not None
-                            else None
-                        ),
-
-                    "remaining_days":
-                        (
-                            float(remaining_days)
-                            if remaining_days
-                            is not None
-                            else None
-                        ),
-
-                    "eta":
-                        eta,
-                })
-
-            # ─────────────────────────────────────────────────────────────────
-            # LEGACY FALLBACK
-            #
-            # If this product has NO tracking records at all, retain the old
-            # behavior so old PO data does not suddenly disappear.
-            #
-            # Once tracking exists, tracking is authoritative.
-            # ─────────────────────────────────────────────────────────────────
-
-            if (
-                not tracking_details
-                and latest_po
-                and item.expected_delivery_days
-            ):
-
-                expected_dt = (
-                    latest_po["date"]
-                    + timedelta(
-                        days=item.expected_delivery_days
-                    )
-                )
-
-                if expected_dt > today:
 
                     tracking_details.append({
-
-                        "po_number":
-                            latest_po[
-                                "voucher_number"
-                            ],
-
-                        "incoming_qty":
-                            float(
-                                latest_po["qty"]
-                                or 0
-                            ),
-
-                        "stage":
-                            "Legacy PO",
-
-                        "days_in_stage":
-                            None,
-
-                        "remaining_days":
-                            (
-                                expected_dt
-                                - today
-                            ).days,
-
-                        "eta":
-                            expected_dt,
+                        "po_number": po.tally_voucher.voucher_number,
+                        "incoming_qty": incoming_qty,
+                        "stage": current_stage.stage.name if current_stage else None,
+                        "days_in_stage": (
+                            float(days_in_stage) if days_in_stage is not None else None
+                        ),
+                        "remaining_days": (
+                            float(remaining_days) if remaining_days is not None else None
+                        ),
+                        "eta": incoming_date,
                     })
 
-            # ─────────────────────────────────────────────────────────────────
-            # IMPORTANT:
-            #
-            # delivery_days = LEAD TIME FOR A NEW PO.
-            #
-            # It must NOT be:
-            #
-            # min(existing PO remaining days)
-            #
-            # because an existing PO having 25 days left does not mean that a
-            # NEW PO placed today arrives in 25 days.
-            # ─────────────────────────────────────────────────────────────────
+            elif latest_po and item.expected_delivery_days:
+                expected_dt = latest_po["date"] + timedelta(days=item.expected_delivery_days)
+                if expected_dt > today:
+                    incoming_qty = latest_po["qty"]
+                    incoming_date = expected_dt
 
-            delivery_days = max(
-                1,
-                int(
-                    item.expected_delivery_days
-                    or 30
-                )
+            item_gst_rows = sorted(
+                gst_map.get(iid, []),
+                key=lambda r: r["date"] or datetime.date.min,
+                reverse=True,
             )
+            latest_gst = item_gst_rows[0] if item_gst_rows else None
 
-            # ─────────────────────────────────────────────────────────────────
-            # TOTAL INCOMING
-            # ─────────────────────────────────────────────────────────────────
-
-            total_incoming_qty = sum(
-                float(
-                    t["incoming_qty"]
-                    or 0
+            if tracking_items and tracking_details:
+                delivery_days = max(
+                    1,
+                    round(min(
+                        t["remaining_days"]
+                        for t in tracking_details
+                        if t["remaining_days"] is not None
+                    ))
                 )
-                for t in tracking_details
-            )
+            else:
+                delivery_days = item.expected_delivery_days or 30
 
+            total_incoming_qty = sum(t["incoming_qty"] for t in tracking_details)
             earliest_eta = min(
-                (
-                    t["eta"]
-                    for t in tracking_details
-                    if t.get("eta")
-                ),
+                (t["eta"] for t in tracking_details if t["eta"]),
                 default=None
             )
 
-            # ─────────────────────────────────────────────────────────────────
-            # CORE CALCULATION
-            # ─────────────────────────────────────────────────────────────────
-
-            calc = (
-                PurchaseOrderView
-                ._calc_order(
-                    current_stock=current_stock,
-                    avg_daily=avg_daily,
-                    delivery_days=delivery_days,
-                    incoming_shipments=tracking_details,
-                    pred_m1=pred_m1,
-                    pred_m2=pred_m2,
-                    pred_m3=pred_m3,
-                    monthly_growth_rate=monthly_growth_rate,
-                    moq=item.minimum_order_quantity,
-                    is_dead=is_dead,
-                )
+            calc = PurchaseOrderView._calc_order(
+                current_stock=current_stock,
+                avg_daily=avg_daily,
+                delivery_days=delivery_days,
+                incoming_shipments=tracking_details,
+                pred_m1=pred_m1,
+                pred_m2=pred_m2,
+                pred_m3=pred_m3,
+                monthly_growth_rate=monthly_growth_rate,
+                moq=item.minimum_order_quantity,
+                is_dead=is_dead,
             )
-
-            # ─────────────────────────────────────────────────────────────────
-            # STOCK MONTHS
-            # ─────────────────────────────────────────────────────────────────
 
             months_of_stock = (
-                round(
-                    current_stock
-                    / (avg_daily * 30),
-                    1
-                )
-                if avg_daily > 0
-                else None
+                round(current_stock / (avg_daily * 30), 1)
+                if avg_daily > 0 else None
             )
-
-            is_overstocked = (
-                months_of_stock is not None
-                and months_of_stock >= 9
-            )
-
-            # ─────────────────────────────────────────────────────────────────
-            # JSON GRAPH DATA
-            # ─────────────────────────────────────────────────────────────────
+            is_overstocked = months_of_stock is not None and months_of_stock >= 9
 
             json_graph_data = []
-
-            for d in calc.get(
-                "graph_data",
-                []
-            ):
-
+            for d in calc.get("graph_data", []):
                 json_graph_data.append({
-
-                    "day":
-                        d["day"],
-
-                    "stock":
-                        float(
-                            d["stock"]
-                        ),
-
-                    "buffer_line":
-                        float(
-                            d["buffer_line"]
-                        ),
-
-                    "demand":
-                        float(
-                            d["demand"]
-                        ),
-
+                    "day": d["day"],
+                    "stock": float(d["stock"]),
+                    "buffer_line": float(d["buffer_line"]),
+                    "demand": float(d["demand"]),
                     "events": [
-
                         {
-                            "po":
-                                e["po"],
-
-                            "qty":
-                                float(
-                                    e["qty"]
-                                ),
-
-                            "stage":
-                                e["stage"],
-
-                            "eta":
-                                (
-                                    e["eta"]
-                                    .isoformat()
-                                    if e["eta"]
-                                    else None
-                                ),
-                        }
-
-                        for e in d.get(
-                            "events",
-                            []
-                        )
-                    ],
-
-                    "today":
-                        d.get(
-                            "today",
-                            False
-                        ),
+                            "po": e["po"],
+                            "qty": float(e["qty"]),
+                            "stage": e["stage"],
+                            "eta": e["eta"].isoformat() if e["eta"] else None,
+                        } for e in d.get("events", [])
+                    ]
                 })
 
-            # ─────────────────────────────────────────────────────────────────
-            # JSON TRACKING DATA
-            # ─────────────────────────────────────────────────────────────────
-
             json_tracking_details = [
-
                 {
-                    "po_number":
-                        t["po_number"],
-
-                    "incoming_qty":
-                        float(
-                            t["incoming_qty"]
-                        ),
-
-                    "stage":
-                        t["stage"],
-
-                    "eta":
-                        (
-                            t["eta"].isoformat()
-                            if t["eta"]
-                            else None
-                        ),
-
-                    "remaining_days":
-                        (
-                            float(
-                                t["remaining_days"]
-                            )
-                            if t["remaining_days"]
-                            is not None
-                            else None
-                        ),
-                }
-
-                for t in tracking_details
+                    "po_number": t["po_number"],
+                    "incoming_qty": float(t["incoming_qty"]),
+                    "stage": t["stage"],
+                    "eta": t["eta"].isoformat() if t["eta"] else None,
+                    "remaining_days": (
+                        float(t["remaining_days"]) if t["remaining_days"] is not None else None
+                    ),
+                } for t in tracking_details
             ]
 
-            # ─────────────────────────────────────────────────────────────────
-            # PRODUCT DATA
-            # ─────────────────────────────────────────────────────────────────
-
             products_data.append({
-
-                "id":
-                    iid,
-
-                "name":
-                    item.name,
-
-                "unit":
-                    item.unit or "",
-
-                "category":
-                    (
-                        item.category.name
-                        if item.category
-                        else "—"
-                    ),
-
-                "current_stock":
-                    current_stock,
-
-                "avg_daily":
-                    round(
-                        avg_daily,
-                        2
-                    ),
-
-                "growth_1y":
-                    growth_1y,
-
-                "growth_3m":
-                    growth_3m,
-
-                "monthly_growth_rate_pct":
-                    round(
-                        monthly_growth_rate * 100,
-                        2
-                    ),
-
-                "pred_m1":
-                    pred_m1,
-
-                "pred_m2":
-                    pred_m2,
-
-                "pred_m3":
-                    pred_m3,
-
-                "is_dead":
-                    is_dead,
-
-                # Sales modal
-                "monthly_sales_json":
-                    json.dumps(
-                        monthly_sales_breakdown
-                    ),
-
-                "daily_sales_json":
-                    json.dumps(
-                        daily_sales_breakdown
-                    ),
-
-                # Tally PO history
-                "po_rows":
-                    item_po_rows,
-
-                "latest_po_qty":
-                    (
-                        latest_po["qty"]
-                        if latest_po
-                        else None
-                    ),
-
-                "latest_po_date":
-                    (
-                        latest_po["date"]
-                        if latest_po
-                        else None
-                    ),
-
-                "latest_po_number":
-                    (
-                        latest_po[
-                            "voucher_number"
-                        ]
-                        if latest_po
-                        else None
-                    ),
-
-                # GST
-                "gst_rows":
-                    sorted(
-                        gst_map.get(
-                            iid,
-                            []
-                        ),
-                        key=lambda r:
-                            r["date"]
-                            or datetime.date.min,
-                        reverse=True,
-                    ),
-
-                # Incoming
-                "incoming_qty":
-                    total_incoming_qty,
-
-                "incoming_date":
-                    earliest_eta,
-
-                "tracking_details":
-                    tracking_details,
-
-                "expected_delivery_days":
-                    item.expected_delivery_days,
-
-                # Order calculation
-                "order_recommended":
-                    calc[
-                        "order_recommended"
-                    ],
-
-                "order_final":
-                    calc[
-                        "order_final"
-                    ],
-
-                "order_urgency":
-                    calc[
-                        "order_urgency"
-                    ],
-
-                "moq_note":
-                    calc[
-                        "moq_note"
-                    ],
-
-                "moq":
-                    item.minimum_order_quantity,
-
-                "order_lasts_months":
-                    calc[
-                        "order_lasts_months"
-                    ],
-
-                "runway_days":
-                    calc.get(
-                        "runway_days"
-                    ),
-
-                "runway_months":
-                    calc.get(
-                        "runway_months"
-                    ),
-
-                "reorder_point_days":
-                    calc.get(
-                        "reorder_point_days"
-                    ),
-
-                "graph_data":
-                    calc.get(
-                        "graph_data",
-                        []
-                    ),
-
-                "calc_steps":
-                    calc[
-                        "calc_steps"
-                    ],
-
-                # Overstock
-                "months_of_stock":
-                    months_of_stock,
-
-                "is_overstocked":
-                    is_overstocked,
-
-                # Graph
-                "graph_data_json":
-                    json.dumps(
-                        json_graph_data
-                    ),
-
-                "graph_meta_json":
-                    json.dumps({
-
-                        "delivery_days":
-                            delivery_days,
-
-                        "reorder_point":
-                            calc.get(
-                                "reorder_point_days"
-                            ),
-
-                        "stockout_day":
-                            calc.get(
-                                "stockout_day"
-                            ),
-
-                        "shipments":
-                            json_tracking_details,
-
-                        "today":
-                            0,
-                    }),
+                "id": iid,
+                "name": item.name,
+                "unit": item.unit or "",
+                "category": item.category.name if item.category else "—",
+                "current_stock": current_stock,
+                "avg_daily": round(avg_daily, 2),
+                "growth_1y": growth_1y,
+                "growth_3m": growth_3m,
+                "monthly_growth_rate_pct": round(monthly_growth_rate * 100, 2),
+                "pred_m1": pred_m1,
+                "pred_m2": pred_m2,
+                "pred_m3": pred_m3,
+                "is_dead": is_dead,
+                "monthly_sales_json": json.dumps(monthly_sales_breakdown),
+                "daily_sales_json": json.dumps(daily_sales_breakdown),
+                "po_rows": item_po_rows,
+                "latest_po_qty": latest_po["qty"] if latest_po else None,
+                "latest_po_date": latest_po["date"] if latest_po else None,
+                "latest_po_number": latest_po["voucher_number"] if latest_po else None,
+                "gst_rows": item_gst_rows,
+                "latest_gst_qty": latest_gst["qty"] if latest_gst else None,
+                "latest_gst_date": latest_gst["date"] if latest_gst else None,
+                "incoming_qty": total_incoming_qty,
+                "incoming_date": earliest_eta,
+                "tracking_details": tracking_details,
+                "expected_delivery_days": item.expected_delivery_days,
+                "order_recommended": calc["order_recommended"],
+                "order_final": calc["order_final"],
+                "order_urgency": calc["order_urgency"],
+                "moq_note": calc["moq_note"],
+                "moq": item.minimum_order_quantity,
+                "order_lasts_months": calc["order_lasts_months"],
+                "runway_days": calc.get("runway_days"),
+                "runway_months": calc.get("runway_months"),
+                "reorder_point_days": calc.get("reorder_point_days"),
+                "graph_data": calc.get("graph_data", []),
+                "calc_steps": calc["calc_steps"],
+                "months_of_stock": months_of_stock,
+                "is_overstocked": is_overstocked,
+                "graph_data_json": json.dumps(json_graph_data),
+                "graph_meta_json": json.dumps({
+                    "delivery_days": delivery_days,
+                    "reorder_point": calc.get("reorder_point_days", None),
+                    "stockout_day": calc.get("stockout_day"),
+                    "shipments": json_tracking_details,
+                    "today": 0,
+                }),
             })
 
-        # ─────────────────────────────────────────────────────────────────────
-        # RENDER
-        # ─────────────────────────────────────────────────────────────────────
-
-        return render(
-            request,
-            self.template_name,
-            {
-                "categories":
-                    categories,
-
-                "selected_category_id":
-                    int(
-                        selected_category_id
-                    ),
-
-                "products":
-                    products_data,
-
-                "today":
-                    today,
-
-                "hide_dead":
-                    hide_dead,
-            }
-        )
+        return render(request, self.template_name, {
+            "categories": categories,
+            "selected_category_id": int(selected_category_id),
+            "products": products_data,
+            "today": today,
+            "hide_dead": hide_dead,
+        })
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
