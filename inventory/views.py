@@ -4482,7 +4482,7 @@ class PurchaseOrderViewPrev1(AccountantRequiredMixin, View):
         })
 
 #excluding selected customer version
-class PurchaseOrderViewPrev2(AccountantRequiredMixin, View):
+class PurchaseOrderView(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order.html"
 
     # ─────────────────────────────────────────────────────────────────────────
