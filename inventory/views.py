@@ -3529,7 +3529,7 @@ class PurchaseOrderViewPrev(AccountantRequiredMixin, View):
             "hide_dead":            hide_dead,
         })
 
-class PurchaseOrderView(AccountantRequiredMixin, View):
+class PurchaseOrderViewPrev1(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order_legacy.html"
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -4482,7 +4482,7 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
         })
 
 #excluding selected customer version
-class PurchaseOrderView(AccountantRequiredMixin, View):
+class PurchaseOrderViewPrev2(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order.html"
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -5591,7 +5591,7 @@ class PurchaseOrderView(AccountantRequiredMixin, View):
 #fixing bugs
 
 
-class PurchaseOrderView(AccountantRequiredMixin, View):
+class PurchaseOrderViewPause(AccountantRequiredMixin, View):
     template_name = "inventory/purchase_order.html"
 
     # ─────────────────────────────────────────────────────────────────────────
