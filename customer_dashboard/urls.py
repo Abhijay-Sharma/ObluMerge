@@ -6,7 +6,8 @@ app_name = "customers"
 
 
 urlpatterns = [
-    path("", views.CustomerListView.as_view(), name="data"),   # <-- name="data"
+    path("", views.DashboardHomeView.as_view(), name="dashboard_home"),  # <-- name="data"
+    path("data/", views.CustomerListView.as_view(), name="data"),
     path("charts/", views.ChartsView.as_view(), name="charts"),
     path("unassigned/", views.UnassignedView.as_view(), name="unassigned"),
     path("map/", views.MapView.as_view(), name="map"),
@@ -82,4 +83,5 @@ urlpatterns = [
         views.export_cross_selling_matrix,
         name="export_cross_selling_matrix",
     ),
+
 ]

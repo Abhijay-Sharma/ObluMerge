@@ -55,6 +55,70 @@ from django.contrib.auth.decorators import login_required
 from .models import CustomerRemark, CrossSellingRemark
 
 
+class DashboardHomeView(LoginRequiredMixin, TemplateView):
+    template_name = "customers/home_page.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        user = self.request.user
+
+        # --------------------------------------------------
+        # BASIC USER FLAGS
+        # --------------------------------------------------
+
+        ctx["is_superuser"] = user.is_superuser
+        ctx["is_accountant"] = getattr(user, "is_accountant", False)
+
+        # --------------------------------------------------
+        # LOGGED-IN SALESPERSON
+        # --------------------------------------------------
+
+        salesperson = SalesPerson.objects.filter(
+            user=user
+        ).first()
+
+        ctx["salesperson"] = salesperson
+
+        # --------------------------------------------------
+        # DEFAULT
+        # --------------------------------------------------
+
+        ctx["is_rsm"] = False
+        ctx["is_asm"] = False
+
+        # --------------------------------------------------
+        # RSM IDENTIFICATION
+        #
+        # Your existing system identifies Ankush and Aman
+        # as RSMs.
+        # --------------------------------------------------
+
+        if salesperson:
+
+            name = (salesperson.name or "").strip().lower()
+
+            if name in ["ankush", "aman"]:
+                ctx["is_rsm"] = True
+
+            else:
+                # A salesperson with a manager is an ASM
+                if salesperson.manager_id:
+                    ctx["is_asm"] = True
+
+        # --------------------------------------------------
+        # POWER USERS
+        # --------------------------------------------------
+
+        if user.is_superuser:
+            ctx["is_rsm"] = True
+            ctx["is_asm"] = True
+
+        elif user.is_accountant:
+            ctx["is_rsm"] = True
+
+        return ctx
+
 
 class AdminSalesPersonCustomersViewLegacy(AccountantRequiredMixin, TemplateView):
     template_name = "customers/admin_salesperson_customers.html"

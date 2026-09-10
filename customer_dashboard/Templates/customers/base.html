@@ -1,126 +1,1540 @@
-<!DOCTYPE html>
+{% load static %}
+
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Customer Dashboard</title>
-  <link rel="icon" type="image/png" href="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Minty Bootswatch Theme (Bootstrap 5) -->
-  <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet">
+    <meta charset="UTF-8">
 
-  <!-- Bootstrap JS (REQUIRED for hamburger) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <title>
+        {% block title %}Customer Dashboard{% endblock %} | Oblu
+    </title>
 
-  <!-- Plotly & Leaflet -->
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link
+        rel="icon"
+        type="image/png"
+        href="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
+    >
 
-  <style>
-    * { box-sizing: border-box; }
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
 
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0e0e0e, #838383);
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-    }
+    <!-- =========================================================
+         BOOTSTRAP
+    ========================================================== -->
 
-    /* NAVBAR */
-    .navbar {
-      background-color: #0e0e0e;
-    }
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 
-    .navbar-brand {
-      color: #fff !important;
-      font-weight: bold;
-      font-size: 1.4rem;
-    }
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    >
 
-    .nav-link {
-      color: #ddd !important;
-      font-weight: 500;
-    }
+    <!-- =========================================================
+         FONT
+    ========================================================== -->
 
-    .nav-link:hover {
-      color: #fff !important;
-    }
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
 
-    /* Force hamburger below 500px */
-    @media (max-width: 500px) {
-      .navbar-expand-lg {
-        flex-wrap: wrap;
-      }
-    }
 
-    .container {
-      flex: 1;
-      padding: 30px 20px;
-    }
+    <style>
 
-    .card {
-      background: #fff;
-      color: #000;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
-      max-width: 1000px;
-      margin: auto;
-    }
+        /* =====================================================
+           ROOT VARIABLES
+        ====================================================== */
 
-    .footer {
-      text-align: center;
-      padding: 15px;
-      background: #222;
-      color: #fff;
-      font-size: 0.9rem;
-    }
-  </style>
+        :root {
+
+            --sidebar-width: 260px;
+
+            --oblu-green: #50bda1;
+
+            --oblu-dark: #0f172a;
+
+            --bg-light: #f8fafc;
+
+            --text-muted: #64748b;
+
+            --border-color: #e2e8f0;
+
+        }
+
+
+        /* =====================================================
+           BODY
+        ====================================================== */
+
+        body {
+
+            font-family: 'Inter', sans-serif;
+
+            background-color: var(--bg-light);
+
+            color: var(--oblu-dark);
+
+            display: flex;
+
+            min-height: 100vh;
+
+            margin: 0;
+
+        }
+
+
+        /* =====================================================
+           SIDEBAR
+        ====================================================== */
+
+        #sidebar {
+
+            min-width: var(--sidebar-width);
+
+            max-width: var(--sidebar-width);
+
+            background: #ffffff;
+
+            border-right: 1px solid var(--border-color);
+
+            display: flex;
+
+            flex-direction: column;
+
+            position: fixed;
+
+            height: 100vh;
+
+            z-index: 1000;
+
+        }
+
+
+        /* =====================================================
+           SIDEBAR HEADER
+        ====================================================== */
+
+        .sidebar-header {
+
+            padding: 25px;
+
+            border-bottom: 1px solid #f1f5f9;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            min-height: 78px;
+
+        }
+
+
+        .sidebar-header img {
+
+            width: 24px;
+
+            height: 24px;
+
+            object-fit: contain;
+
+        }
+
+
+        .brand-text {
+
+            font-weight: 700;
+
+            font-size: 1.1rem;
+
+            color: var(--oblu-dark);
+
+            text-decoration: none;
+
+        }
+
+
+        .brand-text:hover {
+
+            color: var(--oblu-green);
+
+        }
+
+
+        /* =====================================================
+           NAV CONTENT
+        ====================================================== */
+
+        .nav-content {
+
+            flex: 1;
+
+            overflow-y: auto;
+
+            overflow-x: hidden;
+
+            padding-bottom: 10px;
+
+        }
+
+
+        /* =====================================================
+           SECTION TITLES
+        ====================================================== */
+
+        .nav-section-title {
+
+            font-size: 0.65rem;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.05rem;
+
+            color: var(--text-muted);
+
+            padding: 20px 25px 8px;
+
+            font-weight: 700;
+
+        }
+
+
+        /* =====================================================
+           NAV LINKS
+        ====================================================== */
+
+        .nav-link {
+
+            padding: 10px 25px;
+
+            color: var(--text-muted);
+
+            font-weight: 500;
+
+            font-size: 0.85rem;
+
+            display: flex;
+
+            align-items: center;
+
+            transition: all 0.2s ease;
+
+            text-decoration: none;
+
+            min-height: 44px;
+
+        }
+
+
+        .nav-link i {
+
+            margin-right: 12px;
+
+            font-size: 1.1rem;
+
+            width: 20px;
+
+            text-align: center;
+
+        }
+
+
+        .nav-link:hover {
+
+            color: var(--oblu-green);
+
+            background-color: #f0fdfa;
+
+        }
+
+
+        .nav-link.active {
+
+            color: var(--oblu-green);
+
+            background-color: #f0fdfa;
+
+            border-right: 3px solid var(--oblu-green);
+
+        }
+
+
+        /* =====================================================
+           LOGOUT
+        ====================================================== */
+
+        .logout-area {
+
+            margin-top: auto;
+
+            padding: 20px 25px;
+
+            border-top: 1px solid #f1f5f9;
+
+            background: #ffffff;
+
+        }
+
+
+        .logout-link {
+
+            color: #dc3545;
+
+            text-decoration: none;
+
+            font-weight: 700;
+
+            font-size: 0.8rem;
+
+            display: flex;
+
+            align-items: center;
+
+        }
+
+
+        .logout-link:hover {
+
+            color: #b02a37;
+
+        }
+
+
+        .logout-link i {
+
+            margin-right: 8px;
+
+            font-size: 1rem;
+
+        }
+
+
+        /* =====================================================
+           MAIN CONTENT
+        ====================================================== */
+
+        #content {
+
+            margin-left: var(--sidebar-width);
+
+            width: calc(100% - var(--sidebar-width));
+
+            display: flex;
+
+            flex-direction: column;
+
+            min-height: 100vh;
+
+        }
+
+
+        /* =====================================================
+           TOP NAVBAR
+        ====================================================== */
+
+        .top-navbar {
+
+            background: #ffffff;
+
+            padding: 15px 30px;
+
+            border-bottom: 1px solid var(--border-color);
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            position: sticky;
+
+            top: 0;
+
+            z-index: 100;
+
+            min-height: 64px;
+
+        }
+
+
+        .breadcrumb-custom {
+
+            font-size: 0.75rem;
+
+            color: var(--text-muted);
+
+            font-weight: 600;
+
+        }
+
+
+        /* =====================================================
+           USER PROFILE
+        ====================================================== */
+
+        .user-profile {
+
+            font-size: 0.85rem;
+
+            font-weight: 500;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+        }
+
+
+        .username {
+
+            color: #2563eb;
+
+        }
+
+
+        .user-avatar {
+
+            width: 32px;
+
+            height: 32px;
+
+            font-weight: bold;
+
+            color: var(--oblu-green);
+
+            background: #f8fafc;
+
+            border: 1px solid var(--border-color);
+
+            border-radius: 50%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+        }
+
+
+        /* =====================================================
+           ROLE BADGE
+        ====================================================== */
+
+        .role-badge {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 5px 10px;
+
+            border-radius: 999px;
+
+            background: #f0fdfa;
+
+            color: var(--oblu-green);
+
+            font-size: 0.7rem;
+
+            font-weight: 700;
+
+            text-transform: uppercase;
+
+        }
+
+
+        /* =====================================================
+           MAIN CONTAINER
+        ====================================================== */
+
+        .main-container {
+
+            padding: 20px 30px;
+
+        }
+
+
+        /* =====================================================
+           CONTENT CARD
+        ====================================================== */
+
+        .content-card {
+
+            background: #ffffff;
+
+            border: 1px solid var(--border-color);
+
+            border-radius: 12px;
+
+            padding: 30px;
+
+            min-height: 80vh;
+
+            box-shadow:
+                0 4px 6px -1px rgba(0, 0, 0, 0.02);
+
+        }
+
+
+        /* =====================================================
+           SCROLLBAR
+        ====================================================== */
+
+        .nav-content::-webkit-scrollbar {
+
+            width: 5px;
+
+        }
+
+
+        .nav-content::-webkit-scrollbar-track {
+
+            background: transparent;
+
+        }
+
+
+        .nav-content::-webkit-scrollbar-thumb {
+
+            background: #cbd5e1;
+
+            border-radius: 10px;
+
+        }
+
+
+        /* =====================================================
+           MOBILE
+        ====================================================== */
+
+        @media (max-width: 992px) {
+
+            #sidebar {
+
+                display: none;
+
+            }
+
+
+            #content {
+
+                margin-left: 0;
+
+                width: 100%;
+
+            }
+
+
+            .top-navbar {
+
+                padding: 15px 20px;
+
+            }
+
+
+            .main-container {
+
+                padding: 15px;
+
+            }
+
+
+            .content-card {
+
+                padding: 20px;
+
+            }
+
+        }
+
+
+        /* =====================================================
+           SMALL SCREEN
+        ====================================================== */
+
+        @media (max-width: 576px) {
+
+            .breadcrumb-custom {
+
+                font-size: 0.65rem;
+
+            }
+
+
+            .user-profile {
+
+                font-size: 0.75rem;
+
+            }
+
+
+            .role-badge {
+
+                display: none;
+
+            }
+
+        }
+         /* =====================================================
+           MOBILE SIDEBAR / HEADER
+        ====================================================== */
+        .mobile-menu-btn {
+            display: none;
+            border: 1px solid var(--border-color);
+            background: #ffffff;
+            color: var(--oblu-dark);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex: 0 0 40px;
+        }
+        .mobile-menu-btn:hover { color: var(--oblu-green); border-color: var(--oblu-green); }
+        .mobile-sidebar-header { display: none; }
+        .sidebar-backdrop { display: none; }
+
+        @media (max-width: 992px) {
+            #sidebar {
+                display: flex;
+                transform: translateX(-100%);
+                transition: transform 0.25s ease;
+                box-shadow: 8px 0 24px rgba(15, 23, 42, 0.08);
+            }
+            #sidebar.mobile-open { transform: translateX(0); }
+            #content { margin-left: 0; width: 100%; }
+            .mobile-menu-btn { display: inline-flex; }
+            .mobile-sidebar-header { display: flex; justify-content: flex-end; padding: 8px 15px 0; }
+            .mobile-sidebar-close {
+                border: 0; background: transparent; color: var(--text-muted);
+                width: 36px; height: 36px; border-radius: 8px; font-size: 1.25rem;
+            }
+            .mobile-sidebar-close:hover { background: #f8fafc; color: var(--oblu-dark); }
+            .sidebar-backdrop {
+                position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35); z-index: 999;
+            }
+            .sidebar-backdrop.show { display: block; }
+            .top-navbar { padding: 12px 15px; gap: 10px; }
+            .breadcrumb-custom {
+                max-width: 45%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .user-profile { margin-left: auto; gap: 7px; white-space: nowrap; }
+            .main-container { padding: 12px; }
+            .content-card { padding: 18px; min-height: calc(100vh - 100px); border-radius: 10px; }
+        }
+
+        @media (max-width: 576px) {
+            .top-navbar { min-height: 58px; padding: 9px 12px; }
+            .breadcrumb-custom { display: none; }
+            .user-profile { font-size: 0.72rem; }
+            .username { max-width: 95px; overflow: hidden; text-overflow: ellipsis; }
+            .user-avatar { width: 30px; height: 30px; flex: 0 0 30px; }
+            .main-container { padding: 8px; }
+            .content-card { padding: 14px; min-height: calc(100vh - 80px); }
+            .sidebar-header { padding: 20px; }
+            .nav-link { min-height: 48px; padding: 11px 20px; }
+            .nav-section-title { padding-left: 20px; padding-right: 20px; }
+        }
+
+    {% block extra_css %}{% endblock %}
+
+
+    </style>
+
+
 </head>
+
 
 <body>
 
-<nav class="navbar navbar-expand-lg">
-  <div class="container-fluid">
 
-    <a class="navbar-brand" href="{% url 'customers:data' %}">
-      📊 Customer Dashboard
-    </a>
+<!-- ============================================================
+     SIDEBAR
+============================================================= -->
 
-    <!-- HAMBURGER -->
-    <button class="navbar-toggler text-white border-0"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbarMenu">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+<nav id="sidebar">
 
-    <!-- COLLAPSIBLE MENU -->
-    <div class="collapse navbar-collapse" id="navbarMenu">
-      <div class="navbar-nav ms-auto">
-        <a href="{% url 'customers:data' %}" class="nav-link">Data</a>
-        <a href="{% url 'customers:charts' %}" class="nav-link">Charts</a>
-        <a href="{% url 'customers:unassigned' %}" class="nav-link">Unassigned</a>
-        <a href="{% url 'customers:detailedmap' %}" class="nav-link">Map</a>
-        <a href="{% url 'customers:salesperson_customers' %}" class="nav-link">Salesperson-Customer</a>
-      </div>
+    <div class="mobile-sidebar-header">
+        <button type="button" class="mobile-sidebar-close" id="mobileSidebarClose" aria-label="Close navigation menu">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
 
-  </div>
+    <!-- ========================================================
+         BRAND
+    ========================================================= -->
+
+    <div class="sidebar-header">
+
+        <img
+            src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
+            alt="Oblu"
+        >
+
+        <a
+            href="{% url 'welcome' %}"
+            class="brand-text"
+        >
+            Oblu Customer
+        </a>
+
+    </div>
+
+
+    <!-- ========================================================
+         NAVIGATION
+    ========================================================= -->
+
+    <div class="nav-content">
+
+
+        <!-- ====================================================
+             RSM
+        ===================================================== -->
+
+        {% if is_rsm and not is_superuser %}
+
+
+            <div class="nav-section-title">
+                RSM Dashboard
+            </div>
+
+
+            <!-- Monthly Sales Report -->
+
+            <a
+                href="{% url 'customers:monthly_sales_report' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'monthly_sales_report' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-calendar-check"></i>
+
+                <span>
+                    Monthly Sales Report
+                </span>
+
+            </a>
+
+
+            <!-- Payment Follow-ups -->
+
+            <a
+                href="{% url 'customers:payment_followup_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'payment_followup_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-cash-stack"></i>
+
+                <span>
+                    Payment Follow-ups
+                </span>
+
+            </a>
+
+
+            <!-- Salesperson Customers -->
+
+            <a
+                href="{% url 'customers:salesperson_customers' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'salesperson_customers' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-person-badge"></i>
+
+                <span>
+                    Salesperson Customers
+                </span>
+
+            </a>
+
+
+            <!-- Performance -->
+
+            <div class="nav-section-title">
+                Performance
+            </div>
+
+
+            <!-- RSM Incentives -->
+
+            <!-- ====================================================
+                 RSM INCENTIVES
+            ===================================================== -->
+
+            <div class="nav-section-title">
+                Performance
+            </div>
+
+
+            <!-- Team Incentives -->
+
+            <a
+                href="{% url 'incentive_calculator:sales_head_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'sales_head_dashboard' %}
+                    active
+                {% endif %}"
+            >
+                <i class="bi bi-people"></i>
+
+                <span>
+                    Sales Head Incentives
+                </span>
+            </a>
+
+
+            <a
+                href="{% url 'incentive_calculator:rsm_team_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'rsm_team_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-people"></i>
+
+                <span>
+                    Team Incentives
+                </span>
+
+            </a>
+
+
+            <!-- My Paid Incentives -->
+
+            <a
+                href="{% url 'incentive_calculator:asm_incentive_paid_only' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'asm_incentive_paid_only' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-wallet2"></i>
+
+                <span>
+                    My Paid Incentives
+                </span>
+
+            </a>
+
+
+        <!-- ====================================================
+             ASM
+        ===================================================== -->
+
+        {% elif is_asm and not is_superuser %}
+
+
+            <div class="nav-section-title">
+                My Dashboard
+            </div>
+
+
+            <!-- My Customers -->
+
+            <a
+                href="{% url 'customers:salesperson_customers' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'salesperson_customers' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-people"></i>
+
+                <span>
+                    My Customers
+                </span>
+
+            </a>
+
+            <a
+                href="{% url 'customers:payment_followup_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'payment_followup_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-cash-stack"></i>
+
+                <span>
+                    Payment Follow-ups
+                </span>
+
+            </a>
+
+
+            <!-- Performance -->
+
+            <div class="nav-section-title">
+                Performance
+            </div>
+
+
+            <!-- ASM Incentives -->
+
+            <a
+                href="{% url 'incentive_calculator:asm_incentive_paid_only' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'asm_incentive_paid_only' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-trophy"></i>
+
+                <span>
+                    Incentives
+                </span>
+
+            </a>
+
+             <a
+                href="{% url 'customers:monthly_sales_report' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'monthly_sales_report' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-calendar-check"></i>
+
+                <span>
+                    Monthly Sales Report
+                </span>
+
+            </a>
+
+
+        <!-- ====================================================
+             ACCOUNTANT
+        ===================================================== -->
+
+        {% elif is_accountant and not is_superuser %}
+
+
+            <div class="nav-section-title">
+                Main
+            </div>
+
+
+            <!-- Dashboard -->
+
+            <a
+                href="{% url 'customers:dashboard_home' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'dashboard_home' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-house-door"></i>
+
+                <span>
+                    Dashboard
+                </span>
+
+            </a>
+
+
+            <!-- Customer List -->
+
+            <a
+                href="{% url 'customers:data' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'data' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-people"></i>
+
+                <span>
+                    Customer List
+                </span>
+
+            </a>
+
+            <a
+                href="{% url 'customers:detailedmap' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'detailedmap' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-geo-alt"></i>
+
+                <span>
+                    Detailed Map
+                </span>
+
+            </a>
+
+
+
+            <!-- Analytics -->
+
+            <a
+                href="{% url 'customers:charts' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'charts' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-bar-chart-line"></i>
+
+                <span>
+                    Analytics
+                </span>
+
+            </a>
+
+
+            <!-- RSM Dashboard -->
+
+            <div class="nav-section-title">
+                RSM Dashboard
+            </div>
+
+
+            <!-- Monthly Sales -->
+
+            <a
+                href="{% url 'customers:monthly_sales_report' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'monthly_sales_report' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-calendar-check"></i>
+
+                <span>
+                    Monthly Sales Report
+                </span>
+
+            </a>
+
+
+            <!-- Payment Follow-ups -->
+
+            <a
+                href="{% url 'customers:payment_followup_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'payment_followup_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-cash-stack"></i>
+
+                <span>
+                    Payment Follow-ups
+                </span>
+
+            </a>
+
+
+            <!-- Salesperson Customers -->
+
+            <a
+                href="{% url 'customers:salesperson_customers' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'salesperson_customers' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-person-badge"></i>
+
+                <span>
+                    Salesperson Customers
+                </span>
+
+            </a>
+
+
+            <!-- Performance -->
+
+            <div class="nav-section-title">
+                Performance
+            </div>
+
+
+            <!-- Incentives -->
+
+            <a
+                href="{% url 'incentive_calculator:rsm_team_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'rsm_team_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-trophy"></i>
+
+                <span>
+                    Incentives
+                </span>
+
+            </a>
+
+
+            <!-- Administration -->
+
+            <div class="nav-section-title">
+                Administration
+            </div>
+
+
+            <!-- Voucher Approvals -->
+
+            <a
+                href="{% url 'customers:admin_voucher_claim_management' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'admin_voucher_claim_management' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-check2-square"></i>
+
+                <span>
+                    Voucher Approvals
+                </span>
+
+            </a>
+
+
+        <!-- ====================================================
+             SUPERUSER
+        ===================================================== -->
+
+        {% elif is_superuser %}
+
+
+            <div class="nav-section-title">
+                Main
+            </div>
+
+
+            <!-- Dashboard -->
+
+            <a
+                href="{% url 'customers:dashboard_home' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'dashboard_home' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-house-door"></i>
+
+                <span>
+                    Dashboard
+                </span>
+
+            </a>
+
+
+            <!-- Customer List -->
+
+            <a
+                href="{% url 'customers:data' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'data' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-people"></i>
+
+                <span>
+                    Customer List
+                </span>
+
+            </a>
+
+
+            <!-- Analytics -->
+
+            <a
+                href="{% url 'customers:charts' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'charts' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-bar-chart-line"></i>
+
+                <span>
+                    Analytics
+                </span>
+
+            </a>
+
+
+            <!-- RSM Dashboard -->
+
+            <div class="nav-section-title">
+                RSM Dashboard
+            </div>
+
+
+            <a
+                href="{% url 'customers:monthly_sales_report' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'monthly_sales_report' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-calendar-check"></i>
+
+                <span>
+                    Monthly Sales Report
+                </span>
+
+            </a>
+
+
+            <a
+                href="{% url 'customers:payment_followup_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'payment_followup_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-cash-stack"></i>
+
+                <span>
+                    Payment Follow-ups
+                </span>
+
+            </a>
+
+
+            <a
+                href="{% url 'customers:salesperson_customers' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'salesperson_customers' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-person-badge"></i>
+
+                <span>
+                    Salesperson Customers
+                </span>
+
+            </a>
+
+
+            <!-- Performance -->
+
+            <div class="nav-section-title">
+                Performance
+            </div>
+
+
+            <a
+                href="{% url 'incentive_calculator:rsm_team_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'rsm_team_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-trophy"></i>
+
+                <span>
+                    Incentives
+                </span>
+
+            </a>
+
+
+            <!-- Administration -->
+
+            <div class="nav-section-title">
+                Administration
+            </div>
+
+
+            <a
+                href="{% url 'customers:admin_voucher_claim_management' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'admin_voucher_claim_management' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-check2-square"></i>
+
+                <span>
+                    Voucher Approvals
+                </span>
+
+            </a>
+
+
+            <!-- Tools -->
+
+            <div class="nav-section-title">
+                Tools
+            </div>
+
+
+            <a
+                href="{% url 'customers:detailedmap' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'detailedmap' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-geo-alt"></i>
+
+                <span>
+                    Detailed Map
+                </span>
+
+            </a>
+
+
+        {% endif %}
+
+
+        <!-- ====================================================
+             CROSS SELLING MATRIX
+             Available to Accountant, RSM, ASM and Superuser
+        ===================================================== -->
+
+        {% if is_rsm or is_asm or is_accountant or is_superuser %}
+
+            <div class="nav-section-title">
+                Sales Intelligence
+            </div>
+
+            <a
+                href="{% url 'customers:cross_selling_matrix' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'cross_selling_matrix' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-grid-3x3-gap"></i>
+
+                <span>
+                    Cross-Selling Matrix
+                </span>
+
+            </a>
+
+        {% endif %}
+
+
+    </div>
+
+
+
 </nav>
 
-<div class="container">
-  <div class="card">
-    {% block content %}{% endblock %}
-  </div>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<!-- ============================================================
+     MAIN CONTENT AREA
+============================================================= -->
+
+<div id="content">
+
+
+    <!-- ========================================================
+         TOP NAVBAR
+    ========================================================= -->
+
+    <header class="top-navbar">
+
+        <button
+            type="button"
+            class="mobile-menu-btn"
+            id="mobileMenuBtn"
+            aria-label="Open navigation menu"
+            aria-controls="sidebar"
+            aria-expanded="false"
+        >
+            <i class="bi bi-list"></i>
+        </button>
+
+        <!-- Breadcrumb -->
+
+        <div class="breadcrumb-custom text-uppercase">
+
+            HOME /
+
+            {{ request.resolver_match.url_name|title }}
+
+        </div>
+
+
+        <!-- User -->
+
+        <div class="user-profile">
+
+            Welcome,
+
+            <span class="username">
+                {{ request.user.username }}
+            </span>
+
+
+            <!-- Role -->
+
+            {% if is_superuser %}
+
+                <span class="role-badge">
+                    SUPERUSER
+                </span>
+
+            {% elif is_accountant %}
+
+                <span class="role-badge">
+                    ACCOUNTANT
+                </span>
+
+            {% elif is_rsm %}
+
+                <span class="role-badge">
+                    RSM
+                </span>
+
+            {% elif is_asm %}
+
+                <span class="role-badge">
+                    ASM
+                </span>
+
+            {% endif %}
+
+
+            <!-- Avatar -->
+
+            <div class="user-avatar">
+
+                {{ request.user.username|first|upper }}
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- ========================================================
+         PAGE CONTENT
+    ========================================================= -->
+
+    <div class="main-container">
+
+        <div class="content-card">
+
+            {% block content %}
+
+            {% endblock %}
+
+        </div>
+
+    </div>
+
+
 </div>
 
-<div class="footer">
-  &copy; 2025 Customer Dashboard. All rights reserved.
-</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================= -->
+
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
+</script>
+
+
+<script>
+(function () {
+    const sidebar = document.getElementById("sidebar");
+    const menuBtn = document.getElementById("mobileMenuBtn");
+    const closeBtn = document.getElementById("mobileSidebarClose");
+    const backdrop = document.getElementById("sidebarBackdrop");
+
+    if (!sidebar || !menuBtn || !backdrop) return;
+
+    function openSidebar() {
+        sidebar.classList.add("mobile-open");
+        backdrop.classList.add("show");
+        menuBtn.setAttribute("aria-expanded", "true");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove("mobile-open");
+        backdrop.classList.remove("show");
+        menuBtn.setAttribute("aria-expanded", "false");
+        document.body.style.overflow = "";
+    }
+
+    menuBtn.addEventListener("click", openSidebar);
+    if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+    backdrop.addEventListener("click", closeSidebar);
+
+    sidebar.querySelectorAll(".nav-link").forEach(function (link) {
+        link.addEventListener("click", function () {
+            if (window.innerWidth <= 992) closeSidebar();
+        });
+    });
+
+    window.addEventListener("resize", function () {
+        if (window.innerWidth > 992) closeSidebar();
+    });
+})();
+</script>
+
+{% block extra_js %}
+
+{% endblock %}
+
 
 </body>
+
 </html>

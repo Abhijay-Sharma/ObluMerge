@@ -1,0 +1,183 @@
+{% extends 'customers/base.html' %}
+
+{% block title %}Dashboard | Oblu{% endblock %}
+
+{% block content %}
+<style>
+    /* Hero Section Styling */
+    .hero-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 40px 0 80px 0;
+        gap: 40px;
+    }
+
+    .hero-text { flex: 1; }
+    
+    .system-badge {
+        background: #f0fdfa;
+        color: #2dd4bf;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: inline-block;
+        margin-bottom: 20px;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.1;
+        margin-bottom: 20px;
+    }
+
+    .hero-title span { color: #50bda1; }
+
+    .hero-desc {
+        color: #64748b;
+        font-size: 1.1rem;
+        max-width: 500px;
+        line-height: 1.6;
+        margin-bottom: 30px;
+    }
+
+    .auth-badge {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Right Side Graphic Placeholder */
+    .hero-graphic {
+        flex: 1;
+        position: relative;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .graphic-card {
+        background: white;
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+        width: 380px;
+        border: 1px solid #f1f5f9;
+    }
+
+    /* Feature Cards Row */
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    .feature-card {
+        background: #fdfdfd;
+        border: 1px solid #f1f5f9;
+        border-radius: 16px;
+        padding: 24px;
+        transition: transform 0.3s ease;
+    }
+    .feature-card:hover { transform: translateY(-5px); }
+
+    .icon-box {
+        width: 40px;
+        height: 40px;
+        background: #f0fdfa;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #50bda1;
+        margin-bottom: 15px;
+    }
+
+    .feature-card h5 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+    .feature-card p { font-size: 0.85rem; color: #64748b; line-height: 1.5; margin: 0; }
+
+    @media (max-width: 992px) {
+        .hero-container { flex-direction: column; text-align: center; }
+        .hero-desc { margin: 0 auto 30px auto; }
+        .hero-graphic { justify-content: center; }
+        .features-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="hero-container">
+    <div class="hero-text">
+        <span class="system-badge"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i> Oblu Internal System</span>
+        <h1 class="hero-title">Customers,<br><span>managed smarter.</span></h1>
+        <p class="hero-desc">
+            A centralized workspace for monitoring accounts, understanding payment cycles, 
+            tracking interactions, and keeping your sales team ahead of targets.
+        </p>
+        <div class="auth-badge">
+            <i class="bi bi-shield-check"></i> Authorized Oblu Access
+        </div>
+    </div>
+
+    <div class="hero-graphic">
+        <!-- Recreating the Mockup Graphic -->
+        <div class="graphic-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="fw-bold small text-uppercase text-muted">Customer Overview</span>
+                <span class="badge bg-success-subtle text-success rounded-pill">● Live</span>
+            </div>
+            <p class="small text-muted mb-1">Portfolio intelligence</p>
+            <h4 class="fw-bold">Accounts at a glance</h4>
+            
+            <!-- Simple CSS Bar Chart Mockup -->
+            <div class="d-flex align-items-end gap-2 mt-4" style="height: 100px;">
+                <div style="flex:1; height:40%; background:#99f6e4; border-radius:4px;"></div>
+                <div style="flex:1; height:70%; background:#50bda1; border-radius:4px;"></div>
+                <div style="flex:1; height:55%; background:#99f6e4; border-radius:4px;"></div>
+                <div style="flex:1; height:90%; background:#50bda1; border-radius:4px;"></div>
+                <div style="flex:1; height:65%; background:#2dd4bf; border-radius:4px;"></div>
+            </div>
+            
+            <div class="mt-4 pt-3 border-top d-flex justify-content-between">
+                <div>
+                    <div class="small text-muted">Collections</div>
+                    <div class="fw-bold">Tracked</div>
+                </div>
+                <div>
+                    <div class="small text-muted">Visits</div>
+                    <div class="fw-bold text-end">Planned</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="text-center fw-bold mb-4">Everything you need, in one place.</h4>
+<p class="text-center text-muted small mb-5">Make better relationship decisions with a connected view of your operations.</p>
+
+<div class="features-grid">
+    <div class="feature-card">
+        <div class="icon-box"><i class="bi bi-people-fill"></i></div>
+        <h5>Customer Control</h5>
+        <p>Keep a clear view of assigned accounts, interaction history, and profile health across your operations.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="icon-box"><i class="bi bi-credit-card-2-front"></i></div>
+        <h5>Payment Planning</h5>
+        <p>Understand upcoming credit dues and make informed collection strategies before they become a problem.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="icon-box"><i class="bi bi-graph-up"></i></div>
+        <h5>Sales Analytics</h5>
+        <p>Turn customer data into useful insights so you can understand demand and plan inventory with confidence.</p>
+    </div>
+</div>
+
+
+{% endblock %}
