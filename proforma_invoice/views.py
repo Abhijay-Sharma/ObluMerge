@@ -1898,6 +1898,7 @@ class CreateQuotationMakerView(LoginRequiredMixin, View):
                                     product=product_obj,
                                     requested_by=request.user,
                                     is_product_request=True,
+                                    quantity=qty,
                                     requested_price=user_val,
                                     recommended_price=standard_price,
                                     msrp_snapshot=msrp,
@@ -6961,7 +6962,6 @@ def convert_quotation_to_pi(request, q_id):
         shipping_customer=quotation.shipping_customer,
         created_by=request.user.username,
         courier_mode=quotation.courier_mode,
-
     )
     quotation.price_requests.update(invoice=pi)
 
@@ -6975,17 +6975,15 @@ def convert_quotation_to_pi(request, q_id):
     ).filter(Q(is_unpaid=True) | Q(is_partially_paid=True)).select_related('voucher')
 
     if all_overdue.exists():
-        # Filter out those covered by EMI
         overdue_ids = all_overdue.values_list('voucher_id', flat=True)
         vouchers_with_emi = VoucherEmiPaymentAllocation.objects.filter(
             voucher__voucher_id__in=overdue_ids
         ).values_list('voucher__voucher_id', flat=True).distinct()
 
-        # These are the "Hard Blocks" (Overdue & No EMI)
+        # Hard Blocks (Overdue & No EMI)
         real_overdue_records = all_overdue.exclude(voucher_id__in=vouchers_with_emi)
 
         if real_overdue_records.exists():
-            # Automatically raise a Credit Bypass Request
             from .models import CreditPeriodOverdueByPassRequest
             CreditPeriodOverdueByPassRequest.objects.get_or_create(
                 customer=selected_customer,
@@ -6994,11 +6992,10 @@ def convert_quotation_to_pi(request, q_id):
                 defaults={'status': 'pending'}
             )
             actual_credit_req_created = True
-            # (Optional: Add your email notification trigger here)
     # --- NEW CREDIT LOGIC END ---
 
     shortage_found = False
-    shortage_data = {}
+    shortage_list = []  # Store objects to create individual shortage rows
 
     # 2. Convert Items & Check Stock
     for item in quotation.items.all():
@@ -7008,27 +7005,31 @@ def convert_quotation_to_pi(request, q_id):
             product=item.product,
             quantity=item.quantity,
             requested_price=item.requested_price,
-            current_price = item.current_price,
-
+            current_price=item.current_price,
         )
 
         # STOCK CHECK LOGIC
-        available_stock = item.product.quantity  # Assuming your InventoryItem has a .quantity field
+        available_stock = getattr(item.product, 'quantity', 0)
         if item.quantity > available_stock:
             shortage_found = True
-            shortage_data[item.product.name] = f"Requested: {item.quantity}, Available: {available_stock}"
+            shortage_list.append({
+                'product': item.product,
+                'requested': item.quantity,
+                'available': available_stock,
+            })
 
-    # 3. Handle Auto-Stock Request if shortage exists
-    if shortage_found :
+    # 3. Handle Auto-Stock Request per product if shortage exists
+    if shortage_found:
         from .models import ProformaStockShortageRequest
-        ProformaStockShortageRequest.objects.create(
-            invoice=pi,
-            requested_by=request.user,
-            shortage_details=shortage_data,
-            status='pending'  # This triggers the "STOCK REVIEW" lock in your template
-        )
-        # Note: You can trigger your email function here to notify Accounts
-        # send_stock_alert_email(pi.id, shortage_data)
+        for shortage in shortage_list:
+            ProformaStockShortageRequest.objects.create(
+                invoice=pi,
+                product=shortage['product'],
+                requested_quantity=shortage['requested'],
+                available_quantity=shortage['available'],
+                requested_by=request.user,
+                status='pending'
+            )
 
     # If there was a credit issue or stock issue, lock the PI
     if shortage_found or actual_credit_req_created:
@@ -7037,9 +7038,9 @@ def convert_quotation_to_pi(request, q_id):
 
     # 4. Mark Quotation as converted
     quotation.is_converted_to_proforma = True
-    quotation.converted_at = timezone.now()  # <--- Add this line
-
+    quotation.converted_at = timezone.now()
     quotation.save()
+
     if actual_credit_req_created:
         messages.error(request, f"Converted to PI #{pi.id}, but LOCKED due to Credit Overdue. Request sent to Admin.")
     elif shortage_found:
@@ -7048,12 +7049,6 @@ def convert_quotation_to_pi(request, q_id):
         messages.success(request, f"Quotation converted to PI #{pi.id} successfully.")
 
     return redirect('proforma_list')
-
-    # messages.warning(request,
-    #                  "Converted to PI. Some items are out of stock and require approval.") if shortage_found else messages.success(
-    #     request, "Converted successfully.")
-    #
-    # return redirect('proforma_list')
 
 
 class QuotationRequestDetailsApiView(LoginRequiredMixin, View):
