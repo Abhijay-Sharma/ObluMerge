@@ -1,38 +1,910 @@
 {% extends 'inventory/base.html' %}
 
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-sm-11 col-md-6 mx-auto mt-5 px-3 text-center">
-            <h1 class="fw-bold display-5" style="color: #78C2AD;">Oblu Inventory Dashboard</h1>
-            <p class="fw-light mt-3">
-                Internal system for tracking stock, monitoring inventory levels, and managing supply.
-            </p>
-            <p class="text-muted small">
-                Access real-time inventory data across departments. Only authorized Oblu team members may use this system.
-            </p>
-            <div class="mt-4">
-                <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Open Dashboard</a>
+
+<style>
+    /* =========================================================
+       OBLU INVENTORY — WELCOME PAGE
+       ========================================================= */
+
+    .welcome-page {
+        min-height: calc(100vh - 72px);
+        padding: 55px 55px 70px;
+        position: relative;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 85% 15%, rgba(120, 194, 173, 0.13), transparent 28%),
+            radial-gradient(circle at 15% 80%, rgba(91, 141, 239, 0.08), transparent 30%),
+            #f8fafc;
+    }
+
+    /* Decorative background blobs */
+    .welcome-page::before {
+        content: "";
+        position: absolute;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        background: rgba(120, 194, 173, 0.07);
+        top: -180px;
+        right: -120px;
+        filter: blur(2px);
+        pointer-events: none;
+    }
+
+    .welcome-page::after {
+        content: "";
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: rgba(99, 102, 241, 0.035);
+        bottom: -130px;
+        left: -100px;
+        pointer-events: none;
+    }
+
+    .welcome-container {
+        max-width: 1250px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* =========================================================
+       HERO
+       ========================================================= */
+
+    .welcome-hero {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        align-items: center;
+        gap: 60px;
+        min-height: 440px;
+        margin-bottom: 55px;
+    }
+
+    .hero-content {
+        animation: fadeUp 0.7s ease both;
+    }
+
+    .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 13px;
+        border-radius: 30px;
+        background: rgba(120, 194, 173, 0.11);
+        border: 1px solid rgba(120, 194, 173, 0.18);
+        color: #4f9e89;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+    }
+
+    .hero-eyebrow-dot {
+        width: 7px;
+        height: 7px;
+        background: #78c2ad;
+        border-radius: 50%;
+        box-shadow: 0 0 0 4px rgba(120, 194, 173, 0.12);
+    }
+
+    .hero-title {
+        margin: 0;
+        font-size: clamp(3.1rem, 5vw, 5.1rem);
+        line-height: 0.98;
+        font-weight: 800;
+        letter-spacing: -3px;
+        color: #172033;
+    }
+
+    .hero-title .accent {
+        display: block;
+        background: linear-gradient(
+            110deg,
+            #63b59f 0%,
+            #78c2ad 45%,
+            #6d9fd8 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-description {
+        max-width: 590px;
+        margin: 25px 0 30px;
+        color: #64748b;
+        font-size: 1.02rem;
+        line-height: 1.8;
+    }
+
+    .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        flex-wrap: wrap;
+    }
+
+    .hero-primary-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 13px 21px;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #fff !important;
+        background: linear-gradient(135deg, #78c2ad, #63ad98);
+        font-size: 0.88rem;
+        font-weight: 700;
+        box-shadow:
+            0 8px 22px rgba(99, 173, 152, 0.25),
+            inset 0 1px rgba(255, 255, 255, 0.25);
+        transition: all 0.25s ease;
+    }
+
+    .hero-primary-btn:hover {
+        transform: translateY(-2px);
+        box-shadow:
+            0 12px 28px rgba(99, 173, 152, 0.3),
+            inset 0 1px rgba(255, 255, 255, 0.25);
+    }
+
+    .hero-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 13px 17px;
+        border-radius: 12px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .hero-secondary:hover {
+        color: #334155;
+        background: rgba(255,255,255,0.7);
+    }
+
+    /* =========================================================
+       HERO VISUAL
+       ========================================================= */
+
+    .hero-visual {
+        position: relative;
+        min-height: 380px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.9s ease both;
+    }
+
+    .visual-glow {
+        position: absolute;
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        background: rgba(120, 194, 173, 0.12);
+        filter: blur(35px);
+    }
+
+    .dashboard-card {
+        position: relative;
+        width: min(100%, 390px);
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        border-radius: 24px;
+        padding: 21px;
+        box-shadow:
+            0 30px 70px rgba(30, 41, 59, 0.11),
+            0 4px 14px rgba(30, 41, 59, 0.04);
+        transform: rotate(2deg);
+    }
+
+    .dashboard-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 22px;
+    }
+
+    .dashboard-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .brand-icon {
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: rgba(120, 194, 173, 0.13);
+        color: #5eae99;
+        font-size: 16px;
+    }
+
+    .brand-text {
+        font-size: 0.76rem;
+        font-weight: 800;
+        color: #334155;
+    }
+
+    .live-pill {
+        padding: 5px 9px;
+        border-radius: 20px;
+        background: #ecfdf5;
+        color: #16805b;
+        font-size: 0.63rem;
+        font-weight: 700;
+    }
+
+    .mini-title {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        margin-bottom: 7px;
+    }
+
+    .mini-number {
+        font-size: 1.7rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 20px;
+    }
+
+    .mini-bars {
+        height: 125px;
+        display: flex;
+        align-items: end;
+        gap: 9px;
+        padding: 10px 4px 0;
+    }
+
+    .mini-bar {
+        flex: 1;
+        border-radius: 7px 7px 3px 3px;
+        background: linear-gradient(
+            to top,
+            rgba(120, 194, 173, 0.35),
+            rgba(120, 194, 173, 0.9)
+        );
+    }
+
+    .mini-bar:nth-child(1) { height: 43%; }
+    .mini-bar:nth-child(2) { height: 61%; }
+    .mini-bar:nth-child(3) { height: 48%; }
+    .mini-bar:nth-child(4) { height: 76%; }
+    .mini-bar:nth-child(5) { height: 65%; }
+    .mini-bar:nth-child(6) { height: 88%; }
+    .mini-bar:nth-child(7) { height: 73%; }
+
+    .mini-footer {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .mini-stat {
+        flex: 1;
+        padding: 12px;
+        border-radius: 12px;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+    }
+
+    .mini-stat-label {
+        display: block;
+        font-size: 0.58rem;
+        color: #94a3b8;
+        margin-bottom: 4px;
+    }
+
+    .mini-stat-value {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: #334155;
+    }
+
+    /* Floating cards */
+
+    .floating-card {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.94);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255,255,255,0.95);
+        padding: 11px 14px;
+        border-radius: 14px;
+        box-shadow: 0 15px 35px rgba(30,41,59,0.09);
+        z-index: 3;
+    }
+
+    .floating-card.one {
+        top: 50px;
+        right: -10px;
+        animation: floatOne 4s ease-in-out infinite;
+    }
+
+    .floating-card.two {
+        bottom: 45px;
+        left: -5px;
+        animation: floatTwo 4.5s ease-in-out infinite;
+    }
+
+    .floating-icon {
+        width: 31px;
+        height: 31px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(120,194,173,0.11);
+        color: #5eae99;
+    }
+
+    .floating-title {
+        font-size: 0.68rem;
+        font-weight: 800;
+        color: #334155;
+        margin: 0;
+    }
+
+    .floating-sub {
+        font-size: 0.58rem;
+        color: #94a3b8;
+        margin: 2px 0 0;
+    }
+
+    /* =========================================================
+       FEATURE SECTION
+       ========================================================= */
+
+    .section-heading {
+        text-align: center;
+        margin-bottom: 28px;
+    }
+
+    .section-heading h2 {
+        margin: 0 0 7px;
+        font-size: 1.55rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: #1e293b;
+    }
+
+    .section-heading p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.83rem;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+    }
+
+    .feature-card {
+        position: relative;
+        padding: 25px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.78);
+        border: 1px solid #edf1f5;
+        box-shadow: 0 8px 25px rgba(15,23,42,0.035);
+        transition: all 0.28s ease;
+        overflow: hidden;
+    }
+
+    .feature-card::after {
+        content: "";
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: rgba(120,194,173,0.06);
+        right: -45px;
+        bottom: -45px;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        border-color: rgba(120,194,173,0.28);
+        box-shadow: 0 18px 40px rgba(15,23,42,0.08);
+    }
+
+    .feature-icon {
+        width: 46px;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 13px;
+        margin-bottom: 18px;
+        font-size: 19px;
+        background: rgba(120,194,173,0.11);
+        color: #5eae99;
+    }
+
+    .feature-card:nth-child(2) .feature-icon {
+        background: rgba(99,102,241,0.08);
+        color: #6366f1;
+    }
+
+    .feature-card:nth-child(3) .feature-icon {
+        background: rgba(59,130,246,0.08);
+        color: #3b82f6;
+    }
+
+    .feature-card h3 {
+        margin: 0 0 8px;
+        color: #1e293b;
+        font-size: 0.96rem;
+        font-weight: 800;
+    }
+
+    .feature-card p {
+        margin: 0;
+        color: #7c8a9d;
+        font-size: 0.76rem;
+        line-height: 1.7;
+    }
+
+    /* =========================================================
+       BOTTOM BRAND STRIP
+       ========================================================= */
+
+    .welcome-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        margin-top: 42px;
+        color: #a0acbb;
+        font-size: 0.68rem;
+    }
+
+    .footer-dot {
+        width: 4px;
+        height: 4px;
+        background: #78c2ad;
+        border-radius: 50%;
+    }
+
+    /* =========================================================
+       ANIMATIONS
+       ========================================================= */
+
+    @keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(18px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.96);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes floatOne {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-8px);
+        }
+    }
+
+    @keyframes floatTwo {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(7px);
+        }
+    }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+
+    @media (max-width: 1050px) {
+        .welcome-page {
+            padding: 40px 35px 55px;
+        }
+
+        .welcome-hero {
+            gap: 30px;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+        }
+
+        .floating-card.one {
+            right: -20px;
+        }
+    }
+
+    @media (max-width: 850px) {
+        .welcome-hero {
+            grid-template-columns: 1fr;
+            text-align: center;
+            min-height: auto;
+        }
+
+        .hero-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hero-description {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-visual {
+            min-height: 330px;
+        }
+
+        .feature-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .floating-card.one {
+            right: 4%;
+        }
+
+        .floating-card.two {
+            left: 4%;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .welcome-page {
+            padding: 30px 18px 45px;
+        }
+
+        .hero-title {
+            font-size: 2.8rem;
+            letter-spacing: -2px;
+        }
+
+        .hero-description {
+            font-size: 0.9rem;
+        }
+
+        .hero-visual {
+            min-height: 290px;
+        }
+
+        .dashboard-card {
+            transform: none;
+            padding: 17px;
+        }
+
+        .floating-card {
+            transform: scale(0.88);
+        }
+
+        .floating-card.one {
+            right: -20px;
+        }
+
+        .floating-card.two {
+            left: -20px;
+        }
+
+        .welcome-footer {
+            margin-top: 30px;
+        }
+    }
+</style>
+
+
+<div class="welcome-page">
+
+    <div class="welcome-container">
+
+        <!-- =====================================================
+             HERO
+             ===================================================== -->
+
+        <section class="welcome-hero">
+
+            <div class="hero-content">
+
+                <div class="hero-eyebrow">
+                    <span class="hero-eyebrow-dot"></span>
+                    Oblu Internal System
+                </div>
+
+                <h1 class="hero-title">
+                    Inventory,
+                    <span class="accent">made smarter.</span>
+                </h1>
+
+                <p class="hero-description">
+                    A centralized workspace for monitoring stock, understanding
+                    product movement, planning purchase orders, and keeping
+                    your supply chain ahead of demand.
+                </p>
+
+                <div class="hero-actions">
+
+<!--                    <a href="#inventory-tools" class="hero-primary-btn">-->
+<!--                        Explore Inventory-->
+<!--                        <i class="bi bi-arrow-right"></i>-->
+<!--                    </a>-->
+
+                    <span class="hero-secondary">
+                        <i class="bi bi-shield-check"></i>
+                        Authorized Oblu Access
+                    </span>
+
+                </div>
+
             </div>
-            <div class="mt-4">
-                <a href="{% url 'categories' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Open Categories</a>
+
+
+            <!-- =================================================
+                 VISUAL DASHBOARD CARD
+                 ================================================= -->
+
+            <div class="hero-visual">
+
+                <div class="visual-glow"></div>
+
+                <div class="dashboard-card">
+
+                    <div class="dashboard-top">
+
+                        <div class="dashboard-brand">
+
+                            <div class="brand-icon">
+                                <i class="bi bi-box-seam"></i>
+                            </div>
+
+                            <div class="brand-text">
+                                INVENTORY OVERVIEW
+                            </div>
+
+                        </div>
+
+                        <span class="live-pill">
+                            ● LIVE
+                        </span>
+
+                    </div>
+
+
+                    <div class="mini-title">
+                        Inventory intelligence
+                    </div>
+
+                    <div class="mini-number">
+                        Supply at a glance
+                    </div>
+
+
+                    <div class="mini-bars">
+                        <div class="mini-bar"></div>
+                        <div class="mini-bar"></div>
+                        <div class="mini-bar"></div>
+                        <div class="mini-bar"></div>
+                        <div class="mini-bar"></div>
+                        <div class="mini-bar"></div>
+                        <div class="mini-bar"></div>
+                    </div>
+
+
+                    <div class="mini-footer">
+
+                        <div class="mini-stat">
+                            <span class="mini-stat-label">
+                                STOCK
+                            </span>
+                            <span class="mini-stat-value">
+                                Monitored
+                            </span>
+                        </div>
+
+                        <div class="mini-stat">
+                            <span class="mini-stat-label">
+                                ORDERS
+                            </span>
+                            <span class="mini-stat-value">
+                                Planned
+                            </span>
+                        </div>
+
+                        <div class="mini-stat">
+                            <span class="mini-stat-label">
+                                SALES
+                            </span>
+                            <span class="mini-stat-value">
+                                Tracked
+                            </span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Floating Card 1 -->
+
+                <div class="floating-card one">
+
+                    <div class="floating-icon">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+
+                    <div>
+                        <p class="floating-title">
+                            Sales Intelligence
+                        </p>
+
+                        <p class="floating-sub">
+                            Track product movement
+                        </p>
+                    </div>
+
+                </div>
+
+
+                <!-- Floating Card 2 -->
+
+                <div class="floating-card two">
+
+                    <div class="floating-icon">
+                        <i class="bi bi-cart-check"></i>
+                    </div>
+
+                    <div>
+                        <p class="floating-title">
+                            Purchase Planning
+                        </p>
+
+                        <p class="floating-sub">
+                            Stay ahead of demand
+                        </p>
+                    </div>
+
+                </div>
+
             </div>
-            <div class="mt-4">
-                <a href="{% url 'inventory_report' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Open All Models Report</a>
+
+        </section>
+
+
+        <!-- =====================================================
+             FEATURES
+             ===================================================== -->
+
+        <section id="inventory-tools">
+
+            <div class="section-heading">
+
+                <h2>
+                    Everything you need, in one place.
+                </h2>
+
+                <p>
+                    Make better inventory decisions with a connected view of your operations.
+                </p>
+
             </div>
-            <div class="mt-4">
-                <a href="{% url 'dead_stock' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Dead Stock Report</a>
+
+
+            <div class="feature-grid">
+
+                <!-- Inventory -->
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+
+                    <h3>
+                        Inventory Control
+                    </h3>
+
+                    <p>
+                        Keep a clear view of available stock, product movement,
+                        stock health, and inventory levels across your operations.
+                    </p>
+
+                </div>
+
+
+                <!-- Purchase Orders -->
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+                        <i class="bi bi-cart3"></i>
+                    </div>
+
+                    <h3>
+                        Purchase Planning
+                    </h3>
+
+                    <p>
+                        Understand upcoming requirements and make informed
+                        purchasing decisions before stock becomes a problem.
+                    </p>
+
+                </div>
+
+
+                <!-- Sales -->
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+                        <i class="bi bi-bar-chart-line"></i>
+                    </div>
+
+                    <h3>
+                        Sales Analytics
+                    </h3>
+
+                    <p>
+                        Turn product sales data into useful insights so you can
+                        understand demand and plan inventory with confidence.
+                    </p>
+
+                </div>
+
             </div>
-            <div class="mt-4">
-                <a href="{% url 'sales_comparison' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Sales Comparison</a>
-            </div>
-            <div class="mt-4">
-                <a href="{% url 'product_contribution_summary' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Product Sales Contribution</a>
-            </div>
-            <div class="mt-4">
-                <a href="{% url 'product_analytics_category' %}" class="btn btn-primary btn-lg px-4 shadow-sm">Product Growth</a>
-            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             FOOTER
+             ===================================================== -->
+
+        <div class="welcome-footer">
+
+            <span>OBLU INVENTORY</span>
+
+            <span class="footer-dot"></span>
+
+            <span>Internal Operations Platform</span>
+
+            <span class="footer-dot"></span>
+
+            <span>Secure Workspace</span>
+
         </div>
+
     </div>
+
 </div>
+
 {% endblock content %}

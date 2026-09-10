@@ -1,99 +1,1616 @@
-<!DOCTYPE html>
+{% load static %}
+
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <link rel="icon" type="image/png" href="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png">
-    <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet" id="theme-style">
-    <title>Inventory Manager</title>
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% block title %}
+            Oblu Inventory
+        {% endblock %}
+    </title>
+
+
+    <!-- =========================================================
+         FONTS & ICONS
+         ========================================================= -->
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    >
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+
+    {% block extra_head %}
+    {% endblock %}
+
+
     <style>
-        body.dark-mode {
-            background-color: #121212;
-            color: #ffffff;
+
+        /* =========================================================
+           ROOT
+           ========================================================= */
+
+        :root {
+
+            --sidebar-width: 238px;
+
+            --sidebar-bg: #ffffff;
+            --sidebar-border: #e8edf3;
+
+            --page-bg: #f7f9fc;
+
+            --text-main: #172033;
+            --text-muted: #7c8798;
+            --text-soft: #a0a9b8;
+
+            --primary: #3b82f6;
+            --primary-light: #eff6ff;
+            --primary-border: #dbeafe;
+
+            --hover-bg: #f5f8fc;
+
+            --border: #e5eaf0;
         }
 
-        .navbar.dark-mode {
-            background-color: #212529 !important;
+
+        /* =========================================================
+           GLOBAL
+           ========================================================= */
+
+        * {
+            box-sizing: border-box;
         }
 
-        .navbar.dark-mode .nav-link {
-            color: #ffffff !important;
+
+        html,
+        body {
+
+            margin: 0;
+            padding: 0;
+
+            min-height: 100%;
+
+            font-family: 'Inter', sans-serif;
+
+            background: var(--page-bg);
+
+            color: var(--text-main);
         }
 
-        .dark-toggle {
-            cursor: pointer;
-            color: #0d6efd;
+
+        body {
+            overflow-x: hidden;
+        }
+
+
+        a {
+            text-decoration: none;
+        }
+
+
+        /* =========================================================
+           WRAPPER
+           ========================================================= */
+
+        #wrapper {
+
+            display: flex;
+
+            width: 100%;
+
+            min-height: 100vh;
+        }
+
+
+        /* =========================================================
+           SIDEBAR
+           ========================================================= */
+
+        #sidebar-wrapper {
+
+            position: fixed;
+
+            top: 0;
+            left: 0;
+
+            width: var(--sidebar-width);
+
+            height: 100vh;
+
+            background: #ffffff;
+
+            border-right: 1px solid var(--sidebar-border);
+
+            z-index: 1100;
+
+            display: flex;
+
+            flex-direction: column;
+
+            transition: transform .25s ease;
+        }
+
+
+        /* =========================================================
+           BRAND
+           ========================================================= */
+
+        .sidebar-heading {
+
+            height: 70px;
+
+            padding: 0 20px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 11px;
+
+            border-bottom: 1px solid var(--sidebar-border);
+
+            flex-shrink: 0;
+        }
+
+
+        .sidebar-brand-icon {
+
+            width: 34px;
+            height: 34px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 9px;
+
+            background: var(--primary-light);
+
+            color: var(--primary);
+
+            font-size: 16px;
+        }
+
+
+        .sidebar-brand-text {
+
+            color: var(--text-main);
+
+            font-size: 14px;
+
+            font-weight: 700;
+
+            letter-spacing: -.2px;
+        }
+
+
+        /* =========================================================
+           SIDEBAR NAV
+           ========================================================= */
+
+        .sidebar-nav {
+
+            padding: 15px 11px;
+
+            flex: 1;
+
+            overflow-y: auto;
+        }
+
+
+        .sidebar-section-label {
+
+            padding: 8px 11px 7px;
+
+            color: #a1a9b6;
+
+            font-size: 8px;
+
+            font-weight: 700;
+
+            text-transform: uppercase;
+
+            letter-spacing: .08em;
+        }
+
+
+        .sidebar-link {
+
+            width: 100%;
+
+            min-height: 41px;
+
+            padding: 9px 11px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 11px;
+
+            border-radius: 8px;
+
+            color: #667286;
+
+            font-size: 10.5px;
+
+            font-weight: 600;
+
+            transition:
+                background .16s ease,
+                color .16s ease;
+        }
+
+
+        .sidebar-link i {
+
+            width: 18px;
+
+            text-align: center;
+
+            flex-shrink: 0;
+
+            color: #8994a5;
+
+            font-size: 14px;
+        }
+
+
+        .sidebar-link:hover {
+
+            background: var(--hover-bg);
+
+            color: var(--text-main);
+        }
+
+
+        .sidebar-link:hover i {
+
+            color: var(--primary);
+        }
+
+
+        .sidebar-link.active {
+
+            background: var(--primary-light);
+
+            color: var(--primary);
+        }
+
+
+        .sidebar-link.active i {
+
+            color: var(--primary);
+        }
+
+
+        /* =========================================================
+           PURCHASE ORDER PARENT
+           ========================================================= */
+
+        .po-nav-toggle {
+
+            width: 100%;
+
+            min-height: 41px;
+
+            padding: 9px 11px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 11px;
+
             border: none;
-            background: none;
+
+            border-radius: 8px;
+
+            background: transparent;
+
+            color: #667286;
+
+            font-family: inherit;
+
+            font-size: 10.5px;
+
+            font-weight: 600;
+
+            text-align: left;
+
+            cursor: pointer;
+
+            transition:
+                background .16s ease,
+                color .16s ease;
         }
 
-        /* Dark mode table styles */
-        body.dark-mode table.table-dark {
-            background-color: #1e1e1e;
-            --bs-table-color: #fff;
-            --bs-table-bg: #00000000;
-            --bs-table-border-color: #000;
-            --bs-table-striped-bg: #212529;
-            --bs-table-striped-color: #fff;
-            --bs-table-active-bg: #000;
-            --bs-table-active-color: #fff;
-            --bs-table-hover-bg: #43494e;
-            --bs-table-hover-color: #fff;
+
+        .po-nav-toggle:hover {
+
+            background: var(--hover-bg);
+
+            color: var(--text-main);
         }
 
-        body.dark-mode table.table-dark th,
-        body.dark-mode table.table-dark td {
-            color: #ffffff;
-            border-color: #333333;
+
+        .po-nav-toggle > i:first-child {
+
+            width: 18px;
+
+            text-align: center;
+
+            color: #8994a5;
+
+            font-size: 14px;
         }
 
-        body.dark-mode a.navbar-brand {
-            color: #ffffff;
+
+        .po-nav-toggle:hover > i:first-child {
+
+            color: var(--primary);
+        }
+
+
+        .po-nav-toggle.open {
+
+            background: var(--primary-light);
+
+            color: var(--primary);
+        }
+
+
+        .po-nav-toggle.open > i:first-child {
+
+            color: var(--primary);
+        }
+
+
+        .po-arrow {
+
+            margin-left: auto;
+
+            font-size: 10px;
+
+            color: #9aa4b3;
+
+            transition: transform .2s ease;
+        }
+
+
+        .po-nav-toggle.open .po-arrow {
+
+            transform: rotate(180deg);
+
+            color: var(--primary);
+        }
+
+
+        /* =========================================================
+           PURCHASE ORDER SUBMENU
+           ========================================================= */
+
+        .po-submenu {
+
+            display: none;
+
+            margin: 3px 0 5px 28px;
+
+            padding-left: 10px;
+
+            border-left: 1px solid #e5eaf0;
+        }
+
+
+        .po-submenu.open {
+
+            display: block;
+        }
+
+
+        .po-sub-link {
+
+            position: relative;
+
+            display: flex;
+
+            align-items: center;
+
+            min-height: 34px;
+
+            padding: 7px 10px;
+
+            border-radius: 7px;
+
+            color: #7b8798;
+
+            font-size: 9.5px;
+
+            font-weight: 500;
+
+            transition:
+                background .16s ease,
+                color .16s ease;
+        }
+
+
+        .po-sub-link:hover {
+
+            background: var(--hover-bg);
+
+            color: var(--text-main);
+        }
+
+
+        .po-sub-link.active {
+
+            background: var(--primary-light);
+
+            color: var(--primary);
+
+            font-weight: 650;
+        }
+
+
+        .po-sub-link.active::before {
+
+            content: "";
+
+            position: absolute;
+
+            left: -11px;
+
+            top: 50%;
+
+            transform: translateY(-50%);
+
+            width: 3px;
+
+            height: 18px;
+
+            border-radius: 3px;
+
+            background: var(--primary);
+        }
+
+
+        .po-sub-link i {
+
+            width: 17px;
+
+            margin-right: 7px;
+
+            font-size: 11px;
+
+            color: #9aa4b3;
+        }
+
+
+        .po-sub-link.active i {
+
+            color: var(--primary);
+        }
+
+
+        /* =========================================================
+           SIDEBAR BOTTOM
+           ========================================================= */
+
+        .sidebar-bottom {
+
+            padding: 10px 11px 15px;
+
+            flex-shrink: 0;
+        }
+
+
+        .sidebar-divider {
+
+            height: 1px;
+
+            margin: 3px 8px 10px;
+
+            background: var(--sidebar-border);
+        }
+
+
+        .logout-button {
+
+            width: 100%;
+
+            min-height: 41px;
+
+            padding: 9px 11px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 11px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            background: transparent;
+
+            color: #7b8798;
+
+            font-family: inherit;
+
+            font-size: 10.5px;
+
+            font-weight: 600;
+
+            text-align: left;
+
+            cursor: pointer;
+
+            transition: all .16s ease;
+        }
+
+
+        .logout-button:hover {
+
+            background: #fff5f5;
+
+            color: #ef4444;
+        }
+
+
+        .logout-button i {
+
+            width: 18px;
+
+            text-align: center;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================================================
+           PAGE CONTENT
+           ========================================================= */
+
+        #page-content-wrapper {
+
+            width: 100%;
+
+            min-height: 100vh;
+
+            margin-left: var(--sidebar-width);
+        }
+
+
+        /* =========================================================
+           TOP NAVBAR
+           ========================================================= */
+
+        .top-navbar {
+
+            min-height: 64px;
+
+            padding: 0 24px;
+
+            display: flex;
+
+            align-items: center;
+
+            background: rgba(255, 255, 255, .96);
+
+            border-bottom: 1px solid var(--border);
+
+            position: sticky;
+
+            top: 0;
+
+            z-index: 900;
+        }
+
+
+        .breadcrumb {
+
+            margin: 0;
+
+            font-size: 9.5px;
+        }
+
+
+        .breadcrumb-item a {
+
+            color: #98a2b1;
+
+            text-decoration: none;
+        }
+
+
+        .breadcrumb-item.active {
+
+            color: #526075;
+
+            font-weight: 600;
+        }
+
+
+        .top-user {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+        }
+
+
+        .top-user-name {
+
+            color: #7b8798;
+
+            font-size: 9.5px;
+        }
+
+
+        .top-user-name strong {
+
+            color: #344054;
+
+            font-weight: 650;
+        }
+
+
+        .user-avatar {
+
+            width: 32px;
+            height: 32px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 50%;
+
+            background: var(--primary-light);
+
+            border: 1px solid var(--primary-border);
+
+            color: var(--primary);
+
+            font-size: 11px;
+
+            font-weight: 700;
+        }
+
+
+        /* =========================================================
+           CONTENT
+           ========================================================= */
+
+        .inventory-content {
+
+            width: 100%;
+
+            padding: 24px;
+        }
+
+
+        /* =========================================================
+           MOBILE BUTTON
+           ========================================================= */
+
+        .sidebar-mobile-toggle {
+
+            display: none;
+
+            width: 34px;
+            height: 34px;
+
+            align-items: center;
+            justify-content: center;
+
+            margin-right: 10px;
+
+            border: 1px solid var(--border);
+
+            border-radius: 8px;
+
+            background: #ffffff;
+
+            color: #64748b;
+
+            cursor: pointer;
+        }
+
+
+        /* =========================================================
+           RESPONSIVE
+           ========================================================= */
+
+        @media (max-width: 900px) {
+
+            #sidebar-wrapper {
+
+                transform: translateX(-100%);
+            }
+
+
+            #sidebar-wrapper.mobile-open {
+
+                transform: translateX(0);
+            }
+
+
+            #page-content-wrapper {
+
+                margin-left: 0;
+            }
+
+
+            .sidebar-mobile-toggle {
+
+                display: inline-flex;
+            }
+
+
+            .inventory-content {
+
+                padding: 18px;
+            }
+        }
+
+
+        @media (max-width: 576px) {
+
+            .top-navbar {
+
+                padding: 0 14px;
+            }
+
+
+            .top-user-name {
+
+                display: none;
+            }
+
+
+            .inventory-content {
+
+                padding: 14px;
+            }
         }
 
     </style>
+
 </head>
+
+
 <body>
-    {% include 'inventory/navigation.html' %}
 
-    {% block content %}
-    {% endblock content %}
 
-    <script>
-        function applyDarkMode(isDark) {
-            const body = document.body;
-            const navbar = document.querySelector('.navbar');
-            const tables = document.querySelectorAll('table');
+<div id="wrapper">
 
-            body.classList.toggle('dark-mode', isDark);
-            if (navbar) navbar.classList.toggle('dark-mode', isDark);
 
-            // Add table-dark class to all tables
-            tables.forEach(table => {
-                if (isDark) {
-                    table.classList.add('table-dark');
-                } else {
-                    table.classList.remove('table-dark');
+    <!-- =========================================================
+         SIDEBAR
+         ========================================================= -->
+
+    <aside id="sidebar-wrapper">
+
+
+        <!-- BRAND -->
+
+        <div class="sidebar-heading">
+
+            <div class="sidebar-brand-icon">
+
+                <i class="bi bi-box-seam-fill"></i>
+
+            </div>
+
+
+            <span class="sidebar-brand-text">
+
+                Oblu Inventory
+
+            </span>
+
+        </div>
+
+
+        <!-- =====================================================
+             NAVIGATION
+             ===================================================== -->
+
+        <div class="sidebar-nav">
+
+
+            <div class="sidebar-section-label">
+
+                Main
+
+            </div>
+
+
+            <!-- DASHBOARD -->
+
+            <a
+                href="{% url 'dashboard' %}"
+                class="sidebar-link"
+                data-main-url="dashboard"
+            >
+
+                <i class="bi bi-speedometer2"></i>
+
+                <span>
+                    Dashboard
+                </span>
+
+            </a>
+
+
+            <!-- CATEGORIES -->
+
+            <a
+                href="{% url 'categories' %}"
+                class="sidebar-link"
+                data-main-url="categories"
+            >
+
+                <i class="bi bi-grid"></i>
+
+                <span>
+                    Categories
+                </span>
+
+            </a>
+
+
+            <!-- REPORTS -->
+
+<!--            <a-->
+<!--                href="{% url 'inventory_report' %}"-->
+<!--                class="sidebar-link"-->
+<!--                data-main-url="inventory_report"-->
+<!--            >-->
+
+<!--                <i class="bi bi-file-earmark-bar-graph"></i>-->
+
+<!--                <span>-->
+<!--                    All Reports-->
+<!--                </span>-->
+
+<!--            </a>-->
+
+
+            <!-- =================================================
+                 PURCHASE ORDERS
+                 ================================================= -->
+
+            <button
+                type="button"
+                class="po-nav-toggle"
+                id="poNavToggle"
+            >
+
+                <i class="bi bi-cart-check"></i>
+
+                <span>
+                    Purchase Orders
+                </span>
+
+                <i class="bi bi-chevron-down po-arrow"></i>
+
+            </button>
+
+
+            <div
+                class="po-submenu"
+                id="poSubmenu"
+            >
+
+
+                <!-- MAIN PURCHASE ORDER -->
+
+                <a
+                    href="{% url 'purchase_order' %}"
+                    class="po-sub-link"
+                    data-po-page="purchase_order"
+                >
+
+                    <i class="bi bi-clipboard-data"></i>
+
+                    <span>
+                        Purchase Order Planner
+                    </span>
+
+                </a>
+
+
+                <!-- TALLY PURCHASE ORDERS -->
+
+                <a
+                    href="{% url 'tally_po_list' %}"
+                    class="po-sub-link"
+                    data-po-page="tally_po_list"
+                >
+
+                    <i class="bi bi-journal-text"></i>
+
+                    <span>
+                        Tally Purchase Orders
+                    </span>
+
+                </a>
+
+
+                <!-- TRACKED ORDERS -->
+
+                <a
+                    href="{% url 'po_tracking_list' %}"
+                    class="po-sub-link"
+                    data-po-page="po_tracking_list"
+                >
+
+                    <i class="bi bi-truck"></i>
+
+                    <span>
+                        Tracked Orders
+                    </span>
+
+                </a>
+
+
+                <!-- PO STAGES -->
+
+                <a
+                    href="{% url 'po_stage_list' %}"
+                    class="po-sub-link"
+                    data-po-page="po_stage_list"
+                >
+
+                    <i class="bi bi-diagram-3"></i>
+
+                    <span>
+                        PO Stages
+                    </span>
+
+                </a>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 SALES ANALYTICS
+                 ================================================= -->
+
+            <a
+                href="{% url 'product_contribution_summary' %}"
+                class="sidebar-link"
+                data-main-url="product_contribution_summary"
+            >
+
+                <i class="bi bi-graph-up-arrow"></i>
+
+                <span>
+                    Sales Analytics
+                </span>
+
+            </a>
+
+
+            <!-- =================================================
+                 DEAD STOCK
+                 ================================================= -->
+
+            <a
+                href="{% url 'dead_stock' %}"
+                class="sidebar-link"
+                data-main-url="dead_stock"
+            >
+
+                <i class="bi bi-snow"></i>
+
+                <span>
+                    Dead Stock
+                </span>
+
+            </a>
+
+
+        </div>
+
+
+        <!-- =====================================================
+             SIDEBAR BOTTOM
+             ===================================================== -->
+
+        <div class="sidebar-bottom">
+
+            <div class="sidebar-divider"></div>
+
+
+            <form
+                action="{% url 'logout' %}"
+                method="POST"
+            >
+
+                {% csrf_token %}
+
+
+                <button
+                    type="submit"
+                    class="logout-button"
+                >
+
+                    <i class="bi bi-box-arrow-left"></i>
+
+                    <span>
+                        Logout
+                    </span>
+
+                </button>
+
+            </form>
+
+        </div>
+
+
+    </aside>
+
+
+    <!-- =========================================================
+         PAGE CONTENT
+         ========================================================= -->
+
+    <main id="page-content-wrapper">
+
+
+        <!-- TOP NAVBAR -->
+
+        <nav class="top-navbar">
+
+
+            <div class="d-flex align-items-center">
+
+
+                <button
+                    type="button"
+                    class="sidebar-mobile-toggle"
+                    id="mobileSidebarToggle"
+                >
+
+                    <i class="bi bi-list"></i>
+
+                </button>
+
+
+                <nav aria-label="breadcrumb">
+
+                    <ol class="breadcrumb mb-0">
+
+                        <li class="breadcrumb-item">
+
+                            <a href="/">
+                                Home
+                            </a>
+
+                        </li>
+
+
+                        <li class="breadcrumb-item active">
+
+                            {% block breadcrumb %}
+                                Inventory
+                            {% endblock %}
+
+                        </li>
+
+                    </ol>
+
+                </nav>
+
+            </div>
+
+
+            <!-- USER -->
+
+            <div class="top-user ms-auto">
+
+                <span class="top-user-name">
+
+                    Welcome,
+
+                    <strong>
+                        {{ user.username }}
+                    </strong>
+
+                </span>
+
+
+                <div class="user-avatar">
+
+                    {{ user.username|first|upper }}
+
+                </div>
+
+            </div>
+
+
+        </nav>
+
+
+        <!-- MAIN CONTENT -->
+
+        <div class="inventory-content">
+
+            {% block content %}
+            {% endblock content %}
+
+        </div>
+
+
+    </main>
+
+
+</div>
+
+
+<!-- ============================================================
+     BOOTSTRAP
+     ============================================================ -->
+
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+</script>
+
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+
+        /* =====================================================
+           ELEMENTS
+           ===================================================== */
+
+        const poToggle =
+            document.getElementById(
+                "poNavToggle"
+            );
+
+
+        const poSubmenu =
+            document.getElementById(
+                "poSubmenu"
+            );
+
+
+        const poLinks =
+            document.querySelectorAll(
+                ".po-sub-link"
+            );
+
+
+        const mainLinks =
+            document.querySelectorAll(
+                ".sidebar-link"
+            );
+
+
+        const currentPath =
+            window.location.pathname;
+
+
+        /* =====================================================
+           PURCHASE ORDER URL DETECTION
+           ===================================================== */
+
+        const isPurchaseOrderPage =
+            currentPath.includes(
+                "/purchase-order/"
+            ) ||
+            currentPath.includes(
+                "/purchase-orders/"
+            );
+
+
+        /* =====================================================
+           OPEN/CLOSE PO DROPDOWN
+           ===================================================== */
+
+        function openPONav() {
+
+            if (!poToggle || !poSubmenu) {
+                return;
+            }
+
+            poToggle.classList.add("open");
+
+            poSubmenu.classList.add("open");
+        }
+
+
+        function closePONav() {
+
+            if (!poToggle || !poSubmenu) {
+                return;
+            }
+
+            poToggle.classList.remove("open");
+
+            poSubmenu.classList.remove("open");
+        }
+
+
+        /* =====================================================
+           AUTOMATICALLY OPEN ON PO PAGES
+           ===================================================== */
+
+        if (isPurchaseOrderPage) {
+
+            openPONav();
+
+        }
+
+
+        /* =====================================================
+           PO TOGGLE CLICK
+           ===================================================== */
+
+        if (poToggle) {
+
+            poToggle.addEventListener(
+                "click",
+                function () {
+
+                    poToggle.classList.toggle(
+                        "open"
+                    );
+
+                    poSubmenu.classList.toggle(
+                        "open"
+                    );
+
                 }
-            });
+            );
+
         }
 
-        // On page load, apply saved mode
-        document.addEventListener('DOMContentLoaded', () => {
-            const isDark = localStorage.getItem('darkMode') === 'true';
-            applyDarkMode(isDark);
-        });
 
-        // Toggle dark mode manually
-        function toggleDarkMode() {
-            const isDark = !document.body.classList.contains('dark-mode');
-            localStorage.setItem('darkMode', isDark);
-            applyDarkMode(isDark);
+        /* =====================================================
+           DETERMINE ACTIVE PO PAGE
+           ===================================================== */
+
+        if (isPurchaseOrderPage) {
+
+
+            poLinks.forEach(
+                function (link) {
+
+                    const page =
+                        link.getAttribute(
+                            "data-po-page"
+                        );
+
+
+                    /*
+                     * Main PO planner
+                     */
+
+                    if (
+                        page ===
+                        "purchase_order" &&
+                        currentPath.includes(
+                            "/purchase-order/"
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+
+                    /*
+                     * Tally PO pages
+                     */
+
+                    if (
+                        page ===
+                        "tally_po_list" &&
+                        (
+                            currentPath.includes(
+                                "/purchase-orders/tally/"
+                            ) ||
+                            currentPath.includes(
+                                "/purchase-orders/tally"
+                            )
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+
+                    /*
+                     * Tracked PO pages
+                     */
+
+                    if (
+                        page ===
+                        "po_tracking_list" &&
+                        (
+                            currentPath.includes(
+                                "/purchase-orders/tracked/"
+                            ) ||
+                            currentPath.includes(
+                                "/purchase-orders/tracked"
+                            )
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+
+                    /*
+                     * Stage pages
+                     */
+
+                    if (
+                        page ===
+                        "po_stage_list" &&
+                        currentPath.includes(
+                            "/purchase-orders/stages"
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+                }
+            );
+
         }
-    </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
-        crossorigin="anonymous"></script>
+
+        /* =====================================================
+           MAIN NAVIGATION ACTIVE STATE
+           ===================================================== */
+
+        if (!isPurchaseOrderPage) {
+
+            mainLinks.forEach(
+                function (link) {
+
+                    const target =
+                        link.getAttribute(
+                            "data-main-url"
+                        );
+
+
+                    /*
+                     * Dashboard
+                     */
+
+                    if (
+                        target ===
+                        "dashboard" &&
+                        (
+                            currentPath.includes(
+                                "/inventory/dashboard/"
+                            ) ||
+                            currentPath ===
+                                "/inventory/"
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+
+                    /*
+                     * Categories
+                     */
+
+                    if (
+                        target ===
+                        "categories" &&
+                        currentPath.includes(
+                            "/inventory/categories"
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+
+                    /*
+                     * Reports
+                     */
+
+                    if (
+                        target ===
+                        "inventory_report" &&
+                        currentPath.includes(
+                            "/inventory/report"
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+
+                    /*
+                     * Sales Analytics
+                     */
+
+                    if (
+                        target ===
+                        "product_contribution_summary" &&
+                        currentPath.includes(
+                            "/inventory/analytics"
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+
+                    /*
+                     * Dead Stock
+                     */
+
+                    if (
+                        target ===
+                        "dead_stock" &&
+                        currentPath.includes(
+                            "/inventory/dead-stock"
+                        )
+                    ) {
+
+                        link.classList.add(
+                            "active"
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+
+
+        /* =====================================================
+           MOBILE SIDEBAR
+           ===================================================== */
+
+        const mobileToggle =
+            document.getElementById(
+                "mobileSidebarToggle"
+            );
+
+
+        const sidebar =
+            document.getElementById(
+                "sidebar-wrapper"
+            );
+
+
+        if (mobileToggle) {
+
+            mobileToggle.addEventListener(
+                "click",
+                function () {
+
+                    sidebar.classList.toggle(
+                        "mobile-open"
+                    );
+
+                }
+            );
+
+        }
+
+
+        /* =====================================================
+           CLOSE MOBILE SIDEBAR
+           ===================================================== */
+
+        document.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    window.innerWidth > 900
+                ) {
+                    return;
+                }
+
+
+                if (
+                    !sidebar.classList.contains(
+                        "mobile-open"
+                    )
+                ) {
+                    return;
+                }
+
+
+                if (
+                    sidebar.contains(
+                        event.target
+                    ) ||
+                    mobileToggle.contains(
+                        event.target
+                    )
+                ) {
+                    return;
+                }
+
+
+                sidebar.classList.remove(
+                    "mobile-open"
+                );
+
+            }
+        );
+
+
+    }
+);
+
+</script>
+
+
+{% block extra_js %}
+{% endblock %}
+
+
 </body>
+
 </html>
