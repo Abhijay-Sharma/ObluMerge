@@ -199,21 +199,10 @@
     <div class="btn-group">
       {% if request.user.is_accountant %}
         <button class="btn" onclick="redirectTo('inventory')">Inventory Management</button>
-        <button class="btn" onclick="redirectTo('customer_data')">Customer Management System</button>
+        <button class="btn" onclick="redirectTo('customer_data')">Customer and Sales Dashboard</button>
         <button class="btn" onclick="location.href='/meta/dashboard/'">Meta Dashboard</button>
       {% endif %}
-      <button class="btn" onclick="location.href='/proforma/'">Proforma Invoice Maker</button>
-      <button class="btn" onclick="location.href='/incentives/asm/paid-only/'">Incentive Calculator</button>
-      <button class="btn" onclick="location.href='/proforma/quotation/create/'">Quotation Maker</button>
-      <button class="btn" onclick="location.href='/customers/payment-followups/'">View Pending Payments</button>
-      <button class="btn" onclick="location.href='/customers/cross-selling-matrix'">Cross Selling Matrix</button>
-      {% if request.user.is_accountant %}
-        <button class="btn" onclick="location.href='/customers/salesperson-customers/'">Salesperson-Customers</button>
-        <button class="btn" onclick="location.href='/customers/sales-report/'">Sales-Report</button>
-      {% else %}
-        <button class="btn" onclick="location.href='/customers/salesperson-customers/'">Customers Status</button>
-        <button class="btn" onclick="location.href='/customers/monthly-sales-report/'">My Sales-Report</button>
-      {% endif %}
+      <button class="btn" onclick="location.href='/proforma/'">Proforma Invoice & Quotation Maker</button>
     </div>
   </div>
 
