@@ -705,7 +705,7 @@
              RSM
         ===================================================== -->
 
-        {% if is_rsm and not is_superuser %}
+        {% if is_rsm and not request.user.is_superuser %}
 
 
             <div class="nav-section-title">
@@ -768,16 +768,6 @@
                 </span>
 
             </a>
-
-
-            <!-- Performance -->
-
-            <div class="nav-section-title">
-                Performance
-            </div>
-
-
-            <!-- RSM Incentives -->
 
             <!-- ====================================================
                  RSM INCENTIVES
@@ -845,7 +835,7 @@
              ASM
         ===================================================== -->
 
-        {% elif is_asm and not is_superuser %}
+        {% elif is_asm and not request.user.is_superuser %}
 
 
             <div class="nav-section-title">
@@ -934,8 +924,7 @@
              ACCOUNTANT
         ===================================================== -->
 
-        {% elif is_accountant and not is_superuser %}
-
+        {% elif request.user.is_accountant and not request.user.is_superuser %}
 
             <div class="nav-section-title">
                 Main
@@ -1026,7 +1015,7 @@
             <!-- Monthly Sales -->
 
             <a
-                href="{% url 'customers:monthly_sales_report' %}"
+                href="{% url 'customers:sales_report' %}"
                 class="nav-link
                 {% if request.resolver_match.url_name == 'monthly_sales_report' %}
                     active
@@ -1136,7 +1125,7 @@
              SUPERUSER
         ===================================================== -->
 
-        {% elif is_superuser %}
+        {% elif request.user.is_superuser %}
 
 
             <div class="nav-section-title">
@@ -1208,22 +1197,6 @@
             </div>
 
 
-            <a
-                href="{% url 'customers:monthly_sales_report' %}"
-                class="nav-link
-                {% if request.resolver_match.url_name == 'monthly_sales_report' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-calendar-check"></i>
-
-                <span>
-                    Monthly Sales Report
-                </span>
-
-            </a>
-
 
             <a
                 href="{% url 'customers:payment_followup_dashboard' %}"
@@ -1259,12 +1232,35 @@
             </a>
 
 
-            <!-- Performance -->
+            <!-- ====================================================
+                 PERFORMANCE
+            ===================================================== -->
 
             <div class="nav-section-title">
                 Performance
             </div>
 
+
+            <!-- All Salesperson Paid Incentives -->
+
+            <a
+                href="{% url 'incentive_calculator:asm_incentive_paid_only' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'asm_incentive_paid_only' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-wallet2"></i>
+
+                <span>
+                    Salesperson Paid Incentives
+                </span>
+
+            </a>
+
+
+            <!-- RSM Team Incentives -->
 
             <a
                 href="{% url 'incentive_calculator:rsm_team_dashboard' %}"
@@ -1274,10 +1270,48 @@
                 {% endif %}"
             >
 
-                <i class="bi bi-trophy"></i>
+                <i class="bi bi-people"></i>
 
                 <span>
-                    Incentives
+                    RSM Team Incentives
+                </span>
+
+            </a>
+
+
+            <!-- Sales Head Team Incentives -->
+
+            <a
+                href="{% url 'incentive_calculator:sales_head_dashboard' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'sales_head_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-diagram-3"></i>
+
+                <span>
+                    Sales Head Team Incentives
+                </span>
+
+            </a>
+
+
+            <!-- Monthly Sales Report -->
+
+            <a
+                href="{% url 'customers:sales_report' %}"
+                class="nav-link
+                {% if request.resolver_match.url_name == 'monthly_sales_report' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-calendar-check"></i>
+
+                <span>
+                    Monthly Sales Report
                 </span>
 
             </a>
@@ -1339,7 +1373,7 @@
              Available to Accountant, RSM, ASM and Superuser
         ===================================================== -->
 
-        {% if is_rsm or is_asm or is_accountant or is_superuser %}
+        {% if is_rsm or is_asm or is_accountant or request.user.is_superuser %}
 
             <div class="nav-section-title">
                 Sales Intelligence
@@ -1400,8 +1434,7 @@
 
         <div class="breadcrumb-custom text-uppercase">
 
-            HOME /
-
+            <a href="/" style="color:black;">Home/</a>
             {{ request.resolver_match.url_name|title }}
 
         </div>
@@ -1420,13 +1453,13 @@
 
             <!-- Role -->
 
-            {% if is_superuser %}
+            {% if request.user.is_superuser %}
 
                 <span class="role-badge">
                     SUPERUSER
                 </span>
 
-            {% elif is_accountant %}
+            {% elif request.user.is_accountant %}
 
                 <span class="role-badge">
                     ACCOUNTANT

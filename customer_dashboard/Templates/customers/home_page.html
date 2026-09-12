@@ -3,181 +3,1415 @@
 {% block title %}Dashboard | Oblu{% endblock %}
 
 {% block content %}
+
 <style>
-    /* Hero Section Styling */
+    /* =========================================================
+       COMPACT HERO
+       ========================================================= */
+
     .hero-container {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 40px 0 80px 0;
-        gap: 40px;
+
+        /* Compact vertical spacing */
+        padding: 18px 0 24px 0;
+
+        gap: 30px;
     }
 
-    .hero-text { flex: 1; }
-    
+    .hero-text {
+        flex: 1;
+    }
+
     .system-badge {
         background: #f0fdfa;
         color: #2dd4bf;
-        padding: 4px 12px;
+
+        padding: 3px 10px;
         border-radius: 20px;
-        font-size: 0.75rem;
+
+        font-size: 0.68rem;
         font-weight: 700;
+
         text-transform: uppercase;
         display: inline-block;
-        margin-bottom: 20px;
+
+        margin-bottom: 9px;
     }
 
     .hero-title {
-        font-size: 3.5rem;
+        font-size: 2.5rem;
         font-weight: 800;
+
         color: #0f172a;
-        line-height: 1.1;
-        margin-bottom: 20px;
+
+        line-height: 1.05;
+
+        margin-bottom: 10px;
     }
 
-    .hero-title span { color: #50bda1; }
+    .hero-title span {
+        color: #50bda1;
+    }
 
     .hero-desc {
         color: #64748b;
-        font-size: 1.1rem;
+
+        font-size: 0.9rem;
+
         max-width: 500px;
-        line-height: 1.6;
-        margin-bottom: 30px;
+
+        line-height: 1.45;
+
+        margin-bottom: 12px;
     }
 
     .auth-badge {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
+
         color: #94a3b8;
+
         display: flex;
         align-items: center;
-        gap: 8px;
+
+        gap: 6px;
     }
 
-    /* Right Side Graphic Placeholder */
+
+    /* =========================================================
+       COMPACT RIGHT SIDE GRAPHIC
+       ========================================================= */
+
     .hero-graphic {
-        flex: 1;
+        flex: 0 0 360px;
+
         position: relative;
+
         display: flex;
         justify-content: flex-end;
     }
 
     .graphic-card {
         background: white;
-        border-radius: 24px;
-        padding: 24px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.08);
-        width: 380px;
+
+        border-radius: 18px;
+
+        padding: 16px;
+
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.07);
+
+        width: 320px;
+
         border: 1px solid #f1f5f9;
     }
 
-    /* Feature Cards Row */
+    .graphic-card h4 {
+        font-size: 1.05rem;
+
+        margin-bottom: 0;
+    }
+
+    .graphic-card .mb-3 {
+        margin-bottom: 8px !important;
+    }
+
+    .graphic-card .mt-4 {
+        margin-top: 14px !important;
+    }
+
+    .graphic-card .pt-3 {
+        padding-top: 10px !important;
+    }
+
+
+    /* =========================================================
+       INTRO TEXT ABOVE QUICK ACCESS
+       ========================================================= */
+
+    .intro-heading {
+        margin-top: 4px;
+        margin-bottom: 3px;
+    }
+
+    .intro-description {
+        margin-bottom: 18px;
+    }
+
+
+    /* =========================================================
+       QUICK ACCESS
+       ========================================================= */
+
+    .quick-access-header {
+        margin-top: 5px;
+        margin-bottom: 20px;
+    }
+
+    .quick-access-header h4 {
+        margin-bottom: 5px;
+    }
+
+    .quick-access-header p {
+        margin-bottom: 0;
+    }
+
+    .quick-section {
+        margin-bottom: 26px;
+    }
+
+    .quick-section-title {
+        display: flex;
+
+        align-items: center;
+
+        gap: 10px;
+
+        font-size: 0.75rem;
+
+        font-weight: 800;
+
+        letter-spacing: 0.08em;
+
+        text-transform: uppercase;
+
+        color: #64748b;
+
+        margin-bottom: 11px;
+    }
+
+    .quick-section-title::before {
+        content: "";
+
+        width: 4px;
+        height: 17px;
+
+        border-radius: 4px;
+
+        background: #50bda1;
+    }
+
+
+    /* =========================================================
+       FEATURE CARDS
+       ========================================================= */
+
     .features-grid {
         display: grid;
+
         grid-template-columns: repeat(3, 1fr);
-        gap: 24px;
-        margin-bottom: 40px;
+
+        gap: 14px;
     }
 
     .feature-card {
+        position: relative;
+
         background: #fdfdfd;
+
         border: 1px solid #f1f5f9;
-        border-radius: 16px;
-        padding: 24px;
-        transition: transform 0.3s ease;
+
+        border-radius: 14px;
+
+        padding: 17px;
+
+        min-height: 145px;
+
+        transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+
+        text-decoration: none;
+
+        color: inherit;
+
+        display: flex;
+
+        flex-direction: column;
     }
-    .feature-card:hover { transform: translateY(-5px); }
+
+    .feature-card:hover {
+        transform: translateY(-3px);
+
+        box-shadow: 0 12px 25px rgba(15, 23, 42, 0.07);
+
+        border-color: #d8f3eb;
+
+        color: inherit;
+    }
+
+
+    /* =========================================================
+       ICON
+       ========================================================= */
 
     .icon-box {
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
+
         background: #f0fdfa;
+
         border-radius: 10px;
+
         display: flex;
+
         align-items: center;
+
         justify-content: center;
+
         color: #50bda1;
-        margin-bottom: 15px;
+
+        margin-bottom: 12px;
+
+        font-size: 0.95rem;
     }
 
-    .feature-card h5 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
-    .feature-card p { font-size: 0.85rem; color: #64748b; line-height: 1.5; margin: 0; }
+
+    /* =========================================================
+       CARD TEXT
+       ========================================================= */
+
+    .feature-card h5 {
+        font-size: 0.95rem;
+
+        font-weight: 700;
+
+        margin-bottom: 5px;
+    }
+
+    .feature-card p {
+        font-size: 0.78rem;
+
+        color: #64748b;
+
+        line-height: 1.45;
+
+        margin: 0;
+
+        padding-right: 8px;
+    }
+
+    .feature-card .open-link {
+        margin-top: auto;
+
+        padding-top: 11px;
+
+        font-size: 0.73rem;
+
+        font-weight: 700;
+
+        color: #50bda1;
+    }
+
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+
+    @media (max-width: 1100px) {
+
+        .features-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+    }
+
 
     @media (max-width: 992px) {
-        .hero-container { flex-direction: column; text-align: center; }
-        .hero-desc { margin: 0 auto 30px auto; }
-        .hero-graphic { justify-content: center; }
-        .features-grid { grid-template-columns: 1fr; }
+
+        .hero-container {
+            flex-direction: column;
+
+            text-align: center;
+
+            padding-bottom: 20px;
+        }
+
+        .hero-desc {
+            margin: 0 auto 12px auto;
+        }
+
+        .auth-badge {
+            justify-content: center;
+        }
+
+        .hero-graphic {
+            justify-content: center;
+
+            flex: none;
+
+            width: 100%;
+        }
+
+    }
+
+
+    @media (max-width: 650px) {
+
+        .hero-title {
+            font-size: 2rem;
+        }
+
+        .hero-graphic {
+            display: none;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .feature-card {
+            min-height: 130px;
+        }
+
     }
 </style>
 
+
+<!-- =========================================================
+     COMPACT HERO
+     ========================================================= -->
+
 <div class="hero-container">
+
     <div class="hero-text">
-        <span class="system-badge"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i> Oblu Internal System</span>
-        <h1 class="hero-title">Customers,<br><span>managed smarter.</span></h1>
+
+        <span class="system-badge">
+            <i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i>
+            Oblu Internal System
+        </span>
+
+        <h1 class="hero-title">
+            Customers,<br>
+            <span>managed smarter.</span>
+        </h1>
+
         <p class="hero-desc">
-            A centralized workspace for monitoring accounts, understanding payment cycles, 
-            tracking interactions, and keeping your sales team ahead of targets.
+            A centralized workspace for monitoring accounts,
+            understanding payment cycles, tracking interactions,
+            and keeping your sales team ahead of targets.
         </p>
+
         <div class="auth-badge">
-            <i class="bi bi-shield-check"></i> Authorized Oblu Access
+            <i class="bi bi-shield-check"></i>
+            Authorized Oblu Access
         </div>
+
     </div>
+
+
+    <!-- =====================================================
+         RIGHT SIDE CUSTOMER OVERVIEW
+         ===================================================== -->
 
     <div class="hero-graphic">
-        <!-- Recreating the Mockup Graphic -->
+
         <div class="graphic-card">
+
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="fw-bold small text-uppercase text-muted">Customer Overview</span>
-                <span class="badge bg-success-subtle text-success rounded-pill">● Live</span>
+
+                <span class="fw-bold small text-uppercase text-muted">
+                    Customer Overview
+                </span>
+
+                <span class="badge bg-success-subtle text-success rounded-pill">
+                    ● Live
+                </span>
+
             </div>
-            <p class="small text-muted mb-1">Portfolio intelligence</p>
-            <h4 class="fw-bold">Accounts at a glance</h4>
-            
-            <!-- Simple CSS Bar Chart Mockup -->
-            <div class="d-flex align-items-end gap-2 mt-4" style="height: 100px;">
-                <div style="flex:1; height:40%; background:#99f6e4; border-radius:4px;"></div>
-                <div style="flex:1; height:70%; background:#50bda1; border-radius:4px;"></div>
-                <div style="flex:1; height:55%; background:#99f6e4; border-radius:4px;"></div>
-                <div style="flex:1; height:90%; background:#50bda1; border-radius:4px;"></div>
-                <div style="flex:1; height:65%; background:#2dd4bf; border-radius:4px;"></div>
+
+
+            <p class="small text-muted mb-1">
+                Portfolio intelligence
+            </p>
+
+            <h4 class="fw-bold">
+                Accounts at a glance
+            </h4>
+
+
+            <!-- Simple CSS Bar Chart -->
+
+            <div
+                class="d-flex align-items-end gap-2 mt-4"
+                style="height: 75px;"
+            >
+
+                <div
+                    style="
+                        flex:1;
+                        height:40%;
+                        background:#99f6e4;
+                        border-radius:4px;
+                    "
+                ></div>
+
+                <div
+                    style="
+                        flex:1;
+                        height:70%;
+                        background:#50bda1;
+                        border-radius:4px;
+                    "
+                ></div>
+
+                <div
+                    style="
+                        flex:1;
+                        height:55%;
+                        background:#99f6e4;
+                        border-radius:4px;
+                    "
+                ></div>
+
+                <div
+                    style="
+                        flex:1;
+                        height:90%;
+                        background:#50bda1;
+                        border-radius:4px;
+                    "
+                ></div>
+
+                <div
+                    style="
+                        flex:1;
+                        height:65%;
+                        background:#2dd4bf;
+                        border-radius:4px;
+                    "
+                ></div>
+
             </div>
-            
-            <div class="mt-4 pt-3 border-top d-flex justify-content-between">
+
+
+            <div
+                class="mt-4 pt-3 border-top d-flex justify-content-between"
+            >
+
                 <div>
-                    <div class="small text-muted">Collections</div>
-                    <div class="fw-bold">Tracked</div>
+
+                    <div class="small text-muted">
+                        Collections
+                    </div>
+
+                    <div class="fw-bold">
+                        Tracked
+                    </div>
+
                 </div>
+
+
                 <div>
-                    <div class="small text-muted">Visits</div>
-                    <div class="fw-bold text-end">Planned</div>
+
+                    <div class="small text-muted">
+                        Visits
+                    </div>
+
+                    <div class="fw-bold text-end">
+                        Planned
+                    </div>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
+
 </div>
 
-<h4 class="text-center fw-bold mb-4">Everything you need, in one place.</h4>
-<p class="text-center text-muted small mb-5">Make better relationship decisions with a connected view of your operations.</p>
 
-<div class="features-grid">
-    <div class="feature-card">
-        <div class="icon-box"><i class="bi bi-people-fill"></i></div>
-        <h5>Customer Control</h5>
-        <p>Keep a clear view of assigned accounts, interaction history, and profile health across your operations.</p>
-    </div>
+<!-- =========================================================
+     SMALL INTRO
+     ========================================================= -->
 
-    <div class="feature-card">
-        <div class="icon-box"><i class="bi bi-credit-card-2-front"></i></div>
-        <h5>Payment Planning</h5>
-        <p>Understand upcoming credit dues and make informed collection strategies before they become a problem.</p>
-    </div>
+<h4 class="text-center fw-bold intro-heading">
+    Everything you need, in one place.
+</h4>
 
-    <div class="feature-card">
-        <div class="icon-box"><i class="bi bi-graph-up"></i></div>
-        <h5>Sales Analytics</h5>
-        <p>Turn customer data into useful insights so you can understand demand and plan inventory with confidence.</p>
-    </div>
+<p class="text-center text-muted small intro-description">
+    Make better relationship decisions with a connected view of your operations.
+</p>
+
+
+<!-- =========================================================
+     QUICK ACCESS HEADER
+     ========================================================= -->
+
+<div class="quick-access-header text-center">
+
+    <h4 class="fw-bold">
+        Quick Access
+    </h4>
+
+    <p class="text-muted small">
+        Jump directly to the tools, reports, and dashboards available to you.
+    </p>
+
 </div>
 
+
+<!-- =========================================================
+     SUPERUSER
+     ========================================================= -->
+
+{% if request.user.is_superuser %}
+
+
+<!-- MAIN -->
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Main
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:dashboard_home' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-house-door"></i>
+            </div>
+
+            <h5>Dashboard</h5>
+
+            <p>
+                Return to the main Oblu customer dashboard.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:data' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-people-fill"></i>
+            </div>
+
+            <h5>Customer Data</h5>
+
+            <p>
+                View and manage the complete customer database and assignments.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:charts' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-bar-chart-line"></i>
+            </div>
+
+            <h5>Analytics</h5>
+
+            <p>
+                Explore customer and sales analytics across the system.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- PERFORMANCE -->
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Performance
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:monthly_sales_report' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+
+            <h5>Monthly Sales Report</h5>
+
+            <p>
+                Review monthly sales performance across salespersons.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:payment_followup_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+
+            <h5>Payment Follow-ups</h5>
+
+            <p>
+                Track payment follow-ups, dues, and collection activity.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:salesperson_customers' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-person-badge"></i>
+            </div>
+
+            <h5>Salesperson Customers</h5>
+
+            <p>
+                Review customers grouped and managed by salesperson.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'incentive_calculator:asm_incentive_paid_only' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-wallet2"></i>
+            </div>
+
+            <h5>Salesperson Paid Incentives</h5>
+
+            <p>
+                View paid incentives across all salespersons.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'incentive_calculator:rsm_team_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-people"></i>
+            </div>
+
+            <h5>RSM Team Incentives</h5>
+
+            <p>
+                Open the RSM team incentive dashboard.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'incentive_calculator:sales_head_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+
+            <h5>Sales Head Team Incentives</h5>
+
+            <p>
+                View the Sales Head team incentive dashboard.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- ADMINISTRATION -->
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Administration &amp; Tools
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:admin_voucher_claim_management' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-check2-square"></i>
+            </div>
+
+            <h5>Voucher Approvals</h5>
+
+            <p>
+                Review and manage voucher approval requests.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:detailedmap' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-geo-alt"></i>
+            </div>
+
+            <h5>Detailed Map</h5>
+
+            <p>
+                Explore customer and sales information geographically.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:cross_selling_matrix' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </div>
+
+            <h5>Cross-Selling Matrix</h5>
+
+            <p>
+                Find cross-selling opportunities from customer-product relationships.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     RSM
+     ========================================================= -->
+
+{% elif is_rsm %}
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        RSM Dashboard
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:monthly_sales_report' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+
+            <h5>Monthly Sales Report</h5>
+
+            <p>
+                Review your team's monthly sales performance.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:payment_followup_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+
+            <h5>Payment Follow-ups</h5>
+
+            <p>
+                Manage payment follow-ups and collection activity.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:salesperson_customers' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-person-badge"></i>
+            </div>
+
+            <h5>Salesperson Customers</h5>
+
+            <p>
+                View customers handled by your sales team.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Performance
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'incentive_calculator:sales_head_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+
+            <h5>Sales Head Incentives</h5>
+
+            <p>
+                View the Sales Head incentive dashboard.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'incentive_calculator:rsm_team_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-people"></i>
+            </div>
+
+            <h5>Team Incentives</h5>
+
+            <p>
+                Review incentive performance for your team.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'incentive_calculator:asm_incentive_paid_only' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-wallet2"></i>
+            </div>
+
+            <h5>My Paid Incentives</h5>
+
+            <p>
+                View your paid incentive records.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Sales Intelligence
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:cross_selling_matrix' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </div>
+
+            <h5>Cross-Selling Matrix</h5>
+
+            <p>
+                Identify product opportunities across your customer base.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ASM
+     ========================================================= -->
+
+{% elif is_asm %}
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        My Dashboard
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:salesperson_customers' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-people"></i>
+            </div>
+
+            <h5>My Customers</h5>
+
+            <p>
+                View and manage your assigned customers.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:payment_followup_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+
+            <h5>Payment Follow-ups</h5>
+
+            <p>
+                Track customer payments and follow-up activity.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:monthly_sales_report' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+
+            <h5>Monthly Sales Report</h5>
+
+            <p>
+                Review your monthly sales performance.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'incentive_calculator:asm_incentive_paid_only' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-trophy"></i>
+            </div>
+
+            <h5>Incentives</h5>
+
+            <p>
+                View your incentive and paid incentive information.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Sales Intelligence
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:cross_selling_matrix' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </div>
+
+            <h5>Cross-Selling Matrix</h5>
+
+            <p>
+                Discover cross-selling opportunities among your customers.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ACCOUNTANT
+     ========================================================= -->
+
+{% elif request.user.is_accountant %}
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Main
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:dashboard_home' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-house-door"></i>
+            </div>
+
+            <h5>Dashboard</h5>
+
+            <p>
+                Return to the main Oblu customer dashboard.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:data' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-people"></i>
+            </div>
+
+            <h5>Customer List</h5>
+
+            <p>
+                Browse customer records and account assignments.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:charts' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-bar-chart-line"></i>
+            </div>
+
+            <h5>Analytics</h5>
+
+            <p>
+                Explore customer and sales analytics.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:detailedmap' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-geo-alt"></i>
+            </div>
+
+            <h5>Detailed Map</h5>
+
+            <p>
+                View customer and sales information on the map.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        RSM Dashboard
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:monthly_sales_report' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+
+            <h5>Monthly Sales Report</h5>
+
+            <p>
+                Review monthly sales reports and salesperson performance.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:payment_followup_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+
+            <h5>Payment Follow-ups</h5>
+
+            <p>
+                Track payments, dues, and follow-up activity.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:salesperson_customers' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-person-badge"></i>
+            </div>
+
+            <h5>Salesperson Customers</h5>
+
+            <p>
+                Review customer accounts by salesperson.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Performance &amp; Administration
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'incentive_calculator:rsm_team_dashboard' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-trophy"></i>
+            </div>
+
+            <h5>Incentives</h5>
+
+            <p>
+                Open the incentive dashboard and review performance.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+
+        <a
+            href="{% url 'customers:admin_voucher_claim_management' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-check2-square"></i>
+            </div>
+
+            <h5>Voucher Approvals</h5>
+
+            <p>
+                Review and manage voucher approval requests.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+<div class="quick-section">
+
+    <div class="quick-section-title">
+        Sales Intelligence
+    </div>
+
+    <div class="features-grid">
+
+        <a
+            href="{% url 'customers:cross_selling_matrix' %}"
+            class="feature-card"
+        >
+            <div class="icon-box">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </div>
+
+            <h5>Cross-Selling Matrix</h5>
+
+            <p>
+                Explore cross-selling opportunities across customers.
+            </p>
+
+            <span class="open-link">
+                Open →
+            </span>
+        </a>
+
+    </div>
+
+</div>
+
+
+{% endif %}
 
 {% endblock %}
