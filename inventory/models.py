@@ -170,6 +170,10 @@ class PurchaseOrderTracking(models.Model):
     order_date = models.DateField()
     arrival_datetime = models.DateTimeField(null=True, blank=True)
 
+    manual_eta = models.DateField(
+        null=True,
+        blank=True
+    )
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
