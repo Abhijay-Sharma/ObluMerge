@@ -127,6 +127,9 @@ class ProformaInvoice(models.Model):
         choices=CourierMode.choices,
         default=CourierMode.SURFACE)
 
+    is_edited = models.BooleanField(default=False)
+    last_edited_at = models.DateTimeField(null=True, blank=True)
+
     # 🔥 NEW FIELD  (Converted-pi)
     is_converted_to_pi = models.BooleanField(default=False, help_text="Converted-pi")
 
@@ -1177,7 +1180,8 @@ class QuotationMaker(models.Model):
         choices=CourierMode.choices,
         default=CourierMode.SURFACE
     )
-
+    is_edited = models.BooleanField(default=False)
+    last_edited_at = models.DateTimeField(null=True, blank=True)
     # Status tracking
     is_converted_to_proforma = models.BooleanField(
         default=False,
@@ -1399,3 +1403,38 @@ class QuotationMakerItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
+
+
+class DocumentEditLog(models.Model):
+    ACTION_CHOICES = [
+        ("item_deleted", "Item Deleted"),
+        ("item_added", "Item Added"),
+        ("item_updated", "Item Updated"),
+    ]
+
+    invoice = models.ForeignKey(
+        'ProformaInvoice',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="edit_logs"
+    )
+    quotation = models.ForeignKey(
+        'QuotationMaker',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="edit_logs"
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    product_name = models.CharField(max_length=255)
+    description = models.TextField(help_text="Detailed note of the change")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        doc = f"PI #{self.invoice_id}" if self.invoice_id else f"Quotation #{self.quotation_id}"
+        return f"{doc} - {self.action} by {self.user.username}"
