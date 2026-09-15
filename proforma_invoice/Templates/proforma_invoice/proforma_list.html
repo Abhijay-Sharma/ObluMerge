@@ -185,6 +185,16 @@
                         <!-- 2. Customer / Created By -->
                         <td>
                             <div class="fw-bold">{{ inv.customer.name }}</div>
+                            <!-- ⬇️ ADD THIS BADGE BLOCK ⬇️ -->
+                                {% if inv.is_edited %}
+                                    <span class="badge bg-warning text-dark"
+                                          style="cursor: pointer; font-size: 0.65rem; padding: 2px 6px;"
+                                          title="Click to view changes"
+                                          onclick="openEditHistoryModal('proforma', '{{ inv.id }}')">
+                                        Edited ✏️
+                                    </span>
+                                {% endif %}
+                                <!-- ⬆️ END BADGE BLOCK ⬆️ -->
                             <small class="text-muted">By: {{ inv.created_by }}</small>
                         </td>
 
@@ -211,9 +221,13 @@
                                     <button type="button" class="btn-pro-action btn-grey" onclick="alert('Admin has rejected the credit bypass for this customer.');">🔒 Access Denied</button>
 
                                 {# LOCK 2: STOCK PENDING #}
-                                {% elif stock_status == 'pending' %}
-                                    <div class="badge bg-warning text-dark w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ STOCK REVIEW</div>
-                                    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Warehouse is reviewing stock. Locked.');">🔒 Reviewing...</button>
+<!--                                {% elif stock_status == 'pending' %}-->
+<!--                                    <div class="badge bg-warning text-dark w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ STOCK REVIEW</div>-->
+<!--                                    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Warehouse is reviewing stock. Locked.');">🔒 Reviewing...</button>-->
+{# LOCK 2: STOCK PENDING #}
+{% elif inv.pending_stock_count > 0 %}
+    <div class="badge bg-warning text-dark w-100 p-2 mb-1" style="font-size: 0.65rem;">⏳ STOCK REVIEW</div>
+    <button type="button" class="btn-pro-action btn-grey" onclick="alert('Warehouse is reviewing stock. Locked.');">🔒 Reviewing...</button>
 
                                 {# NORMAL FLOW #}
                                 {% elif inv.dispatch_status == 'dispatched' %}
@@ -297,6 +311,32 @@
         </div>
         {% endwith %}{% endwith %}
     </div>
+
+    <!-- Insert this right above <div class="w-100 mt-2"> containing the dispatch button -->
+<div style="display: flex; gap: 6px; width: 100%; margin-top: 6px;">
+    {% if inv.dispatch_status != 'dispatched' %}
+        <button type="button"
+                class="btn-pro-action btn-dark"
+                style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
+                onclick="openEditItemsModal('proforma', '{{ inv.id }}')">
+            ✏️ Edit Products
+        </button>
+    {% else %}
+        <button type="button"
+                class="btn-pro-action btn-grey"
+                style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
+                disabled title="Cannot edit a dispatched invoice">
+            🔒 Dispatched
+        </button>
+    {% endif %}
+
+    <button type="button"
+            class="btn-pro-action btn-dark"
+            style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
+            onclick="openEditHistoryModal('proforma', '{{ inv.id }}')">
+        📋 Edit History
+    </button>
+</div>
 
     <!-- MERGED DISPATCH BUTTON LOGIC -->
     <div class="w-100 mt-2">
@@ -449,9 +489,90 @@
     </div>
 </div>
 
+<!-- ================= EDIT HISTORY MODAL ================= -->
+<div id="editHistoryModal" class="modal-custom-overlay">
+    <div class="modal-custom-content" style="max-width: 650px;">
+        <div class="modal-custom-header">
+            <h5 class="m-0 text-warning">✏️ Change History - Invoice #<span id="editInvId"></span></h5>
+            <button class="close-btn" onclick="closeEditHistoryModal()">&times;</button>
+        </div>
+        <div class="modal-custom-body" id="editHistoryContent">
+            <div class="text-center p-4">Loading changes...</div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ================= EDIT PRODUCTS MODAL ================= -->
+<div id="editItemsModal" class="modal-custom-overlay">
+    <div class="modal-custom-content" style="max-width: 750px;">
+        <div class="modal-custom-header">
+            <h5 class="m-0 text-warning">✏️ Manage Products (<span id="editDocTitle"></span>)</h5>
+            <button class="close-btn" onclick="closeEditItemsModal()">&times;</button>
+        </div>
+        <div class="modal-custom-body">
+            <div id="editItemsLockAlert" class="alert alert-danger d-none">
+                🔒 This Proforma Invoice is dispatched and cannot be edited.
+            </div>
+
+            <!-- Existing Products Table -->
+            <h6 class="fw-bold mb-2 text-secondary">Current Items</h6>
+            <table class="rej-table border mb-4">
+                <thead>
+                    <tr style="background: #2a2a2a;">
+                        <th>Product</th>
+                        <th style="width: 80px;">Qty</th>
+                        <th>Price (₹)</th>
+                        <th>Total (₹)</th>
+                        <th style="width: 80px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="modalItemsBody">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+
+            <!-- Add Product Section -->
+            <div id="addItemSection" class="p-3 bg-dark rounded border border-secondary mt-3">
+                <h6 class="fw-bold text-warning mb-2">+ Add Product</h6>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-7 position-relative">
+                        <label class="small text-muted">Search & Select Product</label>
+                        <input type="text"
+                               id="productSearchInput"
+                               class="form-control form-control-sm bg-dark text-white border-secondary"
+                               placeholder="Type product name to search..."
+                               autocomplete="off"
+                               oninput="handleProductSearch(this.value)">
+                        <input type="hidden" id="selectedProductId">
+
+                        <!-- Search Dropdown List -->
+                        <div id="productSearchResults"
+                             class="dropdown-menu bg-dark border-secondary w-100 shadow"
+                             style="max-height: 220px; overflow-y: auto; display: none; position: absolute; top: 100%; left: 0; z-index: 1050;">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small text-muted">Quantity</label>
+                        <input type="number" id="modalAddQuantity" class="form-control form-control-sm bg-dark text-white border-secondary" value="1" min="1">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-warning w-100 fw-bold" onclick="submitAddItemModal()">Add</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-// --- 1. MESSAGE HUB LOGIC ---
+let currentModalDocType = null;
+let currentModalDocId = null;
+let searchDebounceTimer = null;
+
+// ==========================================
+// 1. MESSAGE HUB LOGIC
+// ==========================================
 function openRemarkModal(invoiceId) {
     document.getElementById('modalInvoiceId').value = invoiceId;
     document.getElementById('globalRemarkModal').style.display = 'flex';
@@ -470,8 +591,9 @@ function loadRemarks(invoiceId) {
         .then(data => {
             const historyBox = document.getElementById('modalChatHistory');
             historyBox.innerHTML = "";
-            if (data.remarks.length === 0) {
+            if (!data.remarks || data.remarks.length === 0) {
                 historyBox.innerHTML = '<div style="color:#444; text-align:center; padding-top:50px;">No conversation yet.</div>';
+                return;
             }
             data.remarks.forEach(r => {
                 const bClass = `b-${r.role}`;
@@ -482,6 +604,9 @@ function loadRemarks(invoiceId) {
                     </div>`;
             });
             historyBox.scrollTop = historyBox.scrollHeight;
+        })
+        .catch(() => {
+            document.getElementById('modalChatHistory').innerHTML = '<div style="color:#e74c3c; text-align:center; padding-top:50px;">Failed to load messages.</div>';
         });
 }
 
@@ -505,11 +630,12 @@ function submitGlobalRemark() {
     })
     .then(r => r.json())
     .then(data => {
-        if(data.status === 'ok') {
+        if (data.status === 'ok') {
             document.getElementById('modalRemarkInput').value = "";
             loadRemarks(invId);
         }
     })
+    .catch(() => alert("Error sending message."))
     .finally(() => btn.disabled = false);
 }
 
@@ -517,11 +643,11 @@ function closeRemarkModal() {
     document.getElementById('globalRemarkModal').style.display = 'none';
 }
 
-// --- 2. TRACK PROGRESS LOGIC ---
-
-// Fixed: Added missing closing brace
+// ==========================================
+// 2. TRACK PROGRESS LOGIC
+// ==========================================
 function getStatusBadge(status) {
-    status = status.toLowerCase();
+    status = (status || '').toLowerCase();
     if (status === 'approved' || status === 'stock confirmed') return 'bg-success';
     if (status === 'rejected' || status === 'unavailable') return 'bg-danger';
     return 'bg-warning text-dark';
@@ -543,7 +669,7 @@ function openRejectedModal(invoiceId) {
         .then(data => {
             let html = '';
 
-            // 1. STOCK SHORTAGE SECTION
+            // Stock Shortage Section
             if (data.stock_history && data.stock_history.length > 0) {
                 html += `<h6 class="fw-bold mb-2 text-warning">📦 Stock Shortage Tracking</h6>
                 <table class="rej-table border mb-4">
@@ -571,7 +697,7 @@ function openRejectedModal(invoiceId) {
                 html += `</tbody></table>`;
             }
 
-            // 2. Courier History
+            // Courier History
             if (data.courier_history && data.courier_history.length > 0) {
                 html += `<h6 class="fw-bold mb-2 text-secondary">🚚 Courier Change History</h6>
                 <table class="rej-table border mb-4">
@@ -588,7 +714,7 @@ function openRejectedModal(invoiceId) {
                 html += `</tbody></table>`;
             }
 
-            // 3. Product Price Tracking
+            // Product Price Tracking
             if (data.products && data.products.length > 0) {
                 html += `<h6 class="fw-bold mb-2 text-secondary">⚖️ Product Price Tracking</h6>
                 <table class="rej-table border">
@@ -608,14 +734,14 @@ function openRejectedModal(invoiceId) {
                 html += `</tbody></table>`;
             }
 
-            if(!data.products.length && !data.courier_history.length && !data.stock_history.length) {
+            if (!data.products.length && !data.courier_history.length && !data.stock_history.length) {
                 html = '<div class="alert alert-info text-center">No active requests found for this invoice.</div>';
             }
 
             content.innerHTML = html;
         })
         .catch(err => {
-            content.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+            content.innerHTML = `<div class="alert alert-danger m-3">Error: ${err.message}</div>`;
         });
 }
 
@@ -623,12 +749,252 @@ function closeDetailsModal() {
     document.getElementById('detailsModal').classList.remove('active');
 }
 
-// Fixed window click handler for both modals
+// ==========================================
+// 3. EDIT PRODUCTS MODAL & SEARCH
+// ==========================================
+function openEditItemsModal(docType, docId) {
+    currentModalDocType = docType;
+    currentModalDocId = docId;
+    document.getElementById('editDocTitle').innerText = `${docType.toUpperCase()} #${docId}`;
+
+    const searchInput = document.getElementById('productSearchInput');
+    const selectedId = document.getElementById('selectedProductId');
+    const resultsBox = document.getElementById('productSearchResults');
+    if (searchInput) searchInput.value = '';
+    if (selectedId) selectedId.value = '';
+    if (resultsBox) {
+        resultsBox.innerHTML = '';
+        resultsBox.style.display = 'none';
+    }
+
+    const modal = document.getElementById('editItemsModal');
+    modal.classList.add('active');
+    loadDocumentItems(docType, docId);
+}
+
+function closeEditItemsModal() {
+    document.getElementById('editItemsModal').classList.remove('active');
+}
+
+function loadDocumentItems(docType, docId) {
+    const tbody = document.getElementById('modalItemsBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">Loading items...</td></tr>';
+
+    fetch(`/proforma/document/items/${docType}/${docId}/`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.status !== 'ok') throw new Error(data.message);
+
+            const lockAlert = document.getElementById('editItemsLockAlert');
+            const addSection = document.getElementById('addItemSection');
+            if (data.is_locked) {
+                if (lockAlert) lockAlert.classList.remove('d-none');
+                if (addSection) addSection.style.display = 'none';
+            } else {
+                if (lockAlert) lockAlert.classList.add('d-none');
+                if (addSection) addSection.style.display = 'block';
+            }
+
+            tbody.innerHTML = "";
+            if (!data.items || data.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No items found.</td></tr>';
+                return;
+            }
+
+            data.items.forEach(item => {
+                const deleteBtn = data.is_locked || data.items.length <= 1
+                    ? `<button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Cannot delete">✕</button>`
+                    : `<form method="POST" action="/proforma/document-item/delete/${docType}/${item.item_id}/" style="margin:0;" onsubmit="return confirm('Remove ${item.product_name}?');">
+                           <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                           <button type="submit" class="btn btn-sm btn-danger py-0 px-2">✕</button>
+                       </form>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${item.product_name}</td>
+                        <td>${item.quantity}</td>
+                        <td>₹${item.unit_price.toFixed(2)}</td>
+                        <td>₹${item.total_price.toFixed(2)}</td>
+                        <td>${deleteBtn}</td>
+                    </tr>
+                `;
+            });
+        })
+        .catch(err => {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Failed to load items: ${err.message}</td></tr>`;
+        });
+}
+
+function handleProductSearch(query) {
+    clearTimeout(searchDebounceTimer);
+    const resultsBox = document.getElementById('productSearchResults');
+
+    if (!query || query.trim().length < 1) {
+        resultsBox.style.display = 'none';
+        resultsBox.innerHTML = '';
+        return;
+    }
+
+    searchDebounceTimer = setTimeout(() => {
+        fetch(`/proforma/api/search-products/?q=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(data => {
+                resultsBox.innerHTML = '';
+                if (!data.results || data.results.length === 0) {
+                    resultsBox.innerHTML = '<div class="px-3 py-2 text-muted small">No matching products found</div>';
+                } else {
+                    data.results.forEach(p => {
+                        const item = document.createElement('a');
+                        item.className = 'dropdown-item text-white py-2 small';
+                        item.style.cursor = 'pointer';
+                        item.innerText = p.name;
+                        item.onmouseover = () => item.style.background = '#333';
+                        item.onmouseout = () => item.style.background = 'transparent';
+                        item.onclick = () => selectSearchedProduct(p.id, p.name);
+                        resultsBox.appendChild(item);
+                    });
+                }
+                resultsBox.style.display = 'block';
+            })
+            .catch(() => {
+                resultsBox.innerHTML = '<div class="px-3 py-2 text-danger small">Failed to load search results</div>';
+                resultsBox.style.display = 'block';
+            });
+    }, 250);
+}
+
+function selectSearchedProduct(id, name) {
+    document.getElementById('selectedProductId').value = id;
+    document.getElementById('productSearchInput').value = name;
+    document.getElementById('productSearchResults').style.display = 'none';
+}
+
+function submitAddItemModal() {
+    const productId = document.getElementById('selectedProductId').value;
+    const quantity = document.getElementById('modalAddQuantity').value;
+
+    if (!productId) {
+        alert("⚠️ Please search and select a product from the dropdown first.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('product_id', productId);
+    formData.append('quantity', quantity);
+    formData.append('is_ajax', '1');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch(`/proforma/document-item/add/${currentModalDocType}/${currentModalDocId}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || data.status === 'error') {
+            // Displays exact rule failure (e.g. minimum sheet quantity required)
+            alert(data.message || "Failed to add item due to a document rule.");
+            return;
+        }
+
+        // Show confirmation and refresh modal table items without closing
+        alert(data.message);
+        loadDocumentItems(currentModalDocType, currentModalDocId);
+
+        // Reset search inputs
+        document.getElementById('productSearchInput').value = '';
+        document.getElementById('selectedProductId').value = '';
+        document.getElementById('modalAddQuantity').value = '1';
+    })
+    .catch((err) => {
+        alert("❌ Error communicating with the server: " + err.message);
+    });
+}
+// ==========================================
+// 4. EDIT HISTORY MODAL LOGIC
+// ==========================================
+function openEditHistoryModal(docType, docId) {
+    const modal = document.getElementById('editHistoryModal');
+    const content = document.getElementById('editHistoryContent');
+    document.getElementById('editInvId').innerText = docId;
+
+    modal.classList.add('active');
+    content.innerHTML = '<div class="text-center p-4"><p class="text-muted">Loading change logs...</p></div>';
+
+    fetch(`/proforma/document/edit-history/${docType}/${docId}/`)
+        .then(response => {
+            if (!response.ok) throw new Error('Could not fetch change history.');
+            return response.json();
+        })
+        .then(data => {
+            if (!data.logs || data.logs.length === 0) {
+                content.innerHTML = '<div class="alert alert-secondary text-center">No recorded item modifications found.</div>';
+                return;
+            }
+
+            let html = `
+                <table class="rej-table border">
+                    <thead>
+                        <tr style="background: #2a2a2a;">
+                            <th>Action</th>
+                            <th>Item Name</th>
+                            <th>Description</th>
+                            <th>Edited By</th>
+                            <th>Date / Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            data.logs.forEach(l => {
+                let badgeClass = 'bg-danger';
+                if (l.action.toLowerCase().includes('added')) badgeClass = 'bg-success';
+                else if (l.action.toLowerCase().includes('updated')) badgeClass = 'bg-warning text-dark';
+
+                html += `
+                    <tr>
+                        <td><span class="badge ${badgeClass}">${l.action}</span></td>
+                        <td class="fw-bold">${l.product_name}</td>
+                        <td class="small">${l.description}</td>
+                        <td class="small text-info">${l.user}</td>
+                        <td class="small text-muted">${l.timestamp}</td>
+                    </tr>`;
+            });
+
+            html += `</tbody></table>`;
+            content.innerHTML = html;
+        })
+        .catch(err => {
+            content.innerHTML = `<div class="alert alert-danger m-3">Error: ${err.message}</div>`;
+        });
+}
+
+function closeEditHistoryModal() {
+    document.getElementById('editHistoryModal').classList.remove('active');
+}
+
+// ==========================================
+// 5. GLOBAL CLICK HANDLER (MODALS DISMISSAL)
+// ==========================================
 window.onclick = function(e) {
     const remarkModal = document.getElementById('globalRemarkModal');
     const detailsModal = document.getElementById('detailsModal');
-    if (e.target == remarkModal) closeRemarkModal();
-    if (e.target == detailsModal) closeDetailsModal();
-}
+    const editHistoryModal = document.getElementById('editHistoryModal');
+    const editItemsModal = document.getElementById('editItemsModal');
+
+    if (e.target === remarkModal) closeRemarkModal();
+    if (e.target === detailsModal) closeDetailsModal();
+    if (e.target === editHistoryModal) closeEditHistoryModal();
+    if (e.target === editItemsModal) closeEditItemsModal();
+
+    // Close product search dropdown when clicking outside
+    const resultsBox = document.getElementById('productSearchResults');
+    const searchInput = document.getElementById('productSearchInput');
+    if (resultsBox && e.target !== searchInput && !resultsBox.contains(e.target)) {
+        resultsBox.style.display = 'none';
+    }
+};
 </script>
+
 {% endblock %}

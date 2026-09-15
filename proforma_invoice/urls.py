@@ -73,4 +73,13 @@ urlpatterns = [
     path('quotations/convert/<int:q_id>/', views.convert_quotation_to_pi, name='convert_to_pi'),
     path('api/quotation/request-details/<int:quotation_id>/', views.QuotationRequestDetailsApiView.as_view(),
          name='quotation_request_details_api'),
+    path("document-item/delete/<str:doc_type>/<int:item_id>/", views.DeleteDocumentItemView.as_view(),
+         name="delete_document_item"),
+    path("document-item/add/<str:doc_type>/<int:doc_id>/", views.AddItemToDocumentView.as_view(),
+         name="add_document_item"),
+    path("document/edit-history/<str:doc_type>/<int:doc_id>/", views.DocumentEditHistoryApiView.as_view(),
+         name="document_edit_history"),
+    path("document/items/<str:doc_type>/<int:doc_id>/", views.DocumentItemsApiView.as_view(),
+         name="document_items_api"),
+    path("api/search-products/", views.SearchInventoryProductApiView.as_view(), name="search_inventory_products"),
 ]

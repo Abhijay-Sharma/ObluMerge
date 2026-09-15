@@ -376,6 +376,10 @@ State : 07-Delhi
   <th class="right">Taxable <br> Value</th>
   <th class="center">GST%</th>
   <th class="right">Amount</th>
+    <!-- ⬇️ ADD THIS LINE HERE ⬇️ -->
+  {% if invoice.dispatch_status != 'dispatched' %}
+    <th class="center no-print" style="width: 40px;">Action</th>
+  {% endif %}
 </tr>
   <hr>
 </thead>
@@ -399,6 +403,26 @@ State : 07-Delhi
   <td class="right">₹ {{ row.taxable_value|floatformat:2 }}</td>
   <td class="center">{{ row.gst_rate }}%</td>
   <td class="right">₹ {{ row.amount_incl|floatformat:2 }}</td>
+
+  <!-- ⬇️ ADD THIS BLOCK HERE ⬇️ -->
+  {% if invoice.dispatch_status != 'dispatched' %}
+  <td class="center no-print" style="vertical-align: middle;">
+    <form method="POST"
+          action="{% url 'delete_document_item' 'proforma' row.item.id %}"
+          onsubmit="return confirm('Are you sure you want to remove {{ row.item.product.name }}?');"
+          style="margin: 0; padding: 0;">
+      {% csrf_token %}
+      <button type="submit"
+              style="background: none; border: none; color: #dc3545; cursor: pointer; padding: 2px 5px;"
+              title="Remove Item">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </form>
+  </td>
+  {% endif %}
+  <!-- ⬆️ END BLOCK ⬆️ -->
+
+
 </tr>
 
 {% endfor %}

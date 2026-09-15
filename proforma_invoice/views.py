@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import ProformaInvoice, ProformaInvoiceItem , ProformaPriceChangeRequest,ProformaStockShortageRequest,ProformaRemark, CourierMode, CourierCharge,QuotationMakerItem
+from .models import ProformaInvoice, ProformaInvoiceItem , ProformaPriceChangeRequest,ProformaStockShortageRequest,ProformaRemark, CourierMode, CourierCharge,QuotationMakerItem,DocumentEditLog
 from .models import ApprovedPriceMemory, ProformaPriceChangeRequest, CreditPeriodOverdueByPassRequest # Ensure these are imported
 
 from .forms import ProformaInvoiceForm, ProformaItemFormSet, ProformaPriceChangeRequestForm,NewProformaCustomerForm
@@ -1741,6 +1741,385 @@ class CreateProformaInvoiceView(LoginRequiredMixin, View):
             "request_reason": request.POST.get("request_reason", ""),
         })
 
+class CreateProformaInvoiceView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        invoice_form = ProformaInvoiceForm(user=request.user)
+        formset = ProformaItemFormSet(queryset=ProformaInvoiceItem.objects.none(), user=request.user)
+
+        customers = self._get_customers(request)
+        categories = Category.objects.all().order_by("name")
+
+        items = (
+            InventoryItem.objects
+            .select_related("category", "proforma_price")
+            .prefetch_related("proforma_price__price_tiers", "courier_sheets")
+            .filter(proforma_price__price__gt=0)
+            .exclude(id__in=DISABLED_PROFORMA_PRODUCT_IDS)
+            .order_by("name")
+        )
+
+        return render(request, "proforma_invoice/create_proforma.html", {
+            "invoice_form": invoice_form,
+            "formset": formset,
+            "customers": customers,
+            "categories": categories,
+            "items": items,
+        })
+
+    def check_is_permitted(self, customer, product, requested_price, current_recommended):
+        memory = ApprovedPriceMemory.objects.filter(customer=customer, product=product).first()
+        if memory:
+            if memory.base_price_at_approval == current_recommended:
+                if requested_price >= memory.min_approved_price:
+                    return True
+        return False
+
+    def post(self, request, *args, **kwargs):
+        invoice_form = ProformaInvoiceForm(request.POST, user=request.user)
+
+        if 'created_by' in invoice_form.fields:
+            invoice_form.fields['created_by'].required = False
+
+        formset = ProformaItemFormSet(request.POST, queryset=ProformaInvoiceItem.objects.none(), user=request.user)
+
+        customer_id = request.POST.get("customer", "")
+        selected_customer = Customer.objects.filter(id=customer_id).first() if customer_id.isdigit() else None
+        shipping_id = request.POST.get("shipping_customer", "")
+        shipping_customer = Customer.objects.filter(
+            id=shipping_id).first() if shipping_id.isdigit() else selected_customer
+
+        if not selected_customer:
+            invoice_form.add_error(None, "Please select a valid customer.")
+            return self._render_error(request, invoice_form, formset, selected_customer)
+
+        if invoice_form.is_valid() and formset.is_valid():
+            valid_forms = [f for f in formset if f.cleaned_data and f.cleaned_data.get("product")]
+
+            if not valid_forms:
+                invoice_form.add_error(None, "❌ Please add at least one product.")
+                return self._render_error(request, invoice_form, formset, selected_customer)
+
+            # ================= 1. COURIER & MIN QTY VALIDATION =================
+            courier_mode = request.POST.get("courier_mode", "surface")
+            RESTRICTED_CATEGORIES = ["THERMOFORMING SHEETS", "BAY MATERIALS", "COHERZ"]
+            restricted_qty = 0
+            has_resin = False
+            has_stock_issue = False
+            shortage_details = []
+
+            for f in valid_forms:
+                p = f.cleaned_data['product']
+                qty = f.cleaned_data['quantity']
+
+                pricing_config = ProductPrice.objects.filter(product=p).first()
+                if pricing_config:
+                    min_required = pricing_config.min_requirement
+                    if qty < min_required:
+                        invoice_form.add_error(None, f"❌ '{p.name}' requires a minimum quantity of {min_required}.")
+                        return self._render_error(request, invoice_form, formset, selected_customer)
+
+                cat_name = p.category.name.upper() if p.category else ""
+                if cat_name in RESTRICTED_CATEGORIES:
+                    restricted_qty += qty
+                if "RESIN" in cat_name:
+                    has_resin = True
+
+                # Fresh DB query to guarantee real-time stock
+                fresh_product = InventoryItem.objects.filter(id=p.id).values('quantity', 'name').first()
+                available = fresh_product['quantity'] if fresh_product and fresh_product['quantity'] is not None else 0
+
+                if qty > available:
+                    has_stock_issue = True
+                    shortage_details.append({
+                        'product_obj': p,
+                        'name': p.name,
+                        'requested': qty,
+                        'available': available
+                    })
+
+            if courier_mode == "surface" and 0 < restricted_qty < 200:
+                invoice_form.add_error(None, "❌ Surface shipping rejected for Thermoforming/Bay Material below 200.")
+                return self._render_error(request, invoice_form, formset, selected_customer)
+
+            if courier_mode == "air" and has_resin:
+                invoice_form.add_error(None, "❌ Air shipping rejected: Resin products cannot be sent by Air.")
+                return self._render_error(request, invoice_form, formset, selected_customer)
+
+            # ================= 2. MANDATORY CREDIT AUDIT =================
+            real_overdue_records = []
+            has_credit_issue = False
+
+            if not request.user.is_superuser:
+                all_overdue_records = CustomerVoucherStatus.objects.filter(
+                    customer=selected_customer,
+                    is_credit_period_crossed=True
+                ).filter(
+                    Q(is_unpaid=True) | Q(is_partially_paid=True)
+                ).select_related('voucher')
+
+                if all_overdue_records.exists():
+                    overdue_voucher_ids = all_overdue_records.values_list('voucher_id', flat=True)
+                    vouchers_with_emi = VoucherEmiPaymentAllocation.objects.filter(
+                        voucher__voucher_id__in=overdue_voucher_ids
+                    ).values_list('voucher__voucher_id', flat=True).distinct()
+
+                    real_overdue_records = all_overdue_records.exclude(voucher_id__in=vouchers_with_emi)
+                    if real_overdue_records.exists():
+                        has_credit_issue = True
+
+            # ================= 3. TRANSACTION PROCESS =================
+            try:
+                with transaction.atomic():
+                    invoice = invoice_form.save(commit=False)
+                    invoice.customer = selected_customer
+                    invoice.shipping_customer = shipping_customer
+                    invoice.courier_mode = courier_mode
+                    if not getattr(request.user, 'is_accountant', False):
+                        invoice.created_by = request.user.username
+                    invoice.save()
+
+                    has_price_issue = False
+                    any_under_msrp = False
+
+                    req_prices_list = request.POST.getlist("requested_unit_price")
+                    req_row_reasons = request.POST.getlist("requested_price_reason")
+                    req_courier = request.POST.get("requested_courier_charge", "").strip()
+                    req_reason = request.POST.get("request_reason", "").strip()
+
+                    price_change_requests_for_email = []
+
+                    # Items loop
+                    for index, f in enumerate(valid_forms):
+                        product_obj = f.cleaned_data.get('product')
+                        qty = f.cleaned_data.get('quantity')
+
+                        item = f.save(commit=False)
+                        item.invoice = invoice
+                        item.quantity = qty
+
+                        pricing = getattr(product_obj, "proforma_price", None)
+                        standard_price = pricing.price if pricing else Decimal("0.00")
+                        msrp = pricing.msrp or Decimal("0.00")
+
+                        if pricing and pricing.has_dynamic_price:
+                            tier = pricing.price_tiers.filter(min_quantity__lte=qty).order_by("-min_quantity").first()
+                            if tier:
+                                standard_price = tier.unit_price
+
+                        user_val = standard_price
+                        if index < len(req_prices_list):
+                            u_val = req_prices_list[index].strip()
+                            if u_val:
+                                user_val = Decimal(u_val)
+
+                        is_permitted = self.check_is_permitted(selected_customer, product_obj, user_val, standard_price)
+                        current_row_reason = req_row_reasons[index].strip() if index < len(req_row_reasons) else ""
+
+                        if user_val < standard_price:
+                            if not is_permitted:
+                                has_price_issue = True
+                                is_under_msrp = user_val < msrp
+                                if is_under_msrp:
+                                    any_under_msrp = True
+
+                                ProformaPriceChangeRequest.objects.create(
+                                    invoice=invoice, customer=selected_customer, product=product_obj,
+                                    requested_by=request.user, is_product_request=True, requested_price=user_val,
+                                    recommended_price=standard_price, msrp_snapshot=msrp, is_under_msrp=is_under_msrp,
+                                    reason=current_row_reason, status="pending"
+                                )
+                                item.current_price = standard_price
+                                price_change_requests_for_email.append({
+                                    "product": product_obj, "quantity": qty, "requested_price": user_val,
+                                    "recommended_price": standard_price, "msrp": msrp,
+                                    "is_under_msrp": is_under_msrp, "reason": current_row_reason,
+                                    "requested_courier_charge": None,
+                                })
+                            else:
+                                item.current_price = user_val
+                        else:
+                            item.current_price = standard_price
+                        item.save()
+
+                    # Courier Request Check
+                    has_courier_issue = False
+                    parsed_courier = None
+                    if req_courier != "" and not request.user.is_superuser:
+                        try:
+                            parsed_courier = Decimal(req_courier)
+                            curr_courier = invoice.courier_charge() if callable(invoice.courier_charge) else invoice.courier_charge
+
+                            if parsed_courier != curr_courier:
+                                has_courier_issue = True
+                                ProformaPriceChangeRequest.objects.create(
+                                    invoice=invoice,
+                                    customer=selected_customer,
+                                    requested_by=request.user,
+                                    is_product_request=False,
+                                    requested_courier_charge=parsed_courier,
+                                    recommended_courier_charge=curr_courier,
+                                    reason=req_reason,
+                                    status="pending"
+                                )
+                        except Exception as e:
+                            logger.error(f"Courier parse error: {e}")
+
+                    # Price Change Notification
+                    if price_change_requests_for_email or has_courier_issue:
+                        try:
+                            to_emails = ["bhavya@obluhc.com"]
+                            cc_emails = ["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com", "nitin.a@obluhc.com"]
+                            if request.user.email:
+                                cc_emails.append(request.user.email)
+                            any_under_msrp_email = any(x["is_under_msrp"] for x in price_change_requests_for_email)
+                            email_context = {
+                                "doc_type": "Proforma",
+                                "parent_obj": invoice,
+                                "invoice": invoice,
+                                "requested_by": request.user,
+                                "customer": selected_customer,
+                                "price_requests": price_change_requests_for_email,
+                                "reason": req_reason,
+                                "requested_courier_charge": parsed_courier if has_courier_issue else None,
+                                "all_items": invoice.items.select_related("product"),
+                                "any_under_msrp": any_under_msrp_email,
+                                "review_url": "https://oblutools.com/proforma/price-change-requests/"
+                            }
+                            html_content = render_to_string("proforma_invoice/price_change_request_email_v2.html", email_context)
+                            subject = f"💰 {'🚨 UNDER MSRP' if any_under_msrp_email else ''} Price Request (PI #{invoice.id})"
+                            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
+                            msg.attach_alternative(html_content, "text/html")
+                            msg.send(fail_silently=True)
+                        except Exception as mail_err:
+                            logger.error(f"Proforma Price Request Email Error: {mail_err}")
+
+                    # Mandatory Credit Bypass Request Generation
+                    if has_credit_issue:
+                        bypass_req, _ = CreditPeriodOverdueByPassRequest.objects.get_or_create(
+                            customer=selected_customer,
+                            proforma_invoice=invoice,
+                            requested_by=request.user,
+                            defaults={'status': 'pending'}
+                        )
+                        try:
+                            to_emails = ["nitin.a@obluhc.com"]
+                            cc_emails = [request.user.email] if request.user.email else []
+                            cc_emails.append("abhijay.obluhc@gmail.com")
+
+                            context = {
+                                "request_obj": bypass_req,
+                                "overdue_invoices": real_overdue_records,
+                                "customer": selected_customer,
+                                "salesperson": request.user.get_full_name() or request.user.username,
+                                "review_url": "https://oblutools.com/proforma/credit-bypass-requests/"
+                            }
+
+                            html_content = render_to_string("proforma_invoice/credit_bypass_request_mail.html", context)
+                            subject = f"🚨 CREDIT BYPASS REQUIRED: {selected_customer.name} (PI #{invoice.id})"
+
+                            msg = EmailMultiAlternatives(subject, "", "proforma@oblutools.com", to_emails, cc=cc_emails)
+                            msg.attach_alternative(html_content, "text/html")
+                            msg.send(fail_silently=True)
+                        except Exception as e:
+                            logger.error(f"Credit Request Email Error: {e}")
+
+                    # Mandatory Stock Shortage Request Generation
+                    if has_stock_issue:
+                        for item in shortage_details:
+                            ProformaStockShortageRequest.objects.create(
+                                invoice=invoice,
+                                requested_by=request.user,
+                                status="pending",
+                                product=item['product_obj'],
+                                requested_quantity=item['requested'],
+                                available_quantity=item['available'],
+                            )
+                        try:
+                            to_emails = ["accounts@obluhc.com"]
+                            cc_emails = ["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com", "nitin.a@obluhc.com"]
+                            if request.user.email:
+                                cc_emails.append(request.user.email)
+                            email_context = {
+                                "invoice": invoice,
+                                "requested_by": request.user,
+                                "shortage_details": shortage_details,
+                                "review_url": "https://oblutools.com/proforma/stock-requests/",
+                            }
+                            html_content = render_to_string("proforma_invoice/stock_request_email.html", email_context)
+                            msg = EmailMultiAlternatives(f"📦 Stock Request (PI #{invoice.id})", "", "proforma@oblutools.com", to_emails, cc=cc_emails)
+                            msg.attach_alternative(html_content, "text/html")
+                            msg.send(fail_silently=True)
+                        except Exception as e:
+                            logger.error(f"Stock Email Error: {e}")
+
+                    # LOCKDOWN CHECK
+                    needs_request = (has_stock_issue or has_price_issue or has_courier_issue or has_credit_issue)
+
+                    if needs_request and not request.user.is_superuser:
+                        invoice.is_price_altered = True
+                        invoice.save()
+
+                        alert_messages = []
+                        if has_credit_issue:
+                            alert_messages.append("Credit Bypass (Overdue Invoices)")
+                        if has_stock_issue:
+                            alert_messages.append("Stock Shortage")
+                        if has_price_issue or has_courier_issue:
+                            alert_messages.append("Price/Courier Approval")
+
+                        messages.warning(request, f"🔒 PI #{invoice.id} locked pending approvals: {', '.join(alert_messages)}.")
+                        return redirect("proforma_list")
+
+                    messages.success(request, "✅ Proforma created successfully.")
+                    return redirect("proforma_detail", pk=invoice.pk)
+
+            except Exception as e:
+                invoice_form.add_error(None, f"An unexpected error occurred: {str(e)}")
+                return self._render_error(request, invoice_form, formset, selected_customer)
+
+        return self._render_error(request, invoice_form, formset, selected_customer)
+
+    def _get_customers(self, request):
+        if getattr(request.user, 'is_accountant', False) or request.user.is_superuser:
+            return Customer.objects.all()
+        elif hasattr(request.user, "salesperson_profile"):
+            sp = request.user.salesperson_profile.first()
+            return Customer.objects.filter(salesperson=sp) if sp else Customer.objects.none()
+        return Customer.objects.filter(proforma_invoices__created_by=request.user.username).distinct()
+
+    def _render_error(self, request, invoice_form, formset, selected_customer):
+        requested_prices = request.POST.getlist("requested_unit_price")
+        requested_reasons = request.POST.getlist("requested_price_reason")
+
+        for i, form in enumerate(formset):
+            if i < len(requested_prices):
+                form.manual_price = requested_prices[i]
+            if i < len(requested_reasons):
+                form.manual_reason = requested_reasons[i]
+
+        customers = self._get_customers(request)
+        categories = Category.objects.all().order_by("name")
+        items = (
+            InventoryItem.objects.select_related("category", "proforma_price")
+            .filter(proforma_price__price__gt=0)
+            .exclude(id__in=DISABLED_PROFORMA_PRODUCT_IDS)
+            .order_by("name")
+        )
+
+        shipping_id = request.POST.get("shipping_customer", "")
+        shipping_customer = Customer.objects.filter(id=shipping_id).first() if shipping_id.isdigit() else None
+
+        return render(request, "proforma_invoice/create_proforma.html", {
+            "invoice_form": invoice_form,
+            "formset": formset,
+            "customers": customers,
+            "categories": categories,
+            "items": items,
+            "selected_customer": selected_customer,
+            "shipping_customer": shipping_customer,
+            "requested_courier": request.POST.get("requested_courier_charge", ""),
+            "request_reason": request.POST.get("request_reason", ""),
+        })
 
 class CreateQuotationMakerView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
@@ -6956,100 +7335,145 @@ def convert_quotation_to_pi(request, q_id):
     quotation = get_object_or_404(QuotationMaker, id=q_id)
     selected_customer = quotation.customer
 
-    # 1. Create the PI Header
-    pi = ProformaInvoice.objects.create(
-        customer=quotation.customer,
-        shipping_customer=quotation.shipping_customer,
-        created_by=request.user.username,
-        courier_mode=quotation.courier_mode,
-    )
-    quotation.price_requests.update(invoice=pi)
-
-    # --- NEW CREDIT LOGIC START ---
-    actual_credit_req_created = False
-
-    # Get all vouchers that are overdue and unpaid
-    all_overdue = CustomerVoucherStatus.objects.filter(
-        customer=selected_customer,
-        is_credit_period_crossed=True
-    ).filter(Q(is_unpaid=True) | Q(is_partially_paid=True)).select_related('voucher')
-
-    if all_overdue.exists():
-        overdue_ids = all_overdue.values_list('voucher_id', flat=True)
-        vouchers_with_emi = VoucherEmiPaymentAllocation.objects.filter(
-            voucher__voucher_id__in=overdue_ids
-        ).values_list('voucher__voucher_id', flat=True).distinct()
-
-        # Hard Blocks (Overdue & No EMI)
-        real_overdue_records = all_overdue.exclude(voucher_id__in=vouchers_with_emi)
-
-        if real_overdue_records.exists():
-            from .models import CreditPeriodOverdueByPassRequest
-            CreditPeriodOverdueByPassRequest.objects.get_or_create(
-                customer=selected_customer,
-                proforma_invoice=pi,
-                requested_by=request.user,
-                defaults={'status': 'pending'}
-            )
-            actual_credit_req_created = True
-    # --- NEW CREDIT LOGIC END ---
-
-    shortage_found = False
-    shortage_list = []  # Store objects to create individual shortage rows
-
-    # 2. Convert Items & Check Stock
-    for item in quotation.items.all():
-        # Create the PI item
-        ProformaInvoiceItem.objects.create(
-            invoice=pi,
-            product=item.product,
-            quantity=item.quantity,
-            requested_price=item.requested_price,
-            current_price=item.current_price,
+    with transaction.atomic():
+        # 1. Header Creation
+        pi = ProformaInvoice.objects.create(
+            customer=quotation.customer,
+            shipping_customer=quotation.shipping_customer,
+            created_by=request.user.username,
+            courier_mode=quotation.courier_mode,
         )
+        quotation.price_requests.update(invoice=pi)
 
-        # STOCK CHECK LOGIC
-        available_stock = getattr(item.product, 'quantity', 0)
-        if item.quantity > available_stock:
-            shortage_found = True
-            shortage_list.append({
-                'product': item.product,
-                'requested': item.quantity,
-                'available': available_stock,
-            })
+        # 2. Mandatory Credit Check
+        actual_credit_req_created = False
+        real_overdue_records = []
 
-    # 3. Handle Auto-Stock Request per product if shortage exists
-    if shortage_found:
-        from .models import ProformaStockShortageRequest
-        for shortage in shortage_list:
-            ProformaStockShortageRequest.objects.create(
+        if not request.user.is_superuser:
+            all_overdue = CustomerVoucherStatus.objects.filter(
+                customer=selected_customer,
+                is_credit_period_crossed=True
+            ).filter(Q(is_unpaid=True) | Q(is_partially_paid=True)).select_related('voucher')
+
+            if all_overdue.exists():
+                overdue_ids = all_overdue.values_list('voucher_id', flat=True)
+                vouchers_with_emi = VoucherEmiPaymentAllocation.objects.filter(
+                    voucher__voucher_id__in=overdue_ids
+                ).values_list('voucher__voucher_id', flat=True).distinct()
+
+                real_overdue_records = all_overdue.exclude(voucher_id__in=vouchers_with_emi)
+
+                if real_overdue_records.exists():
+                    bypass_req, _ = CreditPeriodOverdueByPassRequest.objects.get_or_create(
+                        customer=selected_customer,
+                        proforma_invoice=pi,
+                        requested_by=request.user,
+                        defaults={'status': 'pending'}
+                    )
+                    actual_credit_req_created = True
+
+                    try:
+                        to_emails = ["nitin.a@obluhc.com"]
+                        cc_emails = [request.user.email] if request.user.email else []
+                        cc_emails.append("abhijay.obluhc@gmail.com")
+
+                        context = {
+                            "request_obj": bypass_req,
+                            "overdue_invoices": real_overdue_records,
+                            "customer": selected_customer,
+                            "salesperson": request.user.get_full_name() or request.user.username,
+                            "review_url": "https://oblutools.com/proforma/credit-bypass-requests/"
+                        }
+
+                        html_content = render_to_string("proforma_invoice/credit_bypass_request_mail.html", context)
+                        msg = EmailMultiAlternatives(
+                            f"🚨 CREDIT BYPASS REQUIRED: {selected_customer.name} (PI #{pi.id})",
+                            "", "proforma@oblutools.com", to_emails, cc=cc_emails
+                        )
+                        msg.attach_alternative(html_content, "text/html")
+                        msg.send(fail_silently=True)
+                    except Exception as e:
+                        logger.error(f"Credit Alert Mail Error: {e}")
+
+        # 3. Item Conversion & Stock Auditing
+        shortage_found = False
+        shortage_list = []
+
+        for item in quotation.items.all():
+            ProformaInvoiceItem.objects.create(
                 invoice=pi,
-                product=shortage['product'],
-                requested_quantity=shortage['requested'],
-                available_quantity=shortage['available'],
-                requested_by=request.user,
-                status='pending'
+                product=item.product,
+                quantity=item.quantity,
+                requested_price=item.requested_price,
+                current_price=item.current_price,
             )
 
-    # If there was a credit issue or stock issue, lock the PI
-    if shortage_found or actual_credit_req_created:
-        pi.is_price_altered = True
-        pi.save()
+            fresh_item = InventoryItem.objects.filter(id=item.product_id).values('quantity').first()
+            available_stock = fresh_item['quantity'] if fresh_item and fresh_item['quantity'] is not None else 0
 
-    # 4. Mark Quotation as converted
-    quotation.is_converted_to_proforma = True
-    quotation.converted_at = timezone.now()
-    quotation.save()
+            if item.quantity > available_stock:
+                shortage_found = True
+                shortage_list.append({
+                    'product': item.product,
+                    'requested': item.quantity,
+                    'available': available_stock,
+                })
 
-    if actual_credit_req_created:
-        messages.error(request, f"Converted to PI #{pi.id}, but LOCKED due to Credit Overdue. Request sent to Admin.")
-    elif shortage_found:
-        messages.warning(request, f"Converted to PI #{pi.id}. Locked due to Stock Shortage.")
-    else:
-        messages.success(request, f"Quotation converted to PI #{pi.id} successfully.")
+        # 4. Mandatory Stock Shortage Request Generation
+        if shortage_found:
+            for shortage in shortage_list:
+                ProformaStockShortageRequest.objects.create(
+                    invoice=pi,
+                    product=shortage['product'],
+                    requested_quantity=shortage['requested'],
+                    available_quantity=shortage['available'],
+                    requested_by=request.user,
+                    status='pending'
+                )
 
-    return redirect('proforma_list')
+            try:
+                to_emails = ["accounts@obluhc.com"]
+                cc_emails = ["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com", "nitin.a@obluhc.com"]
+                if request.user.email:
+                    cc_emails.append(request.user.email)
 
+                email_context = {
+                    "invoice": pi,
+                    "requested_by": request.user,
+                    "shortage_details": [
+                        {'product_obj': s['product'], 'name': s['product'].name, 'requested': s['requested'], 'available': s['available']}
+                        for s in shortage_list
+                    ],
+                    "review_url": "https://oblutools.com/proforma/stock-requests/",
+                }
+                html_content = render_to_string("proforma_invoice/stock_request_email.html", email_context)
+                msg = EmailMultiAlternatives(f"📦 Stock Shortage Request (PI #{pi.id})", "", "proforma@oblutools.com", to_emails, cc=cc_emails)
+                msg.attach_alternative(html_content, "text/html")
+                msg.send(fail_silently=True)
+            except Exception as e:
+                logger.error(f"Stock Alert Mail Error: {e}")
+
+        # 5. Conversion Wrap-up & Locking
+        needs_lock = (shortage_found or actual_credit_req_created)
+        if needs_lock and not request.user.is_superuser:
+            pi.is_price_altered = True
+            pi.save()
+
+        quotation.is_converted_to_proforma = True
+        quotation.converted_at = timezone.now()
+        quotation.save()
+
+    if actual_credit_req_created or shortage_found:
+        reasons = []
+        if actual_credit_req_created:
+            reasons.append("Credit Overdue")
+        if shortage_found:
+            reasons.append("Stock Shortage")
+        messages.warning(request, f"🔒 Converted to PI #{pi.id}, but LOCKED for required approvals: {', '.join(reasons)}.")
+        return redirect('proforma_list')
+
+    messages.success(request, f"✅ Quotation converted to PI #{pi.id} successfully.")
+    return redirect('proforma_detail', pk=pi.pk)
 
 class QuotationRequestDetailsApiView(LoginRequiredMixin, View):
     def get_value(self, obj, field_name):
@@ -7170,3 +7594,394 @@ class ManageInvoiceRemarkView(LoginRequiredMixin, View):
             )
 
         return JsonResponse({'status': 'ok'})
+
+
+class DeleteDocumentItemView(LoginRequiredMixin, View):
+    """
+    Deletes an individual item row.
+    Locks down immediately if PI is dispatched or Quote is converted.
+    """
+    def post(self, request, doc_type, item_id, *args, **kwargs):
+        if doc_type == "proforma":
+            item = get_object_or_404(ProformaInvoiceItem.objects.select_related("invoice", "product"), id=item_id)
+            parent = item.invoice
+            if parent.dispatch_status == 'dispatched':
+                messages.error(request, "❌ Cannot modify a dispatched Proforma Invoice.")
+                return redirect("proforma_detail", pk=parent.id)
+            redirect_url = "proforma_detail"
+
+        elif doc_type == "quotation":
+            item = get_object_or_404(QuotationMakerItem.objects.select_related("quotation", "product"), id=item_id)
+            parent = item.quotation
+            if parent.is_converted_to_proforma:
+                messages.error(request, "❌ Cannot modify a converted Quotation.")
+                return redirect("quotation_detail", pk=parent.id)
+            redirect_url = "quotation_detail"
+        else:
+            messages.error(request, "Invalid document type.")
+            return redirect("home")
+
+        if parent.items.count() <= 1:
+            messages.error(request, "❌ You cannot delete the only item. The document must contain at least one item.")
+            return redirect(redirect_url, pk=parent.id)
+
+        product_name = item.product.name
+        qty = item.quantity
+
+        with transaction.atomic():
+            # Cascade-clear pending price and stock shortage requests linked to this product
+            if doc_type == "proforma":
+                parent.price_requests.filter(product=item.product, status="pending").delete()
+                parent.stock_requests.filter(product=item.product, status="pending").delete()
+            else:
+                parent.price_requests.filter(product=item.product, status="pending").delete()
+
+            DocumentEditLog.objects.create(
+                invoice=parent if doc_type == "proforma" else None,
+                quotation=parent if doc_type == "quotation" else None,
+                user=request.user,
+                action="item_deleted",
+                product_name=product_name,
+                description=f"Removed item: '{product_name}' (Qty: {qty})"
+            )
+
+            parent.is_edited = True
+            parent.last_edited_at = timezone.now()
+            parent.save()
+
+            item.delete()
+
+        messages.success(request, f"Item '{product_name}' deleted successfully.")
+        return redirect(redirect_url, pk=parent.id)
+
+
+class AddItemToDocumentView(LoginRequiredMixin, View):
+    def post(self, request, doc_type, doc_id, *args, **kwargs):
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.POST.get('is_ajax') == '1'
+
+        def return_error(msg):
+            if is_ajax:
+                return JsonResponse({"status": "error", "message": msg}, status=400)
+            messages.error(request, msg)
+            return redirect("proforma_list" if doc_type == "proforma" else "quotation_list")
+
+        product_id = request.POST.get("product_id")
+        try:
+            quantity = int(request.POST.get("quantity", 1))
+            if quantity <= 0:
+                quantity = 1
+        except (ValueError, TypeError):
+            quantity = 1
+
+        product = get_object_or_404(
+            InventoryItem.objects.select_related("category", "proforma_price"),
+            id=product_id
+        )
+
+        pricing_config = getattr(product, "proforma_price", None)
+        if pricing_config and quantity < pricing_config.min_requirement:
+            return return_error(
+                f"❌ Minimum Order Requirement: '{product.name}' requires a minimum quantity of "
+                f"{pricing_config.min_requirement} units (you entered {quantity})."
+            )
+
+        if doc_type == "proforma":
+            parent = get_object_or_404(
+                ProformaInvoice.objects.prefetch_related("items__product__category"),
+                id=doc_id
+            )
+            if parent.dispatch_status == 'dispatched':
+                return return_error("❌ This Proforma Invoice is already dispatched and cannot be modified.")
+
+            RESTRICTED_SHEET_CATEGORIES = ["THERMOFORMING SHEETS", "BAY MATERIALS", "COHERZ"]
+            existing_items = list(parent.items.all())
+
+            current_sheet_qty = sum(
+                item.quantity for item in existing_items
+                if item.product.category and item.product.category.name.upper() in RESTRICTED_SHEET_CATEGORIES
+            )
+            cat_name = product.category.name.upper() if product.category else ""
+            is_sheet_item = cat_name in RESTRICTED_SHEET_CATEGORIES
+            projected_sheet_qty = current_sheet_qty + (quantity if is_sheet_item else 0)
+
+            has_resin = any(
+                "RESIN" in (item.product.category.name.upper() if item.product.category else "")
+                for item in existing_items
+            ) or ("RESIN" in cat_name)
+
+            if parent.courier_mode == "surface" and 0 < projected_sheet_qty < 200:
+                needed_qty = 200 - current_sheet_qty
+                return return_error(
+                    f"❌ Courier Rule Blocked (Surface Mode):\n"
+                    f"Thermoforming Sheets / Bay Materials require at least 200 units for Surface shipping.\n"
+                    f"Current Sheets: {current_sheet_qty}\n"
+                    f"You must add at least {needed_qty} more sheet(s) to reach 200 units, or switch courier mode to Air."
+                )
+
+            if parent.courier_mode == "air" and has_resin:
+                return return_error(
+                    f"❌ Safety Rule Blocked (Air Mode):\n"
+                    f"Resin products ('{product.name}') are flammable/hazardous and cannot be sent by Air.\n"
+                    f"Please switch the shipping mode to Surface."
+                )
+
+            with transaction.atomic():
+                # Direct DB lock to prevent concurrency leaks
+                fresh_product = InventoryItem.objects.select_for_update().get(id=product.id)
+                available_stock = fresh_product.quantity if fresh_product.quantity is not None else 0
+                has_stock_issue = quantity > available_stock
+
+                # Credit check on customer
+                has_credit_issue = False
+                if not request.user.is_superuser:
+                    all_overdue = CustomerVoucherStatus.objects.filter(
+                        customer=parent.customer,
+                        is_credit_period_crossed=True
+                    ).filter(Q(is_unpaid=True) | Q(is_partially_paid=True))
+
+                    if all_overdue.exists():
+                        overdue_ids = all_overdue.values_list('voucher_id', flat=True)
+                        vouchers_with_emi = VoucherEmiPaymentAllocation.objects.filter(
+                            voucher__voucher_id__in=overdue_ids
+                        ).values_list('voucher__voucher_id', flat=True).distinct()
+                        if all_overdue.exclude(voucher_id__in=vouchers_with_emi).exists():
+                            has_credit_issue = True
+
+                item = ProformaInvoiceItem.objects.create(
+                    invoice=parent,
+                    product=product,
+                    quantity=quantity
+                )
+
+                DocumentEditLog.objects.create(
+                    invoice=parent,
+                    quotation=None,
+                    user=request.user,
+                    action="item_added",
+                    product_name=product.name,
+                    description=f"Added item: '{product.name}' (Qty: {quantity})"
+                )
+
+                parent.is_edited = True
+                parent.last_edited_at = timezone.now()
+
+                if has_credit_issue:
+                    CreditPeriodOverdueByPassRequest.objects.get_or_create(
+                        customer=parent.customer,
+                        proforma_invoice=parent,
+                        requested_by=request.user,
+                        defaults={'status': 'pending'}
+                    )
+
+                if has_stock_issue:
+                    ProformaStockShortageRequest.objects.create(
+                        invoice=parent,
+                        product=product,
+                        requested_quantity=quantity,
+                        available_quantity=available_stock,
+                        requested_by=request.user,
+                        status="pending"
+                    )
+
+                    try:
+                        to_emails = ["accounts@obluhc.com"]
+                        cc_emails = ["swasti.obluhc@gmail.com", "abhijay.obluhc@gmail.com", "nitin.a@obluhc.com"]
+                        if request.user.email:
+                            cc_emails.append(request.user.email)
+
+                        shortage_details = [{
+                            'product_obj': product,
+                            'name': product.name,
+                            'requested': quantity,
+                            'available': available_stock
+                        }]
+
+                        email_context = {
+                            "invoice": parent,
+                            "requested_by": request.user,
+                            "shortage_details": shortage_details,
+                            "review_url": "https://oblutools.com/proforma/stock-requests/",
+                        }
+                        html_content = render_to_string("proforma_invoice/stock_request_email.html", email_context)
+                        msg = EmailMultiAlternatives(
+                            f"📦 Stock Shortage Alert: PI #{parent.id} - {product.name}",
+                            "",
+                            "proforma@oblutools.com",
+                            to_emails,
+                            cc=cc_emails
+                        )
+                        msg.attach_alternative(html_content, "text/html")
+                        msg.send(fail_silently=True)
+                    except Exception as mail_err:
+                        logger.error(f"Stock Shortage Alert Mail Error: {mail_err}")
+
+                if (has_stock_issue or has_credit_issue) and not request.user.is_superuser:
+                    parent.is_price_altered = True
+
+                parent.save()
+
+            reasons = []
+            if has_stock_issue:
+                reasons.append(f"Stock Shortage (Available: {available_stock})")
+            if has_credit_issue:
+                reasons.append("Customer Credit Overdue")
+
+            if reasons:
+                msg = f"⚠️ Added '{product.name}' (Qty: {quantity}), but PI locked for: {', '.join(reasons)}."
+                if is_ajax:
+                    return JsonResponse({"status": "ok", "message": msg, "locked": True})
+                messages.warning(request, msg)
+                return redirect("proforma_list")
+
+            success_msg = f"✅ Added '{product.name}' (Qty: {quantity}) successfully."
+            if is_ajax:
+                return JsonResponse({"status": "ok", "message": success_msg, "locked": False})
+
+            messages.success(request, success_msg)
+            return redirect("proforma_detail", pk=parent.id)
+
+        elif doc_type == "quotation":
+            parent = get_object_or_404(
+                QuotationMaker.objects.prefetch_related("items__product__category"),
+                id=doc_id
+            )
+            if parent.is_converted_to_proforma:
+                return return_error("❌ This Quotation has already been converted to a Proforma Invoice.")
+
+            RESTRICTED_SHEET_CATEGORIES = ["THERMOFORMING SHEETS", "BAY MATERIALS", "COHERZ"]
+            existing_items = list(parent.items.all())
+
+            current_sheet_qty = sum(
+                item.quantity for item in existing_items
+                if item.product.category and item.product.category.name.upper() in RESTRICTED_SHEET_CATEGORIES
+            )
+            cat_name = product.category.name.upper() if product.category else ""
+            is_sheet_item = cat_name in RESTRICTED_SHEET_CATEGORIES
+            projected_sheet_qty = current_sheet_qty + (quantity if is_sheet_item else 0)
+
+            has_resin = any(
+                "RESIN" in (item.product.category.name.upper() if item.product.category else "")
+                for item in existing_items
+            ) or ("RESIN" in cat_name)
+
+            if parent.courier_mode == "surface" and 0 < projected_sheet_qty < 200:
+                needed_qty = 200 - current_sheet_qty
+                return return_error(
+                    f"❌ Courier Rule Blocked (Surface Mode):\n"
+                    f"Thermoforming Sheets / Bay Materials require at least 200 units for Surface shipping.\n"
+                    f"Current Sheets: {current_sheet_qty}\n"
+                    f"You must add at least {needed_qty} more sheet(s) to reach 200 units, or switch courier mode to Air."
+                )
+
+            if parent.courier_mode == "air" and has_resin:
+                return return_error(
+                    f"❌ Safety Rule Blocked (Air Mode):\n"
+                    f"Resin products ('{product.name}') cannot be transported by Air.\n"
+                    f"Please switch the courier mode to Surface."
+                )
+
+            with transaction.atomic():
+                QuotationMakerItem.objects.create(
+                    quotation=parent,
+                    product=product,
+                    quantity=quantity
+                )
+
+                DocumentEditLog.objects.create(
+                    invoice=None,
+                    quotation=parent,
+                    user=request.user,
+                    action="item_added",
+                    product_name=product.name,
+                    description=f"Added item: '{product.name}' (Qty: {quantity})"
+                )
+
+                parent.is_edited = True
+                parent.last_edited_at = timezone.now()
+                parent.save()
+
+            success_msg = f"✅ Added '{product.name}' (Qty: {quantity}) to Quotation."
+            if is_ajax:
+                return JsonResponse({"status": "ok", "message": success_msg})
+
+            messages.success(request, success_msg)
+            return redirect("quotation_detail", pk=parent.id)
+
+        return redirect("home")
+
+class DocumentEditHistoryApiView(LoginRequiredMixin, View):
+    """
+    Returns audit details for list view popups/modals.
+    """
+    def get(self, request, doc_type, doc_id, *args, **kwargs):
+        if doc_type == "proforma":
+            parent = get_object_or_404(ProformaInvoice, id=doc_id)
+        elif doc_type == "quotation":
+            parent = get_object_or_404(QuotationMaker, id=doc_id)
+        else:
+            return JsonResponse({"status": "error", "message": "Invalid type"}, status=400)
+
+        logs = parent.edit_logs.select_related("user").all()
+        data = [
+            {
+                "action": log.get_action_display(),
+                "product_name": log.product_name,
+                "description": log.description,
+                "user": log.user.username,
+                "timestamp": timezone.localtime(log.created_at).strftime("%d %b %Y, %H:%M")
+            }
+            for log in logs
+        ]
+        return JsonResponse({"status": "ok", "doc_id": doc_id, "logs": data})
+
+class DocumentItemsApiView(LoginRequiredMixin, View):
+    """Returns current active items of a document for modal editing."""
+    def get(self, request, doc_type, doc_id, *args, **kwargs):
+        if doc_type == "proforma":
+            parent = get_object_or_404(ProformaInvoice, id=doc_id)
+            is_locked = parent.dispatch_status == 'dispatched'
+        elif doc_type == "quotation":
+            parent = get_object_or_404(QuotationMaker, id=doc_id)
+            is_locked = parent.is_converted_to_proforma
+        else:
+            return JsonResponse({"status": "error", "message": "Invalid type"}, status=400)
+
+        items_data = []
+        for item in parent.items.select_related("product").all():
+            items_data.append({
+                "item_id": item.id,
+                "product_id": item.product.id,
+                "product_name": item.product.name,
+                "quantity": item.quantity,
+                "unit_price": float(item.get_unit_price_incl_tax()),
+                "total_price": float(item.total_price())
+            })
+
+        return JsonResponse({
+            "status": "ok",
+            "doc_id": doc_id,
+            "doc_type": doc_type,
+            "is_locked": is_locked,
+            "items": items_data
+        })
+
+
+class SearchInventoryProductApiView(LoginRequiredMixin, View):
+    """Searches active products for the modal dropdown."""
+    def get(self, request, *args, **kwargs):
+        query = request.GET.get('q', '').strip()
+        items = (
+            InventoryItem.objects
+            .filter(proforma_price__price__gt=0)
+            .exclude(id__in=DISABLED_PROFORMA_PRODUCT_IDS)
+        )
+        if query:
+            items = items.filter(name__icontains=query)
+
+        results = [
+            {"id": item.id, "name": item.name}
+            for item in items.order_by("name")[:30]
+        ]
+        return JsonResponse({"results": results})
+
+
