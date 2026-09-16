@@ -42,6 +42,9 @@ class InventoryItem(models.Model):
         blank=True,
         help_text="Date when the product first arrived in the warehouse"
     )
+    is_new_product = models.BooleanField(
+        default=False
+    )
 
     def __str__(self):
         return self.name
