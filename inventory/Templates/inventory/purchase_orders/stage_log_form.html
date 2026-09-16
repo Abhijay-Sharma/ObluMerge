@@ -200,17 +200,27 @@
             {% endif %}
 
             {% for field in form %}
-            <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}
-                    <small style="color: var(--slate-700); display: block; margin-top: 4px;">{{ field.help_text }}</small>
+            <div
+                class="form-group"
+                {% if field.name == "manual_eta" %}
+                    id="manual-eta-wrapper"
+                    style="display: none;"
                 {% endif %}
-                {% if field.errors %}
-                    <div class="error-list">
-                        {{ field.errors }}
-                    </div>
-                {% endif %}
+            >
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+
+                    {% if field.help_text %}
+                        <small style="color: var(--slate-700); display: block; margin-top: 4px;">
+                            {{ field.help_text }}
+                        </small>
+                    {% endif %}
+
+                    {% if field.errors %}
+                        <div class="error-list">
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
             </div>
             {% endfor %}
 
@@ -223,5 +233,17 @@
                 </a>
             </div>
         </form>
-    </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const manualEtaWrapper = document.getElementById("manual-eta-wrapper");
+
+    if (!manualEtaWrapper) {
+        return;
+    }
+
+    // Manual ETA is available at every stage
+    manualEtaWrapper.style.display = "block";
+});
+</script>
+</div>
 </div>

@@ -31,6 +31,11 @@ urlpatterns = [
     path('dead-stock/', DeadStockDashboardView.as_view() , name='dead_stock'),
     path('sales-comparison/', SalesComparisonDashboardView.as_view(), name='sales_comparison'),
     path("api/inventory_by_category/", get_inventory_by_category, name="get_inventory_by_category"),
+    path(
+                "purchase-order/toggle-new-product/<int:item_id>/",
+                PurchaseOrderView.as_view(),
+                name="toggle_new_product",
+        ),
     path('purchase-order/', PurchaseOrderView.as_view(), name='purchase_order'),
     path('purchase-order-prev/', PurchaseOrderViewPrev.as_view(), name='purchase_order_prev'),
     path("purchase-order/top-customers/", TopCustomersAPIView.as_view(), name="po_top_customers"),

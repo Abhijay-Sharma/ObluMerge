@@ -76,8 +76,35 @@
   tr.row-urgent { background:#fff1f2 !important; }
   tr.row-dead   { background:#f8fafc !important; opacity:.7; }
 
+  tr.row-trigger-on {
+    background:#f5f3ff !important;
+    box-shadow:inset 4px 0 0 #8b5cf6;
+  }
+
   /* ── Cell styles ─────────────────────────────────────────────────── */
   .product-name { font-weight:600; color:#1e293b; }
+  .new-product-toggle {
+    display:block;
+    margin-top:5px;
+    padding:3px 9px;
+    border-radius:6px;
+    font-size:.70rem;
+    font-weight:600;
+    cursor:pointer;
+    border:1px solid;
+  }
+
+  .new-product-toggle.on {
+    background:#dcfce7;
+    border-color:#86efac;
+    color:#15803d;
+  }
+
+  .new-product-toggle.off {
+    background:#f5f3ff;
+    border-color:#c4b5fd;
+    color:#7c3aed;
+  }
   .unit-badge   { display:inline-block; background:#f1f5f9; color:#64748b; border-radius:4px; padding:1px 6px; font-size:.75rem; margin-left:4px; }
   .sub-note     { font-size:.72rem; color:#94a3b8; margin-top:2px; }
 
@@ -396,7 +423,7 @@
   {% for p in products %}
 
   {# ── Data row ──────────────────────────────────────────────────────── #}
-  <tr class="data-row row-{{ p.order_urgency }}"
+  <tr class="data-row row-{{ p.order_urgency }} {% if p.is_new_product %}row-trigger-on{% endif %}"
       data-urgency="{{ p.order_urgency }}"
       data-dead="{{ p.is_dead|yesno:'1,0' }}"
       data-over="{{ p.is_overstocked|yesno:'1,0' }}"
@@ -406,14 +433,43 @@
 
     {# 1 — Product name #}
     <td>
-      <div class="product-name">{{ p.name }}</div>
-      <span class="unit-badge">{{ p.unit|default:"—" }}</span>
+        <div class="product-name">{{ p.name }}</div>
+
+        <button
+            type="button"
+            class="new-product-toggle {% if p.is_new_product %}on{% else %}off{% endif %}"
+            data-item-id="{{ p.id }}"
+            data-toggle-url="{% url 'toggle_new_product' p.id %}"
+            onclick="toggleNewProduct(this)"
+        >
+            {% if p.is_new_product %}
+                ✓ New Product: ON
+            {% else %}
+                ○ New Product: OFF
+            {% endif %}
+        </button>
+
+        <span class="unit-badge">{{ p.unit|default:"—" }}</span>
     </td>
 
     {# 2 — Current stock + avg daily (from tally) #}
     <td>
       <strong style="font-size:1.05rem;color:#1e293b">{{ p.current_stock|floatformat:0 }}</strong>
-      <div class="sub-note">avg {{ p.avg_daily }}/day <span style="color:#6366f1;font-size:.68rem">(Tally Apr-25)</span></div>
+
+      <div class="sub-note">
+        avg {{ p.avg_daily }}/day
+
+        {% if p.is_new_product and p.landing_date %}
+            <span style="color:#10b981;font-size:.68rem">
+                (Since {{ p.landing_date|date:"d M Y" }})
+            </span>
+        {% else %}
+            <span style="color:#6366f1;font-size:.68rem">
+                (Tally Apr-25)
+            </span>
+        {% endif %}
+      </div>
+
     </td>
 
     {# 3 — Growth #}
@@ -717,9 +773,24 @@
           </div>
 
           <div class="math-step step-info">
-            <div class="ms-label">📉 Avg Daily (Tally, Apr-25)</div>
-            <div class="ms-value">{{ s.avg_daily }}/day</div>
-            <div class="ms-note">Total sales since Apr 2025 ÷ days elapsed</div>
+              <div class="ms-label">
+                📉 Avg Daily
+                {% if p.is_new_product and p.landing_date %}
+                    (Since {{ p.landing_date|date:"d M Y" }})
+                {% else %}
+                    (Tally, Apr-25)
+                {% endif %}
+              </div>
+
+              <div class="ms-value">{{ s.avg_daily }}/day</div>
+
+              <div class="ms-note">
+                {% if p.is_new_product and p.landing_date %}
+                    Total sales since {{ p.landing_date|date:"d M Y" }} ÷ days elapsed
+                {% else %}
+                    Total sales since Apr 2025 ÷ days elapsed
+                {% endif %}
+              </div>
           </div>
 
           <div class="math-step step-info">
@@ -1020,6 +1091,66 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
+
+function toggleNewProduct(button) {
+
+    const itemId = button.dataset.itemId;
+
+    fetch(button.dataset.toggleUrl, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+            "Content-Type": "application/json"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        if (!data.success) {
+            alert(data.error || "Something went wrong");
+            return;
+        }
+
+        if (data.is_new_product) {
+            button.classList.remove("off");
+            button.classList.add("on");
+            button.innerHTML = "✓ New Product: ON";
+        } else {
+            button.classList.remove("on");
+            button.classList.add("off");
+            button.innerHTML = "○ New Product: OFF";
+        }
+
+        // Reload so Avg Daily and PO calculation update
+        window.location.reload();
+    })
+    .catch(error => {
+        console.error("Toggle error:", error);
+        alert("Unable to update product.");
+    });
+}
+
+
+function getCookie(name) {
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+
+            if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
+                break;
+            }
+        }
+    }
+
+    return cookieValue;
+}
 
 Chart.register(window['chartjs-plugin-annotation']);
 
