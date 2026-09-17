@@ -11,7 +11,7 @@ from . import views
 
 urlpatterns = [
     path('', Index.as_view(), name="index"),
-    path('dashboard/', Dashboard.as_view(), name="dashboard"),
+    path('dashboard/', Index.as_view(), name="dashboard"),
     path('dashboard-test/', Dashboard2.as_view(), name="dashboard-test"),
     path('add-item/',AddItem.as_view(), name='add-item'),
     # path('edit-item/<int:pk>', EditItem.as_view(), name='edit-item'),
