@@ -1,910 +1,2523 @@
 {% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<!-- Chart.js for analytics -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
 
 {% block content %}
 
 <style>
     /* =========================================================
-       OBLU INVENTORY — WELCOME PAGE
+       OBLU INVENTORY — OPERATIONS & SALES DASHBOARD
        ========================================================= */
 
-    .welcome-page {
+    :root {
+        --oblu-teal: #78c2ad;
+        --oblu-teal-dark: #469680;
+        --oblu-teal-deep: #2e6958;
+        --oblu-teal-soft: rgba(120, 194, 173, 0.14);
+        --oblu-teal-glow: rgba(120, 194, 173, 0.28);
+        --oblu-blue: #38bdf8;
+        --oblu-indigo: #6366f1;
+        --oblu-amber: #f59e0b;
+        --oblu-rose: #f43f5e;
+        --oblu-slate-900: #0f172a;
+        --oblu-slate-800: #1e293b;
+        --oblu-slate-700: #334155;
+        --oblu-slate-500: #64748b;
+        --oblu-slate-400: #94a3b8;
+        --oblu-slate-200: #e2e8f0;
+        --oblu-slate-100: #f1f5f9;
+        --oblu-slate-50: #f8fafc;
+
+        --glass-bg: rgba(255, 255, 255, 0.88);
+        --glass-bg-hover: rgba(255, 255, 255, 0.98);
+        --glass-border: rgba(226, 232, 240, 0.85);
+        --glass-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(226, 232, 240, 0.6);
+        --glass-shadow-hover: 0 20px 40px -10px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(120, 194, 173, 0.35);
+        --radius-card: 20px;
+        --radius-inner: 14px;
+        --radius-pill: 9999px;
+    }
+
+    /* Global Sleek Clean Scrollbars */
+    @supports not selector(::-webkit-scrollbar) {
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+        }
+    }
+
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-button {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.35);
+        border-radius: 9999px;
+        transition: background 0.2s ease;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.6);
+    }
+
+    body, .dashboard-container, button, input, select {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .dashboard-container {
         min-height: calc(100vh - 72px);
-        padding: 55px 55px 70px;
+        padding: 32px 36px 64px;
         position: relative;
-        overflow: hidden;
         background:
-            radial-gradient(circle at 85% 15%, rgba(120, 194, 173, 0.13), transparent 28%),
-            radial-gradient(circle at 15% 80%, rgba(91, 141, 239, 0.08), transparent 30%),
+            radial-gradient(1000px circle at 90% -10%, rgba(120, 194, 173, 0.15), transparent 45%),
+            radial-gradient(800px circle at 5% 40%, rgba(56, 189, 248, 0.08), transparent 40%),
+            radial-gradient(900px circle at 50% 110%, rgba(99, 102, 241, 0.05), transparent 50%),
             #f8fafc;
+        color: var(--oblu-slate-800);
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 
-    /* Decorative background blobs */
-    .welcome-page::before {
-        content: "";
-        position: absolute;
-        width: 420px;
-        height: 420px;
-        border-radius: 50%;
-        background: rgba(120, 194, 173, 0.07);
-        top: -180px;
-        right: -120px;
-        filter: blur(2px);
-        pointer-events: none;
-    }
-
-    .welcome-page::after {
-        content: "";
-        position: absolute;
-        width: 300px;
-        height: 300px;
-        border-radius: 50%;
-        background: rgba(99, 102, 241, 0.035);
-        bottom: -130px;
-        left: -100px;
-        pointer-events: none;
-    }
-
-    .welcome-container {
-        max-width: 1250px;
+    .content-wrapper {
+        max-width: 1360px;
+        width: 100%;
+        min-width: 0;
         margin: 0 auto;
-        position: relative;
-        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        box-sizing: border-box;
     }
 
     /* =========================================================
-       HERO
+       1. TOP BAR & CONTROLS
        ========================================================= */
 
-    .welcome-hero {
-        position: relative;
-        display: grid;
-        grid-template-columns: 1.15fr 0.85fr;
-        align-items: center;
-        gap: 60px;
-        min-height: 440px;
-        margin-bottom: 55px;
+    .hero-strip {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding-bottom: 4px;
     }
 
-    .hero-content {
-        animation: fadeUp 0.7s ease both;
-    }
-
-    .hero-eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 9px;
-        padding: 7px 13px;
-        border-radius: 30px;
-        background: rgba(120, 194, 173, 0.11);
-        border: 1px solid rgba(120, 194, 173, 0.18);
-        color: #4f9e89;
-        font-size: 0.72rem;
-        font-weight: 800;
-        letter-spacing: 1.4px;
-        text-transform: uppercase;
-        margin-bottom: 20px;
-    }
-
-    .hero-eyebrow-dot {
-        width: 7px;
-        height: 7px;
-        background: #78c2ad;
-        border-radius: 50%;
-        box-shadow: 0 0 0 4px rgba(120, 194, 173, 0.12);
+    .hero-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
 
     .hero-title {
-        margin: 0;
-        font-size: clamp(3.1rem, 5vw, 5.1rem);
-        line-height: 0.98;
+        font-size: clamp(2rem, 3.5vw, 3.1rem);
+        line-height: 1.05;
         font-weight: 800;
-        letter-spacing: -3px;
-        color: #172033;
+        letter-spacing: -1.5px;
+        color: var(--oblu-slate-900);
+        margin: 0;
     }
 
-    .hero-title .accent {
-        display: block;
-        background: linear-gradient(
-            110deg,
-            #63b59f 0%,
-            #78c2ad 45%,
-            #6d9fd8 100%
-        );
+    .hero-title .gradient-text {
+        background: linear-gradient(115deg, #2e6958 0%, #469680 40%, #0284c7 100%);
         -webkit-background-clip: text;
-        background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 
-    .hero-description {
-        max-width: 590px;
-        margin: 25px 0 30px;
-        color: #64748b;
-        font-size: 1.02rem;
-        line-height: 1.8;
+    .hero-desc {
+        color: var(--oblu-slate-500);
+        font-size: 0.95rem;
+        margin: 0;
+        font-weight: 500;
+        line-height: 1.5;
     }
 
-    .hero-actions {
+    /* Controls cluster: Filter pills & Anchor switch */
+    .controls-cluster {
         display: flex;
-        align-items: center;
-        gap: 13px;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
     }
 
-    .hero-primary-btn {
+    .filter-pills-bar {
         display: inline-flex;
         align-items: center;
-        gap: 9px;
-        padding: 13px 21px;
-        border-radius: 12px;
-        text-decoration: none;
-        color: #fff !important;
-        background: linear-gradient(135deg, #78c2ad, #63ad98);
-        font-size: 0.88rem;
-        font-weight: 700;
-        box-shadow:
-            0 8px 22px rgba(99, 173, 152, 0.25),
-            inset 0 1px rgba(255, 255, 255, 0.25);
-        transition: all 0.25s ease;
+        padding: 5px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+        backdrop-filter: blur(12px);
     }
 
-    .hero-primary-btn:hover {
-        transform: translateY(-2px);
-        box-shadow:
-            0 12px 28px rgba(99, 173, 152, 0.3),
-            inset 0 1px rgba(255, 255, 255, 0.25);
-    }
-
-    .hero-secondary {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 13px 17px;
+    .filter-pill {
+        padding: 8px 18px;
         border-radius: 12px;
-        color: #64748b;
-        text-decoration: none;
-        font-size: 0.85rem;
+        font-size: 0.84rem;
         font-weight: 600;
-        transition: all 0.2s ease;
+        color: var(--oblu-slate-500);
+        text-decoration: none;
+        transition: all 0.22s ease;
+        white-space: nowrap;
     }
 
-    .hero-secondary:hover {
-        color: #334155;
-        background: rgba(255,255,255,0.7);
+    .filter-pill:hover {
+        color: var(--oblu-slate-900);
+        background: rgba(241, 245, 249, 0.8);
     }
 
-    /* =========================================================
-       HERO VISUAL
-       ========================================================= */
-
-    .hero-visual {
-        position: relative;
-        min-height: 380px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.9s ease both;
+    .filter-pill.active {
+        background: linear-gradient(135deg, #5eae99 0%, #469680 100%);
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(70, 150, 128, 0.35);
     }
 
-    .visual-glow {
-        position: absolute;
-        width: 280px;
-        height: 280px;
-        border-radius: 50%;
-        background: rgba(120, 194, 173, 0.12);
-        filter: blur(35px);
-    }
-
-    .dashboard-card {
-        position: relative;
-        width: min(100%, 390px);
-        background: rgba(255, 255, 255, 0.88);
-        backdrop-filter: blur(18px);
-        border: 1px solid rgba(255, 255, 255, 0.9);
-        border-radius: 24px;
-        padding: 21px;
-        box-shadow:
-            0 30px 70px rgba(30, 41, 59, 0.11),
-            0 4px 14px rgba(30, 41, 59, 0.04);
-        transform: rotate(2deg);
-    }
-
-    .dashboard-top {
+    /* Date Anchor Notice Banner */
+    .date-anchor-banner {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 22px;
+        gap: 16px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+        border: 1px solid rgba(120, 194, 173, 0.3);
+        border-radius: var(--radius-inner);
+        padding: 10px 18px;
+        font-size: 0.82rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.02);
+        flex-wrap: wrap;
     }
 
-    .dashboard-brand {
+    .date-anchor-info {
         display: flex;
         align-items: center;
         gap: 10px;
+        color: var(--oblu-slate-700);
     }
 
-    .brand-icon {
-        width: 35px;
-        height: 35px;
+    .date-anchor-info strong {
+        color: var(--oblu-slate-900);
+    }
+
+    .anchor-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        background: #ffffff;
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-pill);
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: var(--oblu-slate-700);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .anchor-toggle-btn:hover {
+        border-color: var(--oblu-teal);
+        color: var(--oblu-teal-deep);
+        background: var(--oblu-teal-soft);
+    }
+
+    /* =========================================================
+       2. EXECUTIVE KPI SUMMARY CARDS
+       ========================================================= */
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .kpi-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-card);
+        padding: 24px;
+        box-shadow: var(--glass-shadow);
+        backdrop-filter: blur(16px);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--glass-shadow-hover);
+        background: var(--glass-bg-hover);
+    }
+
+    .kpi-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, transparent, rgba(120, 194, 173, 0.6), transparent);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .kpi-card:hover::before {
+        opacity: 1;
+    }
+
+    .kpi-top-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .kpi-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--oblu-slate-500);
+        margin: 0;
+    }
+
+    .kpi-icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 10px;
-        background: rgba(120, 194, 173, 0.13);
-        color: #5eae99;
-        font-size: 16px;
+        font-size: 1.25rem;
     }
 
-    .brand-text {
-        font-size: 0.76rem;
+    .kpi-icon-box.teal {
+        background: rgba(120, 194, 173, 0.18);
+        color: #317865;
+    }
+
+    .kpi-icon-box.blue {
+        background: rgba(56, 189, 248, 0.16);
+        color: #0284c7;
+    }
+
+    .kpi-icon-box.amber {
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+    }
+
+    .kpi-icon-box.rose {
+        background: rgba(244, 63, 94, 0.14);
+        color: #e11d48;
+    }
+
+    .kpi-primary-val {
+        font-size: 2.1rem;
         font-weight: 800;
-        color: #334155;
+        letter-spacing: -1px;
+        color: var(--oblu-slate-900);
+        line-height: 1.1;
+        margin-bottom: 10px;
     }
 
-    .live-pill {
-        padding: 5px 9px;
-        border-radius: 20px;
-        background: #ecfdf5;
-        color: #16805b;
-        font-size: 0.63rem;
+    .kpi-subrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.78rem;
+        color: var(--oblu-slate-500);
+        font-weight: 500;
+        flex-wrap: wrap;
+    }
+
+    .trend-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: var(--radius-pill);
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    .trend-indicator.positive {
+        background: rgba(16, 185, 129, 0.12);
+        color: #059669;
+    }
+
+    .trend-indicator.negative {
+        background: rgba(239, 68, 68, 0.12);
+        color: #dc2626;
+    }
+
+    .trend-indicator.neutral {
+        background: rgba(148, 163, 184, 0.15);
+        color: var(--oblu-slate-700);
+    }
+
+    /* =========================================================
+       3. DATA ROW 1: SALES TREND & INVENTORY HEALTH
+       ========================================================= */
+
+    .grid-2-col {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+        .grid-2-col {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .dash-panel {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-card);
+        padding: 26px;
+        box-shadow: var(--glass-shadow);
+        backdrop-filter: blur(16px);
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow 0.25s ease;
+    }
+
+    .dash-panel:hover {
+        box-shadow: var(--glass-shadow-hover);
+    }
+
+    .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        gap: 14px;
+    }
+
+    .panel-header-title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .panel-header-title h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+        display: flex;
+        align-items: center;
+        gap: 9px;
+    }
+
+    .panel-header-title p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--oblu-slate-500);
+        font-weight: 500;
+    }
+
+    /* Chart metric switcher */
+    .chart-metric-switch {
+        display: inline-flex;
+        background: rgba(241, 245, 249, 0.9);
+        padding: 3px;
+        border-radius: 10px;
+        gap: 2px;
+    }
+
+    .metric-btn {
+        border: none;
+        background: transparent;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--oblu-slate-500);
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+
+    .metric-btn.active {
+        background: #ffffff;
+        color: var(--oblu-slate-900);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-stats-strip {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 10px 16px;
+        background: rgba(248, 250, 252, 0.9);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-inner);
+        margin-bottom: 18px;
+        font-size: 0.8rem;
+    }
+
+    .chart-stat-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-stat-item .label {
+        color: var(--oblu-slate-400);
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .chart-stat-item .value {
+        color: var(--oblu-slate-900);
+        font-size: 0.92rem;
         font-weight: 700;
     }
 
-    .mini-title {
-        font-size: 0.72rem;
-        color: #94a3b8;
-        margin-bottom: 7px;
-    }
-
-    .mini-number {
-        font-size: 1.7rem;
-        font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 20px;
-    }
-
-    .mini-bars {
-        height: 125px;
-        display: flex;
-        align-items: end;
-        gap: 9px;
-        padding: 10px 4px 0;
-    }
-
-    .mini-bar {
-        flex: 1;
-        border-radius: 7px 7px 3px 3px;
-        background: linear-gradient(
-            to top,
-            rgba(120, 194, 173, 0.35),
-            rgba(120, 194, 173, 0.9)
-        );
-    }
-
-    .mini-bar:nth-child(1) { height: 43%; }
-    .mini-bar:nth-child(2) { height: 61%; }
-    .mini-bar:nth-child(3) { height: 48%; }
-    .mini-bar:nth-child(4) { height: 76%; }
-    .mini-bar:nth-child(5) { height: 65%; }
-    .mini-bar:nth-child(6) { height: 88%; }
-    .mini-bar:nth-child(7) { height: 73%; }
-
-    .mini-footer {
-        display: flex;
-        gap: 10px;
-        margin-top: 18px;
-    }
-
-    .mini-stat {
-        flex: 1;
-        padding: 12px;
-        border-radius: 12px;
-        background: #f8fafc;
-        border: 1px solid #f1f5f9;
-    }
-
-    .mini-stat-label {
-        display: block;
-        font-size: 0.58rem;
-        color: #94a3b8;
-        margin-bottom: 4px;
-    }
-
-    .mini-stat-value {
-        font-size: 0.82rem;
-        font-weight: 800;
-        color: #334155;
-    }
-
-    /* Floating cards */
-
-    .floating-card {
-        position: absolute;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(255,255,255,0.94);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(255,255,255,0.95);
-        padding: 11px 14px;
-        border-radius: 14px;
-        box-shadow: 0 15px 35px rgba(30,41,59,0.09);
-        z-index: 3;
-    }
-
-    .floating-card.one {
-        top: 50px;
-        right: -10px;
-        animation: floatOne 4s ease-in-out infinite;
-    }
-
-    .floating-card.two {
-        bottom: 45px;
-        left: -5px;
-        animation: floatTwo 4.5s ease-in-out infinite;
-    }
-
-    .floating-icon {
-        width: 31px;
-        height: 31px;
-        border-radius: 9px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(120,194,173,0.11);
-        color: #5eae99;
-    }
-
-    .floating-title {
-        font-size: 0.68rem;
-        font-weight: 800;
-        color: #334155;
-        margin: 0;
-    }
-
-    .floating-sub {
-        font-size: 0.58rem;
-        color: #94a3b8;
-        margin: 2px 0 0;
-    }
-
-    /* =========================================================
-       FEATURE SECTION
-       ========================================================= */
-
-    .section-heading {
-        text-align: center;
-        margin-bottom: 28px;
-    }
-
-    .section-heading h2 {
-        margin: 0 0 7px;
-        font-size: 1.55rem;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        color: #1e293b;
-    }
-
-    .section-heading p {
-        margin: 0;
-        color: #94a3b8;
-        font-size: 0.83rem;
-    }
-
-    .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 18px;
-    }
-
-    .feature-card {
+    .chart-canvas-wrapper {
         position: relative;
-        padding: 25px;
-        border-radius: 18px;
-        background: rgba(255,255,255,0.78);
-        border: 1px solid #edf1f5;
-        box-shadow: 0 8px 25px rgba(15,23,42,0.035);
-        transition: all 0.28s ease;
+        height: 250px;
+        width: 100%;
+    }
+
+    /* Catalog Health Matrix */
+    .health-segment-bar {
+        height: 12px;
+        border-radius: var(--radius-pill);
+        display: flex;
         overflow: hidden;
+        margin-bottom: 22px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
-    .feature-card::after {
-        content: "";
-        position: absolute;
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        background: rgba(120,194,173,0.06);
-        right: -45px;
-        bottom: -45px;
+    .health-segment {
+        transition: width 0.6s ease;
     }
 
-    .feature-card:hover {
-        transform: translateY(-5px);
-        border-color: rgba(120,194,173,0.28);
-        box-shadow: 0 18px 40px rgba(15,23,42,0.08);
+    .health-segment.healthy {
+        background: linear-gradient(90deg, #10b981, #34d399);
     }
 
-    .feature-icon {
-        width: 46px;
-        height: 46px;
+    .health-segment.low {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    }
+
+    .health-segment.out {
+        background: linear-gradient(90deg, #f43f5e, #fb7185);
+    }
+
+    .health-cards-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .health-status-row {
         display: flex;
         align-items: center;
-        justify-content: center;
-        border-radius: 13px;
-        margin-bottom: 18px;
-        font-size: 19px;
-        background: rgba(120,194,173,0.11);
-        color: #5eae99;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-radius: var(--radius-inner);
+        background: rgba(248, 250, 252, 0.85);
+        border: 1px solid var(--oblu-slate-200);
+        transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
-    .feature-card:nth-child(2) .feature-icon {
-        background: rgba(99,102,241,0.08);
-        color: #6366f1;
+    .health-status-row:hover {
+        transform: translateX(3px);
+        border-color: var(--oblu-teal);
+        background: #ffffff;
     }
 
-    .feature-card:nth-child(3) .feature-icon {
-        background: rgba(59,130,246,0.08);
-        color: #3b82f6;
+    .health-status-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
-    .feature-card h3 {
-        margin: 0 0 8px;
-        color: #1e293b;
-        font-size: 0.96rem;
+    .health-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .health-dot.healthy { background: #10b981; }
+    .health-dot.low { background: #f59e0b; }
+    .health-dot.out { background: #f43f5e; }
+
+    .health-label-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .health-label-title {
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: var(--oblu-slate-800);
+    }
+
+    .health-label-sub {
+        font-size: 0.72rem;
+        color: var(--oblu-slate-400);
+    }
+
+    .health-status-right {
+        text-align: right;
+    }
+
+    .health-count {
+        font-size: 1.05rem;
         font-weight: 800;
+        color: var(--oblu-slate-900);
     }
 
-    .feature-card p {
-        margin: 0;
-        color: #7c8a9d;
-        font-size: 0.76rem;
-        line-height: 1.7;
+    .health-pct {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--oblu-slate-500);
+    }
+
+    .health-cta-row {
+        margin-top: 18px;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .panel-action-link {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--oblu-teal-dark);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: gap 0.2s ease;
+    }
+
+    .panel-action-link:hover {
+        gap: 9px;
+        color: var(--oblu-teal-deep);
     }
 
     /* =========================================================
-       BOTTOM BRAND STRIP
+       4. DATA ROW 2: TOP 5 CATEGORIES & TOP 5 FAST PRODUCTS
        ========================================================= */
 
-    .welcome-footer {
+    .equal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+        .equal-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Category list items */
+    .cat-item-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .cat-item-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .cat-meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .cat-name-block {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .rank-disc {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 9px;
-        margin-top: 42px;
-        color: #a0acbb;
-        font-size: 0.68rem;
+        font-size: 0.72rem;
+        font-weight: 800;
+        background: #f1f5f9;
+        color: var(--oblu-slate-700);
     }
 
-    .footer-dot {
+    .rank-disc.gold { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+    .rank-disc.silver { background: rgba(148, 163, 184, 0.2); color: var(--oblu-slate-700); }
+    .rank-disc.bronze { background: rgba(217, 119, 6, 0.15); color: #92400e; }
+
+    .cat-name-text {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--oblu-slate-800);
+    }
+
+    .cat-metrics-block {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.82rem;
+    }
+
+    .cat-units {
+        color: var(--oblu-slate-400);
+        font-size: 0.74rem;
+        font-weight: 500;
+    }
+
+    .cat-revenue {
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+    }
+
+    .cat-share-pill {
+        padding: 2px 8px;
+        border-radius: var(--radius-pill);
+        font-size: 0.74rem;
+        font-weight: 700;
+    }
+
+    .progress-track-sleek {
+        height: 7px;
+        background: var(--oblu-slate-100);
+        border-radius: var(--radius-pill);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-fill-sleek {
+        height: 100%;
+        border-radius: var(--radius-pill);
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Product list items */
+    .prod-item-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .prod-item-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-radius: var(--radius-inner);
+        background: rgba(248, 250, 252, 0.7);
+        border: 1px solid var(--oblu-slate-200);
+        gap: 12px;
+        transition: all 0.2s ease;
+    }
+
+    .prod-item-card:hover {
+        background: #ffffff;
+        border-color: var(--oblu-teal);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+
+    .prod-main-block {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .prod-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(120, 194, 173, 0.2), rgba(56, 189, 248, 0.2));
+        color: var(--oblu-teal-deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.78rem;
+        flex-shrink: 0;
+    }
+
+    .prod-details {
+        min-width: 0;
+    }
+
+    .prod-name-text {
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: var(--oblu-slate-900);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    .prod-meta-text {
+        font-size: 0.74rem;
+        color: var(--oblu-slate-400);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 2px;
+    }
+
+    .prod-stock-badge {
+        padding: 2px 7px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.7rem;
+    }
+
+    .prod-stock-badge.critical {
+        background: rgba(244, 63, 94, 0.12);
+        color: #e11d48;
+    }
+
+    .prod-stock-badge.warning {
+        background: rgba(245, 158, 11, 0.14);
+        color: #b45309;
+    }
+
+    .prod-stock-badge.healthy {
+        background: rgba(16, 185, 129, 0.12);
+        color: #059669;
+    }
+
+    .prod-metrics-block {
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    .prod-revenue {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+    }
+
+    .prod-units {
+        font-size: 0.72rem;
+        color: var(--oblu-slate-400);
+    }
+
+    /* =========================================================
+       5. DATA ROW 3: TOP CUSTOMERS & ACTIVE PURCHASE ORDERS
+       ========================================================= */
+
+    /* Customer Cards */
+    .cust-item-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .cust-item-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: rgba(248, 250, 252, 0.75);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-inner);
+        gap: 12px;
+        transition: all 0.2s ease;
+    }
+
+    .cust-item-card:hover {
+        background: #ffffff;
+        border-color: rgba(56, 189, 248, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    }
+
+    .cust-left-block {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .cust-avatar-circle {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .cust-info-block {
+        min-width: 0;
+    }
+
+    .cust-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--oblu-slate-900);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cust-sub {
+        font-size: 0.74rem;
+        color: var(--oblu-slate-400);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .cust-right-block {
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    .cust-value {
+        font-size: 0.94rem;
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+    }
+
+    .cust-share {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--oblu-teal-dark);
+    }
+
+    /* Active PO Table with Clean Scrollbar */
+    .po-table-container {
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+
+    @supports not selector(::-webkit-scrollbar) {
+        .po-table-container {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+        }
+    }
+
+    .po-table-container::-webkit-scrollbar {
+        height: 5px;
+    }
+
+    .po-table-container::-webkit-scrollbar-button {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    .po-table-container::-webkit-scrollbar-track {
+        background: rgba(241, 245, 249, 0.6);
+        border-radius: 9999px;
+    }
+
+    .po-table-container::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.4);
+        border-radius: 9999px;
+        transition: background 0.2s ease;
+    }
+
+    .po-table-container::-webkit-scrollbar-thumb:hover {
+        background: var(--oblu-teal-dark, #469680);
+    }
+
+    .po-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+
+    .po-table th {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--oblu-slate-400);
+        padding: 6px 6px;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .po-table td {
+        padding: 8px 6px;
+        background: rgba(248, 250, 252, 0.85);
+        font-size: 0.78rem;
+        color: var(--oblu-slate-700);
+        border-top: 1px solid var(--oblu-slate-200);
+        border-bottom: 1px solid var(--oblu-slate-200);
+        white-space: nowrap;
+    }
+
+    .po-table tr th:first-child,
+    .po-table tr td:first-child {
+        padding-left: 10px;
+    }
+
+    .po-table tr th:last-child,
+    .po-table tr td:last-child {
+        padding-right: 10px;
+    }
+
+    .po-table tr td:first-child {
+        border-left: 1px solid var(--oblu-slate-200);
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+    }
+
+    .po-table tr td:last-child {
+        border-right: 1px solid var(--oblu-slate-200);
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+    }
+
+    .po-table tr:hover td {
+        background: #ffffff;
+        border-color: var(--oblu-teal);
+    }
+
+    .po-ref-text {
+        font-weight: 700;
+        color: var(--oblu-slate-900);
+    }
+
+    .po-supplier-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .supp-avatar {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: rgba(120, 194, 173, 0.2);
+        color: var(--oblu-teal-deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.64rem;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+
+    .stage-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 7px;
+        border-radius: var(--radius-pill);
+        font-size: 0.68rem;
+        font-weight: 600;
+        background: rgba(241, 245, 249, 0.95);
+        color: var(--oblu-slate-700);
+        max-width: 95px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .stage-pill span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .eta-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 7px;
+        border-radius: var(--radius-pill);
+        font-size: 0.68rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .eta-badge.on-track {
+        background: rgba(16, 185, 129, 0.12);
+        color: #059669;
+    }
+
+    .eta-badge.due-soon {
+        background: rgba(245, 158, 11, 0.14);
+        color: #b45309;
+    }
+
+    .eta-badge.delayed {
+        background: rgba(244, 63, 94, 0.14);
+        color: #e11d48;
+    }
+
+    /* =========================================================
+       6. SMART INVENTORY ALARMS BANNER
+       ========================================================= */
+
+    .alarm-banner-panel {
+        background: linear-gradient(135deg, rgba(254, 242, 242, 0.85) 0%, rgba(255, 251, 235, 0.85) 100%);
+        border: 1px solid rgba(244, 63, 94, 0.25);
+        border-radius: var(--radius-card);
+        padding: 24px 28px;
+        box-shadow: 0 10px 30px -10px rgba(244, 63, 94, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .alarm-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .alarm-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .alarm-icon-pulse {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: #fee2e2;
+        color: #dc2626;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+    }
+
+    .alarm-title-group h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #991b1b;
+    }
+
+    .alarm-title-group p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: #b91c1c;
+        font-weight: 500;
+    }
+
+    .alarm-cards-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+    }
+
+    .alarm-card-item {
+        background: #ffffff;
+        border: 1px solid rgba(244, 63, 94, 0.2);
+        border-radius: var(--radius-inner);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    .alarm-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .alarm-prod-title {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--oblu-slate-900);
+        margin: 0 0 4px;
+        line-height: 1.3;
+    }
+
+    .alarm-prod-cat {
+        font-size: 0.74rem;
+        color: var(--oblu-slate-400);
+    }
+
+    .alarm-urgency-chip {
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+
+    .alarm-urgency-chip.critical {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .alarm-urgency-chip.warning {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .alarm-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        background: #f8fafc;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+    }
+
+    .alarm-stat-cell .stat-lbl {
+        color: var(--oblu-slate-400);
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 600;
+    }
+
+    .alarm-stat-cell .stat-val {
+        color: var(--oblu-slate-800);
+        font-weight: 700;
+    }
+
+    .alarm-cta-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 10px;
+        background: #ffffff;
+        border: 1px solid var(--oblu-slate-200);
+        color: var(--oblu-slate-700);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .alarm-cta-btn:hover {
+        background: var(--oblu-teal-soft);
+        border-color: var(--oblu-teal);
+        color: var(--oblu-teal-deep);
+    }
+
+    /* =========================================================
+       7. OPERATIONS WORKSPACE DOCK
+       ========================================================= */
+
+    .ops-section {
+        margin-top: 10px;
+    }
+
+    .ops-heading {
+        margin-bottom: 18px;
+    }
+
+    .ops-heading h2 {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+        margin: 0 0 4px;
+    }
+
+    .ops-heading p {
+        font-size: 0.86rem;
+        color: var(--oblu-slate-500);
+        margin: 0;
+    }
+
+    .ops-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .ops-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-card);
+        padding: 24px;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: var(--glass-shadow);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ops-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--glass-shadow-hover);
+        border-color: rgba(120, 194, 173, 0.5);
+    }
+
+    .ops-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        background: rgba(120, 194, 173, 0.15);
+        color: var(--oblu-teal-dark);
+        transition: transform 0.2s ease;
+    }
+
+    .ops-card:hover .ops-icon {
+        transform: scale(1.08);
+        background: var(--oblu-teal);
+        color: #ffffff;
+    }
+
+    .ops-card h3 {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .ops-card h3 i {
+        font-size: 0.9rem;
+        color: var(--oblu-slate-400);
+        transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .ops-card:hover h3 i {
+        transform: translateX(4px);
+        color: var(--oblu-teal);
+    }
+
+    .ops-card p {
+        font-size: 0.82rem;
+        color: var(--oblu-slate-500);
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Footer */
+    .dash-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--oblu-slate-400);
+        padding-top: 20px;
+    }
+
+    .footer-bullet {
         width: 4px;
         height: 4px;
-        background: #78c2ad;
         border-radius: 50%;
+        background: var(--oblu-slate-300);
     }
 
     /* =========================================================
-       ANIMATIONS
+       RESPONSIVE (LAPTOPS, TABLETS & SMARTPHONES)
        ========================================================= */
 
-    @keyframes fadeUp {
-        from {
-            opacity: 0;
-            transform: translateY(18px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: scale(0.96);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    @keyframes floatOne {
-        0%, 100% {
-            transform: translateY(0);
-        }
-        50% {
-            transform: translateY(-8px);
-        }
-    }
-
-    @keyframes floatTwo {
-        0%, 100% {
-            transform: translateY(0);
-        }
-        50% {
-            transform: translateY(7px);
-        }
-    }
-
-    /* =========================================================
-       RESPONSIVE
-       ========================================================= */
-
-    @media (max-width: 1050px) {
-        .welcome-page {
-            padding: 40px 35px 55px;
-        }
-
-        .welcome-hero {
-            gap: 30px;
-        }
-
-        .hero-title {
-            font-size: 3.5rem;
-        }
-
-        .floating-card.one {
-            right: -20px;
-        }
-    }
-
-    @media (max-width: 850px) {
-        .welcome-hero {
+    @media (max-width: 1200px) {
+        .equal-grid {
             grid-template-columns: 1fr;
-            text-align: center;
-            min-height: auto;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .dashboard-container {
+            padding: 16px 12px 48px;
         }
 
-        .hero-content {
-            display: flex;
+        .content-wrapper {
+            gap: 20px;
+        }
+
+        .hero-strip {
             flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
+            gap: 16px;
         }
 
-        .hero-description {
-            margin-left: auto;
-            margin-right: auto;
+        .controls-cluster {
+            align-items: flex-start;
+            width: 100%;
         }
 
-        .hero-visual {
-            min-height: 330px;
+        .filter-pills-bar {
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 4px;
         }
 
-        .feature-grid {
+        .grid-2-col {
             grid-template-columns: 1fr;
         }
 
-        .floating-card.one {
-            right: 4%;
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
         }
 
-        .floating-card.two {
-            left: 4%;
+        .kpi-primary-val {
+            font-size: 1.65rem;
+        }
+
+        .ops-grid {
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
         }
     }
 
-    @media (max-width: 600px) {
-        .welcome-page {
-            padding: 30px 18px 45px;
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 12px 8px 40px;
         }
 
         .hero-title {
-            font-size: 2.8rem;
-            letter-spacing: -2px;
+            font-size: 1.8rem;
+            letter-spacing: -0.8px;
+            word-break: break-word;
         }
 
-        .hero-description {
-            font-size: 0.9rem;
+        .hero-desc {
+            font-size: 0.86rem;
         }
 
-        .hero-visual {
-            min-height: 290px;
+        .controls-cluster {
+            align-items: stretch;
+            width: 100%;
         }
 
-        .dashboard-card {
-            transform: none;
-            padding: 17px;
+        .filter-pills-bar {
+            width: 100%;
+            max-width: 100%;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            padding: 4px;
+            border-radius: 14px;
+            gap: 2px;
+            box-sizing: border-box;
         }
 
-        .floating-card {
-            transform: scale(0.88);
+        .filter-pill {
+            padding: 8px 4px;
+            border-radius: 10px;
+            font-size: 0.76rem;
+            text-align: center;
+            justify-content: center;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
         }
 
-        .floating-card.one {
-            right: -20px;
+        .date-anchor-banner {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 12px 14px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        .floating-card.two {
-            left: -20px;
+        .date-anchor-info {
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            min-width: 0;
+            word-break: break-word;
         }
 
-        .welcome-footer {
-            margin-top: 30px;
+        .date-anchor-info i {
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .date-anchor-info > div {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .anchor-toggle-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            text-align: center;
+            white-space: normal;
+            line-height: 1.35;
+            box-sizing: border-box;
+        }
+
+        .dash-panel {
+            padding: 18px 14px;
+            border-radius: 16px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .chart-metric-switch {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .chart-metric-switch .metric-btn {
+            text-align: center;
+            padding: 6px 8px;
+            font-size: 0.72rem;
+        }
+
+        .chart-stats-strip {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 12px;
+            padding: 10px 12px;
+            font-size: 0.75rem;
+        }
+
+        .chart-canvas-wrapper {
+            height: 220px;
+        }
+
+        .cat-meta-row {
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .cat-name-block {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .cat-name-text {
+            font-size: 0.82rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+        }
+
+        .cat-metrics-block {
+            gap: 8px;
+            font-size: 0.78rem;
+            flex-shrink: 0;
+        }
+
+        .prod-item-card {
+            padding: 10px 12px;
+            min-width: 0;
+        }
+
+        .prod-main-block {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .prod-name-text {
+            font-size: 0.82rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cust-item-card {
+            padding: 10px 12px;
+            min-width: 0;
+        }
+
+        .cust-left-block {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .cust-name {
+            font-size: 0.84rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .po-table-container {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            display: block;
+        }
+
+        .po-table {
+            min-width: 520px;
+        }
+
+        .alarm-banner-panel {
+            padding: 18px 14px;
+        }
+
+        .alarm-cards-container {
+            grid-template-columns: 1fr;
+        }
+
+        .alarm-card-item {
+            min-width: 0;
+        }
+
+        .alarm-cta-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .ops-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .ops-card {
+            min-width: 0;
         }
     }
+
+    @media (max-width: 640px) {
+        .dashboard-container {
+            padding: 6px 4px 36px;
+        }
+
+        .content-wrapper {
+            gap: 16px;
+        }
+
+        .hero-title {
+            font-size: 1.5rem;
+            letter-spacing: -0.6px;
+        }
+
+        .hero-desc {
+            font-size: 0.82rem;
+        }
+
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .kpi-card {
+            padding: 12px 10px;
+            border-radius: 14px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .kpi-top-row {
+            margin-bottom: 8px;
+        }
+
+        .kpi-title {
+            font-size: 0.67rem;
+            letter-spacing: 0.2px;
+        }
+
+        .kpi-icon-box {
+            width: 32px;
+            height: 32px;
+            font-size: 0.95rem;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .kpi-primary-val {
+            font-size: 1.15rem;
+            letter-spacing: -0.4px;
+            margin-bottom: 6px;
+            line-height: 1.2;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .kpi-subrow {
+            font-size: 0.67rem;
+            gap: 4px;
+            line-height: 1.35;
+        }
+
+        .trend-indicator {
+            font-size: 0.68rem;
+            padding: 2px 6px;
+        }
+
+        .chart-stats-strip {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .chart-canvas-wrapper {
+            height: 190px;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .filter-pill {
+            font-size: 0.7rem;
+            padding: 6px 1px;
+        }
+
+        .kpi-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .kpi-primary-val {
+            font-size: 1.3rem;
+        }
+    }
+
 </style>
 
-
-<div class="welcome-page">
-
-    <div class="welcome-container">
+<div class="dashboard-container">
+    <div class="content-wrapper">
 
         <!-- =====================================================
-             HERO
+             1. HERO & CONTROLS
              ===================================================== -->
-
-        <section class="welcome-hero">
-
-            <div class="hero-content">
-
-                <div class="hero-eyebrow">
-                    <span class="hero-eyebrow-dot"></span>
-                    Oblu Internal System
-                </div>
-
+        <div class="hero-strip">
+            <div class="hero-meta">
                 <h1 class="hero-title">
-                    Inventory,
-                    <span class="accent">made smarter.</span>
+                    Inventory, <span class="gradient-text">made smarter.</span>
                 </h1>
-
-                <p class="hero-description">
-                    A centralized workspace for monitoring stock, understanding
-                    product movement, planning purchase orders, and keeping
-                    your supply chain ahead of demand.
+                <p class="hero-desc">
+                    Real-time stock velocity, category performance, and purchase order tracking.
                 </p>
+            </div>
 
-                <div class="hero-actions">
+            <!-- Controls: Period Selector & Quick Actions -->
+            <div class="controls-cluster">
+                <div class="filter-pills-bar">
+                    <a href="?period=3d{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
+                       class="filter-pill {% if period == '3d' %}active{% endif %}">
+                        3 Days
+                    </a>
+                    <a href="?period=3w{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
+                       class="filter-pill {% if period == '3w' %}active{% endif %}">
+                        3 Weeks
+                    </a>
+                    <a href="?period=1m{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
+                       class="filter-pill {% if period == '1m' %}active{% endif %}">
+                        1 Month
+                    </a>
+                    <a href="?period=3m{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
+                       class="filter-pill {% if period == '3m' %}active{% endif %}">
+                        3 Months
+                    </a>
+                </div>
 
-<!--                    <a href="#inventory-tools" class="hero-primary-btn">-->
-<!--                        Explore Inventory-->
-<!--                        <i class="bi bi-arrow-right"></i>-->
-<!--                    </a>-->
+            </div>
+        </div>
 
-                    <span class="hero-secondary">
-                        <i class="bi bi-shield-check"></i>
-                        Authorized Oblu Access
+        <!-- Date Horizon / Data Anchor Notice Banner -->
+        <div class="date-anchor-banner">
+            <div class="date-anchor-info">
+                <i class="bi bi-calendar3 text-teal" style="font-size: 1rem;"></i>
+                <div>
+                    <strong>Active Range:</strong> {{ date_range_display }} ({{ period_label }})
+                    <span style="color: var(--oblu-slate-400); margin: 0 6px;">•</span>
+                    {% if is_snapshot_anchor %}
+                    <span>Anchored to <strong>Latest Ledger Entry ({{ max_daily_date|date:"d M Y" }})</strong> — ensures real sales & category telemetry.</span>
+                    {% else %}
+                    <span>Anchored to <strong>Current Live Date (Today: {{ today_date|date:"d M Y" }})</strong>.</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div>
+                {% if is_snapshot_anchor %}
+                <a href="?period={{ period }}&anchor=today" class="anchor-toggle-btn" title="Calculate strictly relative to today's calendar date">
+                    <i class="bi bi-arrow-repeat"></i> Switch to Live Calendar (Today: {{ today_date|date:"d M Y" }})
+                </a>
+                {% else %}
+                <a href="?period={{ period }}&anchor=snapshot" class="anchor-toggle-btn" title="Calculate relative to latest recorded database transaction">
+                    <i class="bi bi-database-check"></i> Switch to Latest Ledger ({{ max_daily_date|date:"d M Y" }})
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- =====================================================
+             2. EXECUTIVE KPI CARDS
+             ===================================================== -->
+        <div class="kpi-grid">
+
+            <!-- Total Sales -->
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-top-row">
+                        <h4 class="kpi-title">Outwards Sales Value</h4>
+                        <div class="kpi-icon-box teal">
+                            <i class="bi bi-currency-rupee"></i>
+                        </div>
+                    </div>
+                    <div class="kpi-primary-val">{{ kpis.total_sales_display }}</div>
+                </div>
+                <div class="kpi-subrow">
+                    <span class="trend-indicator {% if kpis.is_sales_growth_positive %}positive{% else %}negative{% endif %}">
+                        <i class="bi bi-arrow-{% if kpis.is_sales_growth_positive %}up{% else %}down{% endif %}"></i>
+                        {{ kpis.sales_growth_pct }}%
                     </span>
-
+                    <span>vs. previous period • Avg {{ avg_daily_sales_display }}/day</span>
                 </div>
-
             </div>
 
-
-            <!-- =================================================
-                 VISUAL DASHBOARD CARD
-                 ================================================= -->
-
-            <div class="hero-visual">
-
-                <div class="visual-glow"></div>
-
-                <div class="dashboard-card">
-
-                    <div class="dashboard-top">
-
-                        <div class="dashboard-brand">
-
-                            <div class="brand-icon">
-                                <i class="bi bi-box-seam"></i>
-                            </div>
-
-                            <div class="brand-text">
-                                INVENTORY OVERVIEW
-                            </div>
-
+            <!-- Orders Dispatched -->
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-top-row">
+                        <h4 class="kpi-title">Orders Dispatched</h4>
+                        <div class="kpi-icon-box blue">
+                            <i class="bi bi-receipt"></i>
                         </div>
-
-                        <span class="live-pill">
-                            ● LIVE
-                        </span>
-
                     </div>
-
-
-                    <div class="mini-title">
-                        Inventory intelligence
-                    </div>
-
-                    <div class="mini-number">
-                        Supply at a glance
-                    </div>
-
-
-                    <div class="mini-bars">
-                        <div class="mini-bar"></div>
-                        <div class="mini-bar"></div>
-                        <div class="mini-bar"></div>
-                        <div class="mini-bar"></div>
-                        <div class="mini-bar"></div>
-                        <div class="mini-bar"></div>
-                        <div class="mini-bar"></div>
-                    </div>
-
-
-                    <div class="mini-footer">
-
-                        <div class="mini-stat">
-                            <span class="mini-stat-label">
-                                STOCK
-                            </span>
-                            <span class="mini-stat-value">
-                                Monitored
-                            </span>
-                        </div>
-
-                        <div class="mini-stat">
-                            <span class="mini-stat-label">
-                                ORDERS
-                            </span>
-                            <span class="mini-stat-value">
-                                Planned
-                            </span>
-                        </div>
-
-                        <div class="mini-stat">
-                            <span class="mini-stat-label">
-                                SALES
-                            </span>
-                            <span class="mini-stat-value">
-                                Tracked
-                            </span>
-                        </div>
-
-                    </div>
-
+                    <div class="kpi-primary-val">{{ kpis.orders_dispatched }} Orders</div>
                 </div>
-
-
-                <!-- Floating Card 1 -->
-
-                <div class="floating-card one">
-
-                    <div class="floating-icon">
-                        <i class="bi bi-graph-up-arrow"></i>
-                    </div>
-
-                    <div>
-                        <p class="floating-title">
-                            Sales Intelligence
-                        </p>
-
-                        <p class="floating-sub">
-                            Track product movement
-                        </p>
-                    </div>
-
+                <div class="kpi-subrow">
+                    <span class="trend-indicator {% if kpis.is_orders_growth_positive %}positive{% else %}negative{% endif %}">
+                        <i class="bi bi-arrow-{% if kpis.is_orders_growth_positive %}up{% else %}down{% endif %}"></i>
+                        {{ kpis.orders_growth_pct }}%
+                    </span>
+                    <span>across {{ kpis.units_sold }} units in {{ period_label }}</span>
                 </div>
-
-
-                <!-- Floating Card 2 -->
-
-                <div class="floating-card two">
-
-                    <div class="floating-icon">
-                        <i class="bi bi-cart-check"></i>
-                    </div>
-
-                    <div>
-                        <p class="floating-title">
-                            Purchase Planning
-                        </p>
-
-                        <p class="floating-sub">
-                            Stay ahead of demand
-                        </p>
-                    </div>
-
-                </div>
-
             </div>
 
-        </section>
-
-
-        <!-- =====================================================
-             FEATURES
-             ===================================================== -->
-
-        <section id="inventory-tools">
-
-            <div class="section-heading">
-
-                <h2>
-                    Everything you need, in one place.
-                </h2>
-
-                <p>
-                    Make better inventory decisions with a connected view of your operations.
-                </p>
-
+            <!-- Pending Supplier Orders -->
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-top-row">
+                        <h4 class="kpi-title">Pending Supplier Orders</h4>
+                        <div class="kpi-icon-box amber">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                    </div>
+                    <div class="kpi-primary-val">{{ kpis.active_pos_count }} Orders</div>
+                </div>
+                <div class="kpi-subrow">
+                    <span class="trend-indicator neutral">
+                        <i class="bi bi-clock-history"></i> In Transit
+                    </span>
+                    <span>awaiting delivery to warehouse</span>
+                </div>
             </div>
 
-
-            <div class="feature-grid">
-
-                <!-- Inventory -->
-
-                <div class="feature-card">
-
-                    <div class="feature-icon">
-                        <i class="bi bi-boxes"></i>
+            <!-- Low Stock SKUs (Excluding Dead Stock) -->
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-top-row">
+                        <h4 class="kpi-title">Low Stock SKUs</h4>
+                        <div class="kpi-icon-box rose">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
                     </div>
-
-                    <h3>
-                        Inventory Control
-                    </h3>
-
-                    <p>
-                        Keep a clear view of available stock, product movement,
-                        stock health, and inventory levels across your operations.
-                    </p>
-
+                    <div class="kpi-primary-val">{{ kpis.low_stock_count }} SKUs</div>
                 </div>
-
-
-                <!-- Purchase Orders -->
-
-                <div class="feature-card">
-
-                    <div class="feature-icon">
-                        <i class="bi bi-cart3"></i>
-                    </div>
-
-                    <h3>
-                        Purchase Planning
-                    </h3>
-
-                    <p>
-                        Understand upcoming requirements and make informed
-                        purchasing decisions before stock becomes a problem.
-                    </p>
-
+                <div class="kpi-subrow">
+                    {% if kpis.low_stock_fast_movers > 0 %}
+                    <span class="trend-indicator negative">
+                        <i class="bi bi-bell-fill"></i> {{ kpis.low_stock_fast_movers }} Top Movers
+                    </span>
+                    <span>require urgent reordering</span>
+                    {% else %}
+                    <span class="trend-indicator positive">
+                        <i class="bi bi-check2-circle"></i> Healthy
+                    </span>
+                    <span>active demand in stock</span>
+                    {% endif %}
                 </div>
-
-
-                <!-- Sales -->
-
-                <div class="feature-card">
-
-                    <div class="feature-icon">
-                        <i class="bi bi-bar-chart-line"></i>
-                    </div>
-
-                    <h3>
-                        Sales Analytics
-                    </h3>
-
-                    <p>
-                        Turn product sales data into useful insights so you can
-                        understand demand and plan inventory with confidence.
-                    </p>
-
-                </div>
-
             </div>
-
-        </section>
-
-
-        <!-- =====================================================
-             FOOTER
-             ===================================================== -->
-
-        <div class="welcome-footer">
-
-            <span>OBLU INVENTORY</span>
-
-            <span class="footer-dot"></span>
-
-            <span>Internal Operations Platform</span>
-
-            <span class="footer-dot"></span>
-
-            <span>Secure Workspace</span>
 
         </div>
 
-    </div>
+        <!-- =====================================================
+             3. DATA ROW 1: SALES TREND & CATALOG HEALTH
+             ===================================================== -->
+        <div class="grid-2-col">
 
+            <!-- Sales Trend Chart -->
+            <div class="dash-panel">
+                <div class="panel-header">
+                    <div class="panel-header-title">
+                        <h3>
+                            <i class="bi bi-graph-up text-teal"></i> Sales Velocity & Trend
+                        </h3>
+                        <p>Daily outwards billing and volume trajectory during {{ period_label }}</p>
+                    </div>
+                    <div class="chart-metric-switch">
+                        <button type="button" class="metric-btn active" id="btnMetricValue" onclick="setChartMetric('value')">
+                            ₹ Revenue
+                        </button>
+                        <button type="button" class="metric-btn" id="btnMetricOrders" onclick="setChartMetric('orders')">
+                            Orders Dispatched
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chart-stats-strip">
+                    <div class="chart-stat-item">
+                        <span class="label">Total Revenue</span>
+                        <span class="value">{{ kpis.total_sales_display }}</span>
+                    </div>
+                    <div class="chart-stat-item">
+                        <span class="label">Peak Day</span>
+                        <span class="value">{{ peak_sales_day }} ({{ peak_sales_display }})</span>
+                    </div>
+                    <div class="chart-stat-item">
+                        <span class="label">Daily Run Rate</span>
+                        <span class="value">{{ avg_daily_sales_display }}</span>
+                    </div>
+                </div>
+
+                <div class="chart-canvas-wrapper">
+                    {% if trend_has_data %}
+                    <canvas id="salesVelocityChart"></canvas>
+                    {% else %}
+                    <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--oblu-slate-400); font-size: 0.88rem;">
+                        <i class="bi bi-bar-chart fs-2 mb-2"></i>
+                        No daily sales transactions recorded in this selected range.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Active Catalog Health -->
+            <div class="dash-panel">
+                <div class="panel-header">
+                    <div class="panel-header-title">
+                        <h3>
+                            <i class="bi bi-shield-check text-teal"></i> Active Catalog Health
+                        </h3>
+                        <p>Stock health across all {{ health.total }} active commercial SKUs</p>
+                    </div>
+                </div>
+
+                <!-- Tri-color segmented progress bar -->
+                <div class="health-segment-bar" title="Healthy: {{ health.healthy_pct }}% | Low: {{ health.low_stock_pct }}% | Out of Stock: {{ health.out_of_stock_pct }}%">
+                    <div class="health-segment healthy" style="width: {{ health.healthy_pct }}%;"></div>
+                    <div class="health-segment low" style="width: {{ health.low_stock_pct }}%;"></div>
+                    <div class="health-segment out" style="width: {{ health.out_of_stock_pct }}%;"></div>
+                </div>
+
+                <div class="health-cards-grid">
+                    <!-- Healthy -->
+                    <div class="health-status-row">
+                        <div class="health-status-left">
+                            <span class="health-dot healthy"></span>
+                            <div class="health-label-group">
+                                <span class="health-label-title">Optimal Stock</span>
+                                <span class="health-label-sub">Above required threshold</span>
+                            </div>
+                        </div>
+                        <div class="health-status-right">
+                            <div class="health-count text-success">{{ health.healthy }}</div>
+                            <div class="health-pct">{{ health.healthy_pct }}%</div>
+                        </div>
+                    </div>
+
+                    <!-- Low Stock -->
+                    <div class="health-status-row">
+                        <div class="health-status-left">
+                            <span class="health-dot low"></span>
+                            <div class="health-label-group">
+                                <span class="health-label-title">Low Stock</span>
+                                <span class="health-label-sub">Below demand threshold</span>
+                            </div>
+                        </div>
+                        <div class="health-status-right">
+                            <div class="health-count" style="color: #d97706;">{{ health.low_stock }}</div>
+                            <div class="health-pct">{{ health.low_stock_pct }}%</div>
+                        </div>
+                    </div>
+
+                    <!-- Out of Stock -->
+                    <div class="health-status-row">
+                        <div class="health-status-left">
+                            <span class="health-dot out"></span>
+                            <div class="health-label-group">
+                                <span class="health-label-title">Depleted / Stockout</span>
+                                <span class="health-label-sub">0 units available</span>
+                            </div>
+                        </div>
+                        <div class="health-status-right">
+                            <div class="health-count" style="color: #e11d48;">{{ health.out_of_stock }}</div>
+                            <div class="health-pct">{{ health.out_of_stock_pct }}%</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =====================================================
+             4. DATA ROW 2: TOP 5 CATEGORIES & TOP 5 FAST PRODUCTS
+             ===================================================== -->
+        <div class="equal-grid">
+
+            <!-- Top 5 Categories -->
+            <div class="dash-panel">
+                <div class="panel-header">
+                    <div class="panel-header-title">
+                        <h3>
+                            <i class="bi bi-pie-chart text-teal"></i> Top 5 Categories
+                        </h3>
+                        <p>Ranked by outward sales contribution ({{ period_label }})</p>
+                    </div>
+                    <a href="{% url 'categories' %}" class="panel-action-link">
+                        All Categories <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+
+                <div class="cat-item-list">
+                    {% for cat in top_categories %}
+                    <div class="cat-item-row">
+                        <div class="cat-meta-row">
+                            <div class="cat-name-block">
+                                <span class="rank-disc {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">
+                                    #{{ cat.rank }}
+                                </span>
+                                <span class="cat-name-text">{{ cat.name }}</span>
+                            </div>
+                            <div class="cat-metrics-block">
+                                <span class="cat-units">{{ cat.units_sold }} units</span>
+                                <span class="cat-revenue">{{ cat.sales_value_display }}</span>
+                                <span class="cat-share-pill" style="background: {{ cat.bg_color }}; color: {{ cat.text_color }};">
+                                    {{ cat.percent }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="progress-track-sleek">
+                            <div class="progress-fill-sleek" style="width: {{ cat.percent }}%; background: {{ cat.bar_color }};"></div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="padding: 24px; text-align: center; color: var(--oblu-slate-400); font-size: 0.88rem;">
+                        No category outward data recorded for this duration.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Top 5 Performing Products -->
+            <div class="dash-panel">
+                <div class="panel-header">
+                    <div class="panel-header-title">
+                        <h3>
+                            <i class="bi bi-stars text-teal"></i> Top Performing Products
+                        </h3>
+                        <p>Highest velocity movers & live stock status</p>
+                    </div>
+                    <a href="{% url 'product_contribution_summary' %}" class="panel-action-link">
+                        Contribution Matrix <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+
+                <div class="prod-item-list">
+                    {% for prod in top_products %}
+                    <div class="prod-item-card">
+                        <div class="prod-main-block">
+                            <div class="prod-avatar">
+                                {{ prod.initials }}
+                            </div>
+                            <div class="prod-details">
+                                <span class="prod-name-text" title="{{ prod.name }}">
+                                    {{ prod.name }}
+                                </span>
+                                <div class="prod-meta-text">
+                                    <span>{{ prod.category }}</span>
+                                    <span>•</span>
+                                    <span>Stock: <strong>{{ prod.current_stock }}</strong></span>
+                                    <span>•</span>
+                                    {% if prod.is_critical %}
+                                    <span class="prod-stock-badge critical">
+                                        <i class="bi bi-exclamation-octagon"></i> 0 Stock
+                                    </span>
+                                    {% elif prod.is_running_low %}
+                                    <span class="prod-stock-badge warning">
+                                        <i class="bi bi-exclamation-triangle"></i> Running Low
+                                    </span>
+                                    {% else %}
+                                    <span class="prod-stock-badge healthy">
+                                        <i class="bi bi-check2"></i> Optimal
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="prod-metrics-block">
+                            <div class="prod-revenue">{{ prod.sales_value_display }}</div>
+                            <div class="prod-units">{{ prod.units_sold }} units</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="padding: 24px; text-align: center; color: var(--oblu-slate-400); font-size: 0.88rem;">
+                        No product outward sales recorded for this duration.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- =====================================================
+             5. DATA ROW 3: TOP CUSTOMERS & ACTIVE PURCHASE ORDERS
+             ===================================================== -->
+        <div class="equal-grid">
+
+            <!-- Top 5 Customers -->
+            <div class="dash-panel">
+                <div class="panel-header">
+                    <div class="panel-header-title">
+                        <h3>
+                            <i class="bi bi-people text-teal"></i> Top Customers by Value
+                        </h3>
+                        <p>Largest purchasing partners from verified Tax Invoices</p>
+                    </div>
+                    <a href="{% url 'po_top_customers' %}" class="panel-action-link" target="_blank">
+                        Customer API <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+
+                <div class="cust-item-list">
+                    {% for cust in top_customers %}
+                    <div class="cust-item-card">
+                        <div class="cust-left-block">
+                            <div class="cust-avatar-circle" style="background: {{ cust.avatar_bg }}; color: {{ cust.avatar_color }};">
+                                {{ cust.initials }}
+                            </div>
+                            <div class="cust-info-block">
+                                <div class="cust-name" title="{{ cust.name }}">
+                                    {{ cust.name }}
+                                </div>
+                                <div class="cust-sub">
+                                    <i class="bi bi-receipt"></i> {{ cust.order_count }} Tax Invoice{% if cust.order_count != 1 %}s{% endif %}
+                                    <span>•</span>
+                                    <span>{{ cust.units_purchased }} units</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cust-right-block">
+                            <div class="cust-value">{{ cust.sales_value_display }}</div>
+                            <div class="cust-share">{{ cust.percent }}% of top 5</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="padding: 24px; text-align: center; color: var(--oblu-slate-400); font-size: 0.88rem;">
+                        No tax invoice entries recorded in this range.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Pending Supplier Orders -->
+            <div class="dash-panel">
+                <div class="panel-header">
+                    <div class="panel-header-title">
+                        <h3>
+                            <i class="bi bi-truck text-teal"></i> Pending Supplier Orders
+                        </h3>
+                        <p>Purchase orders placed with vendors awaiting warehouse delivery</p>
+                    </div>
+                    <a href="{% url 'purchase_order' %}" class="panel-action-link">
+                        All Orders <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+
+                <div class="po-table-container">
+                    <table class="po-table">
+                        <thead>
+                            <tr>
+                                <th>PO Ref</th>
+                                <th>Supplier</th>
+                                <th>Stage</th>
+                                <th>ETA</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for po in active_purchase_orders %}
+                            <tr>
+                                <td>
+                                    <span class="po-ref-text">#{{ po.voucher_number }}</span>
+                                    <div style="font-size: 0.72rem; color: var(--oblu-slate-400);">{{ po.order_date }}</div>
+                                </td>
+                                <td>
+                                    <div class="po-supplier-cell">
+                                        <div class="supp-avatar">{{ po.initials }}</div>
+                                        <span style="font-weight: 600; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="{{ po.party_name }}">
+                                            {{ po.party_name }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="stage-pill" title="{{ po.stage_name }}">
+                                        <i class="bi bi-arrow-right-circle text-teal" style="flex-shrink: 0;"></i>
+                                        <span>{{ po.stage_name }}</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span style="font-weight: 600; font-size: 0.8rem;">{{ po.eta_display }}</span>
+                                </td>
+                                <td>
+                                    <span class="eta-badge {{ po.status_class }}">
+                                        {{ po.status_label }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--oblu-slate-400); padding: 24px;">
+                                    No active purchase orders currently in transit.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- =====================================================
+             6. SMART INVENTORY ALARMS (TOP PRIORITY NOTIFICATIONS)
+             ===================================================== -->
+        {% if smart_alerts %}
+        <div class="alarm-banner-panel">
+            <div class="alarm-header-row">
+                <div class="alarm-header-left">
+                    <div class="alarm-icon-pulse">
+                        <i class="bi bi-bell-fill"></i>
+                    </div>
+                    <div class="alarm-title-group">
+                        <h3>Inventory Alarms — High Demand SKUs at Risk</h3>
+                        <p>{{ smart_alerts|length }} fast-selling product{% if smart_alerts|length != 1 %}s have{% else %} has{% endif %} breached safety stock thresholds.</p>
+                    </div>
+                </div>
+
+                <a href="{% url 'purchase_order' %}" class="anchor-toggle-btn" style="background: #dc2626; color: #ffffff; border: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+                    <i class="bi bi-cart-plus"></i> Initiate Purchase Orders
+                </a>
+            </div>
+
+            <div class="alarm-cards-container">
+                {% for alert in smart_alerts %}
+                <div class="alarm-card-item">
+                    <div>
+                        <div class="alarm-card-top">
+                            <div>
+                                <h4 class="alarm-prod-title">{{ alert.product_name }}</h4>
+                                <span class="alarm-prod-cat">{{ alert.category }}</span>
+                            </div>
+                            <span class="alarm-urgency-chip {{ alert.severity }}">
+                                {{ alert.severity_label }}
+                            </span>
+                        </div>
+
+                        <div class="alarm-stats-grid mt-3">
+                            <div class="alarm-stat-cell">
+                                <span class="stat-lbl">Available Stock</span>
+                                <span class="stat-val {% if alert.severity == 'critical' %}text-danger{% else %}text-warning{% endif %}">
+                                    {{ alert.current_stock }} units
+                                </span>
+                            </div>
+                            <div class="alarm-stat-cell">
+                                <span class="stat-lbl">Safety Min Threshold</span>
+                                <span class="stat-val">{{ alert.min_threshold }} units</span>
+                            </div>
+                            <div class="alarm-stat-cell">
+                                <span class="stat-lbl">Recent Sales Sold</span>
+                                <span class="stat-val">{{ alert.units_sold }} units</span>
+                            </div>
+                            <div class="alarm-stat-cell">
+                                <span class="stat-lbl">Sales Revenue</span>
+                                <span class="stat-val text-success">{{ alert.sales_value_display }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: gap: 8px; justify-content: flex-end; display: flex;">
+                        <a href="{% url 'showdata' alert.product_id %}" class="alarm-cta-btn">
+                            <i class="bi bi-graph-up"></i> Forecast
+                        </a>
+                        <a href="{% url 'purchase_order' %}" class="alarm-cta-btn" style="background: var(--oblu-slate-900); color: #ffffff; border-color: var(--oblu-slate-900);">
+                            <i class="bi bi-cart-plus"></i> Restock
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- =====================================================
+             7. CONNECTED OPERATIONS WORKSPACE
+             ===================================================== -->
+        <section class="ops-section">
+            <div class="ops-heading">
+                <h2>Connected Operations Workspace</h2>
+                <p>Quick access to inventory control, supplier purchase orders, and sales reports.</p>
+            </div>
+
+            <div class="ops-grid">
+                <!-- Inventory Control -->
+                <a href="{% url 'products' %}" class="ops-card">
+                    <div class="ops-icon">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                    <h3>
+                        Inventory Control
+                        <i class="bi bi-arrow-right"></i>
+                    </h3>
+                    <p>Live inventory ledger, item categorization, real-time stock balances, and batch tracking.</p>
+                </a>
+
+                <!-- Purchase Planning -->
+                <a href="{% url 'purchase_order' %}" class="ops-card">
+                    <div class="ops-icon">
+                        <i class="bi bi-cart3"></i>
+                    </div>
+                    <h3>
+                        Purchase Orders
+                        <i class="bi bi-arrow-right"></i>
+                    </h3>
+                    <p>Supplier purchase orders, shipment tracking, and expected delivery timelines.</p>
+                </a>
+
+                <!-- Sales Analytics -->
+                <a href="{% url 'product_contribution_summary' %}" class="ops-card">
+                    <div class="ops-icon">
+                        <i class="bi bi-bar-chart-line"></i>
+                    </div>
+                    <h3>
+                        Sales Analytics
+                        <i class="bi bi-arrow-right"></i>
+                    </h3>
+                    <p>Product contribution matrices, multi-period comparative growth, and customer demand velocity.</p>
+                </a>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <div class="dash-footer">
+            <span>OBLU INVENTORY</span>
+            <span class="footer-bullet"></span>
+            <span>Operations & Sales Dashboard</span>
+            <span class="footer-bullet"></span>
+            <span>Ledger Reference: {{ max_daily_date|date:"d M Y" }}</span>
+        </div>
+
+    </div>
 </div>
 
-{% endblock content %}
+<!-- =========================================================
+     CHART.JS INTERACTIVE INITIALIZATION & METRIC SWITCHER
+     ========================================================= -->
+{% if trend_has_data %}
+<script>
+(function() {
+    window.currentVelocityMetric = 'value';
+    const labelsData = {{ trend_labels_json|safe }};
+    const valuesData = {{ trend_values_json|safe }};
+    const quantitiesData = {{ trend_quantities_json|safe }};
+    const ordersData = {{ trend_orders_json|safe }};
+
+    function formatIndianNumber(num) {
+        if (num >= 10000000) return '₹' + (num / 10000000).toFixed(2) + ' Cr';
+        if (num >= 100000) return '₹' + (num / 100000).toFixed(2) + ' L';
+        if (num >= 1000) return '₹' + (num / 1000).toFixed(1) + ' k';
+        return '₹' + num.toLocaleString();
+    }
+
+    function initDashboardCharts() {
+        const ctx = document.getElementById('salesVelocityChart');
+        if (!ctx) return;
+
+        if (typeof Chart === 'undefined') {
+            console.warn("Chart.js not yet loaded, retrying...");
+            setTimeout(initDashboardCharts, 80);
+            return;
+        }
+
+        if (window.velocityChart && typeof window.velocityChart.destroy === 'function') {
+            window.velocityChart.destroy();
+            window.velocityChart = null;
+        }
+
+        const chartContext = ctx.getContext('2d');
+        const gradient = chartContext.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, 'rgba(120, 194, 173, 0.38)');
+        gradient.addColorStop(0.7, 'rgba(120, 194, 173, 0.08)');
+        gradient.addColorStop(1, 'rgba(120, 194, 173, 0.00)');
+
+        window.velocityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labelsData,
+                datasets: [{
+                    label: 'Sales Revenue (₹)',
+                    data: valuesData,
+                    borderColor: '#469680',
+                    borderWidth: 2.5,
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.38,
+                    pointRadius: labelsData.length > 25 ? 0 : 3.5,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#469680',
+                    pointBorderWidth: 2.5,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                        titleColor: '#ffffff',
+                        titleFont: { size: 11, weight: '600' },
+                        bodyColor: '#e2e8f0',
+                        bodyFont: { size: 13, weight: '700' },
+                        padding: 12,
+                        cornerRadius: 10,
+                        borderColor: 'rgba(226, 232, 240, 0.2)',
+                        borderWidth: 1,
+                        displayColors: false,
+                        callbacks: {
+                            label: function (c) {
+                                const val = c.parsed.y;
+                                return window.currentVelocityMetric === 'value' ? '₹' + val.toLocaleString() : val.toLocaleString() + ' orders';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { size: 11 },
+                            maxRotation: 0,
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(226, 232, 240, 0.6)',
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { size: 11 },
+                            callback: function (val) {
+                                return window.currentVelocityMetric === 'value' ? formatIndianNumber(val) : val.toLocaleString() + ' orders';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    window.setChartMetric = function(metric) {
+        if (!window.velocityChart) return;
+        window.currentVelocityMetric = metric;
+
+        const btnVal = document.getElementById('btnMetricValue');
+        const btnOrders = document.getElementById('btnMetricOrders');
+
+        if (metric === 'value') {
+            if (btnVal) btnVal.classList.add('active');
+            if (btnOrders) btnOrders.classList.remove('active');
+
+            window.velocityChart.data.datasets[0].label = 'Sales Revenue (₹)';
+            window.velocityChart.data.datasets[0].data = valuesData;
+            window.velocityChart.data.datasets[0].borderColor = '#469680';
+            window.velocityChart.options.scales.y.ticks.callback = function (val) {
+                return formatIndianNumber(val);
+            };
+        } else {
+            if (btnOrders) btnOrders.classList.add('active');
+            if (btnVal) btnVal.classList.remove('active');
+
+            window.velocityChart.data.datasets[0].label = 'Orders Dispatched';
+            window.velocityChart.data.datasets[0].data = ordersData;
+            window.velocityChart.data.datasets[0].borderColor = '#0284c7';
+            window.velocityChart.options.scales.y.ticks.callback = function (val) {
+                return val.toLocaleString() + ' orders';
+            };
+        }
+        window.velocityChart.update();
+    };
+
+    initDashboardCharts();
+    document.addEventListener("turbo:load", initDashboardCharts);
+})();
+</script>
+{% endif %}
+
+{% endblock %}
