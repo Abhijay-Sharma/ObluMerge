@@ -5,7 +5,7 @@ from .views import Index, SignUpView, LogoutView, Dashboard, Dashboard2, AddItem
     ShowProductStockHistory, stock_chart_view_3, predict_min_stock_from_daily, CategoryDashboard, CategoryListView, \
     search_items, InventoryReportView, MonthlyStockChartView, PredictMinStockView, LowStockReportView, \
     DailyStockChartView, DeadStockDashboardView, SalesComparisonDashboardView, get_inventory_by_category, \
-    PurchaseOrderView, TopCustomersAPIView, PurchaseOrderViewPrev,ProductListView  # this Index is name of the class we created in views
+    PurchaseOrderView, TopCustomersAPIView, PurchaseOrderViewPrev,ProductListView,YearOnYearSalesComparisonView  # this Index is name of the class we created in views
 from django.contrib.auth import views as auth_views
 from . import views
 
