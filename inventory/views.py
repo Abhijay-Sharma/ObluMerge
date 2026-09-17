@@ -43,6 +43,19 @@ from .utils import (
 
 from django.db.models import Q, Sum, Max, F, Count
 from django.core.paginator import Paginator
+import calendar
+import json
+from collections import defaultdict
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
+
+from django.shortcuts import render
+from django.views import View
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+from .models import InventoryItem
+from tally_voucher.models import VoucherStockItem
 logger = logging.getLogger(__name__)
 
 
@@ -10524,3 +10537,1221 @@ class ProductListView(AccountantRequiredMixin, View):
         })
 
 
+class YearOnYearSalesComparisonView(AccountantRequiredMixin, View):
+    """
+    Year-on-Year Sales Comparison
+
+    Completely separate from SalesComparisonDashboardView.
+
+    Data source:
+        VoucherStockItem
+
+    Sales:
+        TAX INVOICE
+        quantity
+        voucher__date
+
+    Comparison:
+        2025 vs 2026
+
+    Groups:
+        Erkodent
+        Bay Materials
+        Coherz
+
+    Supports:
+        - Single month comparison
+        - Date range comparison
+        - Individual product
+        - Product group
+    """
+
+    template_name = "inventory/year_on_year_sales_comparison.html"
+
+    START_DATE = date(2025, 4, 1)
+
+    GROUP_ORDER = [
+        "Erkodent",
+        "Bay Materials",
+        "Coherz",
+    ]
+
+    GROUP_RULES = {
+        "Erkodent": {
+            "categories": [
+                "Erkodent",
+            ],
+            "prefixes": [
+                "erkodent",
+                "erkodur",
+                "erkoflex",
+                "erkoloc",
+                "erkolen",
+                "erkolign",
+                "playsafe",
+            ],
+        },
+
+        "Bay Materials": {
+            "categories": [
+                "Bay Materials",
+                "Bay Material",
+            ],
+            "prefixes": [
+                "zendura",
+            ],
+        },
+
+        "Coherz": {
+            "categories": [
+                "Coherz",
+            ],
+            "prefixes": [
+                "molekur",
+            ],
+        },
+    }
+
+    # ============================================================
+    # GET
+    # ============================================================
+
+    def get(self, request):
+
+        today = date.today()
+
+        # --------------------------------------------------------
+        # ALL INVENTORY PRODUCTS
+        # --------------------------------------------------------
+
+        all_products = (
+            InventoryItem.objects
+            .select_related("category")
+            .order_by("name")
+        )
+
+        # --------------------------------------------------------
+        # BUILD ONLY THE REQUIRED THERMOFORMING GROUPS
+        # --------------------------------------------------------
+
+        product_groups = self._build_product_groups(all_products)
+
+        # --------------------------------------------------------
+        # CREATE A CLEAN LIST OF THERMOFORMING PRODUCTS
+        # --------------------------------------------------------
+
+        thermoforming_products = []
+
+        seen_ids = set()
+
+        for group_name in self.GROUP_ORDER:
+
+            for product in product_groups.get(group_name, []):
+
+                if product.id not in seen_ids:
+
+                    thermoforming_products.append(product)
+
+                    seen_ids.add(product.id)
+
+        # --------------------------------------------------------
+        # USER SELECTION
+        # --------------------------------------------------------
+
+        comparison_type = request.GET.get(
+            "comparison_type",
+            "month",
+        )
+
+        selected_month = request.GET.get(
+            "month",
+            today.strftime("%Y-%m"),
+        )
+
+        selected_from = request.GET.get(
+            "from_date",
+            "",
+        )
+
+        selected_to = request.GET.get(
+            "to_date",
+            "",
+        )
+
+        selected_product = request.GET.get(
+            "product",
+            "",
+        )
+
+        selected_group = request.GET.get(
+            "group",
+            "",
+        )
+
+        # --------------------------------------------------------
+        # DEFAULT MONTH
+        # --------------------------------------------------------
+
+        # If current month is before April, there is no matching
+        # 2025 period available from the START_DATE.
+        #
+        # Current date in normal use is Sep 2026, so this will
+        # normally be today's month.
+
+        if not selected_month:
+
+            selected_month = today.strftime("%Y-%m")
+
+        # --------------------------------------------------------
+        # GRAPH
+        # --------------------------------------------------------
+
+        comparison_data = []
+
+        selected_label = ""
+
+        selected_items = []
+
+        error = None
+
+        try:
+
+            # ====================================================
+            # SINGLE MONTH
+            # ====================================================
+
+            if comparison_type == "month":
+
+                # ------------------------------------------------
+                # PARSE MONTH
+                # ------------------------------------------------
+
+                try:
+
+                    selected_year, selected_month_number = (
+                        selected_month.split("-")
+                    )
+
+                    selected_year = int(selected_year)
+
+                    month = int(selected_month_number)
+
+                except (
+                    ValueError,
+                    AttributeError,
+                ):
+
+                    raise ValueError(
+                        "Please select a valid month."
+                    )
+
+                # ------------------------------------------------
+                # VALID MONTH NUMBER
+                # ------------------------------------------------
+
+                if month < 1 or month > 12:
+
+                    raise ValueError(
+                        "Please select a valid month."
+                    )
+
+                selected_month_date = date(
+                    selected_year,
+                    month,
+                    1,
+                )
+
+                minimum_month = date(
+                    2025,
+                    4,
+                    1,
+                )
+
+                maximum_month = date(
+                    today.year,
+                    today.month,
+                    1,
+                )
+
+                # ------------------------------------------------
+                # MONTH RANGE
+                # ------------------------------------------------
+
+                if selected_month_date < minimum_month:
+
+                    raise ValueError(
+                        "Sales comparison starts from April 2025."
+                    )
+
+                if selected_month_date > maximum_month:
+
+                    raise ValueError(
+                        "You cannot select a future month."
+                    )
+
+                # ------------------------------------------------
+                # IMPORTANT:
+                #
+                # We only have 2025 sales from April onward.
+                #
+                # Therefore Jan-Mar 2026 cannot have a true
+                # year-on-year comparison.
+                # ------------------------------------------------
+
+                if selected_year == 2026 and month < 4:
+
+                    raise ValueError(
+                        "Year-on-year comparison for 2026 starts "
+                        "from April because 2025 sales data starts "
+                        "from April."
+                    )
+
+                # ------------------------------------------------
+                # 2025
+                # ------------------------------------------------
+
+                start_2025 = date(
+                    2025,
+                    month,
+                    1,
+                )
+
+                last_day_2025 = calendar.monthrange(
+                    2025,
+                    month,
+                )[1]
+
+                end_2025 = date(
+                    2025,
+                    month,
+                    last_day_2025,
+                )
+
+                # ------------------------------------------------
+                # 2026
+                # ------------------------------------------------
+
+                start_2026 = date(
+                    2026,
+                    month,
+                    1,
+                )
+
+                last_day_2026 = calendar.monthrange(
+                    2026,
+                    month,
+                )[1]
+
+                end_2026 = date(
+                    2026,
+                    month,
+                    last_day_2026,
+                )
+
+                # ------------------------------------------------
+                # CURRENT MONTH = LIKE FOR LIKE
+                # ------------------------------------------------
+
+                if (
+                    today.year == 2026
+                    and month == today.month
+                ):
+
+                    elapsed_day = today.day
+
+                    end_2025 = date(
+                        2025,
+                        month,
+                        min(
+                            elapsed_day,
+                            calendar.monthrange(
+                                2025,
+                                month,
+                            )[1],
+                        ),
+                    )
+
+                    end_2026 = today
+
+                # ------------------------------------------------
+                # SELECT PRODUCTS
+                # ------------------------------------------------
+
+                selected_items = self._get_selected_items(
+                    selected_product,
+                    selected_group,
+                    thermoforming_products,
+                    product_groups,
+                )
+
+                # ------------------------------------------------
+                # LABEL
+                # ------------------------------------------------
+
+                selected_label = (
+                    f"{calendar.month_name[month]} "
+                    f"2025 vs "
+                    f"{calendar.month_name[month]} "
+                    f"2026"
+                )
+
+                # ------------------------------------------------
+                # CALCULATE
+                # ------------------------------------------------
+
+                comparison_data = (
+                    self._calculate_month_comparison(
+                        start_2025,
+                        end_2025,
+                        start_2026,
+                        end_2026,
+                        selected_items,
+                    )
+                )
+
+            # ====================================================
+            # DATE RANGE
+            # ====================================================
+
+            elif comparison_type == "range":
+
+                if not selected_from or not selected_to:
+
+                    raise ValueError(
+                        "Please select both From and To dates."
+                    )
+
+                # ------------------------------------------------
+                # PARSE
+                # ------------------------------------------------
+
+                try:
+
+                    range_from = date.fromisoformat(
+                        selected_from
+                    )
+
+                    range_to = date.fromisoformat(
+                        selected_to
+                    )
+
+                except ValueError:
+
+                    raise ValueError(
+                        "Please enter valid dates."
+                    )
+
+                # ------------------------------------------------
+                # VALIDATION
+                # ------------------------------------------------
+
+                if range_from > range_to:
+
+                    raise ValueError(
+                        "From date cannot be after To date."
+                    )
+
+                if range_from < self.START_DATE:
+
+                    raise ValueError(
+                        "Sales comparison starts from April 2025."
+                    )
+
+                if range_from.year != 2025:
+
+                    raise ValueError(
+                        "The From date must be in 2025."
+                    )
+
+                if range_to.year != 2025:
+
+                    raise ValueError(
+                        "The To date must be in 2025."
+                    )
+
+                # ------------------------------------------------
+                # 2025 PERIOD
+                # ------------------------------------------------
+
+                start_2025 = range_from
+
+                end_2025 = range_to
+
+                # ------------------------------------------------
+                # SAME PERIOD IN 2026
+                # ------------------------------------------------
+
+                start_2026 = self._add_one_year(
+                    range_from
+                )
+
+                end_2026 = self._add_one_year(
+                    range_to
+                )
+
+                # ------------------------------------------------
+                # FUTURE CHECK
+                # ------------------------------------------------
+
+                if start_2026 > today:
+
+                    raise ValueError(
+                        "The selected 2025 range maps to "
+                        "a future 2026 period."
+                    )
+
+                # If the range extends into the current
+                # incomplete month, cap it at today.
+
+                if end_2026 > today:
+
+                    end_2026 = today
+
+                # ------------------------------------------------
+                # SELECT PRODUCTS
+                # ------------------------------------------------
+
+                selected_items = self._get_selected_items(
+                    selected_product,
+                    selected_group,
+                    thermoforming_products,
+                    product_groups,
+                )
+
+                # ------------------------------------------------
+                # LABEL
+                # ------------------------------------------------
+
+                selected_label = (
+                    f"{start_2025.strftime('%d %b %Y')}"
+                    f" → "
+                    f"{end_2025.strftime('%d %b %Y')}"
+                )
+
+                # ------------------------------------------------
+                # CALCULATE
+                # ------------------------------------------------
+
+                comparison_data = (
+                    self._calculate_range_comparison(
+                        start_2025,
+                        end_2025,
+                        start_2026,
+                        end_2026,
+                        selected_items,
+                    )
+                )
+
+            else:
+
+                raise ValueError(
+                    "Invalid comparison type."
+                )
+
+        except ValueError as exc:
+
+            error = str(exc)
+
+        # ========================================================
+        # SUMMARY
+        # ========================================================
+
+        total_2025 = sum(
+            float(row.get("year_2025", 0) or 0)
+            for row in comparison_data
+        )
+
+        total_2026 = sum(
+            float(row.get("year_2026", 0) or 0)
+            for row in comparison_data
+        )
+
+        difference = (
+            total_2026
+            - total_2025
+        )
+
+        # --------------------------------------------------------
+        # GROWTH
+        # --------------------------------------------------------
+
+        if total_2025 != 0:
+
+            growth_percent = (
+                difference
+                / total_2025
+            ) * 100
+
+        else:
+
+            growth_percent = None
+
+        # ========================================================
+        # CONTEXT
+        # ========================================================
+
+        context = {
+
+            "products": thermoforming_products,
+
+            "product_groups": product_groups,
+
+            "comparison_type": comparison_type,
+
+            "selected_month": selected_month,
+
+            "selected_from": selected_from,
+
+            "selected_to": selected_to,
+
+            "selected_product": selected_product,
+
+            "selected_group": selected_group,
+
+            "selected_label": selected_label,
+
+            "comparison_data": comparison_data,
+
+            "comparison_data_json": comparison_data,
+
+            "total_2025": round(
+                total_2025,
+                2,
+            ),
+
+            "total_2026": round(
+                total_2026,
+                2,
+            ),
+
+            "difference": round(
+                difference,
+                2,
+            ),
+
+            "growth_percent": (
+                round(
+                    growth_percent,
+                    2,
+                )
+                if growth_percent is not None
+                else None
+            ),
+
+            "error": error,
+
+            "today": today,
+
+            "start_date": self.START_DATE,
+        }
+
+        return render(
+            request,
+            self.template_name,
+            context,
+        )
+
+    # ============================================================
+    # BUILD PRODUCT GROUPS
+    # ============================================================
+
+    def _build_product_groups(self, products):
+
+        groups = {}
+
+        for group_name in self.GROUP_ORDER:
+
+            rules = self.GROUP_RULES.get(
+                group_name,
+                {},
+            )
+
+            categories = {
+                value.strip().lower()
+                for value in rules.get(
+                    "categories",
+                    [],
+                )
+                if value
+            }
+
+            prefixes = {
+                value.strip().lower()
+                for value in rules.get(
+                    "prefixes",
+                    [],
+                )
+                if value
+            }
+
+            matching_products = []
+
+            seen_ids = set()
+
+            for product in products:
+
+                # ------------------------------------------------
+                # CATEGORY MATCH
+                # ------------------------------------------------
+
+                category_match = False
+
+                if product.category:
+
+                    category_name = (
+                        product.category.name or ""
+                    ).strip().lower()
+
+                    if category_name in categories:
+
+                        category_match = True
+
+                # ------------------------------------------------
+                # PRODUCT NAME MATCH
+                # ------------------------------------------------
+
+                product_name = (
+                    product.name or ""
+                ).strip().lower()
+
+                product_match = False
+
+                for prefix in prefixes:
+
+                    if product_name.startswith(prefix):
+
+                        product_match = True
+
+                        break
+
+                # ------------------------------------------------
+                # ADD
+                # ------------------------------------------------
+
+                if category_match or product_match:
+
+                    if product.id not in seen_ids:
+
+                        matching_products.append(
+                            product
+                        )
+
+                        seen_ids.add(
+                            product.id
+                        )
+
+            groups[group_name] = matching_products
+
+        return groups
+
+    # ============================================================
+    # SELECT PRODUCTS
+    # ============================================================
+
+    @staticmethod
+    def _get_selected_items(
+            selected_product,
+            selected_group,
+            products,
+            product_groups
+    ):
+        # ============================================================
+        # INDIVIDUAL PRODUCT HAS HIGHEST PRIORITY
+        # ============================================================
+
+        if selected_product:
+            try:
+                product_id = int(selected_product)
+
+                # `products` is a Python list in this view
+                for product in products:
+                    if product.id == product_id:
+                        return [product]
+
+            except (ValueError, TypeError):
+                pass
+
+        # ============================================================
+        # IF NO PRODUCT IS SELECTED, USE THE SELECTED GROUP
+        # ============================================================
+
+        if selected_group:
+            return list(
+                product_groups.get(selected_group, [])
+            )
+
+        # ============================================================
+        # OTHERWISE USE ALL THERMOFORMING PRODUCTS
+        # ============================================================
+
+        return list(products)
+
+    # ============================================================
+    # MONTH COMPARISON
+    # ============================================================
+
+    @staticmethod
+    def _calculate_month_comparison(
+            start_2025,
+            end_2025,
+            start_2026,
+            end_2026,
+            selected_items,
+    ):
+        """
+        Calculate sales using the actual Tally stock-item name.
+
+        IMPORTANT:
+        Do not blindly trust item_id because the same/similar Tally
+        stock item can exist with different InventoryItem mappings.
+
+        We match:
+            1. InventoryItem.id
+            2. item_name_text
+
+        and only use TAX INVOICE rows.
+        """
+
+        if not selected_items:
+            return []
+
+        # ---------------------------------------------------------
+        # SELECTED INVENTORY ITEM NAMES
+        # ---------------------------------------------------------
+
+        item_ids = [
+            item.id
+            for item in selected_items
+        ]
+
+        item_names = {
+            (item.name or "").strip().lower()
+            for item in selected_items
+            if item.name
+        }
+
+        # ---------------------------------------------------------
+        # TALLY ROWS
+        # ---------------------------------------------------------
+
+        rows = (
+            VoucherStockItem.objects
+            .filter(
+                voucher__voucher_type__iexact="TAX INVOICE",
+                voucher__date__gte=start_2025,
+                voucher__date__lte=end_2026,
+            )
+            .filter(
+                Q(item_id__in=item_ids)
+                |
+                Q(item_name_text__isnull=False)
+            )
+            .select_related("voucher", "item")
+        )
+
+        total_2025 = 0.0
+        total_2026 = 0.0
+
+        # ---------------------------------------------------------
+        # CALCULATE
+        # ---------------------------------------------------------
+
+        print("\n================ YOY DEBUG ================")
+        print("SELECTED ITEMS:")
+        for item in selected_items:
+            print(
+                "ID:",
+                item.id,
+                "| NAME:",
+                item.name
+            )
+
+        print("\nTALLY ROWS:")
+
+        for row in rows:
+
+
+
+            # ---------------------------------------------
+            # Determine actual Tally product name
+            # ---------------------------------------------
+
+            tally_name = ""
+
+            if row.item_name_text:
+                tally_name = row.item_name_text.strip().lower()
+
+            elif row.item:
+                tally_name = (
+                        row.item.name or ""
+                ).strip().lower()
+
+            # ---------------------------------------------
+            # Match selected product
+            # ---------------------------------------------
+
+            matched = False
+
+            # Exact InventoryItem match
+            if row.item_id in item_ids:
+                matched = True
+
+            # Exact Tally name match
+            elif tally_name in item_names:
+                matched = True
+
+            if not matched:
+                continue
+
+            # ---------------------------------------------
+            # Quantity
+            # ---------------------------------------------
+
+            quantity = float(
+                row.quantity or 0
+            )
+
+            sale_date = row.voucher.date
+
+            # ---------------------------------------------
+            # 2025
+            # ---------------------------------------------
+
+            if (
+                    start_2025
+                    <= sale_date
+                    <= end_2025
+            ):
+
+                total_2025 += quantity
+
+            # ---------------------------------------------
+            # 2026
+            # ---------------------------------------------
+
+            elif (
+                    start_2026
+                    <= sale_date
+                    <= end_2026
+            ):
+
+                total_2026 += quantity
+
+        # ---------------------------------------------------------
+        # DIFFERENCE
+        # ---------------------------------------------------------
+
+        difference = (
+                total_2026
+                - total_2025
+        )
+
+        # ---------------------------------------------------------
+        # GROWTH
+        # ---------------------------------------------------------
+
+        if total_2025 != 0:
+
+            growth_percent = (
+                                     difference
+                                     / total_2025
+                             ) * 100
+
+        else:
+
+            growth_percent = None
+
+        return [
+            {
+                "label": start_2025.strftime("%b"),
+
+                "year_2025": round(
+                    total_2025,
+                    2,
+                ),
+
+                "year_2026": round(
+                    total_2026,
+                    2,
+                ),
+
+                "difference": round(
+                    difference,
+                    2,
+                ),
+
+                "growth_percent": (
+                    round(
+                        growth_percent,
+                        2,
+                    )
+                    if growth_percent is not None
+                    else None
+                ),
+            }
+        ]
+
+    # ============================================================
+    # DATE RANGE COMPARISON
+    # ============================================================
+
+    @staticmethod
+    def _calculate_range_comparison(
+            start_2025,
+            end_2025,
+            start_2026,
+            end_2026,
+            selected_items,
+    ):
+        """
+        Month-by-month year-on-year comparison.
+
+        Uses Tally VoucherStockItem data and matches the actual
+        selected Tally stock item instead of relying only on
+        InventoryItem.id.
+        """
+
+        if not selected_items:
+            return []
+
+        # ---------------------------------------------------------
+        # SELECTED PRODUCTS
+        # ---------------------------------------------------------
+
+        item_ids = [
+            item.id
+            for item in selected_items
+        ]
+
+        item_names = {
+            (item.name or "").strip().lower()
+            for item in selected_items
+            if item.name
+        }
+
+        # ---------------------------------------------------------
+        # FETCH TALLY DATA
+        # ---------------------------------------------------------
+
+        rows = (
+            VoucherStockItem.objects
+            .filter(
+                voucher__voucher_type__iexact="TAX INVOICE",
+                voucher__date__gte=start_2025,
+                voucher__date__lte=end_2026,
+            )
+            .select_related(
+                "voucher",
+                "item",
+            )
+        )
+
+        # ---------------------------------------------------------
+        # MONTH BUCKETS
+        # ---------------------------------------------------------
+
+        sales_2025 = defaultdict(float)
+        sales_2026 = defaultdict(float)
+
+        # ---------------------------------------------------------
+        # PROCESS TALLY ROWS
+        # ---------------------------------------------------------
+
+        for row in rows:
+
+            # ---------------------------------------------
+            # Determine Tally item name
+            # ---------------------------------------------
+
+            tally_name = ""
+
+            if row.item_name_text:
+
+                tally_name = (
+                    row.item_name_text
+                    .strip()
+                    .lower()
+                )
+
+            elif row.item:
+
+                tally_name = (
+                        row.item.name or ""
+                ).strip().lower()
+
+            # ---------------------------------------------
+            # MATCH PRODUCT
+            # ---------------------------------------------
+
+            matched = False
+
+            if row.item_id in item_ids:
+
+                matched = True
+
+            elif tally_name in item_names:
+
+                matched = True
+
+            if not matched:
+                continue
+
+            # ---------------------------------------------
+            # DATE + QUANTITY
+            # ---------------------------------------------
+
+            sale_date = row.voucher.date
+
+            quantity = float(
+                row.quantity or 0
+            )
+
+            # ---------------------------------------------
+            # 2025
+            # ---------------------------------------------
+
+            if (
+                    start_2025
+                    <= sale_date
+                    <= end_2025
+            ):
+
+                sales_2025[
+                    sale_date.month
+                ] += quantity
+
+            # ---------------------------------------------
+            # 2026
+            # ---------------------------------------------
+
+            elif (
+                    start_2026
+                    <= sale_date
+                    <= end_2026
+            ):
+
+                sales_2026[
+                    sale_date.month
+                ] += quantity
+
+        # ---------------------------------------------------------
+        # MONTH LIST
+        # ---------------------------------------------------------
+
+        months = []
+
+        current = date(
+            start_2025.year,
+            start_2025.month,
+            1,
+        )
+
+        last = date(
+            end_2025.year,
+            end_2025.month,
+            1,
+        )
+
+        while current <= last:
+            months.append(
+                current.month
+            )
+
+            current += relativedelta(
+                months=1
+            )
+
+        # ---------------------------------------------------------
+        # BUILD RESULT
+        # ---------------------------------------------------------
+
+        result = []
+
+        for month_number in months:
+
+            value_2025 = sales_2025.get(
+                month_number,
+                0,
+            )
+
+            value_2026 = sales_2026.get(
+                month_number,
+                0,
+            )
+
+            difference = (
+                    value_2026
+                    - value_2025
+            )
+
+            if value_2025 != 0:
+
+                growth = (
+                                 difference
+                                 / value_2025
+                         ) * 100
+
+            else:
+
+                growth = None
+
+            result.append(
+                {
+                    "label":
+                        calendar.month_abbr[
+                            month_number
+                        ],
+
+                    "year_2025":
+                        round(
+                            value_2025,
+                            2,
+                        ),
+
+                    "year_2026":
+                        round(
+                            value_2026,
+                            2,
+                        ),
+
+                    "difference":
+                        round(
+                            difference,
+                            2,
+                        ),
+
+                    "growth_percent":
+                        (
+                            round(
+                                growth,
+                                2,
+                            )
+                            if growth is not None
+                            else None
+                        ),
+                }
+            )
+
+        return result
+
+    # ============================================================
+    # SAFE ONE YEAR SHIFT
+    # ============================================================
+
+    @staticmethod
+    def _add_one_year(value):
+
+        try:
+
+            return value.replace(
+                year=value.year + 1,
+            )
+
+        except ValueError:
+
+            # Handles Feb 29
+
+            return value.replace(
+                year=value.year + 1,
+                day=28,
+            )

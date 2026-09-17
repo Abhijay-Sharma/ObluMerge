@@ -71,5 +71,10 @@ urlpatterns = [
     path('products/<int:category>/', ProductListView.as_view(), name="category_products"),
     path('product/', ProductListView.as_view(), name="product"),
     path('product/<int:category>/', ProductListView.as_view(), name="product_by_category"),
+    path(
+            "year-on-year-sales/",
+            YearOnYearSalesComparisonView.as_view(),
+            name="year_on_year_sales",
+        ),
 
 ]
