@@ -605,10 +605,16 @@ class CategoryDashboard(AccountantRequiredMixin, View):
         return render(request, 'inventory/dashboard.html',{'items':items})
 
 class CategoryListView(AccountantRequiredMixin,ListView):
-    queryset = Category.objects.all()
+    queryset = Category.objects.annotate(
+        product_count=Count('inventoryitem')
+    ).order_by('name')
     template_name = 'inventory/category_list.html'
     context_object_name = 'category_list'
 
+    def get_context_data(self, kwargs):
+        context = super().get_context_data(kwargs)
+        context['total_items'] = InventoryItem.objects.count()
+        return context
 # This view handles both displaying the signup form and processing form submissions
 class SignUpView(CreateView):
     form_class = CustomUserCreationForm
