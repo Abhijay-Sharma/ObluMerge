@@ -42,7 +42,7 @@ from .utils import (
 )
 
 from django.db.models import Q, Sum, Max, F, Count
-
+from django.core.paginator import Paginator
 logger = logging.getLogger(__name__)
 
 
@@ -10429,3 +10429,92 @@ def _avg_daily(sales_rows, today):
     total = sum(r["qty"] for r in sales_rows if r["date"] and r["date"] >= APRIL_2025)
     days  = (today - APRIL_2025).days or 1
     return round(total / days, 4)
+
+
+class ProductListView(AccountantRequiredMixin, View):
+    def get(self, request, category=None):
+        category_obj = None
+        if category:
+            category_obj = get_object_or_404(Category, id=category)
+            base_items = InventoryItem.objects.filter(category=category_obj)
+        else:
+            category_id = request.GET.get('category')
+            if category_id:
+                category_obj = Category.objects.filter(id=category_id).first()
+                base_items = InventoryItem.objects.filter(
+                    category=category_obj) if category_obj else InventoryItem.objects.all()
+            else:
+                base_items = InventoryItem.objects.all()
+
+        all_categories = Category.objects.annotate(item_count=Count('inventoryitem')).order_by('-item_count')
+
+        # Scope KPIs based on category scope
+        total_items = base_items.count()
+        total_quantity = base_items.aggregate(total=Sum('quantity'))['total'] or 0
+        low_stock_count = base_items.filter(quantity__lte=F('min_quantity'), min_quantity__gt=0, quantity__gt=0).count()
+        out_of_stock_count = base_items.filter(Q(quantity__lte=0) | Q(quantity__isnull=True)).count()
+        optimal_count = max(0, total_items - low_stock_count - out_of_stock_count)
+
+        # Filters for query
+        items_qs = base_items.select_related('category').order_by('name')
+
+        # 1. Text Search Filter
+        search_query = request.GET.get('q', '').strip()
+        if search_query:
+            q_filter = Q(name__icontains=search_query) | Q(category__name__icontains=search_query)
+            if search_query.isdigit():
+                q_filter |= Q(id=int(search_query))
+            items_qs = items_qs.filter(q_filter)
+
+        # 2. Stock Health Status Filter
+        status_filter = request.GET.get('status', 'all').strip().lower()
+        if status_filter == 'in-stock':
+            items_qs = items_qs.filter(quantity__gt=F('min_quantity')).filter(quantity__gt=0)
+        elif status_filter == 'low-stock':
+            items_qs = items_qs.filter(quantity__lte=F('min_quantity'), min_quantity__gt=0, quantity__gt=0)
+        elif status_filter == 'out-stock':
+            items_qs = items_qs.filter(Q(quantity__lte=0) | Q(quantity__isnull=True))
+        else:
+            status_filter = 'all'
+
+        # Matching items count
+        matching_count = items_qs.count()
+
+        # 3. Server Pagination (default 50 items per page)
+        per_page = request.GET.get('per_page', '50').strip()
+        try:
+            per_page = int(per_page)
+            if per_page not in [25, 50, 100, 200]:
+                per_page = 50
+        except ValueError:
+            per_page = 50
+
+        paginator = Paginator(items_qs, per_page)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        # Build preserved query string for pagination links (excluding 'page')
+        query_params = request.GET.copy()
+        query_params.pop('page', None)
+        preserved_query = query_params.urlencode()
+
+        return render(request, 'inventory/dashboard.html', {
+            'page_obj': page_obj,
+            'items': page_obj,
+            'paginator': paginator,
+            'is_paginated': page_obj.has_other_pages(),
+            'category': category_obj,
+            'all_categories': all_categories,
+            'total_items': total_items,
+            'total_quantity': total_quantity,
+            'low_stock_count': low_stock_count,
+            'out_of_stock_count': out_of_stock_count,
+            'optimal_count': optimal_count,
+            'search_query': search_query,
+            'status_filter': status_filter,
+            'matching_count': matching_count,
+            'per_page': per_page,
+            'preserved_query': preserved_query,
+        })
+
+
