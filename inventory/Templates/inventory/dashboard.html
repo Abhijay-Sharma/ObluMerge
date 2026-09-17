@@ -1,149 +1,1777 @@
 {% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<!-- Trevor Eyre Autocomplete for server search -->
+<script src="https://unpkg.com/@trevoreyre/autocomplete-js"></script>
+{% endblock %}
 
 {% block content %}
+
 <style>
-    .wrapper {
-  display: flex;
-  justify-content: center; /* horizontal */
-  align-items: center;      /* vertical */
-  min-height: 1vh;         /* take full viewport height */
-}
-    .autocomplete {
-  position: relative;
-  width: 60%;
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
+    /* =========================================================
+       OBLU INVENTORY — STANDING OVATION PRODUCT CATALOG
+       ========================================================= */
 
-.autocomplete-input {
-  width: 100%;
-  padding: 6px 8px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
+    :root {
+        --oblu-teal: #78c2ad;
+        --oblu-teal-dark: #469680;
+        --oblu-teal-deep: #2e6958;
+        --oblu-teal-soft: rgba(120, 194, 173, 0.14);
+        --oblu-teal-glow: rgba(120, 194, 173, 0.28);
+        --oblu-blue: #38bdf8;
+        --oblu-blue-dark: #0284c7;
+        --oblu-blue-soft: rgba(56, 189, 248, 0.14);
+        --oblu-indigo: #6366f1;
+        --oblu-indigo-soft: rgba(99, 102, 241, 0.12);
+        --oblu-amber: #f59e0b;
+        --oblu-amber-soft: rgba(245, 158, 11, 0.14);
+        --oblu-rose: #f43f5e;
+        --oblu-rose-soft: rgba(244, 63, 94, 0.14);
+        --oblu-emerald: #10b981;
+        --oblu-emerald-soft: rgba(16, 185, 129, 0.14);
 
-.autocomplete-result-list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: black;
-  border: 1px solid #ccc;
-  max-height: 180px;
-  overflow-y: auto;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  z-index: 1000;
-}
+        --oblu-slate-900: #0f172a;
+        --oblu-slate-800: #1e293b;
+        --oblu-slate-700: #334155;
+        --oblu-slate-600: #475569;
+        --oblu-slate-500: #64748b;
+        --oblu-slate-400: #94a3b8;
+        --oblu-slate-300: #cbd5e1;
+        --oblu-slate-200: #e2e8f0;
+        --oblu-slate-100: #f1f5f9;
+        --oblu-slate-50: #f8fafc;
 
-.autocomplete-result-list li {
-  padding: 6px 8px;
-  font-size: 14px;
-  border-top: 1px solid #eee;
-  cursor: pointer;
-}
+        --glass-bg: rgba(255, 255, 255, 0.92);
+        --glass-bg-hover: rgba(255, 255, 255, 0.98);
+        --glass-border: rgba(226, 232, 240, 0.85);
+        --glass-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(226, 232, 240, 0.6);
+        --glass-shadow-hover: 0 20px 40px -10px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(120, 194, 173, 0.4);
+        --radius-card: 20px;
+        --radius-inner: 14px;
+        --radius-pill: 9999px;
+    }
 
-.autocomplete-result-list li:hover {
-  background: grey;
-}
+    .prod-catalog-container {
+        min-height: calc(100vh - 72px);
+        padding: 4px 6px 48px;
+        position: relative;
+        background:
+            radial-gradient(1000px circle at 92% -8%, rgba(120, 194, 173, 0.14), transparent 45%),
+            radial-gradient(850px circle at 6% 35%, rgba(56, 189, 248, 0.08), transparent 42%),
+            radial-gradient(900px circle at 50% 105%, rgba(99, 102, 241, 0.04), transparent 50%),
+            #f8fafc;
+        color: var(--oblu-slate-800);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
 
-</style>
-    <div class="wrapper">
-        <div id="autocomplete" class="autocomplete">
-          <input class="autocomplete-input" placeholder="Search items..."/>
-          <ul class="autocomplete-result-list"></ul>
-        </div>
-    </div>
+    .catalog-wrapper {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        box-sizing: border-box;
+    }
 
-    <div class="row">
-        <div class="col-md-10 col-12 mx-auto mt-5">
-            <div class="d-flex justify-content-end">
-                <a href="{% url 'add-item' %}" class="btn btn-primary">+</a>
-            </div>
-            <div class="table-responsive">
-            <table class="table table-hover table-striped">
-                <thead>
-                    <tr>
-                        <th scope="col">ID</th>
-                        <th scope="col">Name</th>
-                        <th scope="col">QTY</th>
-                        <th scope="col">MIN QTY</th>
-                        <th scope="col">CATEGORY</th>
-                        <th scope="col">FORECAST</th>
-                        <th scope="col">GRAPHS</th>
-                        <th scope="col">DATA</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if items|length == 0 %}
-					<tr>
-						<th scope="row">-</th>
-						<td>-</td>
-						<td>-</td>
-						<td>-</td>
-						<td>-</td>
-						<td></td>
-					</tr>
-					{% endif %}
+    /* =========================================================
+       1. HERO HEADER STRIP
+       ========================================================= */
 
-                    {% for item in items %}
-                    <tr>
-                        <th scope="row">{{ item.id }}</th>
-                        <td>{{ item.name }}</td>
-                        <td>{{ item.quantity }}</td>
-                        {% if item.min_quantity != -1 %}
-                            <td>{{ item.min_quantity }}</td>
-                        {% else %}
-                            <td>-</td>
-                        {% endif %}
-                        <td>{{ item.category.name }}</td>
-                        <td><a href="{% url 'predict_min_stock' item.id %}" class="btn btn-secondary">View</a></td>
-                        <td><a href="{% url 'stock_chart_2' item.id %}" class="btn btn-outline-secondary">Graphs</a></td>
-                        <td><a href="{% url 'history' item.id %}" class="btn btn-secondary">Data</a></td>
+    .hero-strip {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding-bottom: 2px;
+    }
 
-                    </tr>
-                    {% endfor %}
-                </tbody>
+    .hero-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
 
-            </table>
-            </div>
-        </div>
-    </div>
+    .badge-pill-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: var(--oblu-teal-soft);
+        color: var(--oblu-teal-deep);
+        border: 1px solid rgba(120, 194, 173, 0.35);
+        border-radius: var(--radius-pill);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        width: fit-content;
+    }
 
+    .hero-title {
+        font-size: clamp(2rem, 3.2vw, 2.9rem);
+        line-height: 1.1;
+        font-weight: 800;
+        letter-spacing: -1.3px;
+        color: var(--oblu-slate-900);
+        margin: 0;
+    }
 
-<script>
-    console.log("Following is data {{ tally_stock }}");
-    console.log("Following is other data {{ items }}");
-</script>
-<pre>{{ tally_stock|safe }}</pre>
+    .hero-title .gradient-text {
+        background: linear-gradient(115deg, #2e6958 0%, #469680 40%, #0284c7 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 
+    .hero-desc {
+        color: var(--oblu-slate-500);
+        font-size: 0.92rem;
+        margin: 0;
+        font-weight: 500;
+        line-height: 1.5;
+        max-width: 720px;
+    }
 
-<script src="https://unpkg.com/@trevoreyre/autocomplete-js"></script>
-<script>
-let itemMap = {};
+    .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
 
-new Autocomplete('#autocomplete', {
-    search: input => {
-        const url = `/inventory/search/?item=${input}`;
-        return fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                itemMap = {};
-                data.data.forEach(item => {
-                    itemMap[item[0]] = item[1];
-                });
-                return data.data.map(item => item[0]);
-            });
-    },
-    onSubmit: result => {
-        const id = itemMap[result];
-        if (id) {
-            window.location.href = `/inventory/predict/${id}/`;
+    .btn-oblu-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 22px;
+        border-radius: var(--radius-inner);
+        background: linear-gradient(135deg, #5eae99 0%, #469680 100%);
+        color: #ffffff !important;
+        font-size: 0.88rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: none;
+        box-shadow: 0 4px 14px rgba(70, 150, 128, 0.35);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+    }
+
+    .btn-oblu-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(70, 150, 128, 0.45);
+        background: linear-gradient(135deg, #4da08c 0%, #3a826e 100%);
+    }
+
+    .btn-oblu-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 18px;
+        border-radius: var(--radius-inner);
+        background: #ffffff;
+        color: var(--oblu-slate-700) !important;
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid var(--oblu-slate-200);
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+        transition: all 0.2s ease;
+    }
+
+    .btn-oblu-secondary:hover {
+        border-color: var(--oblu-teal);
+        color: var(--oblu-teal-deep) !important;
+        background: var(--oblu-teal-soft);
+        transform: translateY(-1px);
+    }
+
+    /* =========================================================
+       2. KPI SUMMARY CARDS
+       ========================================================= */
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 16px;
+        width: 100%;
+    }
+
+    .kpi-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-card);
+        padding: 20px 22px;
+        box-shadow: var(--glass-shadow);
+        backdrop-filter: blur(16px);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--glass-shadow-hover);
+        background: var(--glass-bg-hover);
+    }
+
+    .kpi-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, rgba(120, 194, 173, 0.6), transparent);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .kpi-card:hover::before {
+        opacity: 1;
+    }
+
+    .kpi-top-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .kpi-title {
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--oblu-slate-500);
+        margin: 0;
+    }
+
+    .kpi-icon-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+    }
+
+    .kpi-icon-box.teal {
+        background: rgba(120, 194, 173, 0.18);
+        color: #317865;
+    }
+
+    .kpi-icon-box.blue {
+        background: rgba(56, 189, 248, 0.16);
+        color: #0284c7;
+    }
+
+    .kpi-icon-box.emerald {
+        background: rgba(16, 185, 129, 0.16);
+        color: #059669;
+    }
+
+    .kpi-icon-box.rose {
+        background: rgba(244, 63, 94, 0.15);
+        color: #e11d48;
+    }
+
+    .kpi-val {
+        font-size: 1.95rem;
+        font-weight: 800;
+        letter-spacing: -0.8px;
+        color: var(--oblu-slate-900);
+        line-height: 1.1;
+        margin-bottom: 4px;
+    }
+
+    .kpi-sub {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--oblu-slate-500);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* =========================================================
+       3. CATEGORY FILTER PILLS BAR
+       ========================================================= */
+
+    .cat-pill-strip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        margin-bottom: -2px;
+        scrollbar-width: none;
+    }
+
+    .cat-pill-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    .cat-filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 16px;
+        background: #ffffff;
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-pill);
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--oblu-slate-600);
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+    }
+
+    .cat-filter-chip:hover {
+        border-color: var(--oblu-teal);
+        color: var(--oblu-slate-900);
+        background: rgba(248, 250, 252, 0.9);
+        transform: translateY(-1px);
+    }
+
+    .cat-filter-chip.active {
+        background: linear-gradient(135deg, #5eae99 0%, #469680 100%);
+        color: #ffffff;
+        border-color: transparent;
+        box-shadow: 0 3px 12px rgba(70, 150, 128, 0.3);
+    }
+
+    .cat-filter-chip .chip-count {
+        background: rgba(15, 23, 42, 0.07);
+        padding: 2px 7px;
+        border-radius: var(--radius-pill);
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .cat-filter-chip.active .chip-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+
+    /* =========================================================
+       4. COMMAND BAR (SEARCH & LIVE CONTROLS)
+       ========================================================= */
+
+    .command-bar-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-card);
+        padding: 16px 20px;
+        box-shadow: var(--glass-shadow);
+        backdrop-filter: blur(16px);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .command-search-row {
+        position: relative;
+        width: 100%;
+    }
+
+    .search-input-box {
+        position: relative;
+        width: 100%;
+    }
+
+    .search-input-box i.search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--oblu-slate-400);
+        font-size: 1rem;
+        pointer-events: none;
+        transition: color 0.2s ease;
+    }
+
+    .search-input-box input {
+        width: 100%;
+        padding: 12px 105px 12px 46px;
+        background: #ffffff;
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-inner);
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--oblu-slate-800);
+        outline: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+    }
+
+    .search-input-box input:focus {
+        border-color: var(--oblu-teal);
+        box-shadow: 0 0 0 4px var(--oblu-teal-soft), 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+
+    .search-input-box input:focus + i.search-icon {
+        color: var(--oblu-teal-dark);
+    }
+
+    .search-right-tools {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .search-clear-btn {
+        background: none;
+        border: none;
+        color: var(--oblu-slate-400);
+        font-size: 0.95rem;
+        cursor: pointer;
+        padding: 2px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s ease;
+    }
+
+    .search-clear-btn:hover {
+        color: var(--oblu-slate-700);
+    }
+
+    .search-kbd {
+        padding: 3px 8px;
+        background: var(--oblu-slate-100);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--oblu-slate-500);
+        pointer-events: none;
+    }
+
+    /* Trevor Eyre Autocomplete Dropdown */
+    .autocomplete-result-list {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-inner);
+        box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8);
+        max-height: 260px;
+        overflow-y: auto;
+        list-style: none;
+        margin: 0;
+        padding: 6px;
+        z-index: 1050;
+    }
+
+    .autocomplete-result-list li {
+        padding: 10px 14px;
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: var(--oblu-slate-800);
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.15s ease;
+    }
+
+    .autocomplete-result-list li:hover {
+        background: var(--oblu-teal-soft);
+        color: var(--oblu-teal-deep);
+    }
+
+    /* Sub-row: Stock status filters & View toggle */
+    .command-controls-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .filter-pills-bar {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px;
+        background: rgba(248, 250, 252, 0.95);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-pill);
+        gap: 2px;
+    }
+
+    .filter-pill-btn {
+        padding: 6px 14px;
+        border-radius: var(--radius-pill);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--oblu-slate-600);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .filter-pill-btn:hover {
+        color: var(--oblu-slate-900);
+    }
+
+    .filter-pill-btn.active {
+        background: #ffffff;
+        color: var(--oblu-slate-900);
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(226, 232, 240, 0.8);
+        font-weight: 700;
+    }
+
+    .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .status-dot.emerald { background: #10b981; }
+    .status-dot.amber { background: #f59e0b; }
+    .status-dot.rose { background: #f43f5e; }
+
+    .view-toggle-group {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px;
+        background: rgba(248, 250, 252, 0.95);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: 12px;
+        gap: 2px;
+    }
+
+    .view-toggle-btn {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        color: var(--oblu-slate-500);
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .view-toggle-btn:hover {
+        color: var(--oblu-slate-900);
+    }
+
+    .view-toggle-btn.active {
+        background: #ffffff;
+        color: var(--oblu-teal-dark);
+        box-shadow: 0 2px 5px rgba(15, 23, 42, 0.05);
+    }
+
+    .items-count-badge {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--oblu-slate-500);
+        white-space: nowrap;
+    }
+
+    .items-count-badge strong {
+        color: var(--oblu-slate-900);
+    }
+
+    /* =========================================================
+       5. STANDING OVATION DATA TABLE
+       ========================================================= */
+
+    .table-glass-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-card);
+        padding: 20px 24px 24px;
+        box-shadow: var(--glass-shadow);
+        backdrop-filter: blur(16px);
+        overflow: hidden;
+    }
+
+    .catalog-table-responsive {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .catalog-table {
+        width: 100%;
+        min-width: 860px;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+
+    .catalog-table th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--oblu-slate-400);
+        padding: 8px 12px;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .catalog-table td {
+        padding: 12px 12px;
+        background: rgba(248, 250, 252, 0.85);
+        font-size: 0.84rem;
+        color: var(--oblu-slate-700);
+        border-top: 1px solid var(--oblu-slate-200);
+        border-bottom: 1px solid var(--oblu-slate-200);
+        vertical-align: middle;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .catalog-table tr th:first-child,
+    .catalog-table tr td:first-child {
+        padding-left: 18px;
+    }
+
+    .catalog-table tr th:last-child,
+    .catalog-table tr td:last-child {
+        padding-right: 18px;
+    }
+
+    .catalog-table tr td:first-child {
+        border-left: 1px solid var(--oblu-slate-200);
+        border-top-left-radius: 14px;
+        border-bottom-left-radius: 14px;
+    }
+
+    .catalog-table tr td:last-child {
+        border-right: 1px solid var(--oblu-slate-200);
+        border-top-right-radius: 14px;
+        border-bottom-right-radius: 14px;
+    }
+
+    .catalog-table tr:hover td {
+        background: #ffffff;
+        border-color: rgba(120, 194, 173, 0.6);
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+    }
+
+    /* Product ID pill */
+    .item-id-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.05);
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--oblu-slate-600);
+        letter-spacing: 0.3px;
+    }
+
+    /* Product info cell */
+    .prod-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 240px;
+    }
+
+    .prod-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        background: linear-gradient(135deg, rgba(120, 194, 173, 0.22) 0%, rgba(56, 189, 248, 0.16) 100%);
+        color: var(--oblu-teal-deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        flex-shrink: 0;
+        border: 1px solid rgba(120, 194, 173, 0.3);
+    }
+
+    .prod-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .prod-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--oblu-slate-900);
+        line-height: 1.25;
+        transition: color 0.2s ease;
+    }
+
+    .catalog-table tr:hover .prod-name {
+        color: var(--oblu-teal-dark);
+    }
+
+    .prod-unit {
+        font-size: 0.72rem;
+        color: var(--oblu-slate-400);
+        font-weight: 500;
+    }
+
+    /* Category Pill */
+    .cat-badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: var(--radius-pill);
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(241, 245, 249, 0.95);
+        color: var(--oblu-slate-700);
+        border: 1px solid var(--oblu-slate-200);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .cat-badge-pill:hover {
+        background: var(--oblu-teal-soft);
+        color: var(--oblu-teal-deep);
+        border-color: rgba(120, 194, 173, 0.4);
+    }
+
+    /* Stock Level Cell */
+    .stock-cell-block {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 100px;
+    }
+
+    .stock-qty-text {
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+    }
+
+    .stock-meter-track {
+        width: 100%;
+        height: 5px;
+        background: var(--oblu-slate-200);
+        border-radius: var(--radius-pill);
+        overflow: hidden;
+    }
+
+    .stock-meter-fill {
+        height: 100%;
+        border-radius: var(--radius-pill);
+        transition: width 0.6s ease;
+    }
+
+    .stock-meter-fill.emerald { background: #10b981; }
+    .stock-meter-fill.amber { background: #f59e0b; }
+    .stock-meter-fill.rose { background: #f43f5e; }
+
+    /* Health status badge */
+    .health-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: var(--radius-pill);
+        font-size: 0.74rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .health-pill.in-stock {
+        background: rgba(16, 185, 129, 0.12);
+        color: #047857;
+        border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .health-pill.low-stock {
+        background: rgba(245, 158, 11, 0.14);
+        color: #b45309;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .health-pill.out-stock {
+        background: rgba(244, 63, 94, 0.14);
+        color: #be123c;
+        border: 1px solid rgba(244, 63, 94, 0.28);
+    }
+
+    .pulse-beacon {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+        animation: pulse-dot 2s infinite ease-in-out;
+    }
+
+    .health-pill.in-stock .pulse-beacon { background: #10b981; }
+    .health-pill.low-stock .pulse-beacon { background: #f59e0b; }
+    .health-pill.out-stock .pulse-beacon { background: #f43f5e; }
+
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.3); }
+    }
+
+    /* Action buttons cluster */
+    .actions-cluster {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        justify-content: flex-end;
+    }
+
+    .btn-action-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 11px;
+        border-radius: var(--radius-pill);
+        font-size: 0.74rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    .btn-action-pill.forecast {
+        background: rgba(120, 194, 173, 0.16);
+        color: #2e6958;
+        border-color: rgba(120, 194, 173, 0.35);
+    }
+
+    .btn-action-pill.forecast:hover {
+        background: #469680;
+        color: #ffffff;
+        border-color: transparent;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(70, 150, 128, 0.3);
+    }
+
+    .btn-action-pill.graphs {
+        background: rgba(56, 189, 248, 0.14);
+        color: #0369a1;
+        border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .btn-action-pill.graphs:hover {
+        background: #0284c7;
+        color: #ffffff;
+        border-color: transparent;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(2, 132, 199, 0.3);
+    }
+
+    .btn-action-pill.data {
+        background: rgba(99, 102, 241, 0.12);
+        color: #4338ca;
+        border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    .btn-action-pill.data:hover {
+        background: #4f46e5;
+        color: #ffffff;
+        border-color: transparent;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(79, 70, 229, 0.3);
+    }
+
+    /* =========================================================
+       6. GRID CARDS VIEW (ALTERNATIVE VIEW)
+       ========================================================= */
+
+    .catalog-grid-view {
+        display: none;
+        grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+        gap: 18px;
+    }
+
+    .prod-grid-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-card);
+        padding: 20px;
+        box-shadow: var(--glass-shadow);
+        backdrop-filter: blur(16px);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .prod-grid-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--glass-shadow-hover);
+        background: var(--glass-bg-hover);
+        border-color: rgba(120, 194, 173, 0.5);
+    }
+
+    .card-head-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .card-body-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .card-metrics-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: rgba(248, 250, 252, 0.85);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-inner);
+    }
+
+    .card-metric-col {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-metric-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--oblu-slate-400);
+    }
+
+    .card-metric-val {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--oblu-slate-900);
+    }
+
+    .card-actions-strip {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+        padding-top: 4px;
+        border-top: 1px solid var(--oblu-slate-100);
+    }
+
+    .card-actions-strip .btn-action-pill {
+        justify-content: center;
+        padding: 7px 4px;
+    }
+
+    /* =========================================================
+       7. PAGINATION & LOAD MORE BAR
+       ========================================================= */
+
+    .pagination-cluster {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        padding-top: 16px;
+        border-top: 1px solid var(--oblu-slate-200);
+        margin-top: 14px;
+    }
+
+    .btn-page-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: var(--radius-pill);
+        background: #ffffff;
+        border: 1px solid var(--oblu-slate-200);
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--oblu-slate-700);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-page-nav:hover:not(:disabled) {
+        border-color: var(--oblu-teal);
+        color: var(--oblu-teal-deep);
+        background: var(--oblu-teal-soft);
+    }
+
+    .btn-page-nav:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .page-info-text {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--oblu-slate-500);
+    }
+
+    /* =========================================================
+       8. EMPTY STATE
+       ========================================================= */
+
+    .empty-catalog-state {
+        text-align: center;
+        padding: 56px 20px;
+        display: none;
+    }
+
+    .empty-icon-circle {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: rgba(148, 163, 184, 0.15);
+        color: var(--oblu-slate-400);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 16px;
+    }
+
+    .empty-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--oblu-slate-800);
+        margin-bottom: 6px;
+    }
+
+    .empty-desc {
+        font-size: 0.88rem;
+        color: var(--oblu-slate-500);
+        max-width: 420px;
+        margin: 0 auto 16px;
+    }
+
+    @media (max-width: 992px) {
+        .prod-catalog-container {
+            padding: 8px 6px 40px;
+        }
+
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .hero-strip {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .hero-actions {
+            width: 100%;
+            display: flex;
+            gap: 10px;
+        }
+
+        .command-controls-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+
+        .filter-pills-bar {
+            width: 100%;
+            overflow-x: auto;
+            justify-content: flex-start;
+            -webkit-overflow-scrolling: touch;
         }
     }
-});
+
+    @media (max-width: 640px) {
+        .prod-catalog-container {
+            padding: 6px 4px 32px;
+        }
+
+        .hero-title {
+            font-size: 1.5rem;
+            letter-spacing: -0.6px;
+        }
+
+        .hero-desc {
+            font-size: 0.82rem;
+        }
+
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .kpi-card {
+            padding: 12px 10px;
+            border-radius: 14px;
+        }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            letter-spacing: -0.4px;
+        }
+
+        .kpi-title {
+            font-size: 0.67rem;
+        }
+
+        .kpi-icon-box {
+            width: 32px;
+            height: 32px;
+            font-size: 0.95rem;
+            border-radius: 9px;
+        }
+
+        .search-kbd {
+            display: none !important;
+        }
+
+        .search-input-box input {
+            padding: 10px 42px 10px 38px;
+            font-size: 0.84rem;
+        }
+
+        .command-bar-card {
+            padding: 12px;
+            border-radius: 14px;
+        }
+
+        .table-glass-card {
+            padding: 12px 6px;
+            border-radius: 14px;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .catalog-table-responsive {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            display: block;
+        }
+
+        .catalog-table {
+            min-width: 680px;
+        }
+
+        .btn-oblu-primary,
+        .btn-oblu-secondary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .kpi-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+    }
+</style>
+
+<div class="prod-catalog-container">
+    <div class="catalog-wrapper">
+
+        <!-- 1. HERO HEADER STRIP -->
+        <div class="hero-strip">
+            <div class="hero-meta">
+                <div class="badge-pill-tag">
+                    <i class="bi bi-box-seam-fill"></i>
+                    {% if category %}CATEGORY VIEW{% else %}INVENTORY PORTFOLIO{% endif %}
+                </div>
+                <h1 class="hero-title">
+                    {% if category %}
+                        Products in <span class="gradient-text">{{ category.name }}</span>
+                    {% else %}
+                        Product <span class="gradient-text">Catalog</span>
+                    {% endif %}
+                </h1>
+                <p class="hero-desc">
+                    Comprehensive stock levels, predictive demand forecasting, reorder thresholds, and historical analytics.
+                </p>
+            </div>
+
+            <div class="hero-actions">
+                {% if category %}
+                <a href="{% url 'categories' %}" class="btn-oblu-secondary">
+                    <i class="bi bi-grid-3x3-gap"></i> Categories
+                </a>
+                <a href="{% url 'products' %}" class="btn-oblu-secondary">
+                    <i class="bi bi-collection"></i> All Products
+                </a>
+                {% else %}
+                <div class="dropdown">
+                    <button class="btn-oblu-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-funnel"></i> Jump to Category
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="max-height: 280px; overflow-y: auto; border-radius: 14px; border: 1px solid var(--oblu-slate-200);">
+                        <li><a class="dropdown-item fw-semibold" href="{% url 'products' %}">All Categories ({{ total_items }})</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        {% for cat in all_categories %}
+                        <li>
+                            <a class="dropdown-item d-flex justify-content-between align-items-center" href="{% url 'category_products' cat.id %}">
+                                <span>{{ cat.name }}</span>
+                                <span class="badge bg-light text-muted border rounded-pill">{{ cat.item_count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <a href="{% url 'add-item' %}" class="btn-oblu-primary">
+                    <i class="bi bi-plus-lg"></i> Add New Product
+                </a>
+            </div>
+        </div>
+
+        <!-- 2. EXECUTIVE KPI CARDS -->
+        <div class="kpi-grid">
+            <!-- Total Products -->
+            <div class="kpi-card">
+                <div class="kpi-top-row">
+                    <span class="kpi-title">Catalog Volume</span>
+                    <div class="kpi-icon-box teal">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-val">{{ total_items }}</div>
+                    <p class="kpi-sub">
+                        <i class="bi bi-layers text-teal"></i> Active unique SKUs
+                    </p>
+                </div>
+            </div>
+
+            <!-- Total Units in Stock -->
+            <div class="kpi-card">
+                <div class="kpi-top-row">
+                    <span class="kpi-title">Physical Stock Units</span>
+                    <div class="kpi-icon-box blue">
+                        <i class="bi bi-database-check"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-val">{{ total_quantity }}</div>
+                    <p class="kpi-sub">
+                        <i class="bi bi-check-circle text-info"></i> Units currently stored
+                    </p>
+                </div>
+            </div>
+
+            <!-- Optimal Stock -->
+            <div class="kpi-card">
+                <div class="kpi-top-row">
+                    <span class="kpi-title">Optimal Health</span>
+                    <div class="kpi-icon-box emerald">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-val">{{ optimal_count }}</div>
+                    <p class="kpi-sub">
+                        <span class="status-dot emerald"></span> Healthy inventory levels
+                    </p>
+                </div>
+            </div>
+
+            <!-- Attention Required -->
+            <div class="kpi-card">
+                <div class="kpi-top-row">
+                    <span class="kpi-title">Reorder Attention</span>
+                    <div class="kpi-icon-box rose">
+                        <i class="bi bi-exclamation-octagon"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="kpi-val">{{ low_stock_count|add:out_of_stock_count }}</div>
+                    <p class="kpi-sub">
+                        <span class="text-warning fw-bold">{{ low_stock_count }}</span> low · <span class="text-danger fw-bold">{{ out_of_stock_count }}</span> out
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. CATEGORY PILL STRIP -->
+        {% if all_categories %}
+        <div class="cat-pill-strip">
+            <a href="{% url 'products' %}" class="cat-filter-chip {% if not category %}active{% endif %}">
+                <i class="bi bi-grid-fill"></i>
+                All Products
+                <span class="chip-count">{{ total_items }}</span>
+            </a>
+            {% for cat in all_categories|slice:":12" %}
+            <a href="{% url 'category_products' cat.id %}" class="cat-filter-chip {% if category and category.id == cat.id %}active{% endif %}">
+                {{ cat.name }}
+                <span class="chip-count">{{ cat.item_count }}</span>
+            </a>
+            {% endfor %}
+            {% if all_categories|length > 12 %}
+            <a href="{% url 'categories' %}" class="cat-filter-chip">
+                <i class="bi bi-three-dots"></i> More ({{ all_categories|length }})
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- 4. SEARCH & COMMAND BAR (SERVER POWERED) -->
+        <div class="command-bar-card">
+            <!-- Row 1: Full-Width Search Input with Autocomplete and Shortcut Badge -->
+            <div class="command-search-row">
+                <form method="GET" action="" style="width: 100%; margin: 0;">
+                    {% if category %}<input type="hidden" name="category" value="{{ category.id }}">{% endif %}
+                    {% if status_filter and status_filter != 'all' %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+                    <div id="autocomplete" class="search-input-box">
+                        <i class="bi bi-search search-icon"></i>
+                        <input
+                            id="catalogSearchInput"
+                            class="autocomplete-input"
+                            type="text"
+                            name="q"
+                            value="{{ search_query }}"
+                            placeholder="Search products by name, SKU ID, or category... (Press / or Ctrl+K)"
+                            autocomplete="off"
+                        />
+                        <div class="search-right-tools">
+                            {% if search_query %}
+                            <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if status_filter and status_filter != 'all' %}status={{ status_filter }}{% endif %}" id="searchClearBtn" class="search-clear-btn" style="display: flex; text-decoration: none;" title="Clear search">
+                                <i class="bi bi-x-circle-fill"></i>
+                            </a>
+                            {% endif %}
+                            <span class="search-kbd">Ctrl + K</span>
+                        </div>
+                        <ul class="autocomplete-result-list"></ul>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Row 2: Status Filters + Counter + View Toggle -->
+            <div class="command-controls-row">
+                <!-- Stock Health Status Pills -->
+                <div class="filter-pills-bar">
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=all" class="filter-pill-btn {% if status_filter == 'all' %}active{% endif %}" style="text-decoration: none;">
+                        All Items ({{ total_items }})
+                    </a>
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=in-stock" class="filter-pill-btn {% if status_filter == 'in-stock' %}active{% endif %}" style="text-decoration: none;">
+                        <span class="status-dot emerald"></span> In Stock
+                    </a>
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=low-stock" class="filter-pill-btn {% if status_filter == 'low-stock' %}active{% endif %}" style="text-decoration: none;">
+                        <span class="status-dot amber"></span> Low Stock ({{ low_stock_count }})
+                    </a>
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=out-stock" class="filter-pill-btn {% if status_filter == 'out-stock' %}active{% endif %}" style="text-decoration: none;">
+                        <span class="status-dot rose"></span> Out of Stock ({{ out_of_stock_count }})
+                    </a>
+                </div>
+
+                <!-- View Toggle: Table / Grid + Counter -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="items-count-badge">
+                        Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> of {{ matching_count }}
+                    </div>
+                    <div class="view-toggle-group">
+                        <button id="btnTableView" class="view-toggle-btn active" title="Table View" type="button">
+                            <i class="bi bi-list-ul"></i>
+                        </button>
+                        <button id="btnGridView" class="view-toggle-btn" title="Grid Cards View" type="button">
+                            <i class="bi bi-grid"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. TABLE VIEW -->
+        <div id="tableViewWrapper" class="table-glass-card">
+            <div class="catalog-table-responsive">
+                <table class="catalog-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 85px;">ID</th>
+                            <th scope="col">Product Name</th>
+                            <th scope="col">Category</th>
+                            <th scope="col" style="min-width: 140px;">Stock Level</th>
+                            <th scope="col">Min Qty</th>
+                            <th scope="col">Health Status</th>
+                            <th scope="col" style="text-align: right;">Quick Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catalogTableBody">
+                        {% for item in page_obj %}
+                        {% with qty=item.quantity|default:0 min_qty=item.min_quantity|default:-1 %}
+                        <tr
+                            class="product-row"
+                            data-name="{{ item.name|lower }}"
+                            data-id="{{ item.id }}"
+                            data-category="{{ item.category.name|default:'Uncategorized'|lower }}"
+                            data-status="{% if qty <= 0 %}out-stock{% elif min_qty > 0 and qty <= min_qty %}low-stock{% else %}in-stock{% endif %}"
+                        >
+                            <!-- ID -->
+                            <td>
+                                <span class="item-id-pill">#{{ item.id }}</span>
+                            </td>
+
+                            <!-- Product Name & Unit -->
+                            <td>
+                                <div class="prod-cell">
+                                    <div class="prod-avatar">
+                                        <i class="bi bi-box-seam"></i>
+                                    </div>
+                                    <div class="prod-details">
+                                        <span class="prod-name">{{ item.name }}</span>
+                                        <span class="prod-unit">
+                                            {% if item.unit %}{{ item.unit }}{% else %}SKU-{{ item.id }}{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Category -->
+                            <td>
+                                {% if item.category %}
+                                <a href="{% url 'category_products' item.category.id %}" class="cat-badge-pill">
+                                    <i class="bi bi-tag-fill" style="font-size: 0.65rem; color: var(--oblu-teal-dark);"></i>
+                                    {{ item.category.name }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Current Quantity + Mini Bar -->
+                            <td>
+                                <div class="stock-cell-block">
+                                    <span class="stock-qty-text">
+                                        {{ qty }}
+                                    </span>
+                                    <div class="stock-meter-track">
+                                        <div
+                                            class="stock-meter-fill {% if qty <= 0 %}rose{% elif min_qty > 0 and qty <= min_qty %}amber{% else %}emerald{% endif %}"
+                                            style="width: {% if qty <= 0 %}8%{% elif min_qty > 0 %}{% widthratio qty min_qty 50 %}%{% else %}80%{% endif %}; max-width: 100%; min-width: 8px;"
+                                        ></div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Min Required Quantity -->
+                            <td>
+                                {% if min_qty != -1 %}
+                                <span class="fw-semibold text-dark">{{ min_qty }}</span>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Health Status -->
+                            <td>
+                                {% if qty <= 0 %}
+                                <span class="health-pill out-stock">
+                                    <span class="pulse-beacon"></span>
+                                    Out of Stock
+                                </span>
+                                {% elif min_qty > 0 and qty <= min_qty %}
+                                <span class="health-pill low-stock">
+                                    <span class="pulse-beacon"></span>
+                                    Low Stock Alert
+                                </span>
+                                {% else %}
+                                <span class="health-pill in-stock">
+                                    <span class="pulse-beacon"></span>
+                                    Healthy Stock
+                                </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Quick Action Buttons -->
+                            <td>
+                                <div class="actions-cluster">
+                                    <a href="{% url 'predict_min_stock' item.id %}" class="btn-action-pill forecast" title="Predictive Demand & Reorder Forecast">
+                                        <i class="bi bi-magic"></i> Forecast
+                                    </a>
+                                    <a href="{% url 'stock_chart_2' item.id %}" class="btn-action-pill graphs" title="Historical Velocity & Chart Analytics">
+                                        <i class="bi bi-graph-up-arrow"></i> Trends
+                                    </a>
+                                    <a href="{% url 'history' item.id %}" class="btn-action-pill data" title="Stock Transactions Ledger">
+                                        <i class="bi bi-clock-history"></i> Ledger
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 6. GRID CARDS VIEW (TOGGLEABLE) -->
+        <div id="gridViewWrapper" class="catalog-grid-view">
+            {% for item in page_obj %}
+            {% with qty=item.quantity|default:0 min_qty=item.min_quantity|default:-1 %}
+            <div
+                class="prod-grid-card product-grid-item"
+                data-name="{{ item.name|lower }}"
+                data-id="{{ item.id }}"
+                data-category="{{ item.category.name|default:'Uncategorized'|lower }}"
+                data-status="{% if qty <= 0 %}out-stock{% elif min_qty > 0 and qty <= min_qty %}low-stock{% else %}in-stock{% endif %}"
+            >
+                <div class="card-head-row">
+                    <div class="prod-cell">
+                        <div class="prod-avatar">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <div class="prod-details">
+                            <span class="prod-name">{{ item.name }}</span>
+                            <span class="prod-unit">#{{ item.id }}{% if item.unit %} · {{ item.unit }}{% endif %}</span>
+                        </div>
+                    </div>
+                    {% if qty <= 0 %}
+                    <span class="health-pill out-stock">
+                        <span class="pulse-beacon"></span> Out
+                    </span>
+                    {% elif min_qty > 0 and qty <= min_qty %}
+                    <span class="health-pill low-stock">
+                        <span class="pulse-beacon"></span> Low
+                    </span>
+                    {% else %}
+                    <span class="health-pill in-stock">
+                        <span class="pulse-beacon"></span> Optimal
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="card-body-meta">
+                    {% if item.category %}
+                    <div>
+                        <a href="{% url 'category_products' item.category.id %}" class="cat-badge-pill">
+                            <i class="bi bi-tag-fill" style="font-size: 0.65rem; color: var(--oblu-teal-dark);"></i>
+                            {{ item.category.name }}
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <div class="card-metrics-strip">
+                        <div class="card-metric-col">
+                            <span class="card-metric-label">Current Stock</span>
+                            <span class="card-metric-val">{{ qty }}</span>
+                        </div>
+                        <div class="card-metric-col text-end">
+                            <span class="card-metric-label">Reorder Min</span>
+                            <span class="card-metric-val">{% if min_qty != -1 %}{{ min_qty }}{% else %}—{% endif %}</span>
+                        </div>
+                    </div>
+
+                    <div class="stock-meter-track">
+                        <div
+                            class="stock-meter-fill {% if qty <= 0 %}rose{% elif min_qty > 0 and qty <= min_qty %}amber{% else %}emerald{% endif %}"
+                            style="width: {% if qty <= 0 %}8%{% elif min_qty > 0 %}{% widthratio qty min_qty 50 %}%{% else %}80%{% endif %}; max-width: 100%; min-width: 8px;"
+                        ></div>
+                    </div>
+                </div>
+
+                <div class="card-actions-strip">
+                    <a href="{% url 'predict_min_stock' item.id %}" class="btn-action-pill forecast">
+                        <i class="bi bi-magic"></i> Forecast
+                    </a>
+                    <a href="{% url 'stock_chart_2' item.id %}" class="btn-action-pill graphs">
+                        <i class="bi bi-graph-up-arrow"></i> Trends
+                    </a>
+                    <a href="{% url 'history' item.id %}" class="btn-action-pill data">
+                        <i class="bi bi-clock-history"></i> Ledger
+                    </a>
+                </div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+
+        <!-- 7. EMPTY STATE & SERVER PAGINATION -->
+        {% if not page_obj.object_list %}
+        <div id="emptyCatalogState" class="empty-catalog-state table-glass-card" style="display: block;">
+            <div class="empty-icon-circle">
+                <i class="bi bi-search"></i>
+            </div>
+            <h4 class="empty-title">No matching products found</h4>
+            <p class="empty-desc">
+                {% if search_query %}
+                We couldn't find any products matching "<strong>{{ search_query }}</strong>".
+                {% else %}
+                No products found under this category or active filter.
+                {% endif %}
+            </p>
+            <a href="{% if category %}{% url 'category_products' category.id %}{% else %}{% url 'products' %}{% endif %}" class="btn-oblu-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Search & Filters
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Server Pagination Strip (HTML Only) -->
+        {% if is_paginated %}
+        <div id="paginationBar" class="pagination-cluster table-glass-card">
+            <div class="page-info-text">
+                Page <strong>{{ page_obj.number }}</strong> of <strong>{{ paginator.num_pages }}</strong>
+                <span class="text-muted ms-2">({{ matching_count }} total items)</span>
+            </div>
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+                {% if page_obj.has_previous %}
+                <a href="?page=1{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" title="First Page" style="text-decoration: none;">
+                    <i class="bi bi-chevron-double-left"></i> First
+                </a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" style="text-decoration: none;">
+                    <i class="bi bi-chevron-left"></i> Prev
+                </a>
+                {% else %}
+                <button class="btn-page-nav" disabled><i class="bi bi-chevron-left"></i> Prev</button>
+                {% endif %}
+
+                {% for num in paginator.page_range %}
+                    {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                        {% if page_obj.number == num %}
+                        <span class="btn-page-nav active" style="background: var(--oblu-teal); color: #fff; border-color: var(--oblu-teal); font-weight: 700;">{{ num }}</span>
+                        {% else %}
+                        <a href="?page={{ num }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" style="text-decoration: none;">{{ num }}</a>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" style="text-decoration: none;">
+                    Next <i class="bi bi-chevron-right"></i>
+                </a>
+                <a href="?page={{ paginator.num_pages }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" title="Last Page" style="text-decoration: none;">
+                    Last <i class="bi bi-chevron-double-right"></i>
+                </a>
+                {% else %}
+                <button class="btn-page-nav" disabled>Next <i class="bi bi-chevron-right"></i></button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% if tally_stock %}
+<div class="p-3 bg-white border rounded mt-4">
+    <h6 class="text-muted mb-2">Tally Stock Sync Status</h6>
+    <pre class="small text-secondary m-0">{{ tally_stock|safe }}</pre>
+</div>
+{% endif %}
+
+<!-- =========================================================
+     JAVASCRIPT: VIEW TOGGLE, SHORTCUTS & AUTOCOMPLETE
+     ========================================================= -->
+<script>
+function initCatalogApp() {
+    const searchInput = document.getElementById('catalogSearchInput');
+    const btnTableView = document.getElementById('btnTableView');
+    const btnGridView = document.getElementById('btnGridView');
+    const tableViewWrapper = document.getElementById('tableViewWrapper');
+    const gridViewWrapper = document.getElementById('gridViewWrapper');
+
+    // View toggle handler with localStorage persistence
+    const savedView = localStorage.getItem('oblu_catalog_view') || 'table';
+    if (savedView === 'grid' && btnGridView && gridViewWrapper) {
+        btnGridView.classList.add('active');
+        btnTableView.classList.remove('active');
+        tableViewWrapper.style.display = 'none';
+        gridViewWrapper.style.display = 'grid';
+    }
+
+    if (btnTableView && btnGridView) {
+        btnTableView.addEventListener('click', () => {
+            btnTableView.classList.add('active');
+            btnGridView.classList.remove('active');
+            tableViewWrapper.style.display = 'block';
+            gridViewWrapper.style.display = 'none';
+            localStorage.setItem('oblu_catalog_view', 'table');
+        });
+
+        btnGridView.addEventListener('click', () => {
+            btnGridView.classList.add('active');
+            btnTableView.classList.remove('active');
+            tableViewWrapper.style.display = 'none';
+            gridViewWrapper.style.display = 'grid';
+            localStorage.setItem('oblu_catalog_view', 'grid');
+        });
+    }
+
+    // Keyboard shortcut Ctrl+K or / to focus search
+    if (searchInput) {
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            } else if (e.key === '/' && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        });
+    }
+
+    // Server-side Trevor Eyre Autocomplete
+    let itemMap = {};
+    if (window.Autocomplete && document.getElementById('autocomplete')) {
+        new Autocomplete('#autocomplete', {
+            search: input => {
+                if (input.length < 2) return [];
+                const url = `/inventory/search/?item=${encodeURIComponent(input)}`;
+                return fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        itemMap = {};
+                        if (data && data.data) {
+                            data.data.forEach(item => {
+                                itemMap[item[0]] = item[1];
+                            });
+                            return data.data.map(item => item[0]);
+                        }
+                        return [];
+                    })
+                    .catch(() => []);
+            },
+            onSubmit: result => {
+                const id = itemMap[result];
+                if (id) {
+                    window.location.href = `/inventory/predict/${id}/`;
+                }
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initCatalogApp);
+document.addEventListener('turbo:load', initCatalogApp);
 </script>
 {% endblock content %}
