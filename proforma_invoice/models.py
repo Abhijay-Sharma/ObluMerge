@@ -1438,3 +1438,264 @@ class DocumentEditLog(models.Model):
     def __str__(self):
         doc = f"PI #{self.invoice_id}" if self.invoice_id else f"Quotation #{self.quotation_id}"
         return f"{doc} - {self.action} by {self.user.username}"
+
+
+
+class ShipmentMethod(models.Model):
+
+    name = models.CharField(max_length=100)
+
+    tracking_url = models.URLField()
+
+    is_active = models.BooleanField(default=True)
+
+
+
+class DispatchRequest(models.Model):
+
+    STATUS_CHOICES = [
+
+        # Salesperson created dispatch request
+        ("requested", "Requested"),
+
+        # Accounts entered invoice number, shipment method
+        # and notified warehouse
+        ("waiting_for_packing", "Waiting For Packing"),
+
+        # Warehouse uploaded packed product photos
+        # waiting for accounts review
+        ("packed_awaiting_approval", "Packed - Awaiting Approval"),
+
+        # Accounts approved packing photos
+        # warehouse can now dispatch
+        ("packing_approved", "Packing Approved"),
+
+        # Warehouse dispatched goods and entered docket no.
+        ("dispatched_by_warehouse", "Dispatched By Warehouse"),
+
+        # Accounts performed final verification
+        ("completed", "Completed"),
+
+        # Failure states
+        ("packing_rejected", "Packing Rejected"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    invoice = models.OneToOneField(
+        ProformaInvoice,
+        on_delete=models.CASCADE,
+        related_name="dispatch_request"
+    )
+
+    shipment_method = models.ForeignKey(
+        ShipmentMethod,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True
+    )
+
+    invoice_number = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
+
+    status = models.CharField(
+        max_length=50,
+        choices=STATUS_CHOICES,
+        default="requested"
+    )
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+def dispatch_upload_path(instance, filename):
+
+    invoice_id = instance.dispatch_request.invoice.id
+
+    return (
+        f"dispatchs/"
+        f"{timezone.now().year}/"
+        f"{timezone.now().month}/"
+        f"invoice_{invoice_id}/"
+        f"{filename}"
+    )
+class DispatchPhoto(models.Model):
+
+    dispatch_request = models.ForeignKey(
+        DispatchRequest,
+        related_name="photos",
+        on_delete=models.CASCADE
+    )
+
+    image = models.ImageField(
+        upload_to=dispatch_upload_path
+    )
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+class WarehouseDispatch(models.Model):
+
+    dispatch_request = models.OneToOneField(
+        DispatchRequest,
+        on_delete=models.CASCADE
+    )
+
+    docket_number = models.CharField(
+        max_length=100
+    )
+
+    dispatched_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    dispatched_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+
+def docket_upload_path(instance, filename):
+    invoice_id = instance.warehouse_dispatch.dispatch_request.invoice.id
+
+    return (
+        f"dispatchs/"
+        f"{timezone.now().year}/"
+        f"{timezone.now().month}/"
+        f"invoice_{invoice_id}/"
+        f"docket/"
+        f"{filename}"
+    )
+
+
+class DocketPhoto(models.Model):
+    warehouse_dispatch = models.ForeignKey(
+        WarehouseDispatch,
+        related_name="photos",
+        on_delete=models.CASCADE
+    )
+    image = models.ImageField(upload_to=docket_upload_path)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+class DispatchRemark(models.Model):
+
+    dispatch_request = models.ForeignKey(
+        DispatchRequest,
+        related_name="remarks",
+        on_delete=models.CASCADE
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+    message = models.TextField()
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        ordering = ["created_at"]
+
+class DispatchStateHistory(models.Model):
+
+    EVENT_CHOICES = [
+        ("status", "Status Change"),
+        ("docket", "Docket Change"),
+    ]
+
+    dispatch_request = models.ForeignKey(
+        DispatchRequest,
+        related_name="history",
+        on_delete=models.CASCADE
+    )
+
+    event_type = models.CharField(
+        max_length=20,
+        choices=EVENT_CHOICES,
+        default="status"
+    )
+
+    from_status = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    to_status = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+
+    changed_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        ordering = ["changed_at"]
+
+def dispatch_invoice_upload_path(instance, filename):
+
+    invoice_id = instance.dispatch_request.invoice.id
+
+    return (
+        f"dispatchs/"
+        f"{timezone.now().year}/"
+        f"{timezone.now().month}/"
+        f"invoice_{invoice_id}/"
+        f"invoices/"
+        f"{filename}"
+    )
+
+class DispatchInvoice(models.Model):
+
+    dispatch_request = models.OneToOneField(
+        DispatchRequest,
+        related_name="invoice_file",
+        on_delete=models.CASCADE
+    )
+
+    pdf = models.FileField(
+        upload_to=dispatch_invoice_upload_path
+    )
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True
+    )
