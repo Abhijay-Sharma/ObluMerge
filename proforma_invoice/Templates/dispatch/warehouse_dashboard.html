@@ -1,0 +1,488 @@
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --navy:      #0F1C2E;
+    --navy-mid:  #1A2E48;
+    --slate:     #4A6080;
+    --steel:     #8BA4BE;
+    --cloud:     #EDF2F7;
+    --white:     #FFFFFF;
+    --accent:    #1E6FD9;
+    --accent-lt: #EBF3FF;
+    --success:   #0D7A55;
+    --success-lt:#E6F5F0;
+    --warning:   #B45309;
+    --warning-lt:#FEF3C7;
+    --danger:    #C0392B;
+    --danger-lt: #FDE8E8;
+    --info:      #0369A1;
+    --info-lt:   #E0F2FE;
+    --border:    #D4DFE9;
+    --text-primary:   #0F1C2E;
+    --text-secondary: #4A6080;
+    --text-muted:     #8BA4BE;
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(15,28,46,0.08);
+    --shadow:    0 4px 16px rgba(15,28,46,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .wh-page {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #F4F7FB;
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 32px 0 64px;
+  }
+
+  .wh-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── PAGE HEADER ─────────────────────────────── */
+  .wh-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .wh-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .wh-page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.3px;
+  }
+
+  /* ── STAT PILLS ──────────────────────────────── */
+  .wh-stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .wh-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 18px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    min-width: 80px;
+  }
+  .wh-stat__num {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .wh-stat__num--cyan  { color: var(--info); }
+  .wh-stat__num--green { color: var(--success); }
+  .wh-stat__label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  /* ── CARD ────────────────────────────────────── */
+  .wh-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .wh-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFCFE;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .wh-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .wh-card__icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--info-lt);
+    color: var(--info);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .wh-card__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .wh-card__subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  /* ── PRIORITY INDICATOR ──────────────────────── */
+  /* Rows needing packing action get a subtle left accent */
+  .wh-row--action {
+    background: #FAFEFF !important;
+    border-left: 3px solid var(--info);
+  }
+  .wh-row--action:hover { background: #F0F8FF !important; }
+
+  /* ── SEARCH BAR ──────────────────────────────── */
+  .wh-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .wh-search {
+    position: relative;
+  }
+  .wh-search__icon {
+    position: absolute;
+    left: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .wh-search input {
+    padding: 7px 12px 7px 30px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    background: var(--white);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .wh-search input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(30,111,217,0.1);
+  }
+
+  /* ── TABLE ───────────────────────────────────── */
+  .wh-table-wrap { overflow-x: auto; }
+
+  .wh-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .wh-table thead th {
+    text-align: left;
+    padding: 11px 16px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: #FAFCFE;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .wh-table thead th:first-child { padding-left: 24px; }
+  .wh-table thead th:last-child  { padding-right: 24px; text-align: right; }
+
+  .wh-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .wh-table tbody tr:last-child { border-bottom: none; }
+  .wh-table tbody tr:hover { background: #F5F8FD; }
+
+  .wh-table tbody td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    color: var(--text-secondary);
+  }
+  .wh-table tbody td:first-child { padding-left: 24px; }
+  .wh-table tbody td:last-child  { padding-right: 24px; text-align: right; }
+
+  .wh-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .wh-customer {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+
+  /* Status badge */
+  .wh-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .wh-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .wh-badge--requested    { background: var(--warning-lt); color: var(--warning); }
+  .wh-badge--requested::before { background: var(--warning); }
+  .wh-badge--packing      { background: var(--info-lt);    color: var(--info); }
+  .wh-badge--packing::before   { background: var(--info); }
+  .wh-badge--review       { background: var(--warning-lt); color: var(--warning); }
+  .wh-badge--review::before    { background: #F59E0B; }
+  .wh-badge--approved     { background: var(--accent-lt);  color: var(--accent); }
+  .wh-badge--approved::before  { background: var(--accent); }
+  .wh-badge--dispatched   { background: var(--success-lt); color: var(--success); }
+  .wh-badge--dispatched::before { background: var(--success); }
+  .wh-badge--completed    { background: var(--success-lt); color: var(--success); }
+  .wh-badge--completed::before { background: var(--success); }
+  .wh-badge--default      { background: var(--cloud);      color: var(--steel); }
+  .wh-badge--default::before   { background: var(--steel); }
+
+  .wh-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Open button */
+  .wh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .wh-btn--primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .wh-btn--primary:hover { background: #1560c0; }
+  .wh-btn--packing { background: var(--info);   color: #fff; border-color: var(--info); }
+  .wh-btn--packing:hover { background: #025e8f; }
+
+  /* Empty state */
+  .wh-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 24px;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .wh-empty span { font-size: 32px; }
+  .wh-empty strong { color: var(--text-secondary); font-size: 14px; }
+
+  /* ── LEGEND ──────────────────────────────────── */
+  .wh-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 10px 24px;
+    border-top: 1px solid var(--border);
+    background: #FAFCFE;
+  }
+  .wh-legend__dot {
+    width: 10px; height: 10px;
+    background: var(--info);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 700px) {
+    .wh-search input { width: 160px; }
+  }
+</style>
+
+<div class="wh-page">
+<div class="wh-container">
+
+  <!-- ── PAGE HEADER ──────────────────────────────── -->
+  <div class="wh-page-header">
+    <div>
+      <div class="wh-eyebrow">Operations · Warehouse</div>
+      <h1 class="wh-page-title">Warehouse Dashboard</h1>
+    </div>
+    <div class="wh-stats">
+      <div class="wh-stat">
+        <span class="wh-stat__num">{{ dispatches|length }}</span>
+        <span class="wh-stat__label">Total</span>
+      </div>
+      <div class="wh-stat">
+        <span class="wh-stat__num wh-stat__num--cyan">—</span>
+        <span class="wh-stat__label">To Pack</span>
+      </div>
+      <div class="wh-stat">
+        <span class="wh-stat__num wh-stat__num--green">—</span>
+        <span class="wh-stat__label">To Dispatch</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TABLE CARD ───────────────────────────────── -->
+  <div class="wh-card">
+    <div class="wh-card__header">
+      <div class="wh-card__header-left">
+        <div class="wh-card__icon">📦</div>
+        <div>
+          <div class="wh-card__title">All Dispatches</div>
+          <div class="wh-card__subtitle">Rows requiring packing or dispatch action are highlighted</div>
+        </div>
+      </div>
+      <div class="wh-filter-bar">
+        <div class="wh-search">
+          <span class="wh-search__icon">🔍</span>
+          <input type="text" placeholder="Search customer, PI…" oninput="whFilterTable(this.value)">
+        </div>
+      </div>
+    </div>
+
+    <div class="wh-table-wrap">
+      <table class="wh-table" id="wh-table">
+        <thead>
+          <tr>
+            <th>PI</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Invoice No.</th>
+            <th>Shipment</th>
+            <th>Time in Stage</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dispatch in dispatches %}
+          <tr class="{% if dispatch.status == 'waiting_for_packing' or dispatch.status == 'packing_approved' %}wh-row--action{% endif %}">
+            <td><span class="wh-mono">{{ dispatch.invoice.id }}</span></td>
+            <td><span class="wh-customer">{{ dispatch.invoice.customer.name }}</span></td>
+            <td>
+              {% if dispatch.status == "requested" %}
+                <span class="wh-badge wh-badge--requested">Requested</span>
+              {% elif dispatch.status == "waiting_for_packing" %}
+                <span class="wh-badge wh-badge--packing">Awaiting Packing</span>
+              {% elif dispatch.status == "packed_awaiting_approval" %}
+                <span class="wh-badge wh-badge--review">Pending Review</span>
+              {% elif dispatch.status == "packing_approved" %}
+                <span class="wh-badge wh-badge--approved">Packing Approved</span>
+              {% elif dispatch.status == "dispatched_by_warehouse" %}
+                <span class="wh-badge wh-badge--dispatched">Dispatched</span>
+              {% elif dispatch.status == "completed" %}
+                <span class="wh-badge wh-badge--completed">Completed</span>
+              {% else %}
+                <span class="wh-badge wh-badge--default">{{ dispatch.get_status_display }}</span>
+              {% endif %}
+            </td>
+           <td>
+              {% if dispatch.invoice_number %}
+                <span class="wh-mono">{{ dispatch.invoice_number }}</span>
+              {% else %}
+                <span class="wh-mono" style="color:var(--text-muted);">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if dispatch.shipment_method %}
+                {{ dispatch.shipment_method.name }}
+              {% else %}
+                <span style="color:var(--text-muted);">—</span>
+              {% endif %}
+            </td>
+            <td><span class="wh-time">{{ dispatch.time_in_stage }}</span></td>
+            <td>
+              {% if dispatch.status == "waiting_for_packing" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="wh-btn wh-btn--packing">
+                  📦 Pack Now
+                </a>
+              {% elif dispatch.status == "packing_approved" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="wh-btn wh-btn--primary">
+                  🚚 Dispatch
+                </a>
+              {% else %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="wh-btn wh-btn--primary">
+                  → Open
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="wh-empty">
+                <span>📭</span>
+                <strong>No dispatches assigned</strong>
+                Nothing in the queue — check back soon.
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="wh-legend">
+      <span class="wh-legend__dot"></span>
+      Highlighted rows require warehouse action (packing or dispatch)
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+  function whFilterTable(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll('#wh-table tbody tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
+  }
+</script>
+
+{% endblock %}

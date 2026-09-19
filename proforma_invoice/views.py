@@ -7985,3 +7985,909 @@ class SearchInventoryProductApiView(LoginRequiredMixin, View):
         return JsonResponse({"results": results})
 
 
+# dispatch management views
+
+from .models import (
+DispatchRequest,
+    ShipmentMethod,
+    DispatchInvoice,
+    DispatchRemark,
+    DispatchStateHistory,
+    DispatchPhoto,
+    WarehouseDispatch,
+    DocketPhoto
+)
+
+def move_dispatch_status(dispatch, new_status, user):
+
+    old_status = dispatch.status
+
+    dispatch.status = new_status
+    dispatch.save()
+
+    DispatchStateHistory.objects.create(
+        dispatch_request=dispatch,
+        from_status=old_status,
+        to_status=new_status,
+        changed_by=user
+    )
+
+class AccountsDispatchDashboardView(LoginRequiredMixin,AccountantRequiredMixin,TemplateView):
+
+    template_name = "dispatch/accounts_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+
+        dispatches = (
+            DispatchRequest.objects
+            .select_related(
+                "invoice",
+                "invoice__customer",
+                "shipment_method"
+            )
+            .order_by("-created_at")
+        )
+
+        for dispatch in dispatches:
+
+            latest_history = (
+                dispatch.history
+                .order_by("-changed_at")
+                .first()
+            )
+
+            if latest_history:
+                dispatch.time_in_stage = (
+                    timezone.now()
+                    - latest_history.changed_at
+                )
+            else:
+                dispatch.time_in_stage = (
+                    timezone.now()
+                    - dispatch.created_at
+                )
+
+        context["dispatches"] = dispatches
+
+        return context
+
+
+class WarehouseDispatchDashboardView(LoginRequiredMixin,TemplateView):
+    template_name = "dispatch/warehouse_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+
+        dispatches = (
+            DispatchRequest.objects
+            .filter(
+                status__in=[
+                    "waiting_for_packing",
+                    "packing_approved",
+                ]
+            )
+            .select_related(
+                "invoice",
+                "invoice__customer",
+                "shipment_method"
+            )
+            .order_by("-created_at")
+        )
+
+        for dispatch in dispatches:
+
+            latest_history = (
+                dispatch.history
+                .order_by("-changed_at")
+                .first()
+            )
+
+            if latest_history:
+                dispatch.time_in_stage = (
+                    timezone.now()
+                    - latest_history.changed_at
+                )
+            else:
+                dispatch.time_in_stage = (
+                    timezone.now()
+                    - dispatch.created_at
+                )
+
+        context["dispatches"] = dispatches
+
+        return context
+
+
+class DispatchDetailView(LoginRequiredMixin,TemplateView):
+    template_name = "dispatch/detail.html"
+
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+
+        dispatch = get_object_or_404(
+            DispatchRequest.objects.select_related(
+                "invoice",
+                "invoice__customer",
+                "shipment_method"
+            ),
+            pk=self.kwargs["pk"]
+        )
+
+        context["dispatch"] = dispatch
+
+        context["photos"] = (
+            dispatch.photos.all()
+            .order_by("-uploaded_at")
+        )
+
+        context["remarks"] = (
+            dispatch.remarks.all()
+        )
+
+        context["history"] = (
+            dispatch.history.all()
+        )
+
+        try:
+            context["invoice_file"] = dispatch.invoice_file
+        except:
+            context["invoice_file"] = None
+
+        try:
+            context["warehouse_dispatch"] = dispatch.warehousedispatch
+        except:
+            context["warehouse_dispatch"] = None
+
+        # Docket photos
+        if context["warehouse_dispatch"]:
+            context["docket_photos"] = (
+                DocketPhoto.objects
+                .filter(
+                    warehouse_dispatch=context["warehouse_dispatch"]
+                )
+                .order_by("-uploaded_at")
+            )
+        else:
+            context["docket_photos"] = []
+
+        context["shipment_methods"] = (
+            ShipmentMethod.objects
+            .filter(is_active=True)
+            .order_by("name")
+        )
+        context["is_accountant"] = getattr(self.request.user, 'is_accountant', False) or self.request.user.is_superuser
+
+        context["is_warehouse"] = (
+                self.request.user.username.lower() == "warehouse"
+        )
+        return context
+
+
+class NotifyWarehouseView(LoginRequiredMixin, AccountantRequiredMixin, View):
+
+    def post(self, request, pk):
+
+        dispatch = get_object_or_404(
+            DispatchRequest,
+            pk=pk
+        )
+
+        if dispatch.status != "requested":
+            messages.error(
+                request,
+                "This dispatch is not in Requested state."
+            )
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        invoice_number = request.POST.get(
+            "invoice_number"
+        )
+
+        shipment_method_id = request.POST.get(
+            "shipment_method"
+        )
+
+        invoice_pdf = request.FILES.get(
+            "invoice_pdf"
+        )
+
+        # -------------------------
+        # Validation
+        # -------------------------
+
+        if not invoice_number:
+            messages.error(
+                request,
+                "Invoice Number is required."
+            )
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        if not shipment_method_id:
+            messages.error(
+                request,
+                "Shipment Method is required."
+            )
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        if not invoice_pdf:
+            messages.error(
+                request,
+                "Invoice PDF is required."
+            )
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        shipment_method = get_object_or_404(
+            ShipmentMethod,
+            pk=shipment_method_id
+        )
+
+        # -------------------------
+        # Save Dispatch
+        # -------------------------
+
+        dispatch.invoice_number = invoice_number
+        dispatch.shipment_method = shipment_method
+        dispatch.save()
+
+        # -------------------------
+        # Save Invoice PDF
+        # -------------------------
+
+        DispatchInvoice.objects.update_or_create(
+            dispatch_request=dispatch,
+            defaults={
+                "pdf": invoice_pdf,
+                "uploaded_by": request.user
+            }
+        )
+
+        # -------------------------
+        # State Change
+        # -------------------------
+
+        old_status = dispatch.status
+
+        dispatch.status = "waiting_for_packing"
+        dispatch.save()
+
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            from_status=old_status,
+            to_status="waiting_for_packing",
+            changed_by=request.user
+        )
+
+        # -------------------------
+        # EMAIL TO WAREHOUSE
+        # -------------------------
+
+        try:
+
+            warehouse_emails = [
+                "warehouse@obluhc.com"
+            ]
+
+            subject = (
+                f"📦 Packing Required "
+                f"(PI #{dispatch.invoice.id})"
+            )
+
+            html = render_to_string(
+                "dispatch/emails/warehouse_notification.html",
+                {
+                    "dispatch": dispatch
+                }
+            )
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body="Packing Required",
+                from_email="proforma@obluhc.com",
+                to=warehouse_emails
+            )
+
+            msg.attach_alternative(
+                html,
+                "text/html"
+            )
+
+            msg.send()
+
+        except Exception as e:
+            print(e)
+
+        messages.success(
+            request,
+            "Warehouse notified successfully."
+        )
+
+        return redirect(
+            "dispatch_detail",
+            pk=dispatch.id
+        )
+
+class WarehousePackingSubmitView(LoginRequiredMixin,View):
+
+    def post(self, request, pk):
+
+        dispatch = get_object_or_404(
+            DispatchRequest,
+            pk=pk
+        )
+
+        if dispatch.status != "waiting_for_packing":
+
+            messages.error(
+                request,
+                "Invalid dispatch state."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        remark = request.POST.get(
+            "remark",
+            ""
+        )
+
+        photos = request.FILES.getlist(
+            "photos"
+        )
+
+        # ----------------------
+        # Require photos
+        # ----------------------
+
+        if not photos:
+
+            messages.error(
+                request,
+                "Please upload packing photos."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        # ----------------------
+        # Save Photos
+        # ----------------------
+
+        for photo in photos:
+
+            DispatchPhoto.objects.create(
+                dispatch_request=dispatch,
+                image=photo,
+                uploaded_by=request.user
+            )
+
+        # ----------------------
+        # Save Remark
+        # ----------------------
+
+        if remark:
+
+            DispatchRemark.objects.create(
+                dispatch_request=dispatch,
+                user=request.user,
+                message=remark
+            )
+
+        # ----------------------
+        # Change State
+        # ----------------------
+
+        old_status = dispatch.status
+
+        dispatch.status = (
+            "packed_awaiting_approval"
+        )
+
+        dispatch.save()
+
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            from_status=old_status,
+            to_status="packed_awaiting_approval",
+            changed_by=request.user
+        )
+
+        # ----------------------
+        # Mail Accounts
+        # ----------------------
+
+        try:
+
+            subject = (
+                f"📦 Packing Submitted "
+                f"(PI #{dispatch.invoice.id})"
+            )
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body="Packing submitted.",
+                from_email="proforma@oblutools.com",
+                to=["accounts@obluhc.com"]
+            )
+
+            msg.send()
+
+        except Exception as e:
+
+            print(e)
+
+        messages.success(
+            request,
+            "Packing submitted successfully."
+        )
+
+        return redirect(
+            "dispatch_detail",
+            pk=dispatch.id
+        )
+
+
+class ApprovePackingView(LoginRequiredMixin,AccountantRequiredMixin,View):
+
+    def post(self, request, pk):
+
+        dispatch = get_object_or_404(
+            DispatchRequest,
+            pk=pk
+        )
+
+        if dispatch.status != "packed_awaiting_approval":
+
+            messages.error(
+                request,
+                "Invalid dispatch state."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        old_status = dispatch.status
+
+        dispatch.status = "packing_approved"
+        dispatch.save()
+
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            from_status=old_status,
+            to_status="packing_approved",
+            changed_by=request.user
+        )
+
+        # EMAIL WAREHOUSE
+        try:
+
+            subject = (
+                f"✅ Packing Approved "
+                f"(PI #{dispatch.invoice.id})"
+            )
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body="Packing Approved",
+                from_email="proforma@oblutools.com",
+                to=["warehouse@obluhc.com"]
+            )
+
+            msg.send()
+
+        except Exception as e:
+            print(e)
+
+        messages.success(
+            request,
+            "Packing approved."
+        )
+
+        return redirect(
+            "dispatch_detail",
+            pk=dispatch.id
+        )
+
+
+class RejectPackingView(LoginRequiredMixin,AccountantRequiredMixin,View):
+
+    def post(self, request, pk):
+
+        dispatch = get_object_or_404(
+            DispatchRequest,
+            pk=pk
+        )
+
+        if dispatch.status != "packed_awaiting_approval":
+
+            messages.error(
+                request,
+                "Invalid dispatch state."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        rejection_remark = request.POST.get(
+            "rejection_remark",
+            ""
+        )
+
+        if rejection_remark:
+
+            DispatchRemark.objects.create(
+                dispatch_request=dispatch,
+                user=request.user,
+                message=f"PACKING REJECTED: {rejection_remark}"
+            )
+
+        old_status = dispatch.status
+
+        dispatch.status = "waiting_for_packing"
+        dispatch.save()
+
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            from_status=old_status,
+            to_status="waiting_for_packing",
+            changed_by=request.user
+        )
+
+        # EMAIL WAREHOUSE
+        try:
+
+            subject = (
+                f"❌ Packing Rejected "
+                f"(PI #{dispatch.invoice.id})"
+            )
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=rejection_remark,
+                from_email="proforma@oblutools.com",
+                to=["warehouse@obluhc.com"]
+            )
+
+            msg.send()
+
+        except Exception as e:
+            print(e)
+
+        messages.warning(
+            request,
+            "Packing rejected."
+        )
+
+        return redirect(
+            "dispatch_detail",
+            pk=dispatch.id
+        )
+
+
+class WarehouseDispatchView(LoginRequiredMixin, View):
+
+    def post(self, request, pk):
+        dispatch = get_object_or_404(
+            DispatchRequest,
+            pk=pk
+        )
+
+        if dispatch.status != "packing_approved":
+
+            messages.error(
+                request,
+                "Invalid dispatch state."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        docket_number = (
+            request.POST.get("docket_number", "")
+            .strip()
+        )
+
+        docket_photos = request.FILES.getlist(
+            "docket_photos"
+        )
+
+        if not docket_number:
+
+            messages.error(
+                request,
+                "Docket number is required."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        if not docket_photos:
+            messages.error(
+                request,
+                "Please upload at least one docket photo."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        warehouse_dispatch, created = (
+            WarehouseDispatch.objects.update_or_create(
+                dispatch_request=dispatch,
+                defaults={
+                    "docket_number": docket_number,
+                    "dispatched_at": timezone.now(),
+                    "dispatched_by": request.user,
+                }
+            )
+        )
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            event_type="docket",
+            from_status="",
+            to_status=docket_number,
+            changed_by=request.user
+        )
+        # --------------------------------
+        # Save docket photos
+        # --------------------------------
+
+        for photo in docket_photos:
+            DocketPhoto.objects.create(
+                warehouse_dispatch=warehouse_dispatch,
+                image=photo,
+                uploaded_by=request.user
+            )
+
+        old_status = dispatch.status
+
+        dispatch.status = "dispatched_by_warehouse"
+        dispatch.save()
+
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            event_type="status",
+            from_status=old_status,
+            to_status="dispatched_by_warehouse",
+            changed_by=request.user
+        )
+
+        # Email Accounts
+        try:
+
+            subject = (
+                f"🚚 Dispatched "
+                f"(PI #{dispatch.invoice.id})"
+            )
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=f"Docket Number: {docket_number}",
+                from_email="proforma@oblutools.com",
+                to=["accounts@obluhc.com"]
+            )
+
+            msg.send()
+
+        except Exception as e:
+            print(e)
+
+        messages.success(
+            request,
+            "Dispatch marked successfully."
+        )
+
+        return redirect(
+            "dispatch_detail",
+            pk=dispatch.id
+        )
+
+class EditDocketNumberView(LoginRequiredMixin,AccountantRequiredMixin,View):
+
+    def post(self, request, pk):
+
+        dispatch = get_object_or_404(
+            DispatchRequest,
+            pk=pk
+        )
+
+        # Accounts can edit the docket
+        # after warehouse dispatch and before completion.
+        if dispatch.status != "dispatched_by_warehouse":
+
+            messages.error(
+                request,
+                "Docket cannot be edited in the current dispatch state."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        warehouse_dispatch = get_object_or_404(
+            WarehouseDispatch,
+            dispatch_request=dispatch
+        )
+
+        new_docket_number = (
+            request.POST
+            .get("docket_number", "")
+            .strip()
+        )
+
+        if not new_docket_number:
+
+            messages.error(
+                request,
+                "Docket number cannot be empty."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        old_docket_number = (
+            warehouse_dispatch.docket_number
+        )
+
+        # Nothing actually changed
+        if old_docket_number == new_docket_number:
+
+            messages.info(
+                request,
+                "Docket number is unchanged."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        # --------------------------------
+        # Update docket
+        # --------------------------------
+
+        warehouse_dispatch.docket_number = (
+            new_docket_number
+        )
+
+        warehouse_dispatch.save(
+            update_fields=["docket_number"]
+        )
+
+        # --------------------------------
+        # Audit history
+        # --------------------------------
+
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            event_type="docket",
+            from_status=old_docket_number,
+            to_status=new_docket_number,
+            changed_by=request.user
+        )
+
+        messages.success(
+            request,
+            "Docket number updated successfully."
+        )
+
+        return redirect(
+            "dispatch_detail",
+            pk=dispatch.id
+        )
+
+class CompleteDispatchView(LoginRequiredMixin,AccountantRequiredMixin,View):
+
+    def post(self, request, pk):
+
+        dispatch = get_object_or_404(
+            DispatchRequest,
+            pk=pk
+        )
+
+        if dispatch.status != "dispatched_by_warehouse":
+
+            messages.error(
+                request,
+                "Invalid dispatch state."
+            )
+
+            return redirect(
+                "dispatch_detail",
+                pk=dispatch.id
+            )
+
+        old_status = dispatch.status
+
+        dispatch.status = "completed"
+        dispatch.save()
+
+        DispatchStateHistory.objects.create(
+            dispatch_request=dispatch,
+            from_status=old_status,
+            to_status="completed",
+            changed_by=request.user
+        )
+
+        # Update actual invoice
+        invoice = dispatch.invoice
+
+        invoice.dispatch_status = "dispatched"
+        invoice.dispatched_at = timezone.now()
+        invoice.save()
+
+        # Email Salesperson
+        try:
+
+            recipients = []
+
+            if dispatch.requested_by and dispatch.requested_by.email:
+                recipients.append(
+                    dispatch.requested_by.email
+                )
+
+            if recipients:
+
+                subject = (
+                    f"✅ Order Dispatched "
+                    f"(PI #{invoice.id})"
+                )
+
+                body = (
+                    f"Your dispatch request for "
+                    f"PI #{invoice.id} "
+                    f"has been completed."
+                )
+
+                msg = EmailMultiAlternatives(
+                    subject=subject,
+                    body=body,
+                    from_email="proforma@oblutools.com",
+                    to=recipients
+                )
+
+                msg.send()
+
+        except Exception as e:
+            print(e)
+
+        messages.success(
+            request,
+            "Dispatch completed successfully."
+        )
+
+        return redirect(
+            "dispatch_detail",
+            pk=dispatch.id
+        )

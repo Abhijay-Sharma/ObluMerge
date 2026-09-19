@@ -1,0 +1,933 @@
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --navy:      #0F1C2E;
+    --navy-mid:  #1A2E48;
+    --navy-soft: #243B55;
+    --slate:     #4A6080;
+    --steel:     #8BA4BE;
+    --cloud:     #EDF2F7;
+    --white:     #FFFFFF;
+    --accent:    #1E6FD9;
+    --accent-lt: #EBF3FF;
+    --success:   #0D7A55;
+    --success-lt:#E6F5F0;
+    --warning:   #B45309;
+    --warning-lt:#FEF3C7;
+    --danger:    #C0392B;
+    --danger-lt: #FDE8E8;
+    --info:      #0369A1;
+    --info-lt:   #E0F2FE;
+    --border:    #D4DFE9;
+    --text-primary:   #0F1C2E;
+    --text-secondary: #4A6080;
+    --text-muted:     #8BA4BE;
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(15,28,46,0.08);
+    --shadow:    0 4px 16px rgba(15,28,46,0.10);
+    --shadow-lg: 0 8px 32px rgba(15,28,46,0.13);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dp-page {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #F4F7FB;
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 32px 0 64px;
+  }
+
+  .dp-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── PAGE HEADER ─────────────────────────────── */
+  .dp-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .dp-page-header__left {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dp-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .dp-page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+  .dp-page-title span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  /* ── STATUS BADGE ────────────────────────────── */
+  .dp-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: 1.5px solid transparent;
+  }
+  .dp-status-badge::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dp-status-badge--requested    { background: var(--warning-lt); color: var(--warning);  border-color: #FDE68A; }
+  .dp-status-badge--requested::before { background: var(--warning); }
+  .dp-status-badge--packing      { background: var(--info-lt);    color: var(--info);     border-color: #BAE6FD; }
+  .dp-status-badge--packing::before   { background: var(--info); }
+  .dp-status-badge--review       { background: var(--warning-lt); color: var(--warning);  border-color: #FDE68A; }
+  .dp-status-badge--review::before    { background: var(--warning); }
+  .dp-status-badge--approved     { background: var(--accent-lt);  color: var(--accent);   border-color: #BFDBFE; }
+  .dp-status-badge--approved::before  { background: var(--accent); }
+  .dp-status-badge--dispatched   { background: var(--success-lt); color: var(--success);  border-color: #A7F3D0; }
+  .dp-status-badge--dispatched::before { background: var(--success); }
+  .dp-status-badge--completed    { background: var(--success-lt); color: var(--success);  border-color: #A7F3D0; }
+  .dp-status-badge--completed::before { background: var(--success); box-shadow: 0 0 0 2px rgba(13,122,85,0.25); }
+
+  /* ── CARD ────────────────────────────────────── */
+  .dp-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .dp-card--action {
+    border-left: 4px solid var(--accent);
+  }
+  .dp-card--warning { border-left: 4px solid #F59E0B; }
+  .dp-card--success { border-left: 4px solid var(--success); }
+  .dp-card--danger  { border-left: 4px solid var(--danger); }
+  .dp-card--info    { border-left: 4px solid var(--info); }
+
+  .dp-card__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFCFE;
+  }
+  .dp-card__header-icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 15px;
+  }
+  .dp-card__header-icon--blue   { background: var(--accent-lt);  color: var(--accent); }
+  .dp-card__header-icon--yellow { background: var(--warning-lt); color: var(--warning); }
+  .dp-card__header-icon--green  { background: var(--success-lt); color: var(--success); }
+  .dp-card__header-icon--red    { background: var(--danger-lt);  color: var(--danger); }
+  .dp-card__header-icon--cyan   { background: var(--info-lt);    color: var(--info); }
+  .dp-card__header-icon--gray   { background: var(--cloud);      color: var(--slate); }
+
+  .dp-card__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.01em;
+  }
+  .dp-card__subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .dp-card__body {
+    padding: 24px;
+  }
+
+  /* ── DETAILS GRID ────────────────────────────── */
+  .dp-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .dp-detail-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .dp-detail-item:nth-child(even) { border-right: none; }
+  .dp-detail-item:nth-last-child(-n+2) { border-bottom: none; }
+  .dp-detail-item--full {
+    grid-column: 1 / -1;
+    border-right: none;
+  }
+  .dp-detail-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .dp-detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .dp-detail-value--mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+  .dp-detail-value--muted {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  /* ── TRACK BUTTON ────────────────────────────── */
+  .dp-btn-track {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: var(--navy);
+    color: var(--white);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: background 0.15s;
+  }
+  .dp-btn-track:hover { background: var(--navy-mid); color: var(--white); }
+
+  /* ── FORMS ───────────────────────────────────── */
+  .dp-form { display: flex; flex-direction: column; gap: 20px; }
+
+  .dp-field { display: flex; flex-direction: column; gap: 6px; }
+  .dp-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+  }
+  .dp-label span {
+    color: var(--danger);
+    margin-left: 2px;
+  }
+  .dp-input,
+  .dp-select,
+  .dp-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    background: var(--white);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    appearance: none;
+  }
+  .dp-input:focus,
+  .dp-select:focus,
+  .dp-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(30,111,217,0.12);
+  }
+  .dp-input--mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .dp-textarea { resize: vertical; min-height: 96px; }
+  .dp-file-input { padding: 8px 12px; }
+
+  .dp-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 4px;
+    flex-wrap: wrap;
+  }
+
+  /* ── BUTTONS ─────────────────────────────────── */
+  .dp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .dp-btn--primary  { background: var(--accent);   color: #fff; border-color: var(--accent); }
+  .dp-btn--primary:hover  { background: #1560c0; border-color: #1560c0; }
+  .dp-btn--success  { background: var(--success);  color: #fff; border-color: var(--success); }
+  .dp-btn--success:hover  { background: #0a6045; border-color: #0a6045; }
+  .dp-btn--danger   { background: var(--danger);   color: #fff; border-color: var(--danger); }
+  .dp-btn--danger:hover   { background: #a93226; border-color: #a93226; }
+  .dp-btn--outline  { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+  .dp-btn--outline:hover  { border-color: var(--slate); color: var(--text-primary); background: var(--cloud); }
+
+  /* ── DIVIDER ─────────────────────────────────── */
+  .dp-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  /* ── REVIEW SECTION ──────────────────────────── */
+  .dp-review-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--warning-lt);
+    border: 1px solid #FDE68A;
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+  }
+  .dp-review-note__icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .dp-review-note__text { font-size: 13px; color: var(--warning); font-weight: 500; }
+
+  /* ── DISPATCH COMPLETE ───────────────────────── */
+  .dp-complete-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+    background: var(--success-lt);
+    border-radius: var(--radius-sm);
+    border: 1px solid #A7F3D0;
+    margin-bottom: 16px;
+  }
+  .dp-complete-banner__icon { font-size: 28px; }
+  .dp-complete-banner__title { font-size: 15px; font-weight: 700; color: var(--success); margin-bottom: 2px; }
+  .dp-complete-banner__body  { font-size: 13px; color: #0f6643; }
+
+  /* ── INVOICE PDF ─────────────────────────────── */
+  .dp-invoice-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    background: var(--cloud);
+    border-radius: var(--radius-sm);
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .dp-invoice-empty span { font-size: 28px; }
+
+  /* ── PHOTOS ──────────────────────────────────── */
+  .dp-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+  .dp-photo-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--cloud);
+    border: 1px solid var(--border);
+  }
+  .dp-photo-item a { display: block; }
+  .dp-photo-item img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.15s;
+  }
+  .dp-photo-item img:hover { opacity: 0.88; }
+  .dp-photo-timestamp {
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--white);
+  }
+
+  /* ── REMARKS ─────────────────────────────────── */
+  .dp-remark {
+    display: flex;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .dp-remark:last-child { border-bottom: none; }
+  .dp-remark__avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--navy-mid);
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }
+  .dp-remark__body { flex: 1; min-width: 0; }
+  .dp-remark__meta {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .dp-remark__user { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .dp-remark__time { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .dp-remark__message { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ── HISTORY TABLE ───────────────────────────── */
+  .dp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .dp-table thead th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: #FAFCFE;
+    border-bottom: 1px solid var(--border);
+  }
+  .dp-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .dp-table tbody tr:last-child { border-bottom: none; }
+  .dp-table tbody tr:hover { background: #F8FAFC; }
+  .dp-table tbody td {
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    vertical-align: middle;
+  }
+  .dp-table tbody td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .dp-status-pill {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--cloud);
+    color: var(--slate);
+  }
+  .dp-table tbody td:last-child {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .dp-empty-state {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-muted);
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .dp-empty-state span { font-size: 24px; }
+
+  /* ── RESPONSIVE ──────────────────────────────── */
+  @media (max-width: 640px) {
+    .dp-details-grid { grid-template-columns: 1fr; }
+    .dp-detail-item  { border-right: none; }
+    .dp-detail-item:nth-last-child(-n+2) { border-bottom: 1px solid var(--border); }
+    .dp-detail-item:last-child { border-bottom: none; }
+    .dp-photo-grid { grid-template-columns: repeat(2, 1fr); }
+    .dp-page-header { flex-direction: column; }
+  }
+</style>
+
+<div class="dp-page">
+<div class="dp-container">
+
+  <!-- ── PAGE HEADER ───────────────────────────────────────── -->
+  <div class="dp-page-header">
+    <div class="dp-page-header__left">
+      <span class="dp-eyebrow">Dispatch Management</span>
+      <h1 class="dp-page-title">
+        Dispatch <span>#{{ dispatch.id }}</span>
+      </h1>
+    </div>
+    <div>
+      {% if dispatch.status == "requested" %}
+        <span class="dp-status-badge dp-status-badge--requested">Requested</span>
+      {% elif dispatch.status == "waiting_for_packing" %}
+        <span class="dp-status-badge dp-status-badge--packing">Awaiting Packing</span>
+      {% elif dispatch.status == "packed_awaiting_approval" %}
+        <span class="dp-status-badge dp-status-badge--review">Pending Review</span>
+      {% elif dispatch.status == "packing_approved" %}
+        <span class="dp-status-badge dp-status-badge--approved">Packing Approved</span>
+      {% elif dispatch.status == "dispatched_by_warehouse" %}
+        <span class="dp-status-badge dp-status-badge--dispatched">Dispatched</span>
+      {% elif dispatch.status == "completed" %}
+        <span class="dp-status-badge dp-status-badge--completed">Completed</span>
+      {% else %}
+        <span class="dp-status-badge dp-status-badge--packing">{{ dispatch.get_status_display }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── DISPATCH DETAILS ───────────────────────────────────── -->
+  <div class="dp-card">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--blue">📋</div>
+      <div>
+        <div class="dp-card__title">Dispatch Details</div>
+        <div class="dp-card__subtitle">Core information for this dispatch record</div>
+      </div>
+    </div>
+    <div class="dp-details-grid">
+
+      <div class="dp-detail-item">
+        <div class="dp-detail-label">Proforma Invoice</div>
+        <div class="dp-detail-value dp-detail-value--mono">{{ dispatch.invoice.id }}</div>
+      </div>
+
+      <div class="dp-detail-item">
+        <div class="dp-detail-label">Customer</div>
+        <div class="dp-detail-value">{{ dispatch.invoice.customer.name }}</div>
+      </div>
+
+      <div class="dp-detail-item">
+        <div class="dp-detail-label">Invoice Number</div>
+        <div class="dp-detail-value {% if not dispatch.invoice_number %}dp-detail-value--muted{% else %}dp-detail-value--mono{% endif %}">
+          {{ dispatch.invoice_number|default:"Not assigned" }}
+        </div>
+      </div>
+
+      <div class="dp-detail-item">
+        <div class="dp-detail-label">Shipment Method</div>
+        <div class="dp-detail-value {% if not dispatch.shipment_method %}dp-detail-value--muted{% endif %}">
+          {% if dispatch.shipment_method %}{{ dispatch.shipment_method.name }}{% else %}Not selected{% endif %}
+        </div>
+      </div>
+
+      {% if warehouse_dispatch %}
+      <div class="dp-detail-item">
+        <div class="dp-detail-label">Docket Number</div>
+        <div class="dp-detail-value dp-detail-value--mono">{{ warehouse_dispatch.docket_number }}</div>
+      </div>
+
+      <div class="dp-detail-item">
+        <div class="dp-detail-label">Tracking</div>
+        <div class="dp-detail-value">
+          {% if dispatch.shipment_method %}
+            <a
+              href="{{ dispatch.shipment_method.tracking_url }}{{ warehouse_dispatch.docket_number }}"
+              target="_blank"
+              class="dp-btn-track"
+            >
+              ↗ Track Shipment
+            </a>
+          {% else %}
+            <span class="dp-detail-value--muted">No tracking available</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="dp-detail-item dp-detail-item--full">
+        <div class="dp-detail-label">Created</div>
+        <div class="dp-detail-value dp-detail-value--mono">{{ dispatch.created_at }}</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- STATUS-DRIVEN ACTION PANELS                            -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  {% if dispatch.status == "requested" %}
+  <div class="dp-card dp-card--warning">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--yellow">🧾</div>
+      <div>
+        <div class="dp-card__title">Accounts Processing</div>
+        <div class="dp-card__subtitle">Complete invoice details to notify the warehouse</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+      <form method="post" enctype="multipart/form-data" action="{% url 'notify_warehouse' dispatch.id %}">
+        {% csrf_token %}
+        <div class="dp-form">
+
+          <div class="dp-field">
+            <label class="dp-label">Invoice Number <span>*</span></label>
+            <input type="text" name="invoice_number" class="dp-input dp-input--mono" placeholder="e.g. INV-2024-0001" required>
+          </div>
+
+          <div class="dp-field">
+            <label class="dp-label">Shipment Method <span>*</span></label>
+            <select name="shipment_method" class="dp-select" required>
+              <option value="">Select a shipment method</option>
+              {% for method in shipment_methods %}
+                <option value="{{ method.id }}">{{ method.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="dp-field">
+            <label class="dp-label">Invoice PDF <span>*</span></label>
+            <input type="file" name="invoice_pdf" accept=".pdf" class="dp-input dp-file-input" required>
+          </div>
+
+          <div class="dp-form-actions">
+            <button type="submit" class="dp-btn dp-btn--primary">
+              📨 Notify Warehouse
+            </button>
+          </div>
+
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if dispatch.status == "waiting_for_packing" %}
+  <div class="dp-card dp-card--info">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--cyan">📦</div>
+      <div>
+        <div class="dp-card__title">Warehouse Packing</div>
+        <div class="dp-card__subtitle">Upload packing photos and any notes before submitting</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+      <form method="post" enctype="multipart/form-data" action="{% url 'warehouse_submit_packing' dispatch.id %}">
+        {% csrf_token %}
+        <div class="dp-form">
+
+          <div class="dp-field">
+            <label class="dp-label">Packing Photos <span>*</span></label>
+            <input type="file" name="photos" multiple class="dp-input dp-file-input" required>
+          </div>
+
+          <div class="dp-field">
+            <label class="dp-label">Remarks</label>
+            <textarea name="remark" class="dp-textarea" placeholder="Add any packing notes or observations…"></textarea>
+          </div>
+
+          <div class="dp-form-actions">
+            <button type="submit" class="dp-btn dp-btn--success">
+              ✅ Submit Packing
+            </button>
+          </div>
+
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if dispatch.status == "packed_awaiting_approval" %}
+  <div class="dp-card dp-card--warning">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--yellow">🔍</div>
+      <div>
+        <div class="dp-card__title">Accounts — Packing Review</div>
+        <div class="dp-card__subtitle">Review photos below, then approve or reject the packing</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+
+      <div class="dp-review-note">
+        <span class="dp-review-note__icon">⚠️</span>
+        <span class="dp-review-note__text">Review all uploaded packing photos carefully before making a decision. Approved dispatches proceed immediately to warehouse dispatch.</span>
+      </div>
+
+      <div class="dp-form-actions" style="margin-bottom: 20px;">
+        <form method="post" action="{% url 'approve_packing' dispatch.id %}">
+          {% csrf_token %}
+          <button type="submit" class="dp-btn dp-btn--success">✅ Approve Packing</button>
+        </form>
+      </div>
+
+      <hr class="dp-divider">
+
+      <form method="post" action="{% url 'reject_packing' dispatch.id %}">
+        {% csrf_token %}
+        <div class="dp-form">
+          <div class="dp-field">
+            <label class="dp-label">Rejection Reason <span>*</span></label>
+            <textarea name="rejection_remark" class="dp-textarea" placeholder="Describe why the packing is being rejected…" required></textarea>
+          </div>
+          <div class="dp-form-actions">
+            <button type="submit" class="dp-btn dp-btn--danger">✕ Reject Packing</button>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+  {% endif %}
+
+  {% if dispatch.status == "packing_approved" %}
+  <div class="dp-card dp-card--action">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--blue">🚚</div>
+      <div>
+        <div class="dp-card__title">Warehouse Dispatch</div>
+        <div class="dp-card__subtitle">Enter the carrier docket number to mark this order as dispatched</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+      <form method="post" action="{% url 'warehouse_dispatch' dispatch.id %}">
+        {% csrf_token %}
+        <div class="dp-form">
+          <div class="dp-field">
+            <label class="dp-label">Docket Number <span>*</span></label>
+            <input type="text" name="docket_number" class="dp-input dp-input--mono" placeholder="e.g. DOC-2024-00123" required>
+          </div>
+          <div class="dp-form-actions">
+            <button type="submit" class="dp-btn dp-btn--primary">🚚 Mark as Dispatched</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if dispatch.status == "dispatched_by_warehouse" %}
+  <div class="dp-card dp-card--success">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--green">✔</div>
+      <div>
+        <div class="dp-card__title">Final Accounts Verification</div>
+        <div class="dp-card__subtitle">Warehouse has dispatched — confirm to close the workflow</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+      <div class="dp-details-grid" style="border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:20px;">
+        <div class="dp-detail-item">
+          <div class="dp-detail-label">Docket Number</div>
+          <div class="dp-detail-value dp-detail-value--mono">{{ warehouse_dispatch.docket_number }}</div>
+        </div>
+      </div>
+      <form method="post" action="{% url 'complete_dispatch' dispatch.id %}">
+        {% csrf_token %}
+        <button type="submit" class="dp-btn dp-btn--success">✅ Complete Dispatch</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if dispatch.status == "completed" %}
+  <div class="dp-card dp-card--success">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--green">🎉</div>
+      <div>
+        <div class="dp-card__title">Dispatch Completed</div>
+        <div class="dp-card__subtitle">All workflow steps finalised</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+      <div class="dp-complete-banner">
+        <span class="dp-complete-banner__icon">✅</span>
+        <div>
+          <div class="dp-complete-banner__title">Dispatch workflow completed successfully</div>
+          <div class="dp-complete-banner__body">Invoice has been marked as dispatched and all records are closed.</div>
+        </div>
+      </div>
+      {% if warehouse_dispatch %}
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <div>
+          <div class="dp-detail-label" style="margin-bottom:4px;">Docket Number</div>
+          <span class="dp-detail-value dp-detail-value--mono">{{ warehouse_dispatch.docket_number }}</span>
+        </div>
+        {% if dispatch.shipment_method %}
+        <a
+          href="{{ dispatch.shipment_method.tracking_url }}{{ warehouse_dispatch.docket_number }}"
+          target="_blank"
+          class="dp-btn dp-btn--outline"
+          style="margin-top:auto;"
+        >
+          ↗ Track Shipment
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── INVOICE PDF ─────────────────────────────────────────── -->
+  <div class="dp-card">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--gray">📄</div>
+      <div>
+        <div class="dp-card__title">Invoice PDF</div>
+        <div class="dp-card__subtitle">Uploaded invoice document</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+      {% if invoice_file %}
+        <a href="{{ invoice_file.pdf.url }}" target="_blank" class="dp-btn dp-btn--success">
+          📥 View Invoice PDF
+        </a>
+      {% else %}
+        <div class="dp-invoice-empty">
+          <span>📭</span>
+          No invoice has been uploaded yet.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── PACKING PHOTOS ──────────────────────────────────────── -->
+  <div class="dp-card">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--gray">🖼</div>
+      <div>
+        <div class="dp-card__title">Packing Photos</div>
+        <div class="dp-card__subtitle">Photos submitted during the packing stage</div>
+      </div>
+    </div>
+    <div class="dp-card__body">
+      {% if photos %}
+        <div class="dp-photo-grid">
+          {% for photo in photos %}
+          <div class="dp-photo-item">
+            <a href="{{ photo.image.url }}" target="_blank">
+              <img src="{{ photo.image.url }}" alt="Packing photo">
+            </a>
+            <div class="dp-photo-timestamp">{{ photo.uploaded_at }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="dp-invoice-empty">
+          <span>📷</span>
+          No packing photos uploaded yet.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── REMARKS ─────────────────────────────────────────────── -->
+  <div class="dp-card">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--gray">💬</div>
+      <div>
+        <div class="dp-card__title">Remarks</div>
+        <div class="dp-card__subtitle">Notes added throughout the workflow</div>
+      </div>
+    </div>
+    <div class="dp-card__body" style="padding: 8px 24px;">
+      {% for remark in remarks %}
+        <div class="dp-remark">
+          <div class="dp-remark__avatar">
+            {{ remark.user|slice:":2"|upper }}
+          </div>
+          <div class="dp-remark__body">
+            <div class="dp-remark__meta">
+              <span class="dp-remark__user">{{ remark.user }}</span>
+              <span class="dp-remark__time">{{ remark.created_at }}</span>
+            </div>
+            <div class="dp-remark__message">{{ remark.message }}</div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="dp-empty-state" style="padding: 24px;">
+          <span>💬</span>
+          No remarks have been added.
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── WORKFLOW HISTORY ────────────────────────────────────── -->
+  <div class="dp-card">
+    <div class="dp-card__header">
+      <div class="dp-card__header-icon dp-card__header-icon--gray">🕐</div>
+      <div>
+        <div class="dp-card__title">Workflow History</div>
+        <div class="dp-card__subtitle">Audit trail of all status changes</div>
+      </div>
+    </div>
+    <div class="dp-card__body" style="padding: 0;">
+      <table class="dp-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Changed By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in history %}
+          <tr>
+            <td>{{ item.changed_at }}</td>
+            <td><span class="dp-status-pill">{{ item.from_status }}</span></td>
+            <td><span class="dp-status-pill">{{ item.to_status }}</span></td>
+            <td>{{ item.changed_by }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4">
+              <div class="dp-empty-state">
+                <span>📋</span>
+                No status changes recorded yet.
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div>
+
+{% endblock %}

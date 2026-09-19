@@ -1,0 +1,673 @@
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h2>
+        Dispatch #{{ dispatch.id }}
+    </h2>
+
+    <hr>
+
+    <!-- ====================================================== -->
+    <!-- BASIC DETAILS -->
+    <!-- ====================================================== -->
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            Dispatch Details
+        </div>
+
+        <div class="card-body">
+
+            <p>
+                <strong>PI:</strong>
+                {{ dispatch.invoice.id }}
+            </p>
+
+            <p>
+                <strong>Customer:</strong>
+                {{ dispatch.invoice.customer.name }}
+            </p>
+
+            <p>
+                <strong>Status:</strong>
+                {{ dispatch.get_status_display }}
+            </p>
+
+            <p>
+                <strong>Invoice Number:</strong>
+                {{ dispatch.invoice_number|default:"Not Set" }}
+            </p>
+
+            <p>
+                <strong>Shipment Method:</strong>
+
+                {% if dispatch.shipment_method %}
+                    {{ dispatch.shipment_method.name }}
+                {% else %}
+                    Not Selected
+                {% endif %}
+            </p>
+
+            {% if warehouse_dispatch %}
+
+                <p>
+                    <strong>Docket Number:</strong>
+                    {{ warehouse_dispatch.docket_number }}
+                </p>
+
+                {% if dispatch.shipment_method %}
+
+                <p>
+                    <a
+                        href="{{ dispatch.shipment_method.tracking_url }}{{ warehouse_dispatch.docket_number }}"
+                        target="_blank"
+                        class="btn btn-outline-primary btn-sm"
+                    >
+                        Track Shipment
+                    </a>
+                </p>
+
+                {% endif %}
+
+            {% endif %}
+
+            <p>
+                <strong>Created:</strong>
+                {{ dispatch.created_at }}
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- REQUESTED -->
+    <!-- ====================================================== -->
+
+    {% if dispatch.status == "requested" %}
+
+    <div class="card mb-3">
+
+        <div class="card-header bg-warning">
+            Accounts Processing
+        </div>
+
+        <div class="card-body">
+
+            <form
+                method="post"
+                enctype="multipart/form-data"
+                action="{% url 'notify_warehouse' dispatch.id %}"
+            >
+
+                {% csrf_token %}
+
+                <div class="mb-3">
+
+                    <label>
+                        Invoice Number
+                    </label>
+
+                    <input
+                        type="text"
+                        name="invoice_number"
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label>
+                        Shipment Method
+                    </label>
+
+                    <select
+                        name="shipment_method"
+                        class="form-control"
+                        required
+                    >
+
+                        <option value="">
+                            Select Shipment Method
+                        </option>
+
+                        {% for method in shipment_methods %}
+
+                            <option value="{{ method.id }}">
+                                {{ method.name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label>
+                        Invoice PDF
+                    </label>
+
+                    <input
+                        type="file"
+                        name="invoice_pdf"
+                        accept=".pdf"
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Notify Warehouse
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    <!-- ====================================================== -->
+    <!-- WAITING FOR PACKING -->
+    <!-- ====================================================== -->
+
+    {% if dispatch.status == "waiting_for_packing" %}
+
+    <div class="card mb-3">
+
+        <div class="card-header bg-info text-white">
+            Warehouse Packing
+        </div>
+
+        <div class="card-body">
+
+            <form
+                method="post"
+                enctype="multipart/form-data"
+                action="{% url 'warehouse_submit_packing' dispatch.id %}"
+            >
+
+                {% csrf_token %}
+
+                <div class="mb-3">
+
+                    <label>
+                        Packing Photos
+                    </label>
+
+                    <input
+                        type="file"
+                        name="photos"
+                        multiple
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label>
+                        Remarks
+                    </label>
+
+                    <textarea
+                        name="remark"
+                        rows="4"
+                        class="form-control"
+                    ></textarea>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-success"
+                >
+                    Submit Packing
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    <!-- ====================================================== -->
+    <!-- PACKED AWAITING APPROVAL -->
+    <!-- ====================================================== -->
+
+    {% if dispatch.status == "packed_awaiting_approval" %}
+
+    <div class="card mb-3">
+
+        <div class="card-header bg-warning">
+
+            Accounts Packing Review
+
+        </div>
+
+        <div class="card-body">
+
+            <h5>
+                Review uploaded photos before dispatch.
+            </h5>
+
+            <form
+                method="post"
+                action="{% url 'approve_packing' dispatch.id %}"
+            >
+
+                {% csrf_token %}
+
+                <button
+                    type="submit"
+                    class="btn btn-success"
+                >
+                    Approve Packing
+                </button>
+
+            </form>
+
+            <hr>
+
+            <form
+                method="post"
+                action="{% url 'reject_packing' dispatch.id %}"
+            >
+
+                {% csrf_token %}
+
+                <label>
+                    Rejection Reason
+                </label>
+
+                <textarea
+                    name="rejection_remark"
+                    class="form-control"
+                    rows="3"
+                    required
+                ></textarea>
+
+                <br>
+
+                <button
+                    type="submit"
+                    class="btn btn-danger"
+                >
+                    Reject Packing
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    <!-- ====================================================== -->
+    <!-- PACKING APPROVED -->
+    <!-- ====================================================== -->
+
+    {% if dispatch.status == "packing_approved" %}
+
+    <div class="card mb-3">
+
+        <div class="card-header bg-primary text-white">
+
+            Warehouse Dispatch
+
+        </div>
+
+        <div class="card-body">
+
+            <form
+                method="post"
+                action="{% url 'warehouse_dispatch' dispatch.id %}"
+            >
+
+                {% csrf_token %}
+
+                <div class="mb-3">
+
+                    <label>
+                        Docket Number
+                    </label>
+
+                    <input
+                        type="text"
+                        name="docket_number"
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-success"
+                >
+                    Mark Dispatched
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    <!-- ====================================================== -->
+    <!-- DISPATCHED BY WAREHOUSE -->
+    <!-- ====================================================== -->
+
+    {% if dispatch.status == "dispatched_by_warehouse" %}
+
+    <div class="card mb-3">
+
+        <div class="card-header bg-success text-white">
+
+            Final Accounts Verification
+
+        </div>
+
+        <div class="card-body">
+
+            <p>
+                Warehouse has dispatched the material.
+            </p>
+
+            <p>
+                Docket Number:
+                <strong>
+                    {{ warehouse_dispatch.docket_number }}
+                </strong>
+            </p>
+
+            <form
+                method="post"
+                action="{% url 'complete_dispatch' dispatch.id %}"
+            >
+
+                {% csrf_token %}
+
+                <button
+                    type="submit"
+                    class="btn btn-success"
+                >
+                    Complete Dispatch
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    {% if dispatch.status == "completed" %}
+
+    <div class="card mb-3">
+
+        <div class="card-header bg-success text-white">
+
+            Dispatch Completed
+
+        </div>
+
+        <div class="card-body">
+
+            <p>
+                Dispatch workflow completed successfully.
+            </p>
+
+            <p>
+                Invoice marked as dispatched.
+            </p>
+
+            {% if warehouse_dispatch %}
+
+                <p>
+
+                    <strong>Docket Number:</strong>
+
+                    {{ warehouse_dispatch.docket_number }}
+
+                </p>
+
+                {% if dispatch.shipment_method %}
+
+                    <p>
+
+                        <a
+                            href="{{ dispatch.shipment_method.tracking_url }}{{ warehouse_dispatch.docket_number }}"
+                            target="_blank"
+                            class="btn btn-outline-primary"
+                        >
+                            Track Shipment
+                        </a>
+
+                    </p>
+
+                {% endif %}
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    <!-- ====================================================== -->
+    <!-- INVOICE PDF -->
+    <!-- ====================================================== -->
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            Invoice PDF
+        </div>
+
+        <div class="card-body">
+
+            {% if invoice_file %}
+
+                <a
+                    href="{{ invoice_file.pdf.url }}"
+                    target="_blank"
+                    class="btn btn-success"
+                >
+                    View Invoice PDF
+                </a>
+
+            {% else %}
+
+                No Invoice Uploaded
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- PHOTOS -->
+    <!-- ====================================================== -->
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            Packing Photos
+        </div>
+
+        <div class="card-body">
+
+            {% if photos %}
+
+                <div class="row">
+
+                    {% for photo in photos %}
+
+                        <div class="col-md-3 mb-3">
+
+                            <a
+                                href="{{ photo.image.url }}"
+                                target="_blank"
+                            >
+
+                                <img
+                                    src="{{ photo.image.url }}"
+                                    class="img-fluid border"
+                                >
+
+                            </a>
+
+                            <small>
+                                {{ photo.uploaded_at }}
+                            </small>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                No Photos Uploaded
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- REMARKS -->
+    <!-- ====================================================== -->
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            Remarks
+        </div>
+
+        <div class="card-body">
+
+            {% for remark in remarks %}
+
+                <div class="border p-2 mb-2">
+
+                    <strong>
+                        {{ remark.user }}
+                    </strong>
+
+                    <br>
+
+                    <small>
+                        {{ remark.created_at }}
+                    </small>
+
+                    <hr>
+
+                    {{ remark.message }}
+
+                </div>
+
+            {% empty %}
+
+                No Remarks
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <!-- ====================================================== -->
+    <!-- HISTORY -->
+    <!-- ====================================================== -->
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            Workflow History
+        </div>
+
+        <div class="card-body">
+
+            <table class="table table-bordered">
+
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>User</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for item in history %}
+
+                    <tr>
+
+                        <td>
+                            {{ item.changed_at }}
+                        </td>
+
+                        <td>
+                            {{ item.from_status }}
+                        </td>
+
+                        <td>
+                            {{ item.to_status }}
+                        </td>
+
+                        <td>
+                            {{ item.changed_by }}
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="4">
+                            No History
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

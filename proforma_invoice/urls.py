@@ -82,4 +82,59 @@ urlpatterns = [
     path("document/items/<str:doc_type>/<int:doc_id>/", views.DocumentItemsApiView.as_view(),
          name="document_items_api"),
     path("api/search-products/", views.SearchInventoryProductApiView.as_view(), name="search_inventory_products"),
+
+    path(
+        "dispatch/accounts/",
+        views.AccountsDispatchDashboardView.as_view(),
+        name="accounts_dispatch_dashboard"
+    ),
+
+    path(
+        "dispatch/warehouse/",
+        views.WarehouseDispatchDashboardView.as_view(),
+        name="warehouse_dispatch_dashboard"
+    ),
+    path(
+        "dispatch/<int:pk>/",
+        views.DispatchDetailView.as_view(),
+        name="dispatch_detail"
+    ),
+    path(
+        "dispatch/<int:pk>/notify-warehouse/",
+        views.NotifyWarehouseView.as_view(),
+        name="notify_warehouse"
+    ),
+    path(
+        "dispatch/<int:pk>/submit-packing/",
+        views.WarehousePackingSubmitView.as_view(),
+        name="warehouse_submit_packing"
+    ),
+    path(
+        "dispatch/<int:pk>/approve-packing/",
+        views.ApprovePackingView.as_view(),
+        name="approve_packing"
+    ),
+
+    path(
+        "dispatch/<int:pk>/reject-packing/",
+        views.RejectPackingView.as_view(),
+        name="reject_packing"
+    ),
+    path(
+        "dispatch/<int:pk>/warehouse-dispatch/",
+        views.WarehouseDispatchView.as_view(),
+        name="warehouse_dispatch"
+    ),
+
+    path(
+        "dispatch/<int:pk>/edit-docket/",
+        views.EditDocketNumberView.as_view(),
+        name="edit_docket_number"
+    ),
+
+    path(
+        "dispatch/<int:pk>/complete/",
+        views.CompleteDispatchView.as_view(),
+        name="complete_dispatch"
+    ),
 ]

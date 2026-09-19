@@ -1,0 +1,481 @@
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --navy:      #0F1C2E;
+    --navy-mid:  #1A2E48;
+    --slate:     #4A6080;
+    --steel:     #8BA4BE;
+    --cloud:     #EDF2F7;
+    --white:     #FFFFFF;
+    --accent:    #1E6FD9;
+    --accent-lt: #EBF3FF;
+    --success:   #0D7A55;
+    --success-lt:#E6F5F0;
+    --warning:   #B45309;
+    --warning-lt:#FEF3C7;
+    --danger:    #C0392B;
+    --danger-lt: #FDE8E8;
+    --info:      #0369A1;
+    --info-lt:   #E0F2FE;
+    --border:    #D4DFE9;
+    --text-primary:   #0F1C2E;
+    --text-secondary: #4A6080;
+    --text-muted:     #8BA4BE;
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(15,28,46,0.08);
+    --shadow:    0 4px 16px rgba(15,28,46,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .db-page {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #F4F7FB;
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 32px 0 64px;
+  }
+
+  .db-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── PAGE HEADER ─────────────────────────────── */
+  .db-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .db-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .db-page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.3px;
+  }
+
+  /* ── STAT PILLS ──────────────────────────────── */
+  .db-stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .db-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 18px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    min-width: 80px;
+  }
+  .db-stat__num {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .db-stat__num--yellow { color: var(--warning); }
+  .db-stat__num--blue   { color: var(--accent); }
+  .db-stat__num--green  { color: var(--success); }
+  .db-stat__label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  /* ── CARD ────────────────────────────────────── */
+  .db-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .db-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFCFE;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .db-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .db-card__icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-lt);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .db-card__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .db-card__subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  /* ── SEARCH / FILTER BAR ─────────────────────── */
+  .db-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .db-search {
+    position: relative;
+  }
+  .db-search__icon {
+    position: absolute;
+    left: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .db-search input {
+    padding: 7px 12px 7px 30px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    background: var(--white);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .db-search input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(30,111,217,0.1);
+  }
+
+  /* ── TABLE ───────────────────────────────────── */
+  .db-table-wrap { overflow-x: auto; }
+
+  .db-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .db-table thead th {
+    text-align: left;
+    padding: 11px 16px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: #FAFCFE;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .db-table thead th:first-child { padding-left: 24px; }
+  .db-table thead th:last-child  { padding-right: 24px; text-align: right; }
+
+  .db-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    cursor: default;
+  }
+  .db-table tbody tr:last-child { border-bottom: none; }
+  .db-table tbody tr:hover { background: #F5F8FD; }
+
+  .db-table tbody td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    color: var(--text-secondary);
+  }
+  .db-table tbody td:first-child { padding-left: 24px; }
+  .db-table tbody td:last-child  { padding-right: 24px; text-align: right; }
+
+  /* PI / Invoice number */
+  .db-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .db-mono--muted {
+    color: var(--text-muted);
+  }
+
+  /* Customer name */
+  .db-customer {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+
+  /* Status badge */
+  .db-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .db-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .db-badge--requested    { background: var(--warning-lt); color: var(--warning); }
+  .db-badge--requested::before { background: var(--warning); }
+  .db-badge--packing      { background: var(--info-lt);    color: var(--info); }
+  .db-badge--packing::before   { background: var(--info); }
+  .db-badge--review       { background: var(--warning-lt); color: var(--warning); }
+  .db-badge--review::before    { background: #F59E0B; }
+  .db-badge--approved     { background: var(--accent-lt);  color: var(--accent); }
+  .db-badge--approved::before  { background: var(--accent); }
+  .db-badge--dispatched   { background: var(--success-lt); color: var(--success); }
+  .db-badge--dispatched::before { background: var(--success); }
+  .db-badge--completed    { background: var(--success-lt); color: var(--success); }
+  .db-badge--completed::before { background: var(--success); }
+  .db-badge--waiting      { background: var(--cloud);      color: var(--steel); }
+  .db-badge--waiting::before   { background: var(--steel); }
+
+  /* Time in stage */
+  .db-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .db-time--urgent { color: var(--danger); font-weight: 600; }
+
+  /* Action buttons */
+  .db-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .db-btn--primary  { background: var(--accent);   color: #fff; border-color: var(--accent); }
+  .db-btn--primary:hover  { background: #1560c0; }
+  .db-btn--success  { background: var(--success);  color: #fff; border-color: var(--success); }
+  .db-btn--success:hover  { background: #0a6045; }
+  .db-btn--warning  { background: #D97706;          color: #fff; border-color: #D97706; }
+  .db-btn--warning:hover  { background: #b45309; }
+
+  .db-waiting-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* Empty state */
+  .db-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 24px;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .db-empty span { font-size: 32px; }
+  .db-empty strong { color: var(--text-secondary); font-size: 14px; }
+
+  @media (max-width: 700px) {
+    .db-search input { width: 160px; }
+  }
+</style>
+
+<div class="db-page">
+<div class="db-container">
+
+  <!-- ── PAGE HEADER ──────────────────────────────── -->
+  <div class="db-page-header">
+    <div>
+      <div class="db-eyebrow">Operations · Accounts</div>
+      <h1 class="db-page-title">Dispatch Dashboard</h1>
+    </div>
+    <div class="db-stats">
+      <div class="db-stat">
+        <span class="db-stat__num db-stat__num--yellow">
+          {% with dispatches|length as total %}{{ total }}{% endwith %}
+        </span>
+        <span class="db-stat__label">Total</span>
+      </div>
+      <div class="db-stat">
+        <span class="db-stat__num db-stat__num--blue">
+          {% with dispatches|dictsortreversed:"status" as s %}
+            {{ dispatches|length }}
+          {% endwith %}
+        </span>
+        <span class="db-stat__label">Active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TABLE CARD ───────────────────────────────── -->
+  <div class="db-card">
+    <div class="db-card__header">
+      <div class="db-card__header-left">
+        <div class="db-card__icon">📊</div>
+        <div>
+          <div class="db-card__title">All Dispatches</div>
+          <div class="db-card__subtitle">Dispatches requiring accounts action are highlighted</div>
+        </div>
+      </div>
+      <div class="db-filter-bar">
+        <div class="db-search">
+          <span class="db-search__icon">🔍</span>
+          <input type="text" id="db-search-input" placeholder="Search customer, PI…" oninput="dbFilterTable(this.value)">
+        </div>
+      </div>
+    </div>
+
+    <div class="db-table-wrap">
+      <table class="db-table" id="db-table">
+        <thead>
+          <tr>
+            <th>PI</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Invoice No.</th>
+            <th>Shipment</th>
+            <th>Time in Stage</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dispatch in dispatches %}
+          <tr>
+            <td><span class="db-mono">{{ dispatch.invoice.id }}</span></td>
+            <td><span class="db-customer">{{ dispatch.invoice.customer.name }}</span></td>
+            <td>
+              {% if dispatch.status == "requested" %}
+                <span class="db-badge db-badge--requested">Requested</span>
+              {% elif dispatch.status == "waiting_for_packing" %}
+                <span class="db-badge db-badge--packing">Awaiting Packing</span>
+              {% elif dispatch.status == "packed_awaiting_approval" %}
+                <span class="db-badge db-badge--review">Pending Review</span>
+              {% elif dispatch.status == "packing_approved" %}
+                <span class="db-badge db-badge--approved">Packing Approved</span>
+              {% elif dispatch.status == "dispatched_by_warehouse" %}
+                <span class="db-badge db-badge--dispatched">Dispatched</span>
+              {% elif dispatch.status == "completed" %}
+                <span class="db-badge db-badge--completed">Completed</span>
+              {% else %}
+                <span class="db-badge db-badge--waiting">{{ dispatch.get_status_display }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if dispatch.invoice_number %}
+                <span class="db-mono">{{ dispatch.invoice_number }}</span>
+              {% else %}
+                <span class="db-mono db-mono--muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if dispatch.shipment_method %}
+                {{ dispatch.shipment_method.name }}
+              {% else %}
+                <span style="color:var(--text-muted);">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="db-time">{{ dispatch.time_in_stage }}</span>
+            </td>
+            <td>
+              {% if dispatch.status == "requested" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--primary">
+                  → Process
+                </a>
+              {% elif dispatch.status == "packed_awaiting_approval" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--success">
+                  🔍 Review Packing
+                </a>
+              {% elif dispatch.status == "dispatched_by_warehouse" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--warning">
+                  ✅ Complete
+                </a>
+              {% else %}
+                <span class="db-waiting-label">Waiting…</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="db-empty">
+                <span>📭</span>
+                <strong>No dispatches found</strong>
+                All caught up — nothing to action right now.
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+  function dbFilterTable(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll('#db-table tbody tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
+  }
+</script>
+
+{% endblock %}
