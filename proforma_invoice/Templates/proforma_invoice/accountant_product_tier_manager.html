@@ -1,0 +1,1269 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product & Tier Management | Accountant Portal</title>
+    <link rel="icon" type="image/png" href="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        :root {
+            --primary-navy: #0f172a;
+            --accent-blue: #2563eb;
+            --bg-page: #f8fafc;
+            --border-color: #e2e8f0;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        /* Top Navbar */
+        .app-navbar {
+            background: #0f172a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 0.75rem 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
+        .navbar-brand-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1.15rem;
+        }
+
+        .navbar-brand-badge img {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #fff;
+            padding: 2px;
+        }
+
+        .btn-home {
+            background: #2563eb;
+            color: #ffffff !important;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 16px;
+            font-size: 0.88rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-home:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        /* Main Container */
+        .content-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 20px 60px 20px;
+            flex: 1;
+            width: 100%;
+        }
+
+        .page-header-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 24px 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .header-title {
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Filter Controls */
+        .control-bar {
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .table-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+
+        .product-table {
+            margin: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            font-size: 0.88rem;
+        }
+
+        .product-table thead th {
+            background: #0f172a;
+            color: #f8fafc;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 12px 14px;
+            border: none;
+            white-space: nowrap;
+        }
+
+        .product-table tbody td {
+            padding: 12px 14px;
+            vertical-align: middle;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .product-table tbody tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        .tier-badge {
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .courier-badge {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .details-row {
+            background: #f8fafc;
+            display: none;
+        }
+
+        .details-box {
+            padding: 14px 20px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin: 8px 14px;
+        }
+
+        /* Modal styling */
+        .tier-input-table th {
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="app-navbar">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'home' %}" class="navbar-brand-badge">
+                <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png" alt="Logo">
+                <span>Oblu Proforma</span>
+            </a>
+            <div class="d-none d-md-flex align-items-center gap-1 ms-2">
+                <a href="{% url 'home' %}" class="btn-home">
+                    <i class="bi bi-house-door-fill"></i> Home
+                </a>
+                <a href="{% url 'proforma_list' %}" class="btn btn-sm btn-outline-light ms-2">
+                    <i class="bi bi-receipt"></i> Invoices
+                </a>
+                <a href="{% url 'overdue_bypass_list' %}" class="btn btn-sm btn-outline-light ms-1">
+                    <i class="bi bi-shield-check"></i> Credit Approvals
+                </a>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'home' %}" class="btn-home d-md-none btn-sm">
+                <i class="bi bi-house-door-fill"></i> Home
+            </a>
+            <div class="text-light small px-2 py-1" style="background: rgba(255,255,255,0.06); border-radius: 8px;">
+                <i class="bi bi-shield-lock-fill text-warning me-1"></i> Accountant Portal ({{ user.username }})
+            </div>
+            <form action="{% url 'logout' %}" method="POST" class="d-inline mb-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-secondary text-light border-secondary" title="Logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- CONTENT -->
+<div class="content-container">
+
+    <!-- TOP BREADCRUMB & ACTIONS -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'home' %}" class="btn btn-sm btn-white bg-white border shadow-sm rounded-pill px-3 text-decoration-none text-dark fw-medium">
+                <i class="bi bi-arrow-left text-primary me-1"></i> Back to Home
+            </a>
+            <a href="{% url 'proforma_product_list' %}" class="btn btn-sm btn-white bg-white border shadow-sm rounded-pill px-3 text-decoration-none text-secondary">
+                <i class="bi bi-eye me-1"></i> View Products Catalog
+            </a>
+        </div>
+        <div>
+            <button onclick="window.location.reload()" class="btn btn-sm btn-light border rounded-pill px-3 text-secondary">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- PAGE HEADER -->
+    <div class="page-header-card">
+        <div class="d-flex justify-content-between align-items-md-center flex-column flex-md-row gap-3">
+            <div>
+                <h1 class="header-title">
+                    <span class="p-2 bg-primary-subtle text-primary rounded-3 d-inline-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.3rem;">
+                        <i class="bi bi-layers-fill"></i>
+                    </span>
+                    Product & Tier Management
+                </h1>
+                <p class="text-muted small mb-0 mt-1">
+                    Manage base selling prices, tax rates, HSN codes, quantity-based price tiers, and courier charge slabs in bulk or individually.
+                </p>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="openBulkModal()">
+                    <i class="bi bi-sliders me-1"></i> Bulk Configure Tiers & Prices
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTER & SELECTION TOOLBAR -->
+    <div class="control-bar">
+        <form method="GET" id="globalFilterForm" class="d-flex align-items-center gap-2 flex-wrap mb-0">
+            <!-- Category Filter -->
+            <select name="category" id="categoryFilter" class="form-select form-select-sm" style="width: auto; min-width: 190px;" onchange="document.getElementById('globalFilterForm').submit()">
+                <option value="all" {% if selected_category == 'all' or not selected_category %}selected{% endif %}>📁 All Categories ({{ categories|length }})</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" or selected_category == cat.name|lower %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Search input -->
+            <div class="input-group input-group-sm" style="max-width: 280px;">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="q" id="searchInput" class="form-control" placeholder="Search product or HSN..." value="{{ search_query }}">
+                {% if search_query %}
+                <button type="button" class="btn btn-outline-secondary border-start-0" onclick="clearGlobalSearch()" title="Clear Search">
+                    <i class="bi bi-x"></i>
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Tier status filter -->
+            <select name="tier_status" id="tierFilter" class="form-select form-select-sm" style="width: auto;" onchange="document.getElementById('globalFilterForm').submit()">
+                <option value="all" {% if selected_tier_status == 'all' or not selected_tier_status %}selected{% endif %}>All Tiers Status</option>
+                <option value="has_tiers" {% if selected_tier_status == 'has_tiers' %}selected{% endif %}>Has Dynamic Tiers</option>
+                <option value="no_tiers" {% if selected_tier_status == 'no_tiers' %}selected{% endif %}>No Dynamic Tiers</option>
+            </select>
+
+            <!-- Page Size -->
+            <select name="page_size" id="pageSizeSelect" class="form-select form-select-sm" style="width: auto;" onchange="document.getElementById('globalFilterForm').submit()">
+                <option value="25" {% if page_size == '25' %}selected{% endif %}>25 / page</option>
+                <option value="50" {% if page_size == '50' or not page_size %}selected{% endif %}>50 / page</option>
+                <option value="100" {% if page_size == '100' %}selected{% endif %}>100 / page</option>
+                <option value="200" {% if page_size == '200' %}selected{% endif %}>200 / page</option>
+                <option value="all" {% if page_size == 'all' %}selected{% endif %}>Show All</option>
+            </select>
+
+            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+
+            {% if search_query or selected_category != 'all' or selected_tier_status != 'all' %}
+            <a href="{% url 'accountant_product_tier_manager' %}" class="btn btn-sm btn-light border rounded-pill px-2 text-secondary" title="Reset all filters">
+                <i class="bi bi-x-circle me-1"></i> Reset
+            </a>
+            {% endif %}
+        </form>
+
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-dark border px-3 py-2" id="selectedCountBadge">0 selected</span>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="openBulkModalForSelected()" id="bulkSelectedBtn" disabled>
+                <i class="bi bi-check2-all me-1"></i> Configure Selected
+            </button>
+        </div>
+    </div>
+
+    <!-- PRODUCTS TABLE -->
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="table product-table align-middle" id="productsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;" class="text-center">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                        </th>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th class="text-end">Base Price (₹)</th>
+                        <th class="text-center">Tax %</th>
+                        <th class="text-center">HSN</th>
+                        <th>Price Tiers</th>
+                        <th>Courier Slabs</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr class="product-row" 
+                        data-id="{{ item.id }}" 
+                        data-name="{{ item.name|lower }}" 
+                        data-category="{{ item.category.name|default:'uncategorized'|lower }}" 
+                        data-hsn="{{ item.proforma_price.hsn|default:'' }}"
+                        data-has-tiers="{% if item.proforma_price.price_tiers.all %}has_tiers{% else %}no_tiers{% endif %}">
+                        
+                        <!-- Checkbox -->
+                        <td class="text-center">
+                            <input type="checkbox" class="product-checkbox" value="{{ item.id }}" data-category-id="{{ item.category.id }}" onchange="updateSelectedCount()">
+                        </td>
+
+                        <!-- Product Name -->
+                        <td>
+                            <div class="fw-semibold text-dark">{{ item.name }}</div>
+                            <small class="text-muted">Stock: <strong>{{ item.quantity|default:0 }}</strong></small>
+                        </td>
+
+                        <!-- Category -->
+                        <td>
+                            <span class="badge bg-secondary-subtle text-secondary border">
+                                {{ item.category.name|default:"Uncategorized" }}
+                            </span>
+                        </td>
+
+                        <!-- Base Price -->
+                        <td class="text-end">
+                            <span class="fw-bold text-dark">₹{{ item.proforma_price.price|default:"0.00" }}</span>
+                            {% if item.proforma_price.msrp %}
+                                <div class="text-muted" style="font-size: 0.72rem;">MSRP: ₹{{ item.proforma_price.msrp }}</div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Tax % -->
+                        <td class="text-center">
+                            <span class="badge bg-light text-dark border">{{ item.proforma_price.tax_rate|default:"0" }}%</span>
+                        </td>
+
+                        <!-- HSN -->
+                        <td class="text-center">
+                            <span class="text-muted">{{ item.proforma_price.hsn|default:"-" }}</span>
+                        </td>
+
+                        <!-- Price Tiers -->
+                        <td>
+                            {% if item.proforma_price.price_tiers.all %}
+                                <span class="tier-badge" title="Dynamic Pricing Enabled">
+                                    <i class="bi bi-graph-up-arrow"></i> {{ item.proforma_price.price_tiers.all|length }} Tier{{ item.proforma_price.price_tiers.all|length|pluralize }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted small">Standard</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Courier Slabs -->
+                        <td>
+                            {% with sheets=item.courier_sheets.all %}
+                                {% if sheets %}
+                                    <div class="d-flex flex-column gap-1">
+                                        {% for s in sheets %}
+                                            <span class="courier-badge">
+                                                <i class="bi bi-box-seam"></i> {{ s.mode|upper }}: {{ s.tiers.all|length }} slab{{ s.tiers.all|length|pluralize }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted small">None</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" 
+                                        onclick="openSingleEditModal({{ item.id }})" title="Edit Pricing & Tiers">
+                                    <i class="bi bi-pencil-square"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border rounded-pill px-2 py-1 text-secondary" 
+                                        onclick="toggleDetailsRow({{ item.id }})" title="Expand Tiers">
+                                    <i class="bi bi-chevron-down" id="toggleIcon-{{ item.id }}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- EXPANDABLE DETAILS ROW -->
+                    <tr id="detailsRow-{{ item.id }}" class="details-row">
+                        <td colspan="9">
+                            <div class="details-box">
+                                <div class="row g-3">
+                                    <!-- Price Tiers Table -->
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold small text-primary mb-2">
+                                            <i class="bi bi-layers-half me-1"></i> Product Price Tiers:
+                                        </h6>
+                                        {% if item.proforma_price.price_tiers.all %}
+                                            <table class="table table-sm table-bordered bg-white small mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Min Qty</th>
+                                                        <th>Unit Price (₹)</th>
+                                                        <th>MSRP (₹)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for t in item.proforma_price.price_tiers.all %}
+                                                        <tr>
+                                                            <td>{{ t.min_quantity }}+</td>
+                                                            <td class="fw-bold text-success">₹{{ t.unit_price }}</td>
+                                                            <td class="text-muted">₹{{ t.msrp|default:"0.00" }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% else %}
+                                            <div class="text-muted small">No quantity tiers set. Sold at Base Price: ₹{{ item.proforma_price.price|default:"0.00" }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Courier Slabs Table -->
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold small text-success mb-2">
+                                            <i class="bi bi-truck me-1"></i> Courier Slabs:
+                                        </h6>
+                                        {% if item.courier_sheets.all %}
+                                            <table class="table table-sm table-bordered bg-white small mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Mode</th>
+                                                        <th>Qty Slab</th>
+                                                        <th>Charge (₹)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for s in item.courier_sheets.all %}
+                                                        {% for t in s.tiers.all %}
+                                                            <tr>
+                                                                <td><span class="badge bg-light text-dark border">{{ s.mode|upper }}</span></td>
+                                                                <td>{{ t.min_quantity }} - {% if t.max_quantity %}{{ t.max_quantity }}{% else %}Above{% endif %}</td>
+                                                                <td class="fw-bold text-dark">₹{{ t.charge }}</td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% else %}
+                                            <div class="text-muted small">No courier slabs configured.</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-box2 display-6 d-block mb-2"></i>
+                            No products found in inventory.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TABLE FOOTER & PAGINATION -->
+        <div class="card-footer bg-white border-top py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="text-muted small">
+                {% if is_paginated %}
+                    Showing <strong>{{ page_obj.start_index }}</strong> - <strong>{{ page_obj.end_index }}</strong> of <strong>{{ paginator.count }}</strong> products
+                    {% if search_query or selected_category != 'all' or selected_tier_status != 'all' %}
+                        <span class="badge bg-primary-subtle text-primary ms-1">Filtered</span>
+                    {% endif %}
+                {% else %}
+                    Showing all <strong>{{ items|length }}</strong> products
+                {% endif %}
+            </div>
+
+            {% if is_paginated and paginator.num_pages > 1 %}
+            <nav aria-label="Product pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_tier_status != 'all' %}&tier_status={{ selected_tier_status }}{% endif %}&page_size={{ page_size }}" aria-label="First">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_tier_status != 'all' %}&tier_status={{ selected_tier_status }}{% endif %}&page_size={{ page_size }}" aria-label="Previous">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+                    {% endif %}
+
+                    {% for num in paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_tier_status != 'all' %}&tier_status={{ selected_tier_status }}{% endif %}&page_size={{ page_size }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_tier_status != 'all' %}&tier_status={{ selected_tier_status }}{% endif %}&page_size={{ page_size }}" aria-label="Next">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ paginator.num_pages }}{% if selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_tier_status != 'all' %}&tier_status={{ selected_tier_status }}{% endif %}&page_size={{ page_size }}" aria-label="Last">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- 🛠️ BULK TIER CONFIGURATION MODAL -->
+<!-- ============================================================================== -->
+<div class="modal fade" id="bulkModal" tabindex="-1" aria-labelledby="bulkModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="bulkModalLabel">
+                    <i class="bi bi-layers-fill me-2 text-primary"></i> Bulk Configure Tiers & Prices
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+
+                <!-- STEP 1: TARGET SCOPE -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase text-muted">1. Target Products</label>
+                    <div class="d-flex gap-3 mb-2 flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bulkScope" id="scopeCategory" value="category" checked onchange="updateScopeUi()">
+                            <label class="form-check-label fw-semibold" for="scopeCategory">
+                                Entire Category
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bulkScope" id="scopeSelected" value="selected" onchange="updateScopeUi()">
+                            <label class="form-check-label fw-semibold" for="scopeSelected">
+                                Selected Products (<span id="modalSelectedCount">0</span>)
+                            </label>
+                        </div>
+                        {% if search_query or selected_category != 'all' or selected_tier_status != 'all' %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="bulkScope" id="scopeFiltered" value="filtered" onchange="updateScopeUi()">
+                            <label class="form-check-label fw-semibold text-primary" for="scopeFiltered">
+                                All Filtered Products ({{ total_matching_count }})
+                            </label>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div id="categorySelectWrapper">
+                        <select id="modalCategorySelect" class="form-select">
+                            <option value="">-- Choose Category --</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">All products in this category will receive the configured tiers.</small>
+                    </div>
+                </div>
+
+                <hr class="my-3 text-muted">
+
+                <!-- STEP 2: BASE FIELDS (OPTIONAL) -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase text-muted">2. Base Fields (Optional)</label>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="small text-muted">Base Price (₹)</label>
+                            <input type="number" step="0.01" id="bulkBasePrice" class="form-control form-control-sm" placeholder="Leave blank to keep current">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small text-muted">MSRP / Ceiling (₹)</label>
+                            <input type="number" step="0.01" id="bulkMsrp" class="form-control form-control-sm" placeholder="Auto-approve ceiling">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small text-muted">Tax Rate (%)</label>
+                            <input type="number" step="0.01" id="bulkTaxRate" class="form-control form-control-sm" placeholder="e.g. 18">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small text-muted">HSN Code</label>
+                            <input type="text" id="bulkHsn" class="form-control form-control-sm" placeholder="e.g. 9021">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3 text-muted">
+
+                <!-- STEP 3: QUANTITY TIERS & COURIER SLABS -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <label class="form-label fw-bold small text-uppercase text-muted mb-0">3. Quantity Tiers & Courier Slabs</label>
+                            <div class="small text-muted">Example: Min 1 to Max 20 → Unit Price ₹X, Courier ₹Y | Min 21 to Max 60 → Unit Price ₹A, Courier ₹B</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="addBulkTierRow()">
+                            <i class="bi bi-plus-circle me-1"></i> Add Tier
+                        </button>
+                    </div>
+
+                    <div class="table-responsive border rounded-3">
+                        <table class="table table-sm tier-input-table align-middle mb-0" id="bulkTiersTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%;">Min Qty</th>
+                                    <th style="width: 15%;">Max Qty</th>
+                                    <th style="width: 25%;">Product Price (₹)</th>
+                                    <th style="width: 20%;">Surface Courier (₹)</th>
+                                    <th style="width: 20%;">Air Courier (₹)</th>
+                                    <th style="width: 5%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulkTiersBody">
+                                <!-- Pre-populated with standard default 2 tiers -->
+                                <tr>
+                                    <td><input type="number" class="form-control form-control-sm tier-min" value="1" min="1"></td>
+                                    <td><input type="number" class="form-control form-control-sm tier-max" value="20" min="1" placeholder="Max"></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm tier-price" placeholder="Tier Price"></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm tier-surface" placeholder="Surface ₹"></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm tier-air" placeholder="Air ₹"></td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm text-danger border-0" onclick="removeTierRow(this)"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><input type="number" class="form-control form-control-sm tier-min" value="21" min="1"></td>
+                                    <td><input type="number" class="form-control form-control-sm tier-max" value="60" min="1" placeholder="Max"></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm tier-price" placeholder="Tier Price"></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm tier-surface" placeholder="Surface ₹"></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm tier-air" placeholder="Air ₹"></td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm text-danger border-0" onclick="removeTierRow(this)"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" id="btnSubmitBulk" onclick="submitBulkTiers()">
+                    <span id="btnSubmitSpinner" class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
+                    <i class="bi bi-check2-circle me-1" id="btnSubmitIcon"></i> Apply Tiers in Bulk
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- ✏️ SINGLE PRODUCT EDIT MODAL -->
+<!-- ============================================================================== -->
+<div class="modal fade" id="singleEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-pencil-square text-primary me-2"></i> Edit Product: <span id="singleProdTitle"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="singleProdId">
+
+                <!-- BASE PRICING -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-muted">Base Price (₹) *</label>
+                        <input type="number" step="0.01" id="singleBasePrice" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-muted">MSRP / Ceiling (₹)</label>
+                        <input type="number" step="0.01" id="singleMsrp" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-muted">Tax Rate (%)</label>
+                        <input type="number" step="0.01" id="singleTaxRate" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-muted">HSN Code</label>
+                        <input type="text" id="singleHsn" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <!-- DYNAMIC PRICE CHECK -->
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="singleHasDynamic">
+                    <label class="form-check-label fw-semibold" for="singleHasDynamic">Enable Dynamic Quantity Pricing Tiers</label>
+                </div>
+
+                <!-- PRICE TIERS -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small text-primary mb-0">Quantity Price Tiers:</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="addSingleTierRow()">
+                            <i class="bi bi-plus-circle me-1"></i> Add Price Tier
+                        </button>
+                    </div>
+                    <table class="table table-sm tier-input-table border rounded-3" id="singleTiersTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">Min Quantity</th>
+                                <th style="width: 35%;">Unit Price (₹)</th>
+                                <th style="width: 25%;">MSRP (₹)</th>
+                                <th style="width: 10%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="singleTiersBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- COURIER SLABS -->
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small text-success mb-0">Surface Courier Slabs:</h6>
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="addSingleCourierRow('surface')">
+                            <i class="bi bi-plus-circle me-1"></i> Add Surface Slab
+                        </button>
+                    </div>
+                    <table class="table table-sm tier-input-table border rounded-3 mb-3">
+                        <thead>
+                            <tr>
+                                <th>Min Qty</th>
+                                <th>Max Qty</th>
+                                <th>Charge (₹)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="singleSurfaceBody"></tbody>
+                    </table>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small text-info mb-0">Air Courier Slabs:</h6>
+                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="addSingleCourierRow('air')">
+                            <i class="bi bi-plus-circle me-1"></i> Add Air Slab
+                        </button>
+                    </div>
+                    <table class="table table-sm tier-input-table border rounded-3">
+                        <thead>
+                            <tr>
+                                <th>Min Qty</th>
+                                <th>Max Qty</th>
+                                <th>Charge (₹)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="singleAirBody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" id="btnSaveSingle" onclick="submitSingleProduct()">
+                    <i class="bi bi-check2 me-1"></i> Save Product Pricing
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EMBEDDED JSON DATA FOR CURRENT PAGE -->
+<script id="products-data" type="application/json">{{ products_json|safe }}</script>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let productsData = {};
+    try {
+        productsData = JSON.parse(document.getElementById('products-data').textContent || '{}');
+    } catch (e) {
+        console.error("Error parsing products-data:", e);
+    }
+
+    // CSRF helper
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]') ? 
+               document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+    }
+
+    function clearGlobalSearch() {
+        const input = document.getElementById('searchInput');
+        if (input) input.value = '';
+        const form = document.getElementById('globalFilterForm');
+        if (form) form.submit();
+    }
+
+    // Toggle details row
+    function toggleDetailsRow(id) {
+        const row = document.getElementById(`detailsRow-${id}`);
+        const icon = document.getElementById(`toggleIcon-${id}`);
+        if (!row) return;
+
+        if (row.style.display === 'table-row') {
+            row.style.display = 'none';
+            if (icon) icon.className = 'bi bi-chevron-down';
+        } else {
+            row.style.display = 'table-row';
+            if (icon) icon.className = 'bi bi-chevron-up';
+        }
+    }
+
+    // Checkbox selections
+    function toggleSelectAll(masterCheckbox) {
+        const checkboxes = document.querySelectorAll('.product-checkbox');
+        checkboxes.forEach(cb => {
+            if (cb.closest('tr').style.display !== 'none') {
+                cb.checked = masterCheckbox.checked;
+            }
+        });
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const selected = document.querySelectorAll('.product-checkbox:checked');
+        const count = selected.length;
+        document.getElementById('selectedCountBadge').innerText = `${count} selected`;
+        const modalCount = document.getElementById('modalSelectedCount');
+        if (modalCount) modalCount.innerText = count;
+        const btn = document.getElementById('bulkSelectedBtn');
+        if (btn) btn.disabled = (count === 0);
+    }
+
+    // Scope Radio switch
+    function updateScopeUi() {
+        const catRadio = document.getElementById('scopeCategory');
+        const isCat = catRadio ? catRadio.checked : false;
+        const catWrapper = document.getElementById('categorySelectWrapper');
+        if (catWrapper) {
+            catWrapper.style.display = isCat ? 'block' : 'none';
+        }
+    }
+
+    // Open Bulk Modal
+    function openBulkModal() {
+        const catRadio = document.getElementById('scopeCategory');
+        if (catRadio) catRadio.checked = true;
+        updateScopeUi();
+        new bootstrap.Modal(document.getElementById('bulkModal')).show();
+    }
+
+    function openBulkModalForSelected() {
+        const count = document.querySelectorAll('.product-checkbox:checked').length;
+        if (count === 0) {
+            alert("Please select at least one product first.");
+            return;
+        }
+        const selRadio = document.getElementById('scopeSelected');
+        if (selRadio) selRadio.checked = true;
+        updateScopeUi();
+        new bootstrap.Modal(document.getElementById('bulkModal')).show();
+    }
+
+    // Add row in bulk tiers table
+    function addBulkTierRow() {
+        const tbody = document.getElementById('bulkTiersBody');
+        const rows = tbody.querySelectorAll('tr');
+        let nextMin = 1;
+        if (rows.length > 0) {
+            const lastRow = rows[rows.length - 1];
+            const lastMax = lastRow.querySelector('.tier-max').value;
+            if (lastMax && !isNaN(lastMax)) {
+                nextMin = parseInt(lastMax) + 1;
+            }
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="number" class="form-control form-control-sm tier-min" value="${nextMin}" min="1"></td>
+            <td><input type="number" class="form-control form-control-sm tier-max" min="1" placeholder="Max"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm tier-price" placeholder="Tier Price"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm tier-surface" placeholder="Surface ₹"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm tier-air" placeholder="Air ₹"></td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm text-danger border-0" onclick="removeTierRow(this)"><i class="bi bi-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeTierRow(btn) {
+        const row = btn.closest('tr');
+        if (row) row.remove();
+    }
+
+    // Submit Bulk Tiers
+    async function submitBulkTiers() {
+        const isCategory = document.getElementById('scopeCategory') && document.getElementById('scopeCategory').checked;
+        const isSelected = document.getElementById('scopeSelected') && document.getElementById('scopeSelected').checked;
+        const isFiltered = document.getElementById('scopeFiltered') && document.getElementById('scopeFiltered').checked;
+
+        let categoryId = null;
+        let productIds = [];
+        let applyToFiltered = false;
+
+        if (isFiltered) {
+            applyToFiltered = true;
+        } else if (isCategory) {
+            categoryId = document.getElementById('modalCategorySelect').value;
+            if (!categoryId) {
+                alert("Please select a target Category.");
+                return;
+            }
+        } else if (isSelected) {
+            const selected = document.querySelectorAll('.product-checkbox:checked');
+            productIds = Array.from(selected).map(cb => parseInt(cb.value));
+            if (productIds.length === 0) {
+                alert("No products selected.");
+                return;
+            }
+        } else {
+            alert("Please select a valid target scope.");
+            return;
+        }
+
+        // Collect base fields
+        const basePrice = document.getElementById('bulkBasePrice').value;
+        const msrp = document.getElementById('bulkMsrp').value;
+        const taxRate = document.getElementById('bulkTaxRate').value;
+        const hsn = document.getElementById('bulkHsn').value;
+
+        // Collect tiers
+        const tiers = [];
+        const rows = document.querySelectorAll('#bulkTiersBody tr');
+        rows.forEach(tr => {
+            const minQty = tr.querySelector('.tier-min').value;
+            const maxQty = tr.querySelector('.tier-max').value;
+            const price = tr.querySelector('.tier-price').value;
+            const surface = tr.querySelector('.tier-surface').value;
+            const air = tr.querySelector('.tier-air').value;
+
+            if (minQty) {
+                tiers.push({
+                    min_quantity: parseInt(minQty),
+                    max_quantity: maxQty ? parseInt(maxQty) : null,
+                    unit_price: price || null,
+                    surface_charge: surface || null,
+                    air_charge: air || null
+                });
+            }
+        });
+
+        if (tiers.length === 0 && !basePrice && !taxRate && !hsn && !msrp) {
+            alert("Please specify at least one tier or base pricing field to apply.");
+            return;
+        }
+
+        const payload = {
+            category_id: categoryId,
+            product_ids: productIds,
+            apply_to_all_filtered: applyToFiltered,
+            filter_category: "{{ selected_category }}",
+            filter_q: "{{ search_query }}",
+            filter_tier_status: "{{ selected_tier_status }}",
+            base_price: basePrice || null,
+            msrp: msrp || null,
+            tax_rate: taxRate || null,
+            hsn: hsn || null,
+            tiers: tiers
+        };
+
+        const btn = document.getElementById('btnSubmitBulk');
+        const spinner = document.getElementById('btnSubmitSpinner');
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        try {
+            const res = await fetch("{% url 'api_bulk_update_product_tiers' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (res.ok && data.status === "success") {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert("Error: " + (data.message || "Failed to update bulk tiers."));
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    }
+
+    // Open Single Product Modal (Uses preloaded data or fetches asynchronously)
+    async function openSingleEditModal(prodId) {
+        let prod = productsData[prodId];
+
+        if (!prod) {
+            try {
+                const res = await fetch(`/proforma/api/product-tier-detail/${prodId}/`);
+                const json = await res.json();
+                if (json.status === "success" && json.product) {
+                    prod = json.product;
+                    productsData[prodId] = prod;
+                } else {
+                    alert("Unable to load product pricing details.");
+                    return;
+                }
+            } catch (err) {
+                console.error("API error:", err);
+                alert("Network error loading product details.");
+                return;
+            }
+        }
+
+        document.getElementById('singleProdId').value = prod.id;
+        document.getElementById('singleProdTitle').innerText = `${prod.name} (${prod.category})`;
+        document.getElementById('singleBasePrice').value = prod.basePrice || 0;
+        document.getElementById('singleMsrp').value = prod.msrp || 0;
+        document.getElementById('singleTaxRate').value = prod.taxRate || 0;
+        document.getElementById('singleHsn').value = prod.hsn || '';
+        document.getElementById('singleHasDynamic').checked = !!prod.hasDynamic;
+
+        // Render Price Tiers
+        const pTbody = document.getElementById('singleTiersBody');
+        pTbody.innerHTML = '';
+        (prod.priceTiers || []).forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="number" class="form-control form-control-sm s-min" value="${t.min_quantity}" min="1"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm s-price" value="${t.unit_price}"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm s-msrp" value="${t.msrp || 0}"></td>
+                <td class="text-center"><button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+            `;
+            pTbody.appendChild(tr);
+        });
+
+        // Render Surface Courier Slabs
+        const sTbody = document.getElementById('singleSurfaceBody');
+        sTbody.innerHTML = '';
+        (prod.surfaceTiers || []).forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="number" class="form-control form-control-sm c-min" value="${t.min_quantity}" min="1"></td>
+                <td><input type="number" class="form-control form-control-sm c-max" value="${t.max_quantity || ''}" placeholder="Above"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm c-charge" value="${t.charge}"></td>
+                <td class="text-center"><button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+            `;
+            sTbody.appendChild(tr);
+        });
+
+        // Render Air Courier Slabs
+        const aTbody = document.getElementById('singleAirBody');
+        aTbody.innerHTML = '';
+        (prod.airTiers || []).forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="number" class="form-control form-control-sm c-min" value="${t.min_quantity}" min="1"></td>
+                <td><input type="number" class="form-control form-control-sm c-max" value="${t.max_quantity || ''}" placeholder="Above"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm c-charge" value="${t.charge}"></td>
+                <td class="text-center"><button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+            `;
+            aTbody.appendChild(tr);
+        });
+
+        new bootstrap.Modal(document.getElementById('singleEditModal')).show();
+    }
+
+    function addSingleTierRow() {
+        const tbody = document.getElementById('singleTiersBody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="number" class="form-control form-control-sm s-min" value="10" min="1"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm s-price" placeholder="Unit Price"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm s-msrp" value="0"></td>
+            <td class="text-center"><button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function addSingleCourierRow(mode) {
+        const tbody = document.getElementById(mode === 'surface' ? 'singleSurfaceBody' : 'singleAirBody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="number" class="form-control form-control-sm c-min" value="1" min="1"></td>
+            <td><input type="number" class="form-control form-control-sm c-max" placeholder="Above"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm c-charge" placeholder="₹"></td>
+            <td class="text-center"><button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    async function submitSingleProduct() {
+        const prodId = document.getElementById('singleProdId').value;
+        const basePrice = document.getElementById('singleBasePrice').value;
+        const msrp = document.getElementById('singleMsrp').value;
+        const taxRate = document.getElementById('singleTaxRate').value;
+        const hsn = document.getElementById('singleHsn').value;
+        const hasDynamic = document.getElementById('singleHasDynamic').checked;
+
+        const tiers = [];
+        document.querySelectorAll('#singleTiersBody tr').forEach(tr => {
+            const minQ = tr.querySelector('.s-min').value;
+            const price = tr.querySelector('.s-price').value;
+            const m = tr.querySelector('.s-msrp').value;
+            if (minQ && price) {
+                tiers.push({ min_quantity: parseInt(minQ), unit_price: parseFloat(price), msrp: parseFloat(m || 0) });
+            }
+        });
+
+        const surfaceTiers = [];
+        document.querySelectorAll('#singleSurfaceBody tr').forEach(tr => {
+            const minQ = tr.querySelector('.c-min').value;
+            const maxQ = tr.querySelector('.c-max').value;
+            const ch = tr.querySelector('.c-charge').value;
+            if (minQ && ch) {
+                surfaceTiers.push({ min_quantity: parseInt(minQ), max_quantity: maxQ ? parseInt(maxQ) : null, charge: parseFloat(ch) });
+            }
+        });
+
+        const airTiers = [];
+        document.querySelectorAll('#singleAirBody tr').forEach(tr => {
+            const minQ = tr.querySelector('.c-min').value;
+            const maxQ = tr.querySelector('.c-max').value;
+            const ch = tr.querySelector('.c-charge').value;
+            if (minQ && ch) {
+                airTiers.push({ min_quantity: parseInt(minQ), max_quantity: maxQ ? parseInt(maxQ) : null, charge: parseFloat(ch) });
+            }
+        });
+
+        const payload = {
+            product_id: parseInt(prodId),
+            base_price: parseFloat(basePrice || 0),
+            msrp: parseFloat(msrp || 0),
+            tax_rate: parseFloat(taxRate || 0),
+            hsn: hsn || null,
+            has_dynamic_price: hasDynamic,
+            tiers: tiers,
+            surface_tiers: surfaceTiers,
+            air_tiers: airTiers
+        };
+
+        const btn = document.getElementById('btnSaveSingle');
+        btn.disabled = true;
+
+        try {
+            const res = await fetch("{% url 'api_save_single_product_pricing' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (res.ok && data.status === "success") {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert("Error: " + (data.message || "Failed to save product pricing."));
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network error: " + err.message);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>

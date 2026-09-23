@@ -137,4 +137,9 @@ urlpatterns = [
         views.CompleteDispatchView.as_view(),
         name="complete_dispatch"
     ),
+    path("product-tier-manager/", views.AccountantProductTierManagerView.as_view(), name="accountant_product_tier_manager"),
+    path("product_tier_manager/", views.AccountantProductTierManagerView.as_view()),
+    path("api/product-tier-detail/<int:product_id>/", views.ProductTierDetailApiView.as_view(), name="api_product_tier_detail"),
+    path("api/bulk-update-product-tiers/", views.BulkUpdateProductTiersApiView.as_view(), name="api_bulk_update_product_tiers"),
+    path("api/save-single-product-pricing/", views.SaveSingleProductPricingApiView.as_view(), name="api_save_single_product_pricing"),
 ]

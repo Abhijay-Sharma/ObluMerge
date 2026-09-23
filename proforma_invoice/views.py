@@ -8891,3 +8891,413 @@ class CompleteDispatchView(LoginRequiredMixin,AccountantRequiredMixin,View):
             "dispatch_detail",
             pk=dispatch.id
         )
+
+
+#price and courier tier management page
+
+class AccountantProductTierManagerView(AccountantRequiredMixin, ListView):
+    model = InventoryItem
+    template_name = "proforma_invoice/accountant_product_tier_manager.html"
+    context_object_name = "items"
+    paginate_by = 50
+
+    def get_paginate_by(self, queryset):
+        page_size = self.request.GET.get("page_size", "50").strip().lower()
+        if page_size == "all":
+            return None
+        try:
+            val = int(page_size)
+            if val in [25, 50, 100, 200, 500]:
+                return val
+        except (ValueError, TypeError):
+            pass
+        return 50
+
+    def get_queryset(self):
+        qs = (
+            InventoryItem.objects
+            .select_related("category", "proforma_price")
+            .prefetch_related(
+                Prefetch(
+                    "proforma_price__price_tiers",
+                    queryset=ProductPriceTier.objects.order_by("min_quantity")
+                ),
+                Prefetch(
+                    "courier_sheets",
+                    queryset=CourierCharge.objects.prefetch_related(
+                        Prefetch("tiers", queryset=CourierChargeTier.objects.order_by("min_quantity"))
+                    )
+                )
+            )
+        )
+
+        # 1. Category Filter (Global)
+        category_val = self.request.GET.get("category", "").strip()
+        if category_val and category_val.lower() != "all":
+            if category_val.isdigit():
+                qs = qs.filter(category_id=int(category_val))
+            else:
+                qs = qs.filter(category__name__iexact=category_val)
+
+        # 2. Search Query (Global across product name & HSN)
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(proforma_price__hsn__icontains=q))
+
+        # 3. Dynamic Tier Status Filter (Global)
+        tier_status = self.request.GET.get("tier_status", "").strip()
+        if tier_status == "has_tiers":
+            qs = qs.filter(proforma_price__price_tiers__isnull=False).distinct()
+        elif tier_status == "no_tiers":
+            qs = qs.exclude(proforma_price__price_tiers__isnull=False)
+
+        return qs.order_by("category__name", "name")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["categories"] = Category.objects.order_by("name")
+        context["selected_category"] = self.request.GET.get("category", "all")
+        context["search_query"] = self.request.GET.get("q", "")
+        context["selected_tier_status"] = self.request.GET.get("tier_status", "all")
+        context["page_size"] = self.request.GET.get("page_size", "50")
+
+        # Safely serialize items on the current page to JSON
+        items_on_page = context.get("items", [])
+        products_data = {}
+        for item in items_on_page:
+            prod_price = getattr(item, "proforma_price", None)
+            price_tiers = []
+            if prod_price:
+                for t in prod_price.price_tiers.all():
+                    price_tiers.append({
+                        "min_quantity": t.min_quantity,
+                        "unit_price": float(t.unit_price) if t.unit_price is not None else 0.0,
+                        "msrp": float(t.msrp) if t.msrp is not None else 0.0,
+                    })
+
+            surface_tiers = []
+            air_tiers = []
+            for s in item.courier_sheets.all():
+                target = surface_tiers if s.mode == CourierMode.SURFACE else air_tiers
+                for ct in s.tiers.all():
+                    target.append({
+                        "min_quantity": ct.min_quantity,
+                        "max_quantity": ct.max_quantity,
+                        "charge": float(ct.charge) if ct.charge is not None else 0.0,
+                    })
+
+            products_data[str(item.id)] = {
+                "id": item.id,
+                "name": item.name,
+                "category": item.category.name if item.category else "Uncategorized",
+                "categoryId": item.category_id,
+                "basePrice": float(prod_price.price) if (prod_price and prod_price.price is not None) else 0.0,
+                "msrp": float(prod_price.msrp) if (prod_price and prod_price.msrp is not None) else 0.0,
+                "taxRate": float(prod_price.tax_rate) if (prod_price and prod_price.tax_rate is not None) else 0.0,
+                "hsn": str(prod_price.hsn) if (prod_price and prod_price.hsn is not None) else "",
+                "hasDynamic": bool(prod_price.has_dynamic_price) if prod_price else False,
+                "priceTiers": price_tiers,
+                "surfaceTiers": surface_tiers,
+                "airTiers": air_tiers,
+            }
+
+        context["products_json"] = json.dumps(products_data)
+        paginator = context.get("paginator")
+        if paginator:
+            context["total_matching_count"] = paginator.count
+        else:
+            context["total_matching_count"] = len(items_on_page)
+
+        return context
+
+
+class ProductTierDetailApiView(AccountantRequiredMixin, View):
+    """
+    Returns single product pricing and courier tiers as JSON.
+    Used for instant, failure-proof modal opening.
+    """
+    def get(self, request, product_id, *args, **kwargs):
+        item = get_object_or_404(
+            InventoryItem.objects
+            .select_related("category", "proforma_price")
+            .prefetch_related(
+                Prefetch("proforma_price__price_tiers", queryset=ProductPriceTier.objects.order_by("min_quantity")),
+                Prefetch("courier_sheets", queryset=CourierCharge.objects.prefetch_related(
+                    Prefetch("tiers", queryset=CourierChargeTier.objects.order_by("min_quantity"))
+                ))
+            ),
+            id=product_id
+        )
+
+        prod_price = getattr(item, "proforma_price", None)
+        price_tiers = []
+        if prod_price:
+            for t in prod_price.price_tiers.all():
+                price_tiers.append({
+                    "min_quantity": t.min_quantity,
+                    "unit_price": float(t.unit_price) if t.unit_price is not None else 0.0,
+                    "msrp": float(t.msrp) if t.msrp is not None else 0.0,
+                })
+
+        surface_tiers = []
+        air_tiers = []
+        for s in item.courier_sheets.all():
+            target = surface_tiers if s.mode == CourierMode.SURFACE else air_tiers
+            for ct in s.tiers.all():
+                target.append({
+                    "min_quantity": ct.min_quantity,
+                    "max_quantity": ct.max_quantity,
+                    "charge": float(ct.charge) if ct.charge is not None else 0.0,
+                })
+
+        data = {
+            "id": item.id,
+            "name": item.name,
+            "category": item.category.name if item.category else "Uncategorized",
+            "categoryId": item.category_id,
+            "basePrice": float(prod_price.price) if (prod_price and prod_price.price is not None) else 0.0,
+            "msrp": float(prod_price.msrp) if (prod_price and prod_price.msrp is not None) else 0.0,
+            "taxRate": float(prod_price.tax_rate) if (prod_price and prod_price.tax_rate is not None) else 0.0,
+            "hsn": str(prod_price.hsn) if (prod_price and prod_price.hsn is not None) else "",
+            "hasDynamic": bool(prod_price.has_dynamic_price) if prod_price else False,
+            "priceTiers": price_tiers,
+            "surfaceTiers": surface_tiers,
+            "airTiers": air_tiers,
+        }
+        return JsonResponse({"status": "success", "product": data})
+
+
+class BulkUpdateProductTiersApiView(AccountantRequiredMixin, View):
+    """
+    Bulk update/create product prices, tax, HSN, dynamic tiers, and courier slabs.
+    Can be applied to an entire category, a list of selected product IDs, or all filtered items.
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = json.loads(request.body)
+            category_id = payload.get("category_id")
+            product_ids = payload.get("product_ids", [])
+            apply_to_all_filtered = payload.get("apply_to_all_filtered", False)
+            filter_category = payload.get("filter_category")
+            filter_q = (payload.get("filter_q") or "").strip()
+            filter_tier_status = (payload.get("filter_tier_status") or "").strip()
+
+            base_price = payload.get("base_price")
+            msrp = payload.get("msrp")
+            tax_rate = payload.get("tax_rate")
+            hsn = payload.get("hsn")
+            tiers = payload.get("tiers", [])
+            has_dynamic_price = payload.get("has_dynamic_price", True if tiers else False)
+
+            if not category_id and not product_ids and not apply_to_all_filtered:
+                return JsonResponse({"status": "error", "message": "Please select a Category, select products, or choose 'All Filtered'."}, status=400)
+
+            qs = InventoryItem.objects.all()
+            if apply_to_all_filtered:
+                if filter_category and filter_category != "all":
+                    if str(filter_category).isdigit():
+                        qs = qs.filter(category_id=int(filter_category))
+                    else:
+                        qs = qs.filter(category__name__iexact=filter_category)
+                if filter_q:
+                    qs = qs.filter(Q(name__icontains=filter_q) | Q(proforma_price__hsn__icontains=filter_q))
+                if filter_tier_status == "has_tiers":
+                    qs = qs.filter(proforma_price__price_tiers__isnull=False).distinct()
+                elif filter_tier_status == "no_tiers":
+                    qs = qs.exclude(proforma_price__price_tiers__isnull=False)
+            elif category_id:
+                qs = qs.filter(category_id=category_id)
+            elif product_ids:
+                qs = qs.filter(id__in=product_ids)
+
+            items_to_update = list(qs)
+            if not items_to_update:
+                return JsonResponse({"status": "error", "message": "No products matched the selection."}, status=404)
+
+            count = 0
+            with transaction.atomic():
+                for item in items_to_update:
+                    defaults = {"has_dynamic_price": has_dynamic_price}
+                    if base_price is not None and str(base_price).strip() != "":
+                        defaults["price"] = Decimal(str(base_price))
+                    if msrp is not None and str(msrp).strip() != "":
+                        defaults["msrp"] = Decimal(str(msrp))
+                    if tax_rate is not None and str(tax_rate).strip() != "":
+                        defaults["tax_rate"] = Decimal(str(tax_rate))
+                    if hsn is not None and str(hsn).strip() != "":
+                        defaults["hsn"] = Decimal(str(hsn))
+
+                    prod_price, created = ProductPrice.objects.get_or_create(
+                        product=item,
+                        defaults={
+                            "price": Decimal(str(base_price or 0)),
+                            **defaults
+                        }
+                    )
+                    if not created and defaults:
+                        for k, v in defaults.items():
+                            setattr(prod_price, k, v)
+                        prod_price.save()
+
+                    # Price tiers
+                    if tiers:
+                        prod_price.price_tiers.all().delete()
+                        for t in tiers:
+                            min_q = int(t.get("min_quantity", 1))
+                            u_price = t.get("unit_price")
+                            t_msrp = t.get("msrp")
+                            tier_price = Decimal(str(u_price)) if (u_price is not None and str(u_price).strip() != "") else prod_price.price
+                            tier_msrp = Decimal(str(t_msrp)) if (t_msrp is not None and str(t_msrp).strip() != "") else (prod_price.msrp or Decimal("0.00"))
+                            ProductPriceTier.objects.create(
+                                product=prod_price,
+                                min_quantity=min_q,
+                                unit_price=tier_price,
+                                msrp=tier_msrp
+                            )
+
+                    # Courier charges
+                    has_surface_data = any(t.get("surface_charge") is not None and str(t.get("surface_charge")).strip() != "" for t in tiers)
+                    has_air_data = any(t.get("air_charge") is not None and str(t.get("air_charge")).strip() != "" for t in tiers)
+
+                    if has_surface_data:
+                        surface_charge, _ = CourierCharge.objects.get_or_create(
+                            product=item,
+                            mode=CourierMode.SURFACE
+                        )
+                        surface_charge.tiers.all().delete()
+                        for t in tiers:
+                            s_charge = t.get("surface_charge")
+                            if s_charge is not None and str(s_charge).strip() != "":
+                                min_q = int(t.get("min_quantity", 1))
+                                max_q = t.get("max_quantity")
+                                max_q_int = int(max_q) if (max_q is not None and str(max_q).strip() != "") else None
+                                CourierChargeTier.objects.create(
+                                    courier_product=surface_charge,
+                                    min_quantity=min_q,
+                                    max_quantity=max_q_int,
+                                    charge=Decimal(str(s_charge))
+                                )
+
+                    if has_air_data:
+                        air_charge, _ = CourierCharge.objects.get_or_create(
+                            product=item,
+                            mode=CourierMode.AIR
+                        )
+                        air_charge.tiers.all().delete()
+                        for t in tiers:
+                            a_charge = t.get("air_charge")
+                            if a_charge is not None and str(a_charge).strip() != "":
+                                min_q = int(t.get("min_quantity", 1))
+                                max_q = t.get("max_quantity")
+                                max_q_int = int(max_q) if (max_q is not None and str(max_q).strip() != "") else None
+                                CourierChargeTier.objects.create(
+                                    courier_product=air_charge,
+                                    min_quantity=min_q,
+                                    max_quantity=max_q_int,
+                                    charge=Decimal(str(a_charge))
+                                )
+
+                    count += 1
+
+            return JsonResponse({
+                "status": "success",
+                "message": f"Successfully updated {count} product(s) with new pricing and tier configurations!"
+            })
+        except Exception as e:
+            logger.exception("Error in BulkUpdateProductTiersApiView")
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+class SaveSingleProductPricingApiView(AccountantRequiredMixin, View):
+    """
+    Save/update single product pricing, tax, HSN, and individual tiers.
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = json.loads(request.body)
+            product_id = payload.get("product_id")
+            if not product_id:
+                return JsonResponse({"status": "error", "message": "Missing product_id"}, status=400)
+
+            item = get_object_or_404(InventoryItem, id=product_id)
+
+            base_price = payload.get("base_price", 0)
+            msrp = payload.get("msrp", 0)
+            tax_rate = payload.get("tax_rate", 0)
+            hsn = payload.get("hsn")
+            has_dynamic_price = payload.get("has_dynamic_price", False)
+            tiers = payload.get("tiers", [])
+
+            with transaction.atomic():
+                prod_price, _ = ProductPrice.objects.get_or_create(
+                    product=item,
+                    defaults={"price": Decimal(str(base_price or 0))}
+                )
+                prod_price.price = Decimal(str(base_price or 0))
+                prod_price.msrp = Decimal(str(msrp or 0)) if (msrp is not None and str(msrp).strip() != "") else Decimal("0.00")
+                prod_price.tax_rate = Decimal(str(tax_rate or 0))
+                prod_price.hsn = Decimal(str(hsn)) if (hsn is not None and str(hsn).strip() != "") else None
+                prod_price.has_dynamic_price = bool(has_dynamic_price)
+                prod_price.save()
+
+                # Sync price tiers
+                prod_price.price_tiers.all().delete()
+                for t in tiers:
+                    min_q = int(t.get("min_quantity", 1))
+                    u_price = Decimal(str(t.get("unit_price", prod_price.price)))
+                    t_msrp = Decimal(str(t.get("msrp", prod_price.msrp or 0))) if (t.get("msrp") is not None and str(t.get("msrp")).strip() != "") else Decimal("0.00")
+                    ProductPriceTier.objects.create(
+                        product=prod_price,
+                        min_quantity=min_q,
+                        unit_price=u_price,
+                        msrp=t_msrp
+                    )
+
+                # Sync courier tiers if provided
+                surface_tiers = payload.get("surface_tiers")
+                if surface_tiers is not None:
+                    surface_charge, _ = CourierCharge.objects.get_or_create(
+                        product=item,
+                        mode=CourierMode.SURFACE
+                    )
+                    surface_charge.tiers.all().delete()
+                    for st in surface_tiers:
+                        c_val = st.get("charge")
+                        if c_val is not None and str(c_val).strip() != "":
+                            min_q = int(st.get("min_quantity", 1))
+                            max_q = st.get("max_quantity")
+                            max_q_int = int(max_q) if (max_q is not None and str(max_q).strip() != "") else None
+                            CourierChargeTier.objects.create(
+                                courier_product=surface_charge,
+                                min_quantity=min_q,
+                                max_quantity=max_q_int,
+                                charge=Decimal(str(c_val))
+                            )
+
+                air_tiers = payload.get("air_tiers")
+                if air_tiers is not None:
+                    air_charge, _ = CourierCharge.objects.get_or_create(
+                        product=item,
+                        mode=CourierMode.AIR
+                    )
+                    air_charge.tiers.all().delete()
+                    for at in air_tiers:
+                        c_val = at.get("charge")
+                        if c_val is not None and str(c_val).strip() != "":
+                            min_q = int(at.get("min_quantity", 1))
+                            max_q = at.get("max_quantity")
+                            max_q_int = int(max_q) if (max_q is not None and str(max_q).strip() != "") else None
+                            CourierChargeTier.objects.create(
+                                courier_product=air_charge,
+                                min_quantity=min_q,
+                                max_quantity=max_q_int,
+                                charge=Decimal(str(c_val))
+                            )
+
+            return JsonResponse({
+                "status": "success",
+                "message": f"Saved pricing & tiers for {item.name}"
+            })
+        except Exception as e:
+            logger.exception("Error in SaveSingleProductPricingApiView")
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
