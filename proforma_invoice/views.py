@@ -3447,6 +3447,21 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 
+def open_dispatch_detail(request, pk):
+    """
+    Finds or initializes the DispatchRequest for this invoice
+    and redirects straight to its dispatch detail page.
+    """
+    invoice = get_object_or_404(ProformaInvoice, pk=pk)
+
+    dispatch_req, created = DispatchRequest.objects.get_or_create(
+        invoice=invoice,
+        defaults={
+            'requested_by': request.user,
+            'status': invoice.dispatch_status if invoice.dispatch_status in ['requested', 'dispatched'] else 'requested'
+        }
+    )
+    return redirect('dispatch_detail', pk=dispatch_req.id)
 
 class ProformaInvoiceListViewForDispatch(LoginRequiredMixin, ListView):
     model = ProformaInvoice

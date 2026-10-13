@@ -7,23 +7,19 @@
 <style>
     /* --- CSS VARIABLES & BASE --- */
     :root {
-        --primary: #ffc107;
-        --dark: #1a1a1a;
-        --light: #f4f7f6;
-        --success: #28a745;
-        --danger: #dc3545;
-        --info: #0d6efd;
-        --warning: #fd7e14;
-        --border: #eee;
-        --text-muted: #666;
+        --dark: #1e293b;
+        --light: #f8fafc;
+        --border: #e2e8f0;
+        --text-main: #334155;
+        --text-muted: #64748b;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background-color: var(--light);
-        color: #333;
+        color: var(--text-main);
         line-height: 1.5;
     }
 
@@ -41,109 +37,175 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
     .btn-home {
-        color: white; text-decoration: none; border: 1px solid white;
-        padding: 5px 15px; border-radius: 4px; font-size: 0.9rem; transition: 0.3s;
+        color: #e2e8f0; text-decoration: none; border: 1px solid #475569;
+        padding: 5px 14px; border-radius: 6px; font-size: 0.85rem; transition: 0.2s;
     }
-    .btn-home:hover { background: white; color: var(--dark); }
-
+    .btn-home:hover { background: #334155; color: white; border-color: #64748b; }
 
     /* --- FILTERS --- */
     .filters-container {
-        background: white; padding: 20px; border-radius: 8px;
-        margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        background: white; padding: 18px 20px; border-radius: 10px;
+        margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid var(--border);
     }
     .filters-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .filters-form select, .filters-form input {
-        padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; min-width: 150px;
+        padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px;
+        font-size: 0.85rem; min-width: 150px; background-color: #fff; color: var(--text-main);
+        outline: none; transition: border-color 0.2s;
+    }
+    .filters-form select:focus, .filters-form input:focus {
+        border-color: #94a3b8;
     }
     .btn-apply {
         background-color: var(--dark); color: white; border: none;
-        padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;
+        padding: 7px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+        transition: 0.2s;
     }
+    .btn-apply:hover { background-color: #334155; }
 
     /* --- TABLE DESIGN --- */
     .table-responsive {
         width: 100%; overflow-x: auto; background: white;
-        border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid var(--border);
     }
     table { width: 100%; border-collapse: collapse; min-width: 1100px; }
     th {
-        background-color: #f8f9fa; color: var(--text-muted); text-transform: uppercase;
-        font-size: 0.7rem; padding: 15px; text-align: left; border-bottom: 2px solid var(--border); letter-spacing: 1px;
+        background-color: #f8fafc; color: var(--text-muted); text-transform: uppercase;
+        font-size: 0.7rem; padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border);
+        letter-spacing: 0.5px; font-weight: 600;
     }
-    td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: middle; }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: middle; }
+    tbody tr:hover { background-color: #fafbfc; }
 
-    /* --- STATUS & TIMER --- */
+    /* --- STATUS & TIMER PILLS --- */
     .status-pill {
-        padding: 4px 12px; border-radius: 20px; font-size: 0.7rem;
-        font-weight: bold; display: inline-block; text-transform: uppercase;
+        padding: 3px 10px; border-radius: 20px; font-size: 0.72rem;
+        font-weight: 600; display: inline-block; text-transform: uppercase; letter-spacing: 0.3px;
     }
-    .status-dispatched { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .status-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-    .status-requested { background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
+    .status-dispatched { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .status-pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .status-requested { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-initiated { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .status-processing { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 
-    .timer-box { font-family: monospace; font-weight: bold; font-size: 0.9rem; }
-    .timer-running { color: var(--warning); }
-    .timer-done { color: var(--success); }
+    .timer-box { font-family: monospace; font-weight: 600; font-size: 0.85rem; }
+    .timer-running { color: #d97706; }
+    .timer-done { color: #059669; }
 
-    /* --- ACTION BUTTONS --- */
-    .actions-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    /* --- DISTINCTLY COLORED ACTION BUTTONS --- */
+    .actions-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
     .btn-action {
-        text-decoration: none; font-size: 0.75rem; font-weight: bold;
-        padding: 6px 12px; border-radius: 4px; color: white; transition: 0.2s;
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 5px 11px;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        transition: all 0.15s ease-in-out;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        border: none;
+        font-family: inherit;
+        line-height: 1.4;
     }
-    .btn-view { background-color: #6c757d; }
-    .btn-yes { background-color: var(--success); }
-    .btn-no { background-color: var(--danger); }
-    .btn-blue { background-color: var(--info); border: none; cursor: pointer; }
-    .btn-action:hover { opacity: 0.8; transform: translateY(-1px); }
+    .btn-action:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+    }
+    .btn-action:active {
+        transform: translateY(0);
+    }
+
+    /* Specific button color variants */
+    .btn-view { background-color: #64748b; }       /* Slate Gray */
+    .btn-yes { background-color: #10b981; }        /* Emerald Green */
+    .btn-dispatch { background-color: #f59e0b; }   /* Amber / Orange */
+    .btn-no { background-color: #ef4444; }         /* Soft Red */
+    .btn-remarks { background-color: #0ea5e9; }    /* Sky Blue */
+
+    /* Subtle label for Initiated */
+    .label-initiated {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #0369a1;
+        background-color: #f0f9ff;
+        border: 1px solid #bae6fd;
+        padding: 4px 9px;
+        border-radius: 6px;
+        letter-spacing: 0.3px;
+        user-select: none;
+    }
+    .label-initiated::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #0284c7;
+    }
+
+    .locked-text {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #059669;
+        padding: 4px 6px;
+    }
 
     /* --- COMMUNICATION MODAL (REMARKS) --- */
     .custom-overlay {
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.85); z-index: 99999; align-items: center; justify-content: center; padding: 20px;
+        background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);
+        z-index: 99999; align-items: center; justify-content: center; padding: 20px;
     }
     .modal-content {
-        background: #1e1e1e; width: 100%; max-width: 450px; padding: 20px;
-        border-radius: 12px; border: 1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        background: #ffffff; width: 100%; max-width: 460px; padding: 22px;
+        border-radius: 12px; border: 1px solid var(--border); color: var(--text-main);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
     }
     #modalChatHistory {
-        height: 320px; overflow-y: auto; background: #111; padding: 15px;
-        border-radius: 8px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #333;
+        height: 300px; overflow-y: auto; background: #f8fafc; padding: 14px;
+        border-radius: 8px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border);
     }
-    .bubble { padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.4; max-width: 85%; color: #fff; }
-    .rtag { font-size: 9px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; display: block; }
+    .bubble { padding: 9px 13px; border-radius: 10px; font-size: 13px; line-height: 1.4; max-width: 85%; }
+    .rtag { font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; display: block; }
 
-    .b-sales { background: #1e3a8a; border-left: 4px solid #3b82f6; align-self: flex-start; }
-    .b-accounts { background: #064e3b; border-left: 4px solid #10b981; align-self: flex-start; }
-    .b-admin { background: #450a0a; border-left: 4px solid #ef4444; align-self: flex-start; }
+    .b-sales { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e3a8a; align-self: flex-start; }
+    .b-accounts { background: #ecfdf5; border-left: 3px solid #10b981; color: #064e3b; align-self: flex-start; }
+    .b-admin { background: #fef2f2; border-left: 3px solid #ef4444; color: #7f1d1d; align-self: flex-start; }
 
     /* --- RESPONSIVENESS --- */
     @media (max-width: 768px) {
         .header { flex-direction: column; gap: 10px; text-align: center; }
         .filters-form { flex-direction: column; align-items: stretch; }
         .filters-form select, .filters-form input { width: 100%; }
-        .actions-group { justify-content: center; }
+        .actions-group { justify-content: flex-start; }
         .modal-content { width: 95%; height: auto; }
     }
 </style>
-
 </head>
 <body>
 
     <header class="header">
-        <h1>Dispatch Management</h1>
-        <a href="{% url 'home' %}" class="btn btn-home">Home</a>
+        <h1 style="font-size: 1.35rem; font-weight: 600;">Dispatch Management</h1>
+        <a href="{% url 'home' %}" class="btn-home">Home</a>
     </header>
 
     <div class="container">
-            <!-- REUSABLE REMARK MODAL FOR ADMIN/ACCOUNTANT -->
-
-
         <!-- ---------------- FILTER BAR ---------------- -->
         <div class="filters-container">
             <form method="get" class="filters-form">
@@ -179,15 +241,13 @@
                 </select>
 
                 <button type="submit" class="btn-apply">Apply Filters</button>
-                <a href="{% url 'proforma_invoice_dispatch' %}" style="font-size: 0.8rem; color: #888; margin-left: 10px;">Reset</a>
+                <a href="{% url 'proforma_invoice_dispatch' %}" style="font-size: 0.8rem; color: #64748b; margin-left: 8px; text-decoration: none;">Reset</a>
             </form>
         </div>
 
-        <p class="scroll-hint">↔ Scroll table horizontally to view all columns</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 8px;">↔ Scroll table horizontally to view all columns</p>
 
         <!-- ---------------- MAIN TABLE ---------------- -->
-
-
         <div class="table-responsive">
             <table>
                 <thead>
@@ -200,25 +260,26 @@
                         <th>Status</th>
                         <th>Duration (Wait Time)</th>
                         <th>Action</th>
-
                     </tr>
                 </thead>
                 <tbody>
                     {% for inv in invoices %}
                     <tr>
-                        <td>#{{ inv.id }}</td>
+                        <td><span style="color: #64748b; font-family: monospace;">#{{ inv.id }}</span></td>
                         <td>
-                            <strong>#{{ inv.id }}</strong><br>
-                            <span style="color: #666; font-size: 0.75rem;">{{ inv.customer.name }}</span>
+                            <strong style="color: #0f172a;">#{{ inv.id }}</strong><br>
+                            <span style="color: #64748b; font-size: 0.75rem;">{{ inv.customer.name }}</span>
                         </td>
                         <td>{{ inv.created_by }}</td>
-                        <td><strong>₹{{ inv.calculate_final_total|floatformat:2  }}</strong></td>
+                        <td><strong style="color: #0f172a;">₹{{ inv.calculate_final_total|floatformat:2 }}</strong></td>
                         <td>{{ inv.get_courier_mode_display }}</td>
 
                         <!-- Status Badge -->
                         <td>
                             {% if inv.dispatch_status == 'dispatched' %}
                                 <span class="status-pill status-dispatched">✔ Dispatched</span>
+                            {% elif inv.dispatch_status == 'initiated' %}
+                                <span class="status-pill status-initiated">⚡ Initiated</span>
                             {% elif inv.dispatch_status == 'requested' %}
                                 <span class="status-pill status-requested">🚀 Requested</span>
                             {% elif inv.dispatch_status == 'pending' %}
@@ -228,7 +289,7 @@
                             {% endif %}
                         </td>
 
-                        <!-- 🕒 Duration Timer Logic -->
+                        <!-- Duration Timer Logic -->
                         <td class="timer-box">
                             {% if inv.dispatch_requested_at %}
                                 {% if inv.dispatch_status == 'dispatched' and inv.dispatched_at %}
@@ -237,48 +298,50 @@
                                     <span class="timer-running">⏳ {{ inv.dispatch_requested_at|timesince }}</span>
                                 {% endif %}
                             {% else %}
-                                <span style="color: #ccc;">Not Requested</span>
+                                <span style="color: #cbd5e1;">Not Requested</span>
                             {% endif %}
-
-
                         </td>
 
+                        <!-- Actions -->
                         <td>
                             <div class="actions-group">
+                                <!-- View Button (Slate) -->
                                 <a href="{{ inv.get_absolute_url }}" class="btn-action btn-view" target="_blank">View</a>
 
                                 {% if inv.dispatch_status != 'dispatched' %}
-                                    <!-- YES Button: Approves dispatch and stops clock -->
-                                    <a href="{% url 'set_dispatch' inv.id 'yes' %}" class="btn-action btn-yes"
-                                       onclick="return confirm('Confirm DISPATCH? This will finalize the invoice and stop the timer.')">YES</a>
 
-                                    {% if inv.dispatch_status != 'pending' %}
-                                        <!-- NO Button: Puts on hold but clock keeps running -->
+                                    <!-- YES Button (Green) switches to label when initiated -->
+                                    {% if inv.dispatch_status == 'initiated' %}
+                                        <span class="label-initiated">Initiated</span>
+                                    {% else %}
+                                        <a href="{% url 'set_dispatch' inv.id 'yes' %}" class="btn-action btn-yes"
+                                           onclick="return confirm('Initiate dispatch for Invoice #{{ inv.id }}?')">YES</a>
+                                    {% endif %}
+
+                                    <!-- Dispatch Button (Orange) -->
+                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">Dispatch</a>
+
+                                    {% if inv.dispatch_status != 'pending' and inv.dispatch_status != 'initiated' %}
+                                        <!-- NO Button (Red) -->
                                         <a href="{% url 'set_dispatch' inv.id 'no' %}" class="btn-action btn-no"
                                            onclick="return confirm('Put this on PENDING (Hold)?')">NO</a>
                                     {% endif %}
+
                                 {% else %}
-                                    <span class="locked-text">Locked</span>
+                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">Dispatch</a>
+                                    <span class="locked-text">Done</span>
                                 {% endif %}
-                                <button class="btn-pro-action btn-blue"  onclick="openRemarkModal('{{ inv.id }}')"    style="
-                                                                background:#4FC3F7;
-                                                                border:none;
-                                                                color:white;
-                                                                padding:2px ;
-                                                                border-radius:5px;
-                                                                font-size:12px;
-                                                                font-weight:200;
-                                                                cursor:pointer;
-                                                                box-shadow:0 2px 6px rgba(0,0,0,0.15); ">
+
+                                <!-- Remarks Button (Blue) -->
+                                <button type="button" class="btn-action btn-remarks" onclick="openRemarkModal('{{ inv.id }}')">
                                     💬 Remarks
                                 </button>
-
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 50px; color: #888;">No invoices found matching your filters.</td>
+                        <td colspan="8" style="text-align: center; padding: 50px; color: #94a3b8;">No invoices found matching your filters.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -287,25 +350,25 @@
     </div>
 
 <!-- ==========================================
-     UNIFIED REMARK MODAL (Add to all 3 files)
+     UNIFIED REMARK MODAL
      ========================================== -->
-<div id="globalRemarkModal" class="custom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; padding: 20px;">
-    <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
-            <h5 style="margin:0; color: #ffc107;">💬 Communication Hub</h5>
-            <button onclick="closeRemarkModal()" style="background:none; border:none; color:#888; cursor:pointer; font-size:24px;">&times;</button>
+<div id="globalRemarkModal" class="custom-overlay">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+            <h5 style="margin:0; font-size: 0.95rem; font-weight: 600; color: #0f172a;">💬 Communication Hub</h5>
+            <button onclick="closeRemarkModal()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:20px; line-height: 1;">&times;</button>
         </div>
 
-        <div id="modalChatHistory" style="height:320px; overflow-y:auto; background:#111; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; flex-direction:column; gap:10px; border:1px solid #333;">
+        <div id="modalChatHistory">
             <!-- History loads here -->
         </div>
 
         <input type="hidden" id="modalInvoiceId">
-        <textarea id="modalRemarkInput" style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; border-radius:8px; padding:10px; outline:none; resize:none; font-size: 14px;" rows="3" placeholder="Write to other departments..."></textarea>
+        <textarea id="modalRemarkInput" style="width:100%; background:#fff; color:#334155; border:1px solid var(--border); border-radius:8px; padding:10px; outline:none; resize:none; font-size: 13px; font-family: inherit;" rows="3" placeholder="Write to other departments..."></textarea>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
-            <button type="button" class="btn btn-sm btn-secondary" onclick="closeRemarkModal()">Cancel</button>
-            <button type="button" class="btn btn-sm btn-warning fw-bold" id="sendBtn" onclick="submitGlobalRemark()">Send Message</button>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+            <button type="button" class="btn-action btn-view" onclick="closeRemarkModal()">Cancel</button>
+            <button type="button" class="btn-action btn-yes" id="sendBtn" onclick="submitGlobalRemark()">Send Message</button>
         </div>
     </div>
 </div>
@@ -314,12 +377,11 @@
 function openRemarkModal(invoiceId) {
     document.getElementById('modalInvoiceId').value = invoiceId;
     document.getElementById('globalRemarkModal').style.display = 'flex';
-    document.getElementById('modalChatHistory').innerHTML = '<div style="color:#666; text-align:center; padding-top:50px;">Loading conversation...</div>';
+    document.getElementById('modalChatHistory').innerHTML = '<div style="color:#94a3b8; text-align:center; padding-top:50px; font-size:0.85rem;">Loading conversation...</div>';
     loadRemarks(invoiceId);
 }
 
 function loadRemarks(invoiceId) {
-    // Generate the correct URL using Django's URL tag
     const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
 
     fetch(getUrl)
@@ -328,8 +390,9 @@ function loadRemarks(invoiceId) {
             const historyBox = document.getElementById('modalChatHistory');
             historyBox.innerHTML = "";
 
-            if (data.remarks.length === 0) {
-                historyBox.innerHTML = '<div style="color:#444; text-align:center; padding-top:50px;">No conversation yet.</div>';
+            if (!data.remarks || data.remarks.length === 0) {
+                historyBox.innerHTML = '<div style="color:#94a3b8; text-align:center; padding-top:50px; font-size:0.85rem;">No conversation yet.</div>';
+                return;
             }
 
             data.remarks.forEach(r => {
@@ -357,7 +420,6 @@ function submitGlobalRemark() {
     formData.append('remark', text);
     formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-    // Generate the correct URL using Django's URL tag
     const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
 
     fetch(postUrl, {
@@ -382,22 +444,17 @@ function submitGlobalRemark() {
     .finally(() => btn.disabled = false);
 }
 
-
 function closeRemarkModal() {
     document.getElementById('globalRemarkModal').style.display = 'none';
 }
 
-// Add this at the bottom of your script
 window.onclick = function(e) {
     const modal = document.getElementById('globalRemarkModal');
-    if (e.target == modal) {
+    if (e.target === modal) {
         closeRemarkModal();
     }
 }
-
 </script>
 
-
 </body>
-
 </html>
