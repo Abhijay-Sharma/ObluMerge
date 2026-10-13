@@ -940,22 +940,65 @@ class AdminSalesPersonCustomersView(LoginRequiredMixin,TemplateView):
         return None
 
 #gagan version
-class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
+class AdminSalesPersonCustomersView(LoginRequiredMixin,TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
+
+    # ------------------------------------------------------------------ #
+    #  ACCESS HELPERS                                                       #
+    # ------------------------------------------------------------------ #
+
+    def _get_visible_salespersons(self, user):
+        """
+        Returns the SalesPerson queryset the logged-in user is allowed to view.
+
+        - Accountant  → all salespersons (minus excluded names)
+        - Everyone else → only themselves + any salesperson who has set this
+                          user's salesperson profile as their manager
+        """
+        base_qs = (
+            SalesPerson.objects
+            .exclude(name__in=EXCLUDED_SALESPERSON_NAMES)
+            .order_by(Lower("name"))
+        )
+
+        if user.is_accountant:
+            return base_qs
+
+        # Get the salesperson profile(s) for this user
+        own_profiles = SalesPerson.objects.filter(user=user)
+        if not own_profiles.exists():
+            return SalesPerson.objects.none()
+
+        own_profile = own_profiles.first()
+
+        # Visible = own profile + salespersons who report to them as manager
+        visible_ids = list(own_profiles.values_list("id", flat=True))
+        team_ids = list(
+            SalesPerson.objects.filter(manager=own_profile)
+            .values_list("id", flat=True)
+        )
+        visible_ids += team_ids
+
+        return base_qs.filter(id__in=visible_ids)
+
+    def _can_view_salesperson(self, user, salesperson_id):
+        """Returns True if user is allowed to view the given salesperson's data."""
+        return self._get_visible_salespersons(user).filter(id=salesperson_id).exists()
 
     # ------------------------------------------------------------------ #
     #  GET                                                                  #
     # ------------------------------------------------------------------ #
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
-        excluded_names = ["Abhijay","Aryan","Danish","Jackson","Mukesh","Nimit","Raman","test1","Vibhuti"]
+        visible_salespersons = self._get_visible_salespersons(self.request.user)
+        ctx["salespersons"] = visible_salespersons
 
-        ctx["salespersons"] = (
-            SalesPerson.objects
-            .all()
-            .exclude(name__in=excluded_names)
-            .order_by(Lower("name"))
+        # Hide the picker when non-accountant has exactly one visible option
+        ctx["salesperson_picker_hidden"] = (
+                not self.request.user.is_accountant
+                and visible_salespersons.count() == 1
         )
 
         selected_id = self.request.GET.get("salesperson")
@@ -965,11 +1008,26 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         ctx["status_filter"] = status_filter
         ctx["outstanding_filter"] = outstanding_filter
 
+        # Auto-select own profile for non-accountants when no ?salesperson= given
+        if not selected_id and not self.request.user.is_accountant:
+            own = SalesPerson.objects.filter(user=self.request.user).first()
+            if own and self._can_view_salesperson(self.request.user, own.id):
+                selected_id = str(own.id)
+
         if not selected_id:
             ctx["customers"] = []
             ctx["units"] = []
             ctx["selected_salesperson"] = None
             return ctx
+
+        # ACCESS GUARD — silently redirect to own profile if not allowed
+        if not self._can_view_salesperson(self.request.user, selected_id):
+            own = SalesPerson.objects.filter(user=self.request.user).first()
+            if own:
+                selected_id = str(own.id)
+            else:
+                ctx.update({"customers": [], "units": [], "selected_salesperson": None, "access_denied": True})
+                return ctx
 
         salesperson = SalesPerson.objects.filter(id=selected_id).first()
         ctx["selected_salesperson"] = salesperson
@@ -1019,7 +1077,6 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             ).order_by("-date")
 
             customer.vouchers_list = vouchers
-
             tax_invoices = vouchers.filter(voucher_type="TAX INVOICE")
 
             customer.last_order_date = (
@@ -1029,9 +1086,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
             total_value = 0
             for v in tax_invoices:
-                total_row = v.rows.filter(
-                    ledger__iexact=v.party_name
-                ).first()
+                total_row = v.rows.filter(ledger__iexact=v.party_name).first()
                 if total_row:
                     total_value += total_row.amount
             customer.total_order_value = total_value
@@ -1042,9 +1097,8 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             )
 
         # ── BUILD UNITS + STANDALONE LIST (ALL CUSTOMERS) ─────────────── #
-        # Map unit_id → list of enriched customers
-        unit_map = {}  # {unit_id: {"unit": CustomerUnit, "members": [...]}}
-        standalone = []  # customers not in any unit
+        unit_map = {}
+        standalone = []
 
         for customer in customers:
             membership = getattr(customer, "unit_membership", None)
@@ -1056,24 +1110,17 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             else:
                 standalone.append(customer)
 
-        # Build enriched unit objects with complete member telemetry
         enriched_units = []
         for uid, data in unit_map.items():
             unit_obj = data["unit"]
             members = data["members"]
             unit_obj.members = members
-
             # Unit is active if at least one member is active; inactive only if ALL members are inactive
             unit_obj.is_red_flag = all(m.is_red_flag for m in members)
-
-            # Aggregate financials for display
             unit_obj.total_orders = sum(m.total_orders for m in members)
             unit_obj.total_order_value = sum(m.total_order_value for m in members)
 
-            outstanding_members = [
-                m for m in members
-                if m.trial_balance and m.trial_balance > 0
-            ]
+            outstanding_members = [m for m in members if m.trial_balance and m.trial_balance > 0]
             unit_obj.trial_balance = (
                 sum(m.trial_balance for m in outstanding_members)
                 if outstanding_members else None
@@ -1083,6 +1130,8 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             unit_obj.last_order_date = max(last_dates) if last_dates else None
 
             enriched_units.append(unit_obj)
+
+        all_units = CustomerUnit.objects.filter(salesperson=salesperson).order_by("name")
 
         # ── STATS (across both units and standalone for this salesperson) ── #
         all_display_items = enriched_units + standalone
@@ -1099,7 +1148,6 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
                 total_outstanding_amount += bal
 
         # ── STATUS FILTER (DISPLAY LEVEL) ─────────────────────────────── #
-        # Filter units and standalone without distorting the unit classification
         if status_filter == "active":
             displayed_units = [u for u in enriched_units if not u.is_red_flag]
             displayed_standalone = [c for c in standalone if not c.is_red_flag]
@@ -1110,12 +1158,8 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             displayed_units = enriched_units
             displayed_standalone = standalone
 
-        # ── ALL UNITS FOR THIS SALESPERSON (for "add to existing unit" dropdown) #
-        all_units = CustomerUnit.objects.filter(salesperson=salesperson).order_by("name")
-
         # ── FOLLOW-UPS ────────────────────────────────────────────────── #
         today = date.today()
-
         all_followups = CustomerFollowUp.objects.filter(
             salesperson=salesperson
         ).select_related("customer").order_by("followup_date")
@@ -1124,10 +1168,9 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         ctx["followups_today"] = all_followups.filter(followup_date=today)
         ctx["followups_future"] = all_followups.filter(followup_date__gt=today)
 
-        # ── CONTEXT ───────────────────────────────────────────────────── #
-        ctx["customers"] = displayed_standalone  # standalone (no unit)
-        ctx["units"] = displayed_units  # unit groups
-        ctx["all_units"] = all_units  # for dropdown
+        ctx["customers"] = displayed_standalone
+        ctx["units"] = displayed_units
+        ctx["all_units"] = all_units
         ctx["total_display_count"] = total_display
         ctx["active_count"] = active_count
         ctx["inactive_count"] = inactive_count
@@ -1139,10 +1182,17 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
     # ------------------------------------------------------------------ #
     #  POST                                                                 #
     # ------------------------------------------------------------------ #
+
     def post(self, request, *args, **kwargs):
         redirect_url = request.get_full_path()
         scroll_to = request.POST.get("scroll_to", "")
         action = request.POST.get("action", "")
+
+        # POST-level access guard
+        target_sp = self._get_salesperson_from_request(request)
+        if target_sp and not self._can_view_salesperson(request.user, target_sp.id):
+            messages.error(request, "You don't have permission to modify this data.")
+            return redirect(redirect_url)
 
         # ── DELETE REMARK ─────────────────────────────────────────────── #
         delete_id = request.POST.get("delete_remark_id")
@@ -1167,34 +1217,29 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             messages.success(request, "Remark added successfully ✅")
             return redirect(f"{redirect_url}#{scroll_to}")
 
-        # ── CREATE UNIT (from a single customer) ──────────────────────── #
+        # ── CREATE UNIT ───────────────────────────────────────────────── #
         if action == "create_unit":
             unit_name = request.POST.get("unit_name", "").strip()
             cid = request.POST.get("customer_id")
-            salesperson = self._get_salesperson_from_request(request)
-
+            salesperson = target_sp
             if unit_name and cid and salesperson:
                 customer = get_object_or_404(Customer, id=cid)
                 unit, _ = CustomerUnit.objects.get_or_create(
-                    name=unit_name,
-                    salesperson=salesperson
+                    name=unit_name, salesperson=salesperson
                 )
-                # attach customer (ignore if already in a unit)
                 CustomerUnitMembership.objects.get_or_create(
-                    customer=customer,
-                    defaults={"unit": unit}
+                    customer=customer, defaults={"unit": unit}
                 )
                 messages.success(request, f"Unit '{unit_name}' created ✅")
             return redirect(redirect_url)
 
-        # ── ADD CUSTOMER TO EXISTING UNIT ─────────────────────────────── #
+        # ── ADD TO EXISTING UNIT ──────────────────────────────────────── #
         if action == "add_to_unit":
             unit_id = request.POST.get("unit_id")
             cid = request.POST.get("customer_id")
             if unit_id and cid:
                 customer = get_object_or_404(Customer, id=cid)
                 unit = get_object_or_404(CustomerUnit, id=unit_id)
-                # if already in another unit, move them
                 CustomerUnitMembership.objects.filter(customer=customer).delete()
                 CustomerUnitMembership.objects.create(customer=customer, unit=unit)
                 messages.success(request, f"Added to unit '{unit.name}' ✅")
@@ -1224,15 +1269,16 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             unit_id = request.POST.get("unit_id")
             if unit_id:
                 unit = get_object_or_404(CustomerUnit, id=unit_id)
-                unit.delete()  # memberships cascade-deleted automatically
+                unit.delete()
                 messages.success(request, "Unit deleted. Customers are now standalone ✅")
             return redirect(redirect_url)
 
         return redirect(redirect_url)
 
     # ── HELPER ────────────────────────────────────────────────────────── #
+
     def _get_salesperson_from_request(self, request):
-        """Return the SalesPerson matching the ?salesperson= GET param."""
+        """Return the SalesPerson for the current page context."""
         sid = request.GET.get("salesperson") or request.POST.get("salesperson_id")
         if sid:
             return SalesPerson.objects.filter(id=sid).first()
