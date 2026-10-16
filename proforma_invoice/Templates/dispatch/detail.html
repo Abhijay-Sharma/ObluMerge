@@ -1,1382 +1,466 @@
 {% block content %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>Dispatch #{{ dispatch.id }} | Oblu Portal</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
   :root {
-    --bg-page:        #F8FAFC;
-    --bg-card:        #FFFFFF;
-    --text-main:      #0F172A;
-    --text-muted:     #64748B;
-    --text-subtle:    #94A3B8;
-    --border-color:   #E2E8F0;
-    --border-subtle:  #F1F5F9;
-
-    --primary:        #0052FF;
-    --primary-hover:  #0045D8;
-    --primary-light:  #EFF4FF;
-
-    --success:        #059669;
-    --success-light:  #ECFDF5;
-    --success-border: #A7F3D0;
-
-    --warning:        #D97706;
-    --warning-light:  #FFFBEB;
-    --warning-border: #FDE68A;
-
-    --danger:         #DC2626;
-    --danger-light:   #FEF2F2;
-    --danger-border:  #FECACA;
-
-    --info:           #0284C7;
-    --info-light:     #F0F9FF;
-
-    --radius-sm: 8px;
-    --radius-md: 12px;
+    --navy:      #0F1C2E;
+    --navy-mid:  #1A2E48;
+    --slate:     #4A6080;
+    --steel:     #8BA4BE;
+    --cloud:     #EDF2F7;
+    --white:     #FFFFFF;
+    --accent:    #1E6FD9;
+    --accent-lt: #EBF3FF;
+    --success:   #0D7A55;
+    --success-lt:#E6F5F0;
+    --warning:   #B45309;
+    --warning-lt:#FEF3C7;
+    --danger:    #C0392B;
+    --danger-lt: #FDE8E8;
+    --info:      #0369A1;
+    --info-lt:   #E0F2FE;
+    --border:    #D4DFE9;
+    --text-primary:   #0F1C2E;
+    --text-secondary: #4A6080;
+    --text-muted:     #8BA4BE;
+    --radius-sm: 6px;
+    --radius:    10px;
     --radius-lg: 16px;
-    --radius-pill: 9999px;
-
-    --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+    --shadow-sm: 0 1px 3px rgba(15,28,46,0.08);
+    --shadow:    0 4px 16px rgba(15,28,46,0.10);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background-color: var(--bg-page);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: var(--text-main);
-    -webkit-font-smoothing: antialiased;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .dp-page {
+  .db-page {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #F4F7FB;
+    color: var(--text-primary);
     min-height: 100vh;
-    padding: 28px 0 64px;
+    padding: 32px 0 64px;
   }
 
-  .dp-container {
-    max-width: 920px;
+  .db-container {
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 24px;
   }
-
-  /* ── TOP NAV BAR ─────────────────────────────── */
-  .dp-nav-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .dp-back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 7px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    transition: all 0.15s ease;
-  }
-  .dp-back-link:hover {
-    color: var(--text-main);
-    border-color: #CBD5E1;
-    background: #F8FAFC;
-  }
-  .dp-back-link svg { flex-shrink: 0; }
 
   /* ── PAGE HEADER ─────────────────────────────── */
-  .dp-page-header {
+  .db-page-header {
     display: flex;
-    align-items: flex-start;
+    align-items: flex-end;
     justify-content: space-between;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
     gap: 16px;
     flex-wrap: wrap;
   }
-  .dp-eyebrow {
+  .db-eyebrow {
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--primary);
-    margin-bottom: 4px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
   }
-  .dp-page-title {
+  .db-page-title {
     font-size: 26px;
-    font-weight: 800;
-    color: var(--text-main);
-    letter-spacing: -0.025em;
-    line-height: 1.2;
-  }
-  .dp-page-title span {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--primary);
-  }
-
-  /* ── STATUS BADGE (NO EMOJIS) ────────────────── */
-  .dp-status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: var(--radius-pill);
-    font-size: 12px;
     font-weight: 700;
-    white-space: nowrap;
-    border: 1px solid transparent;
+    color: var(--navy);
+    letter-spacing: -0.3px;
   }
-  .dp-status-badge__dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .dp-status-badge--requested    { background: var(--warning-light); color: var(--warning); border-color: var(--warning-border); }
-  .dp-status-badge--requested .dp-status-badge__dot { background: var(--warning); }
 
-  .dp-status-badge--packing      { background: var(--info-light);    color: var(--info);    border-color: #BAE6FD; }
-  .dp-status-badge--packing .dp-status-badge__dot   { background: var(--info); }
-
-  .dp-status-badge--review       { background: var(--warning-light); color: var(--warning); border-color: var(--warning-border); }
-  .dp-status-badge--review .dp-status-badge__dot    { background: #F59E0B; }
-
-  .dp-status-badge--approved     { background: var(--primary-light); color: var(--primary); border-color: #BFDBFE; }
-  .dp-status-badge--approved .dp-status-badge__dot  { background: var(--primary); }
-
-  .dp-status-badge--dispatched   { background: var(--success-light); color: var(--success); border-color: var(--success-border); }
-  .dp-status-badge--dispatched .dp-status-badge__dot { background: var(--success); }
-
-  .dp-status-badge--completed    { background: var(--success-light); color: var(--success); border-color: var(--success-border); }
-  .dp-status-badge--completed .dp-status-badge__dot { background: var(--success); }
-
-  .dp-status-badge--default      { background: #F1F5F9; color: var(--text-muted); border-color: var(--border-color); }
-  .dp-status-badge--default .dp-status-badge__dot   { background: var(--text-subtle); }
-
-  /* ── CARD STYLING ────────────────────────────── */
-  .dp-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    margin-bottom: 20px;
-    overflow: hidden;
-  }
-  .dp-card--action  { border-left: 4px solid var(--primary); }
-  .dp-card--warning { border-left: 4px solid var(--warning); }
-  .dp-card--success { border-left: 4px solid var(--success); }
-  .dp-card--danger  { border-left: 4px solid var(--danger); }
-  .dp-card--info    { border-left: 4px solid var(--info); }
-
-  .dp-card__header {
+  /* ── STAT PILLS ──────────────────────────────── */
+  .db-stats {
     display: flex;
-    align-items: center;
     gap: 12px;
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--border-color);
-    background: #FFFFFF;
+    flex-wrap: wrap;
   }
-  .dp-card__title {
-    font-size: 15px;
+  .db-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 18px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    min-width: 80px;
+  }
+  .db-stat__num {
+    font-size: 20px;
     font-weight: 700;
-    color: var(--text-main);
-    letter-spacing: -0.01em;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--navy);
+    line-height: 1;
   }
-  .dp-card__subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
-  .dp-card__body {
-    padding: 22px;
-  }
-
-  /* ── DETAILS GRID ────────────────────────────── */
-  .dp-details-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-  }
-  .dp-detail-item {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
-  }
-  .dp-detail-item:nth-child(even) { border-right: none; }
-  .dp-detail-item:nth-last-child(-n+2) { border-bottom: none; }
-  .dp-detail-item--full {
-    grid-column: 1 / -1;
-    border-right: none;
-  }
-  .dp-detail-label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+  .db-stat__num--yellow { color: var(--warning); }
+  .db-stat__num--blue   { color: var(--accent); }
+  .db-stat__num--green  { color: var(--success); }
+  .db-stat__label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin-bottom: 4px;
-  }
-  .dp-detail-value {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-main);
-    word-break: break-word;
-  }
-  .dp-detail-value--mono {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13.5px;
-    color: var(--primary);
-  }
-  .dp-detail-value--muted {
-    color: var(--text-subtle);
-    font-weight: 400;
+    margin-top: 4px;
+    white-space: nowrap;
   }
 
-  /* ── TRACK BUTTON ────────────────────────────── */
-  .dp-btn-track {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    background: #0F172A;
-    color: #FFFFFF;
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: background 0.15s;
+  /* ── CARD ────────────────────────────────────── */
+  .db-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
   }
-  .dp-btn-track:hover { background: #1E293B; }
-
-  /* ── FORMS & INPUTS ──────────────────────────── */
-  .dp-form { display: flex; flex-direction: column; gap: 18px; }
-  .dp-field { display: flex; flex-direction: column; gap: 6px; }
-  .dp-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #334155;
-  }
-  .dp-label span {
-    color: var(--danger);
-    margin-left: 2px;
-  }
-
-  .dp-input,
-  .dp-select,
-  .dp-textarea {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-family: inherit;
-    color: var(--text-main);
-    background: #FFFFFF;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    outline: none;
-    min-height: 42px;
-  }
-  .dp-input:focus,
-  .dp-select:focus,
-  .dp-textarea:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.12);
-  }
-  .dp-input--mono {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-  }
-  .dp-textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
-
-  /* ── FILE INPUT CONTAINER (CLEAN SAAS STYLE) ─── */
-  .dp-file-box {
-    background: #F8FAFC;
-    border: 1.5px dashed #CBD5E1;
-    border-radius: var(--radius-md);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: border-color 0.15s ease;
-  }
-  .dp-file-box:hover, .dp-file-box:focus-within {
-    border-color: var(--primary);
-    background: #F4F8FF;
-  }
-  .dp-file-box__header {
+  .db-card__header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-main);
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFCFE;
+    gap: 12px;
+    flex-wrap: wrap;
   }
-  .dp-file-box__header svg {
-    color: var(--primary);
+  .db-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .db-card__icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-lt);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
     flex-shrink: 0;
   }
-  .dp-file-input {
-    width: 100%;
-    padding: 10px 12px;
-    background: #FFFFFF;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+  .db-card__title {
     font-size: 13px;
-    font-family: inherit;
-    color: var(--text-main);
-    cursor: pointer;
-  }
-  .dp-file-input::file-selector-button {
-    padding: 6px 14px;
-    background: var(--primary);
-    color: #FFFFFF;
-    border: none;
-    border-radius: 6px;
-    font-size: 12px;
     font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    margin-right: 12px;
-    transition: background 0.15s ease;
+    color: var(--text-primary);
   }
-  .dp-file-input::file-selector-button:hover {
-    background: var(--primary-hover);
-  }
-  .dp-file-hint {
-    font-size: 11.5px;
-    color: var(--text-muted);
-  }
-
-  /* ── PHOTO THUMBNAIL PREVIEWS ────────────────── */
-  .dp-photo-preview-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 10px;
-  }
-  .dp-preview-card {
-    position: relative;
-    width: 86px;
-    height: 86px;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    background: #F8FAFC;
-  }
-  .dp-preview-card img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  .dp-preview-card__badge {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(15, 23, 42, 0.75);
-    color: #FFFFFF;
-    font-size: 9px;
-    padding: 2px 4px;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  /* ── BUTTONS ─────────────────────────────────── */
-  .dp-form-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding-top: 6px;
-    flex-wrap: wrap;
-  }
-  .dp-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 20px;
-    border-radius: var(--radius-sm);
-    font-size: 13.5px;
-    font-weight: 600;
-    font-family: inherit;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    text-decoration: none;
-    min-height: 42px;
-  }
-  .dp-btn svg { flex-shrink: 0; }
-
-  .dp-btn--primary {
-    background: var(--primary);
-    color: #FFFFFF;
-  }
-  .dp-btn--primary:hover {
-    background: var(--primary-hover);
-  }
-  .dp-btn--success {
-    background: var(--success);
-    color: #FFFFFF;
-  }
-  .dp-btn--success:hover {
-    background: #047857;
-  }
-  .dp-btn--danger {
-    background: var(--danger);
-    color: #FFFFFF;
-  }
-  .dp-btn--danger:hover {
-    background: #B91C1C;
-  }
-  .dp-btn--outline {
-    background: #FFFFFF;
-    color: var(--text-main);
-    border-color: var(--border-color);
-  }
-  .dp-btn--outline:hover {
-    background: #F8FAFC;
-    border-color: #CBD5E1;
-  }
-
-  .dp-divider {
-    border: none;
-    border-top: 1px solid var(--border-color);
-    margin: 18px 0;
-  }
-
-  /* ── REVIEW & COMPLETE BANNERS (NO EMOJIS) ───── */
-  .dp-review-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 14px 16px;
-    background: var(--warning-light);
-    border: 1px solid var(--warning-border);
-    border-radius: var(--radius-sm);
-    margin-bottom: 18px;
-    font-size: 13px;
-    color: var(--warning);
-    font-weight: 600;
-    line-height: 1.4;
-  }
-
-  .dp-complete-banner {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 18px 20px;
-    background: var(--success-light);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--success-border);
-    margin-bottom: 18px;
-  }
-  .dp-complete-banner__title {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--success);
-    margin-bottom: 2px;
-  }
-  .dp-complete-banner__body {
-    font-size: 13px;
-    color: #065F46;
-  }
-
-  /* ── PHOTOS GRID ─────────────────────────────── */
-  .dp-photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-  }
-  .dp-photo-item {
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: #FFFFFF;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-card);
-  }
-  .dp-photo-item a { display: block; overflow: hidden; }
-  .dp-photo-item img {
-    width: 100%;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-    display: block;
-    transition: transform 0.2s ease;
-  }
-  .dp-photo-item img:hover { transform: scale(1.04); }
-  .dp-photo-timestamp {
-    padding: 8px 10px;
+  .db-card__subtitle {
     font-size: 11px;
     color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-    background: #FFFFFF;
-    line-height: 1.3;
+    margin-top: 1px;
   }
 
-  .dp-empty-state {
-    text-align: center;
-    padding: 28px 20px;
-    color: var(--text-muted);
-    font-size: 13px;
-    background: #F8FAFC;
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-sm);
-  }
-
-  /* ── REMARKS ─────────────────────────────────── */
-  .dp-remark {
-    display: flex;
-    gap: 12px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border-color);
-  }
-  .dp-remark:last-child { border-bottom: none; }
-  .dp-remark__avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: #0F172A;
-    color: #FFFFFF;
-    font-size: 11.5px;
-    font-weight: 700;
+  /* ── SEARCH / FILTER BAR ─────────────────────── */
+  .db-filter-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .dp-remark__body { flex: 1; min-width: 0; }
-  .dp-remark__meta {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: 10px;
     flex-wrap: wrap;
   }
-  .dp-remark__user { font-size: 13px; font-weight: 700; color: var(--text-main); }
-  .dp-remark__time { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
-  .dp-remark__message { font-size: 13px; color: #334155; line-height: 1.5; word-break: break-word; }
-
-  /* ── HISTORY TABLE ───────────────────────────── */
-  .dp-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .db-search {
+    position: relative;
   }
-  .dp-table {
+  .db-search__icon {
+    position: absolute;
+    left: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .db-search input {
+    padding: 7px 12px 7px 30px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    background: var(--white);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .db-search input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(30,111,217,0.1);
+  }
+
+  /* ── TABLE ───────────────────────────────────── */
+  .db-table-wrap { overflow-x: auto; }
+
+  .db-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12.5px;
-    min-width: 460px;
+    font-size: 13px;
   }
-  .dp-table thead th {
+  .db-table thead th {
     text-align: left;
-    padding: 10px 16px;
+    padding: 11px 16px;
     font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-muted);
-    background: #F8FAFC;
-    border-bottom: 1px solid var(--border-color);
+    background: #FAFCFE;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
   }
-  .dp-table tbody tr {
-    border-bottom: 1px solid var(--border-color);
+  .db-table thead th:first-child { padding-left: 24px; }
+  .db-table thead th:last-child  { padding-right: 24px; text-align: right; }
+
+  .db-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    cursor: default;
   }
-  .dp-table tbody tr:last-child { border-bottom: none; }
-  .dp-table tbody td {
-    padding: 12px 16px;
-    color: #334155;
+  .db-table tbody tr:last-child { border-bottom: none; }
+  .db-table tbody tr:hover { background: #F5F8FD; }
+
+  .db-table tbody td {
+    padding: 14px 16px;
     vertical-align: middle;
+    color: var(--text-secondary);
   }
-  .dp-table tbody td:first-child {
+  .db-table tbody td:first-child { padding-left: 24px; }
+  .db-table tbody td:last-child  { padding-right: 24px; text-align: right; }
+
+  /* PI / Invoice number */
+  .db-mono {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11.5px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .db-mono--muted {
     color: var(--text-muted);
   }
-  .dp-status-pill {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: var(--radius-pill);
+
+  /* Customer name */
+  .db-customer {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+
+  /* Status badge */
+  .db-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 100px;
     font-size: 11px;
     font-weight: 600;
-    background: #F1F5F9;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .db-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .db-badge--requested    { background: var(--warning-lt); color: var(--warning); }
+  .db-badge--requested::before { background: var(--warning); }
+  .db-badge--packing      { background: var(--info-lt);    color: var(--info); }
+  .db-badge--packing::before   { background: var(--info); }
+  .db-badge--review       { background: var(--warning-lt); color: var(--warning); }
+  .db-badge--review::before    { background: #F59E0B; }
+  .db-badge--approved     { background: var(--accent-lt);  color: var(--accent); }
+  .db-badge--approved::before  { background: var(--accent); }
+  .db-badge--dispatched   { background: var(--success-lt); color: var(--success); }
+  .db-badge--dispatched::before { background: var(--success); }
+  .db-badge--completed    { background: var(--success-lt); color: var(--success); }
+  .db-badge--completed::before { background: var(--success); }
+  .db-badge--waiting      { background: var(--cloud);      color: var(--steel); }
+  .db-badge--waiting::before   { background: var(--steel); }
+
+  /* Time in stage */
+  .db-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
     color: var(--text-muted);
   }
+  .db-time--urgent { color: var(--danger); font-weight: 600; }
 
-  /* ── MOBILE OPTIMIZATIONS ────────────────────── */
-  @media (max-width: 640px) {
-    .dp-page { padding: 18px 0 40px; }
-    .dp-container { padding: 0 14px; }
-    .dp-page-header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    .dp-card__body { padding: 16px; }
-    .dp-details-grid { grid-template-columns: 1fr; }
-    .dp-detail-item {
-      border-right: none;
-      padding: 12px 16px;
-    }
-    .dp-detail-item:nth-last-child(-n+2) { border-bottom: 1px solid var(--border-color); }
-    .dp-detail-item:last-child { border-bottom: none; }
+  /* Action buttons */
+  .db-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .db-btn--primary  { background: var(--accent);   color: #fff; border-color: var(--accent); }
+  .db-btn--primary:hover  { background: #1560c0; }
+  .db-btn--success  { background: var(--success);  color: #fff; border-color: var(--success); }
+  .db-btn--success:hover  { background: #0a6045; }
+  .db-btn--warning  { background: #D97706;          color: #fff; border-color: #D97706; }
+  .db-btn--warning:hover  { background: #b45309; }
 
-    .dp-photo-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .db-waiting-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
 
-    .dp-form-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .dp-form-actions .dp-btn,
-    .dp-form-actions form,
-    .dp-form-actions form button {
-      width: 100%;
-    }
-    .dp-btn { width: 100%; min-height: 44px; }
-    .dp-input, .dp-select, .dp-textarea, .dp-file-input { font-size: 16px; } /* Prevent iOS auto zoom */
+  /* Empty state */
+  .db-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 24px;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .db-empty span { font-size: 32px; }
+  .db-empty strong { color: var(--text-secondary); font-size: 14px; }
+
+  @media (max-width: 700px) {
+    .db-search input { width: 160px; }
   }
 </style>
-</head>
-<body>
 
-<div class="dp-page">
-<div class="dp-container">
+<div class="db-page">
+<div class="db-container">
 
-  <!-- ── TOP NAVIGATION ────────────────────────────────────── -->
-  <div class="dp-nav-bar">
-    {% if is_accountant %}
-      <a href="{% url 'accounts_dispatch_dashboard' %}" class="dp-back-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-        Back to Accounts Dashboard
-      </a>
-    {% elif is_warehouse %}
-      <a href="{% url 'warehouse_dispatch_dashboard' %}" class="dp-back-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-        Back to Warehouse Dashboard
-      </a>
-    {% else %}
-      <a href="javascript:history.back()" class="dp-back-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-        Back
-      </a>
-    {% endif %}
-
-    <div style="font-size:12px; color:var(--text-muted); font-family:'JetBrains Mono', monospace; font-weight:600;">
-      PI #{{ dispatch.invoice.id }}
-    </div>
-  </div>
-
-  <!-- ── PAGE HEADER ───────────────────────────────────────── -->
-  <div class="dp-page-header">
+  <!-- ── PAGE HEADER ──────────────────────────────── -->
+  <div class="db-page-header">
     <div>
-      <div class="dp-eyebrow">Dispatch Management</div>
-      <h1 class="dp-page-title">
-        Dispatch <span>#{{ dispatch.id }}</span>
-      </h1>
+      <div class="db-eyebrow">Operations · Accounts</div>
+      <h1 class="db-page-title">Dispatch Dashboard</h1>
     </div>
-    <div>
-      {% if dispatch.status == "requested" %}
-        <span class="dp-status-badge dp-status-badge--requested"><span class="dp-status-badge__dot"></span>Requested</span>
-      {% elif dispatch.status == "waiting_for_packing" %}
-        <span class="dp-status-badge dp-status-badge--packing"><span class="dp-status-badge__dot"></span>Awaiting Packing</span>
-      {% elif dispatch.status == "packed_awaiting_approval" %}
-        <span class="dp-status-badge dp-status-badge--review"><span class="dp-status-badge__dot"></span>Pending Review</span>
-      {% elif dispatch.status == "packing_approved" %}
-        <span class="dp-status-badge dp-status-badge--approved"><span class="dp-status-badge__dot"></span>Packing Approved</span>
-      {% elif dispatch.status == "dispatched_by_warehouse" %}
-        <span class="dp-status-badge dp-status-badge--dispatched"><span class="dp-status-badge__dot"></span>Dispatched</span>
-      {% elif dispatch.status == "completed" %}
-        <span class="dp-status-badge dp-status-badge--completed"><span class="dp-status-badge__dot"></span>Completed</span>
-      {% else %}
-        <span class="dp-status-badge dp-status-badge--default"><span class="dp-status-badge__dot"></span>{{ dispatch.get_status_display }}</span>
-      {% endif %}
+    <div class="db-stats">
+      <div class="db-stat">
+        <span class="db-stat__num db-stat__num--yellow">
+          {% with dispatches|length as total %}{{ total }}{% endwith %}
+        </span>
+        <span class="db-stat__label">Total</span>
+      </div>
+      <div class="db-stat">
+        <span class="db-stat__num db-stat__num--blue">
+          {% with dispatches|dictsortreversed:"status" as s %}
+            {{ dispatches|length }}
+          {% endwith %}
+        </span>
+        <span class="db-stat__label">Active</span>
+      </div>
     </div>
   </div>
 
-  <!-- ── DISPATCH DETAILS CARD ──────────────────────────────── -->
-  <div class="dp-card">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Dispatch Details</div>
-        <div class="dp-card__subtitle">Core order and carrier dispatch information</div>
-      </div>
-    </div>
-    <div class="dp-details-grid">
-
-      <div class="dp-detail-item">
-        <div class="dp-detail-label">Proforma Invoice</div>
-        <div class="dp-detail-value dp-detail-value--mono">#{{ dispatch.invoice.id }}</div>
-      </div>
-
-      <div class="dp-detail-item">
-        <div class="dp-detail-label">Customer</div>
-        <div class="dp-detail-value">{{ dispatch.invoice.customer.name }}</div>
-      </div>
-
-      <div class="dp-detail-item">
-        <div class="dp-detail-label">Invoice Number</div>
-        <div class="dp-detail-value {% if not dispatch.invoice_number %}dp-detail-value--muted{% else %}dp-detail-value--mono{% endif %}">
-          {{ dispatch.invoice_number|default:"Not assigned yet" }}
-        </div>
-      </div>
-
-      <div class="dp-detail-item">
-        <div class="dp-detail-label">Shipment Method</div>
-        <div class="dp-detail-value {% if not dispatch.shipment_method %}dp-detail-value--muted{% endif %}">
-          {{ dispatch.shipment_method.name|default:"Not selected" }}
-        </div>
-      </div>
-
-      {% if warehouse_dispatch %}
-      <div class="dp-detail-item">
-        <div class="dp-detail-label">Docket Number</div>
-        <div class="dp-detail-value dp-detail-value--mono">{{ warehouse_dispatch.docket_number }}</div>
-      </div>
-
-      <div class="dp-detail-item">
-        <div class="dp-detail-label">Carrier Tracking</div>
-        <div class="dp-detail-value">
-          {% if dispatch.shipment_method and dispatch.shipment_method.tracking_url %}
-            <a
-              href="{{ dispatch.shipment_method.tracking_url }}{{ warehouse_dispatch.docket_number }}"
-              target="_blank"
-              class="dp-btn-track"
-            >
-              Track Package
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
-            </a>
-          {% else %}
-            <span class="dp-detail-value--muted">Tracking link unavailable</span>
-          {% endif %}
-        </div>
-      </div>
-      {% endif %}
-
-      <div class="dp-detail-item dp-detail-item--full">
-        <div class="dp-detail-label">Created Date & Time</div>
-        <div class="dp-detail-value dp-detail-value--mono">{{ dispatch.created_at }}</div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- ACTION PANELS                                          -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-
-  <!-- STEP 1: ACCOUNTS PROCESSING (Invoice Upload) -->
-  {% if dispatch.status == "requested" and is_accountant %}
-  <div class="dp-card dp-card--warning">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Step 1: Accounts Processing</div>
-        <div class="dp-card__subtitle">Assign invoice number, select shipment method, and attach invoice PDF to notify warehouse</div>
-      </div>
-    </div>
-    <div class="dp-card__body">
-      <form method="post" enctype="multipart/form-data" action="{% url 'notify_warehouse' dispatch.id %}" id="notifyWarehouseForm">
-        {% csrf_token %}
-        <div class="dp-form">
-
-          <div class="dp-field">
-            <label class="dp-label">Invoice Number <span>*</span></label>
-            <input type="text" name="invoice_number" class="dp-input dp-input--mono" placeholder="e.g. INV-2026-0001" required>
-          </div>
-
-          <div class="dp-field">
-            <label class="dp-label">Shipment Method <span>*</span></label>
-            <select name="shipment_method" class="dp-select" required>
-              <option value="">Select carrier or shipment method</option>
-              {% for method in shipment_methods %}
-                <option value="{{ method.id }}">{{ method.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <!-- PROMINENT CHOOSE INVOICE PDF OPTION -->
-          <div class="dp-field">
-            <label class="dp-label">Invoice PDF Document <span>*</span></label>
-            {% if invoice_file %}
-              <div style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:#ECFDF5; border:1px solid #A7F3D0; border-radius:var(--radius-sm); margin-bottom:8px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                <span style="font-size:13px; font-weight:600; color:#064E3B;">
-                  Invoice PDF already attached: <strong>{{ invoice_file.pdf.name }}</strong>
-                </span>
-                <a href="{{ invoice_file.pdf.url }}" target="_blank" style="margin-left:auto; font-size:12px; font-weight:700; color:#059669; text-decoration:underline;">View Attached PDF</a>
-              </div>
-            {% endif %}
-            <div class="dp-file-box" id="step1FileBox">
-              <div class="dp-file-box__header">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                {% if invoice_file %}Replace Attached Invoice PDF (Optional){% else %}Choose Invoice PDF Document (Strictly Required){% endif %}
-              </div>
-              <input
-                type="file"
-                id="invoicePdfInput"
-                name="invoice_pdf"
-                accept=".pdf,application/pdf"
-                {% if not invoice_file %}required{% endif %}
-                class="dp-file-input"
-              >
-              <div class="dp-file-hint" id="step1FileHint">
-                {% if invoice_file %}
-                  An Invoice PDF is already attached. Choosing a file here will replace it.
-                {% else %}
-                  Select a valid .pdf file. Warehouse notification is blocked until a valid Invoice PDF is attached.
-                {% endif %}
-              </div>
-              <div id="step1FileError" style="display:none; color:var(--danger); font-size:12.5px; font-weight:700; margin-top:6px;"></div>
-            </div>
-          </div>
-
-          <div class="dp-form-actions">
-            <button type="submit" id="notifyWarehouseSubmitBtn" class="dp-btn dp-btn--primary">
-              Notify Warehouse to Pack
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            </button>
-          </div>
-
-        </div>
-      </form>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- STEP 2: WAREHOUSE PACKING (Photos Upload - WAREHOUSE ROLE ONLY) -->
-  {% if dispatch.status == "waiting_for_packing" %}
-    {% if is_warehouse %}
-    <div class="dp-card dp-card--info">
-      <div class="dp-card__header">
+  <!-- ── TABLE CARD ───────────────────────────────── -->
+  <div class="db-card">
+    <div class="db-card__header">
+      <div class="db-card__header-left">
+        <div class="db-card__icon">📊</div>
         <div>
-          <div class="dp-card__title">Step 2: Warehouse Packing</div>
-          <div class="dp-card__subtitle">Upload packing photographs and notes before submitting for review</div>
+          <div class="db-card__title">All Dispatches</div>
+          <div class="db-card__subtitle">Dispatches requiring accounts action are highlighted</div>
         </div>
       </div>
-      <div class="dp-card__body">
-        <form method="post" enctype="multipart/form-data" action="{% url 'warehouse_submit_packing' dispatch.id %}" id="packingForm">
-          {% csrf_token %}
-          <div class="dp-form">
-
-            <div class="dp-field">
-              <label class="dp-label">Packing Photos <span>*</span></label>
-              <div class="dp-file-box">
-                <div class="dp-file-box__header">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                  Choose Packing Photos
-                </div>
-                <input
-                  type="file"
-                  id="packingPhotos"
-                  name="photos"
-                  multiple
-                  accept="image/*"
-                  required
-                  class="dp-file-input"
-                >
-                <div class="dp-file-hint">
-                  Select one or multiple package images. Mobile devices will allow camera capture.
-                </div>
-              </div>
-
-              <div id="selectedPhotos" style="margin-top:6px; font-size:12.5px; font-weight:600; color:var(--text-muted);">
-                No photos selected yet
-              </div>
-              <div id="photoPreview" class="dp-photo-preview-grid"></div>
-            </div>
-
-            <div class="dp-field">
-              <label class="dp-label">Packing Remarks</label>
-              <textarea
-                name="remark"
-                class="dp-textarea"
-                placeholder="Add package notes, box count, or physical condition details…"
-              ></textarea>
-            </div>
-
-            <div class="dp-form-actions">
-              <button type="submit" id="submitPackingBtn" class="dp-btn dp-btn--success">
-                Submit Packing for Approval
-              </button>
-            </div>
-
-          </div>
-        </form>
-      </div>
-    </div>
-    {% else %}
-    <!-- ACCOUNTS VIEW: WAITING FOR WAREHOUSE TO PACK -->
-    <div class="dp-card dp-card--info">
-      <div class="dp-card__header">
-        <div>
-          <div class="dp-card__title">Warehouse Notified — Packing in Progress</div>
-          <div class="dp-card__subtitle">Warehouse department has been notified to pack this order</div>
-        </div>
-      </div>
-      <div class="dp-card__body">
-        <div style="display:flex; align-items:center; gap:14px; padding:16px; background:#F0F9FF; border:1px solid #BAE6FD; border-radius:var(--radius-sm);">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          <div>
-            <div style="font-size:14px; font-weight:700; color:#0369A1; margin-bottom:2px;">Awaiting Warehouse Action</div>
-            <div style="font-size:13px; color:#334155; line-height:1.5;">
-              The invoice PDF is attached and the warehouse team has been notified. Warehouse staff will upload package photos from the warehouse portal. Once submitted, <strong>Step 3 (Accounts Packing Review)</strong> will appear here for your review and approval.
-            </div>
-          </div>
+      <div class="db-filter-bar">
+        <div class="db-search">
+          <span class="db-search__icon">🔍</span>
+          <input type="text" id="db-search-input" placeholder="Search customer, PI…" oninput="dbFilterTable(this.value)">
         </div>
       </div>
     </div>
-    {% endif %}
-  {% endif %}
 
-  <!-- STEP 3: ACCOUNTS PACKING REVIEW -->
-  {% if dispatch.status == "packed_awaiting_approval" and is_accountant %}
-  <div class="dp-card dp-card--warning">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Step 3: Accounts — Packing Review</div>
-        <div class="dp-card__subtitle">Review uploaded packing photos below, then approve or reject the packing</div>
-      </div>
-    </div>
-    <div class="dp-card__body">
-      <div class="dp-review-note">
-        Review packing photos carefully. Approving this packing directly authorizes warehouse carrier dispatch.
-      </div>
-
-      <div class="dp-form-actions" style="margin-bottom: 20px;">
-        <form method="post" action="{% url 'approve_packing' dispatch.id %}" style="width:100%;">
-          {% csrf_token %}
-          <button type="submit" class="dp-btn dp-btn--success" style="width:100%;">
-            Approve Packing & Authorize Dispatch
-          </button>
-        </form>
-      </div>
-
-      <hr class="dp-divider">
-
-      <form method="post" action="{% url 'reject_packing' dispatch.id %}">
-        {% csrf_token %}
-        <div class="dp-form">
-          <div class="dp-field">
-            <label class="dp-label">Rejection Reason <span>*</span></label>
-            <textarea name="rejection_remark" class="dp-textarea" placeholder="Detail reason for rejection so warehouse team can re-pack…" required></textarea>
-          </div>
-          <div class="dp-form-actions">
-            <button type="submit" class="dp-btn dp-btn--danger">
-              Reject Packing
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- STEP 4: WAREHOUSE DISPATCH (Docket Number & Proof - WAREHOUSE ROLE ONLY) -->
-  {% if dispatch.status == "packing_approved" %}
-    {% if is_warehouse %}
-    <div class="dp-card dp-card--action">
-      <div class="dp-card__header">
-        <div>
-          <div class="dp-card__title">Step 4: Final Warehouse Dispatch</div>
-          <div class="dp-card__subtitle">Packing approved. Enter carrier docket tracking number and upload physical proof</div>
-        </div>
-      </div>
-      <div class="dp-card__body">
-        <form method="post" enctype="multipart/form-data" action="{% url 'warehouse_dispatch' dispatch.id %}" id="docketForm">
-          {% csrf_token %}
-          <div class="dp-form">
-
-            <div class="dp-field">
-              <label class="dp-label">Carrier Docket Number <span>*</span></label>
-              <input
-                type="text"
-                name="docket_number"
-                class="dp-input dp-input--mono"
-                placeholder="e.g. 1234567890 or TRK-9908"
-                required
-              >
-            </div>
-
-            <div class="dp-field">
-              <label class="dp-label">Docket Proof Photo <span>*</span></label>
-              <div class="dp-file-box">
-                <div class="dp-file-box__header">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                  Choose Docket Photo
-                </div>
-                <input
-                  type="file"
-                  id="docketPhotos"
-                  name="docket_photos"
-                  multiple
-                  accept="image/*"
-                  required
-                  class="dp-file-input"
-                >
-                <div class="dp-file-hint">
-                  Attach carrier receipt or signed driver slip photograph.
-                </div>
-              </div>
-
-              <div id="selectedDocketPhotos" style="margin-top:6px; font-size:12.5px; font-weight:600; color:var(--text-muted);">
-                No docket photos selected yet
-              </div>
-              <div id="docketPhotoPreview" class="dp-photo-preview-grid"></div>
-            </div>
-
-            <div class="dp-form-actions">
-              <button type="submit" id="submitDocketBtn" class="dp-btn dp-btn--success">
-                Submit Docket & Mark Dispatched
-              </button>
-            </div>
-
-          </div>
-        </form>
-      </div>
-    </div>
-    {% else %}
-    <!-- ACCOUNTS VIEW: WAITING FOR WAREHOUSE DOCKET -->
-    <div class="dp-card dp-card--action">
-      <div class="dp-card__header">
-        <div>
-          <div class="dp-card__title">Packing Approved — Awaiting Final Carrier Dispatch</div>
-          <div class="dp-card__subtitle">Packing verified. Warehouse team is handing the parcel to the carrier</div>
-        </div>
-      </div>
-      <div class="dp-card__body">
-        <div style="display:flex; align-items:center; gap:14px; padding:16px; background:#F8FAFC; border:1px solid var(--border-color); border-radius:var(--radius-sm);">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0052FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-          <div>
-            <div style="font-size:14px; font-weight:700; color:var(--text-main); margin-bottom:2px;">Awaiting Carrier Docket from Warehouse</div>
-            <div style="font-size:13px; color:var(--text-muted); line-height:1.5;">
-              You have approved the packing. The warehouse team is currently generating the carrier docket tracking number and uploading proof. Once submitted, <strong>Step 5 (Final Accounts Verification)</strong> will appear here to complete the dispatch.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-  {% endif %}
-
-  <!-- STEP 5: FINAL ACCOUNTS VERIFICATION -->
-  {% if dispatch.status == "dispatched_by_warehouse" and is_accountant %}
-  <div class="dp-card dp-card--success">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Step 5: Final Accounts Verification</div>
-        <div class="dp-card__subtitle">Warehouse has completed dispatch. Verify carrier details to close this workflow</div>
-      </div>
-    </div>
-    <div class="dp-card__body">
-      <div class="dp-details-grid" style="border:1px solid var(--border-color); border-radius:var(--radius-sm); margin-bottom:18px;">
-        <div class="dp-detail-item">
-          <div class="dp-detail-label">Docket Number</div>
-          <div class="dp-detail-value dp-detail-value--mono">{{ warehouse_dispatch.docket_number }}</div>
-        </div>
-        <div class="dp-detail-item">
-          <div class="dp-detail-label">Dispatched By</div>
-          <div class="dp-detail-value">{{ warehouse_dispatch.dispatched_by|default:"Warehouse Staff" }}</div>
-        </div>
-        {% if warehouse_dispatch.dispatched_at %}
-        <div class="dp-detail-item dp-detail-item--full">
-          <div class="dp-detail-label">Dispatched At</div>
-          <div class="dp-detail-value dp-detail-value--mono">{{ warehouse_dispatch.dispatched_at }}</div>
-        </div>
-        {% endif %}
-      </div>
-
-      {% if docket_photos %}
-      <div style="margin-bottom:18px;">
-        <div class="dp-detail-label" style="margin-bottom:8px;">Docket Proof Photos</div>
-        <div class="dp-photo-grid">
-          {% for photo in docket_photos %}
-          <div class="dp-photo-item">
-            <a href="{{ photo.image.url }}" target="_blank">
-              <img src="{{ photo.image.url }}" alt="Docket proof">
-            </a>
-            <div class="dp-photo-timestamp">
-              By: {{ photo.uploaded_by|default:"Warehouse" }}<br>{{ photo.uploaded_at }}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      <hr class="dp-divider">
-
-      <div class="dp-detail-label" style="margin-bottom:8px;">Update Docket Number (if correction needed)</div>
-      <form method="post" action="{% url 'edit_docket_number' dispatch.id %}" class="dp-form" style="margin-bottom:18px;">
-        {% csrf_token %}
-        <div class="dp-field">
-          <input
-            type="text"
-            name="docket_number"
-            value="{{ warehouse_dispatch.docket_number }}"
-            class="dp-input dp-input--mono"
-            required
-          >
-        </div>
-        <div class="dp-form-actions">
-          <button type="submit" class="dp-btn dp-btn--primary">Update Docket Number</button>
-        </div>
-      </form>
-
-      <form method="post" action="{% url 'complete_dispatch' dispatch.id %}">
-        {% csrf_token %}
-        <button type="submit" class="dp-btn dp-btn--success" style="width:100%;">
-          Complete & Archive Dispatch
-        </button>
-      </form>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- COMPLETED BANNER -->
-  {% if dispatch.status == "completed" %}
-  <div class="dp-card dp-card--success">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Dispatch Completed</div>
-        <div class="dp-card__subtitle">All dispatch and carrier verification stages finalised</div>
-      </div>
-    </div>
-    <div class="dp-card__body">
-      <div class="dp-complete-banner">
-        <div>
-          <div class="dp-complete-banner__title">Dispatch Process Successfully Finalised</div>
-          <div class="dp-complete-banner__body">Invoice marked dispatched and all audit trail records are closed.</div>
-        </div>
-      </div>
-      {% if warehouse_dispatch %}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:14px; background:#F8FAFC; border:1px solid var(--border-color); border-radius:var(--radius-sm);">
-        <div>
-          <div class="dp-detail-label" style="margin-bottom:2px;">Final Docket Number</div>
-          <span class="dp-detail-value dp-detail-value--mono">{{ warehouse_dispatch.docket_number }}</span>
-        </div>
-        {% if dispatch.shipment_method and dispatch.shipment_method.tracking_url %}
-        <a
-          href="{{ dispatch.shipment_method.tracking_url }}{{ warehouse_dispatch.docket_number }}"
-          target="_blank"
-          class="dp-btn dp-btn--outline"
-        >
-          Track Package Online
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
-        </a>
-        {% endif %}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ── INVOICE PDF ATTACHMENT CARD (ALWAYS VISIBLE CHOOSE FILE OPTION) ── -->
-  <div class="dp-card">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Invoice PDF Document</div>
-        <div class="dp-card__subtitle">Customer billing and invoice document for this order</div>
-      </div>
-    </div>
-    <div class="dp-card__body">
-      {% if invoice_file %}
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:#F8FAFC; border:1px solid var(--border-color); padding:16px 20px; border-radius:var(--radius-sm); margin-bottom:18px;">
-          <div>
-            <div style="font-size:14px; font-weight:700; color:var(--text-main);">Official Invoice PDF Attached</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">File verified and ready for printing or viewing</div>
-          </div>
-          <a href="{{ invoice_file.pdf.url }}" target="_blank" class="dp-btn dp-btn--success">
-            View / Download PDF
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          </a>
-        </div>
-      {% else %}
-        <div class="dp-empty-state" style="margin-bottom:18px;">
-          <div style="font-weight:700; color:var(--text-main); font-size:14px; margin-bottom:4px;">No Invoice PDF Attached Yet</div>
-          <span>Use the upload form below to choose and attach the invoice PDF document to this dispatch.</span>
-        </div>
-      {% endif %}
-
-      <!-- DIRECT UPLOAD FORM: ALWAYS ACCESSIBLE CHOOSE FILE OPTION -->
-      <form method="post" enctype="multipart/form-data" action="{% url 'upload_dispatch_invoice' dispatch.id %}" style="background:#F8FAFC; border:1.5px dashed #CBD5E1; border-radius:var(--radius-md); padding:18px;">
-        {% csrf_token %}
-        <div class="dp-field" style="margin-bottom:14px;">
-          <label class="dp-label" style="font-size:13px; font-weight:700; color:var(--text-main);">
-            {% if invoice_file %}Replace or Upload New Invoice PDF{% else %}Choose Invoice PDF File to Upload{% endif %}
-          </label>
-          <input
-            type="file"
-            name="invoice_pdf"
-            accept=".pdf,application/pdf"
-            required
-            class="dp-file-input"
-          >
-          <div class="dp-file-hint" style="margin-top:6px;">
-            Click <strong>Choose File</strong> to pick a .pdf document from your computer or mobile files.
-          </div>
-        </div>
-        <button type="submit" class="dp-btn dp-btn--primary" style="width:100%;">
-          {% if invoice_file %}Upload Replacement Invoice PDF{% else %}Upload Invoice PDF Now{% endif %}
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ── PACKING PHOTOS CARD ────────────────────────────────── -->
-  <div class="dp-card">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Packing Photos</div>
-        <div class="dp-card__subtitle">Photographs submitted by warehouse showing parcel condition</div>
-      </div>
-    </div>
-    <div class="dp-card__body">
-      {% if photos %}
-        <div class="dp-photo-grid">
-          {% for photo in photos %}
-          <div class="dp-photo-item">
-            <a href="{{ photo.image.url }}" target="_blank" title="Tap to view full resolution">
-              <img src="{{ photo.image.url }}" alt="Packing photo" loading="lazy">
-            </a>
-            <div class="dp-photo-timestamp">{{ photo.uploaded_at }}</div>
-          </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="dp-empty-state">
-          No packing photos have been uploaded for this dispatch yet.
-        </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- ── DOCKET PHOTOS CARD ─────────────────────────────────── -->
-  {% if warehouse_dispatch %}
-  <div class="dp-card">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Docket Handover Proof</div>
-        <div class="dp-card__subtitle">Carrier handover receipt copy uploaded by warehouse team</div>
-      </div>
-    </div>
-    <div class="dp-card__body">
-      {% if docket_photos %}
-        <div class="dp-photo-grid">
-          {% for photo in docket_photos %}
-          <div class="dp-photo-item">
-            <a href="{{ photo.image.url }}" target="_blank" title="Tap to view full resolution">
-              <img src="{{ photo.image.url }}" alt="Docket proof" loading="lazy">
-            </a>
-            <div class="dp-photo-timestamp">
-              By: {{ photo.uploaded_by|default:"Warehouse" }}<br>{{ photo.uploaded_at }}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="dp-empty-state">
-          No docket handover photos uploaded yet.
-        </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ── REMARKS ─────────────────────────────────────────────── -->
-  <div class="dp-card">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Workflow Remarks</div>
-        <div class="dp-card__subtitle">Internal audit notes and operational remarks</div>
-      </div>
-    </div>
-    <div class="dp-card__body" style="padding: 10px 22px;">
-      {% for remark in remarks %}
-        <div class="dp-remark">
-          <div class="dp-remark__avatar">
-            {{ remark.user|slice:":2"|upper }}
-          </div>
-          <div class="dp-remark__body">
-            <div class="dp-remark__meta">
-              <span class="dp-remark__user">{{ remark.user }}</span>
-              <span class="dp-remark__time">{{ remark.created_at }}</span>
-            </div>
-            <div class="dp-remark__message">{{ remark.message }}</div>
-          </div>
-        </div>
-      {% empty %}
-        <div class="dp-empty-state" style="margin: 10px 0;">
-          No remarks added to this dispatch.
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- ── WORKFLOW AUDIT HISTORY ──────────────────────────────── -->
-  <div class="dp-card">
-    <div class="dp-card__header">
-      <div>
-        <div class="dp-card__title">Workflow History</div>
-        <div class="dp-card__subtitle">Complete audit trail of status transitions</div>
-      </div>
-    </div>
-    <div class="dp-card__body" style="padding: 0;">
-      <div class="dp-table-wrap">
-        <table class="dp-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Updated By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in history %}
-            <tr>
-              <td>{{ item.changed_at }}</td>
-              {% if item.event_type == "docket" %}
-                <td><span class="dp-status-pill">Docket</span></td>
-                <td>
-                  <span class="dp-status-pill">{{ item.from_status|default:"Not Set" }}</span>
-                  →
-                  <span class="dp-status-pill">{{ item.to_status }}</span>
-                </td>
+    <div class="db-table-wrap">
+      <table class="db-table" id="db-table">
+        <thead>
+          <tr>
+            <th>PI</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Invoice No.</th>
+            <th>Shipment</th>
+            <th>Time in Stage</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dispatch in dispatches %}
+          <tr>
+            <td><span class="db-mono">{{ dispatch.invoice.id }}</span></td>
+            <td><span class="db-customer">{{ dispatch.invoice.customer.name }}</span></td>
+            <td>
+              {% if dispatch.status == "requested" %}
+                <span class="db-badge db-badge--requested">Requested</span>
+              {% elif dispatch.status == "waiting_for_packing" %}
+                <span class="db-badge db-badge--packing">Awaiting Packing</span>
+              {% elif dispatch.status == "packed_awaiting_approval" %}
+                <span class="db-badge db-badge--review">Pending Review</span>
+              {% elif dispatch.status == "packing_approved" %}
+                <span class="db-badge db-badge--approved">Packing Approved</span>
+              {% elif dispatch.status == "dispatched_by_warehouse" %}
+                <span class="db-badge db-badge--dispatched">Dispatched</span>
+              {% elif dispatch.status == "completed" %}
+                <span class="db-badge db-badge--completed">Completed</span>
               {% else %}
-                <td><span class="dp-status-pill">{{ item.from_status|default:"—" }}</span></td>
-                <td><span class="dp-status-pill">{{ item.to_status }}</span></td>
+                <span class="db-badge db-badge--waiting">{{ dispatch.get_status_display }}</span>
               {% endif %}
-              <td>{{ item.changed_by|default:"System" }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="4">
-                <div class="dp-empty-state" style="margin: 18px;">
-                  No status transitions recorded yet.
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+            </td>
+            <td>
+              {% if dispatch.invoice_number %}
+                <span class="db-mono">{{ dispatch.invoice_number }}</span>
+              {% else %}
+                <span class="db-mono db-mono--muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if dispatch.shipment_method %}
+                {{ dispatch.shipment_method.name }}
+              {% else %}
+                <span style="color:var(--text-muted);">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="db-time">{{ dispatch.time_in_stage }}</span>
+            </td>
+            <td>
+              {% if dispatch.status == "requested" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--primary">
+                  → Process
+                </a>
+              {% elif dispatch.status == "packed_awaiting_approval" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--success">
+                  🔍 Review Packing
+                </a>
+              {% elif dispatch.status == "dispatched_by_warehouse" %}
+                <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--warning">
+                  ✅ Complete
+                </a>
+              {% else %}
+                <span class="db-waiting-label">Waiting…</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="db-empty">
+                <span>📭</span>
+                <strong>No dispatches found</strong>
+                All caught up — nothing to action right now.
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -1384,153 +468,14 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    // Photo preview helper
-    function setupPhotoPreview(inputId, textId, previewId, formId, submitBtnId) {
-        const input = document.getElementById(inputId);
-        const text = document.getElementById(textId);
-        const preview = document.getElementById(previewId);
-        const form = document.getElementById(formId);
-        const btn = document.getElementById(submitBtnId);
-
-        if (!input || !preview) return;
-
-        input.addEventListener("change", function () {
-            preview.innerHTML = "";
-            if (!this.files || this.files.length === 0) {
-                if (text) text.textContent = "No photos selected yet";
-                return;
-            }
-
-            const count = this.files.length;
-            if (text) text.textContent = count + " photo" + (count > 1 ? "s" : "") + " selected";
-
-            Array.from(this.files).forEach(function (file, index) {
-                if (!file.type.startsWith("image/")) return;
-
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const card = document.createElement("div");
-                    card.className = "dp-preview-card";
-
-                    const img = document.createElement("img");
-                    img.src = e.target.result;
-                    img.alt = "Preview " + (index + 1);
-
-                    const badge = document.createElement("div");
-                    badge.className = "dp-preview-card__badge";
-                    badge.textContent = file.name;
-
-                    card.appendChild(img);
-                    card.appendChild(badge);
-                    preview.appendChild(card);
-                };
-                reader.readAsDataURL(file);
-            });
-        });
-
-        if (form && btn) {
-            form.addEventListener("submit", function (e) {
-                if (!input.files || input.files.length === 0) {
-                    e.preventDefault();
-                    if (text) text.textContent = "Please select at least one photo before submitting.";
-                    return;
-                }
-                btn.disabled = true;
-                btn.textContent = "Uploading...";
-                btn.style.opacity = "0.75";
-            });
-        }
-    }
-
-    // Initialize photo previews for packing and docket
-    setupPhotoPreview("packingPhotos", "selectedPhotos", "photoPreview", "packingForm", "submitPackingBtn");
-    setupPhotoPreview("docketPhotos", "selectedDocketPhotos", "docketPhotoPreview", "docketForm", "submitDocketBtn");
-
-    // Submit feedback & strict edge-case validation for notify warehouse
-    const notifyForm = document.getElementById("notifyWarehouseForm");
-    const notifyBtn = document.getElementById("notifyWarehouseSubmitBtn");
-    const invoicePdfInput = document.getElementById("invoicePdfInput");
-    const step1FileError = document.getElementById("step1FileError");
-    const step1FileBox = document.getElementById("step1FileBox");
-    const hasExistingInvoice = {% if invoice_file %}true{% else %}false{% endif %};
-
-    if (invoicePdfInput) {
-        invoicePdfInput.addEventListener("change", function () {
-            if (this.files && this.files.length > 0) {
-                const file = this.files[0];
-                if (!file.name.toLowerCase().endsWith(".pdf")) {
-                    if (step1FileError) {
-                        step1FileError.textContent = "Only PDF (.pdf) documents are accepted for invoices.";
-                        step1FileError.style.display = "block";
-                    }
-                    if (step1FileBox) step1FileBox.style.borderColor = "var(--danger)";
-                    this.value = "";
-                    return;
-                }
-                if (file.size === 0) {
-                    if (step1FileError) {
-                        step1FileError.textContent = "The selected file is empty (0 bytes). Please select a valid PDF.";
-                        step1FileError.style.display = "block";
-                    }
-                    if (step1FileBox) step1FileBox.style.borderColor = "var(--danger)";
-                    this.value = "";
-                    return;
-                }
-                if (step1FileError) step1FileError.style.display = "none";
-                if (step1FileBox) step1FileBox.style.borderColor = "var(--success)";
-            }
-        });
-    }
-
-    if (notifyForm && notifyBtn) {
-        notifyForm.addEventListener("submit", function (e) {
-            const hasNewFile = invoicePdfInput && invoicePdfInput.files && invoicePdfInput.files.length > 0;
-
-            // EDGE CASE: If no new file and no existing file, BLOCK warehouse notification
-            if (!hasNewFile && !hasExistingInvoice) {
-                e.preventDefault();
-                if (step1FileError) {
-                    step1FileError.textContent = "Invoice PDF is strictly required. You must choose an invoice PDF before notifying the warehouse to pack.";
-                    step1FileError.style.display = "block";
-                }
-                if (step1FileBox) {
-                    step1FileBox.style.borderColor = "var(--danger)";
-                    step1FileBox.scrollIntoView({ behavior: "smooth", block: "center" });
-                }
-                return false;
-            }
-
-            if (hasNewFile) {
-                const file = invoicePdfInput.files[0];
-                if (!file.name.toLowerCase().endsWith(".pdf")) {
-                    e.preventDefault();
-                    if (step1FileError) {
-                        step1FileError.textContent = "Only PDF (.pdf) documents are accepted for invoices.";
-                        step1FileError.style.display = "block";
-                    }
-                    return false;
-                }
-                if (file.size === 0) {
-                    e.preventDefault();
-                    if (step1FileError) {
-                        step1FileError.textContent = "The uploaded file is empty (0 bytes).";
-                        step1FileError.style.display = "block";
-                    }
-                    return false;
-                }
-            }
-
-            notifyBtn.disabled = true;
-            notifyBtn.textContent = "Notifying Warehouse...";
-            notifyBtn.style.opacity = "0.75";
-        });
-    }
-
-});
+  function dbFilterTable(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll('#db-table tbody tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
+  }
 </script>
 
-</body>
-</html>
 {% endblock %}

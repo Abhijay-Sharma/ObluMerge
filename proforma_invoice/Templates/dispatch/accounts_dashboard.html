@@ -1,106 +1,77 @@
 {% block content %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>Accounts Dispatch | Oblu Portal</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
   :root {
-    --bg-page:        #F8FAFC;
-    --bg-card:        #FFFFFF;
-    --text-main:      #0F172A;
-    --text-muted:     #64748B;
-    --text-subtle:    #94A3B8;
-    --border-color:   #E2E8F0;
-    --border-subtle:  #F1F5F9;
-
-    --primary:        #0052FF;
-    --primary-hover:  #0045D8;
-    --primary-light:  #EFF4FF;
-
-    --success:        #059669;
-    --success-light:  #ECFDF5;
-    --success-border: #A7F3D0;
-
-    --warning:        #D97706;
-    --warning-light:  #FFFBEB;
-    --warning-border: #FDE68A;
-
-    --info:           #0284C7;
-    --info-light:     #F0F9FF;
-    --info-border:    #BAE6FD;
-
-    --radius-sm: 8px;
-    --radius-md: 12px;
+    --navy:      #0F1C2E;
+    --navy-mid:  #1A2E48;
+    --slate:     #4A6080;
+    --steel:     #8BA4BE;
+    --cloud:     #EDF2F7;
+    --white:     #FFFFFF;
+    --accent:    #1E6FD9;
+    --accent-lt: #EBF3FF;
+    --success:   #0D7A55;
+    --success-lt:#E6F5F0;
+    --warning:   #B45309;
+    --warning-lt:#FEF3C7;
+    --danger:    #C0392B;
+    --danger-lt: #FDE8E8;
+    --info:      #0369A1;
+    --info-lt:   #E0F2FE;
+    --border:    #D4DFE9;
+    --text-primary:   #0F1C2E;
+    --text-secondary: #4A6080;
+    --text-muted:     #8BA4BE;
+    --radius-sm: 6px;
+    --radius:    10px;
     --radius-lg: 16px;
-    --radius-pill: 9999px;
-
-    --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
-    --shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+    --shadow-sm: 0 1px 3px rgba(15,28,46,0.08);
+    --shadow:    0 4px 16px rgba(15,28,46,0.10);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background-color: var(--bg-page);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: var(--text-main);
-    -webkit-font-smoothing: antialiased;
-    -webkit-tap-highlight-color: transparent;
-  }
-
   .db-page {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #F4F7FB;
+    color: var(--text-primary);
     min-height: 100vh;
     padding: 32px 0 64px;
   }
 
   .db-container {
-    max-width: 1140px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 0 24px;
   }
 
-  /* ── TOP BADGE & HEADER ──────────────────────── */
+  /* ── PAGE HEADER ─────────────────────────────── */
   .db-page-header {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     margin-bottom: 28px;
-    gap: 20px;
+    gap: 16px;
     flex-wrap: wrap;
   }
-  .db-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: var(--radius-pill);
-    background: var(--primary-light);
-    color: var(--primary);
+  .db-eyebrow {
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    margin-bottom: 8px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
   }
   .db-page-title {
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--text-main);
-    letter-spacing: -0.025em;
-    line-height: 1.2;
-  }
-  .db-page-subtitle {
-    font-size: 13.5px;
-    color: var(--text-muted);
-    margin-top: 4px;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.3px;
   }
 
-  /* ── STATS CARDS ─────────────────────────────── */
+  /* ── STAT PILLS ──────────────────────────────── */
   .db-stats {
     display: flex;
     gap: 12px;
@@ -109,354 +80,258 @@
   .db-stat {
     display: flex;
     flex-direction: column;
-    padding: 12px 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
-    min-width: 110px;
+    align-items: center;
+    padding: 10px 18px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    min-width: 80px;
   }
   .db-stat__num {
-    font-size: 24px;
-    font-weight: 800;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    color: var(--text-main);
-    letter-spacing: -0.02em;
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--navy);
     line-height: 1;
   }
-  .db-stat__num--blue { color: var(--primary); }
+  .db-stat__num--yellow { color: var(--warning); }
+  .db-stat__num--blue   { color: var(--accent); }
+  .db-stat__num--green  { color: var(--success); }
   .db-stat__label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
     color: var(--text-muted);
-    margin-top: 6px;
+    margin-top: 4px;
+    white-space: nowrap;
   }
 
-  /* ── MAIN CARD ───────────────────────────────── */
+  /* ── CARD ────────────────────────────────────── */
   .db-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    background: var(--white);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
   }
   .db-card__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--border-color);
-    background: #FFFFFF;
-    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFCFE;
+    gap: 12px;
     flex-wrap: wrap;
   }
-  .db-card__title {
+  .db-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .db-card__icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-lt);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
     font-size: 15px;
-    font-weight: 700;
-    color: var(--text-main);
-    letter-spacing: -0.01em;
+    flex-shrink: 0;
+  }
+  .db-card__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
   }
   .db-card__subtitle {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: 1px;
   }
 
-  /* ── SEARCH INPUT ────────────────────────────── */
+  /* ── SEARCH / FILTER BAR ─────────────────────── */
   .db-filter-bar {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
   }
   .db-search {
     position: relative;
-    width: 100%;
-    max-width: 280px;
   }
   .db-search__icon {
     position: absolute;
-    left: 12px;
-    top: 50%;
+    left: 10px; top: 50%;
     transform: translateY(-50%);
-    color: var(--text-subtle);
+    color: var(--text-muted);
+    font-size: 13px;
     pointer-events: none;
-    display: flex;
-    align-items: center;
   }
   .db-search input {
-    width: 100%;
-    padding: 9px 14px 9px 36px;
-    border: 1px solid var(--border-color);
+    padding: 7px 12px 7px 30px;
+    border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--text-main);
-    background: #FFFFFF;
+    font-size: 12.5px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    background: var(--white);
     outline: none;
-    transition: all 0.15s ease;
+    width: 200px;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
   .db-search input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(30,111,217,0.1);
   }
 
-  /* ── TABLE VIEW (Desktop / Tablet) ───────────── */
-  .db-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+  /* ── TABLE ───────────────────────────────────── */
+  .db-table-wrap { overflow-x: auto; }
+
   .db-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
-    min-width: 760px;
   }
   .db-table thead th {
     text-align: left;
-    padding: 12px 18px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    padding: 11px 16px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-muted);
-    background: #F8FAFC;
-    border-bottom: 1px solid var(--border-color);
+    background: #FAFCFE;
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
   .db-table thead th:first-child { padding-left: 24px; }
   .db-table thead th:last-child  { padding-right: 24px; text-align: right; }
 
   .db-table tbody tr {
-    border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.15s ease;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    cursor: default;
   }
   .db-table tbody tr:last-child { border-bottom: none; }
-  .db-table tbody tr:hover { background-color: #F8FAFC; }
+  .db-table tbody tr:hover { background: #F5F8FD; }
 
   .db-table tbody td {
-    padding: 15px 18px;
+    padding: 14px 16px;
     vertical-align: middle;
-    color: #334155;
+    color: var(--text-secondary);
   }
   .db-table tbody td:first-child { padding-left: 24px; }
   .db-table tbody td:last-child  { padding-right: 24px; text-align: right; }
 
+  /* PI / Invoice number */
   .db-mono {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
-    color: var(--primary);
-    font-weight: 600;
+    color: var(--accent);
+    font-weight: 500;
   }
-  .db-mono--muted { color: var(--text-subtle); font-weight: 400; }
+  .db-mono--muted {
+    color: var(--text-muted);
+  }
 
+  /* Customer name */
   .db-customer {
     font-weight: 600;
-    color: var(--text-main);
-    font-size: 13.5px;
+    color: var(--text-primary);
+    font-size: 13px;
   }
 
-  /* ── STATUS BADGES (CLEAN DOT + TEXT, NO EMOJIS) ── */
+  /* Status badge */
   .db-badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: var(--radius-pill);
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 100px;
     font-size: 11px;
     font-weight: 600;
+    letter-spacing: 0.03em;
     white-space: nowrap;
   }
-  .db-badge__dot {
-    width: 6px;
-    height: 6px;
+  .db-badge::before {
+    content: '';
+    width: 6px; height: 6px;
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .db-badge--requested    { background: var(--warning-light); color: var(--warning); }
-  .db-badge--requested .db-badge__dot { background: var(--warning); }
+  .db-badge--requested    { background: var(--warning-lt); color: var(--warning); }
+  .db-badge--requested::before { background: var(--warning); }
+  .db-badge--packing      { background: var(--info-lt);    color: var(--info); }
+  .db-badge--packing::before   { background: var(--info); }
+  .db-badge--review       { background: var(--warning-lt); color: var(--warning); }
+  .db-badge--review::before    { background: #F59E0B; }
+  .db-badge--approved     { background: var(--accent-lt);  color: var(--accent); }
+  .db-badge--approved::before  { background: var(--accent); }
+  .db-badge--dispatched   { background: var(--success-lt); color: var(--success); }
+  .db-badge--dispatched::before { background: var(--success); }
+  .db-badge--completed    { background: var(--success-lt); color: var(--success); }
+  .db-badge--completed::before { background: var(--success); }
+  .db-badge--waiting      { background: var(--cloud);      color: var(--steel); }
+  .db-badge--waiting::before   { background: var(--steel); }
 
-  .db-badge--packing      { background: var(--info-light);    color: var(--info); }
-  .db-badge--packing .db-badge__dot   { background: var(--info); }
-
-  .db-badge--review       { background: var(--warning-light); color: var(--warning); }
-  .db-badge--review .db-badge__dot    { background: #F59E0B; }
-
-  .db-badge--approved     { background: var(--primary-light); color: var(--primary); }
-  .db-badge--approved .db-badge__dot  { background: var(--primary); }
-
-  .db-badge--dispatched   { background: var(--success-light); color: var(--success); }
-  .db-badge--dispatched .db-badge__dot { background: var(--success); }
-
-  .db-badge--completed    { background: var(--success-light); color: var(--success); }
-  .db-badge--completed .db-badge__dot { background: var(--success); }
-
-  .db-badge--default      { background: #F1F5F9; color: var(--text-muted); }
-  .db-badge--default .db-badge__dot   { background: var(--text-subtle); }
-
+  /* Time in stage */
   .db-time {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text-muted);
   }
+  .db-time--urgent { color: var(--danger); font-weight: 600; }
 
-  /* ── ACTION BUTTONS ──────────────────────────── */
+  /* Action buttons */
   .db-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 16px;
+    gap: 5px;
+    padding: 7px 14px;
     border-radius: var(--radius-sm);
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
-    font-family: inherit;
-    border: 1px solid transparent;
+    font-family: 'Inter', sans-serif;
+    border: 1.5px solid transparent;
     cursor: pointer;
-    transition: all 0.15s ease;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
     text-decoration: none;
     white-space: nowrap;
   }
-  .db-btn svg { flex-shrink: 0; }
+  .db-btn--primary  { background: var(--accent);   color: #fff; border-color: var(--accent); }
+  .db-btn--primary:hover  { background: #1560c0; }
+  .db-btn--success  { background: var(--success);  color: #fff; border-color: var(--success); }
+  .db-btn--success:hover  { background: #0a6045; }
+  .db-btn--warning  { background: #D97706;          color: #fff; border-color: #D97706; }
+  .db-btn--warning:hover  { background: #b45309; }
 
-  .db-btn--primary {
-    background: var(--primary);
-    color: #FFFFFF;
-  }
-  .db-btn--primary:hover {
-    background: var(--primary-hover);
-  }
-  .db-btn--success {
-    background: var(--success);
-    color: #FFFFFF;
-  }
-  .db-btn--success:hover {
-    background: #047857;
-  }
-  .db-btn--warning {
-    background: var(--warning);
-    color: #FFFFFF;
-  }
-  .db-btn--warning:hover {
-    background: #B45309;
-  }
-  .db-btn--outline {
-    background: #FFFFFF;
-    color: var(--text-main);
-    border-color: var(--border-color);
-  }
-  .db-btn--outline:hover {
-    background: #F8FAFC;
-    border-color: #CBD5E1;
-  }
-
-  /* ── MOBILE CARDS VIEW (< 768px) ─────────────── */
-  .db-mobile-cards {
-    display: none;
-    flex-direction: column;
-    padding: 12px;
-    gap: 12px;
-    background: #F8FAFC;
-  }
-  .db-card-item {
-    background: #FFFFFF;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    box-shadow: var(--shadow-card);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .db-card-item__top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-  .db-card-item__pi-box {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .db-card-item__customer {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text-main);
-  }
-  .db-card-item__grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    background: #F8FAFC;
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-color);
-  }
-  .db-card-item__field-lbl {
-    font-size: 10.5px;
-    font-weight: 700;
-    text-transform: uppercase;
+  .db-waiting-label {
+    font-size: 12px;
     color: var(--text-muted);
-    letter-spacing: 0.04em;
-    margin-bottom: 2px;
-  }
-  .db-card-item__field-val {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-main);
-  }
-  .db-card-item__action .db-btn {
-    width: 100%;
-    min-height: 44px;
-    font-size: 13.5px;
+    font-style: italic;
   }
 
+  /* Empty state */
   .db-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 24px;
-    gap: 8px;
+    padding: 56px 24px;
+    gap: 10px;
     color: var(--text-muted);
     font-size: 13px;
-    text-align: center;
   }
+  .db-empty span { font-size: 32px; }
+  .db-empty strong { color: var(--text-secondary); font-size: 14px; }
 
-  @media (max-width: 768px) {
-    .db-page { padding: 18px 0 40px; }
-    .db-container { padding: 0 14px; }
-    .db-page-header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-    .db-stats {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .db-stat { min-width: auto; padding: 12px 14px; }
-    .db-card__header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 14px;
-      padding: 16px;
-    }
-    .db-search { max-width: 100%; }
-    .db-table-wrap { display: none; }
-    .db-mobile-cards { display: flex; }
+  @media (max-width: 700px) {
+    .db-search input { width: 160px; }
   }
 </style>
-</head>
-<body>
 
 <div class="db-page">
 <div class="db-container">
@@ -464,18 +339,23 @@
   <!-- ── PAGE HEADER ──────────────────────────────── -->
   <div class="db-page-header">
     <div>
-      <div class="db-tag">Operations Portal · Accounts</div>
+      <div class="db-eyebrow">Operations · Accounts</div>
       <h1 class="db-page-title">Dispatch Dashboard</h1>
-      <div class="db-page-subtitle">Track, review, and process customer order dispatches</div>
     </div>
     <div class="db-stats">
       <div class="db-stat">
-        <span class="db-stat__num">{{ dispatches|length }}</span>
-        <span class="db-stat__label">Total Orders</span>
+        <span class="db-stat__num db-stat__num--yellow">
+          {% with dispatches|length as total %}{{ total }}{% endwith %}
+        </span>
+        <span class="db-stat__label">Total</span>
       </div>
       <div class="db-stat">
-        <span class="db-stat__num db-stat__num--blue">{{ dispatches|length }}</span>
-        <span class="db-stat__label">Active Queue</span>
+        <span class="db-stat__num db-stat__num--blue">
+          {% with dispatches|dictsortreversed:"status" as s %}
+            {{ dispatches|length }}
+          {% endwith %}
+        </span>
+        <span class="db-stat__label">Active</span>
       </div>
     </div>
   </div>
@@ -483,23 +363,23 @@
   <!-- ── TABLE CARD ───────────────────────────────── -->
   <div class="db-card">
     <div class="db-card__header">
-      <div>
-        <div class="db-card__title">All Dispatches</div>
-        <div class="db-card__subtitle">Select any record to view details or proceed to next stage</div>
+      <div class="db-card__header-left">
+        <div class="db-card__icon">📊</div>
+        <div>
+          <div class="db-card__title">All Dispatches</div>
+          <div class="db-card__subtitle">Dispatches requiring accounts action are highlighted</div>
+        </div>
       </div>
       <div class="db-filter-bar">
         <div class="db-search">
-          <span class="db-search__icon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          </span>
-          <input type="text" placeholder="Search customer, PI, invoice…" oninput="dbFilterTable(this.value)">
+          <span class="db-search__icon">🔍</span>
+          <input type="text" id="db-search-input" placeholder="Search customer, PI…" oninput="dbFilterTable(this.value)">
         </div>
       </div>
     </div>
 
-    <!-- ── DESKTOP & TABLET TABLE ───────────────────── -->
     <div class="db-table-wrap">
-      <table class="db-table">
+      <table class="db-table" id="db-table">
         <thead>
           <tr>
             <th>PI</th>
@@ -513,24 +393,24 @@
         </thead>
         <tbody>
           {% for dispatch in dispatches %}
-          <tr class="db-filterable-row">
-            <td><span class="db-mono">#{{ dispatch.invoice.id }}</span></td>
+          <tr>
+            <td><span class="db-mono">{{ dispatch.invoice.id }}</span></td>
             <td><span class="db-customer">{{ dispatch.invoice.customer.name }}</span></td>
             <td>
               {% if dispatch.status == "requested" %}
-                <span class="db-badge db-badge--requested"><span class="db-badge__dot"></span>Requested</span>
+                <span class="db-badge db-badge--requested">Requested</span>
               {% elif dispatch.status == "waiting_for_packing" %}
-                <span class="db-badge db-badge--packing"><span class="db-badge__dot"></span>Awaiting Packing</span>
+                <span class="db-badge db-badge--packing">Awaiting Packing</span>
               {% elif dispatch.status == "packed_awaiting_approval" %}
-                <span class="db-badge db-badge--review"><span class="db-badge__dot"></span>Pending Review</span>
+                <span class="db-badge db-badge--review">Pending Review</span>
               {% elif dispatch.status == "packing_approved" %}
-                <span class="db-badge db-badge--approved"><span class="db-badge__dot"></span>Packing Approved</span>
+                <span class="db-badge db-badge--approved">Packing Approved</span>
               {% elif dispatch.status == "dispatched_by_warehouse" %}
-                <span class="db-badge db-badge--dispatched"><span class="db-badge__dot"></span>Dispatched</span>
+                <span class="db-badge db-badge--dispatched">Dispatched</span>
               {% elif dispatch.status == "completed" %}
-                <span class="db-badge db-badge--completed"><span class="db-badge__dot"></span>Completed</span>
+                <span class="db-badge db-badge--completed">Completed</span>
               {% else %}
-                <span class="db-badge db-badge--default"><span class="db-badge__dot"></span>{{ dispatch.get_status_display }}</span>
+                <span class="db-badge db-badge--waiting">{{ dispatch.get_status_display }}</span>
               {% endif %}
             </td>
             <td>
@@ -540,26 +420,31 @@
                 <span class="db-mono db-mono--muted">—</span>
               {% endif %}
             </td>
-            <td>{{ dispatch.shipment_method.name|default:"—" }}</td>
-            <td><span class="db-time">{{ dispatch.time_in_stage }}</span></td>
+            <td>
+              {% if dispatch.shipment_method %}
+                {{ dispatch.shipment_method.name }}
+              {% else %}
+                <span style="color:var(--text-muted);">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="db-time">{{ dispatch.time_in_stage }}</span>
+            </td>
             <td>
               {% if dispatch.status == "requested" %}
                 <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--primary">
-                  Process
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  → Process
                 </a>
               {% elif dispatch.status == "packed_awaiting_approval" %}
                 <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--success">
-                  Review Packing
+                  🔍 Review Packing
                 </a>
               {% elif dispatch.status == "dispatched_by_warehouse" %}
                 <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--warning">
-                  Complete
+                  ✅ Complete
                 </a>
               {% else %}
-                <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--outline">
-                  View
-                </a>
+                <span class="db-waiting-label">Waiting…</span>
               {% endif %}
             </td>
           </tr>
@@ -567,8 +452,9 @@
           <tr>
             <td colspan="7">
               <div class="db-empty">
+                <span>📭</span>
                 <strong>No dispatches found</strong>
-                <span>All caught up. New dispatch requests will appear here.</span>
+                All caught up — nothing to action right now.
               </div>
             </td>
           </tr>
@@ -576,87 +462,6 @@
         </tbody>
       </table>
     </div>
-
-    <!-- ── MOBILE CARDS VIEW ───────────────────────── -->
-    <div class="db-mobile-cards">
-      {% for dispatch in dispatches %}
-      <div class="db-card-item db-filterable-card">
-        <div class="db-card-item__top">
-          <div class="db-card-item__pi-box">
-            <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">PI</span>
-            <span class="db-mono">#{{ dispatch.invoice.id }}</span>
-          </div>
-          <div>
-            {% if dispatch.status == "requested" %}
-              <span class="db-badge db-badge--requested"><span class="db-badge__dot"></span>Requested</span>
-            {% elif dispatch.status == "waiting_for_packing" %}
-              <span class="db-badge db-badge--packing"><span class="db-badge__dot"></span>Awaiting Packing</span>
-            {% elif dispatch.status == "packed_awaiting_approval" %}
-              <span class="db-badge db-badge--review"><span class="db-badge__dot"></span>Pending Review</span>
-            {% elif dispatch.status == "packing_approved" %}
-              <span class="db-badge db-badge--approved"><span class="db-badge__dot"></span>Packing Approved</span>
-            {% elif dispatch.status == "dispatched_by_warehouse" %}
-              <span class="db-badge db-badge--dispatched"><span class="db-badge__dot"></span>Dispatched</span>
-            {% elif dispatch.status == "completed" %}
-              <span class="db-badge db-badge--completed"><span class="db-badge__dot"></span>Completed</span>
-            {% else %}
-              <span class="db-badge db-badge--default"><span class="db-badge__dot"></span>{{ dispatch.get_status_display }}</span>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="db-card-item__customer">{{ dispatch.invoice.customer.name }}</div>
-
-        <div class="db-card-item__grid">
-          <div>
-            <div class="db-card-item__field-lbl">Invoice No.</div>
-            <div class="db-card-item__field-val">
-              {% if dispatch.invoice_number %}
-                <span class="db-mono">{{ dispatch.invoice_number }}</span>
-              {% else %}
-                <span style="color:var(--text-muted); font-weight:400;">Not assigned</span>
-              {% endif %}
-            </div>
-          </div>
-          <div>
-            <div class="db-card-item__field-lbl">Shipment</div>
-            <div class="db-card-item__field-val">{{ dispatch.shipment_method.name|default:"—" }}</div>
-          </div>
-          <div style="grid-column: 1 / -1;">
-            <div class="db-card-item__field-lbl">Time in Stage</div>
-            <div class="db-card-item__field-val db-time">{{ dispatch.time_in_stage }}</div>
-          </div>
-        </div>
-
-        <div class="db-card-item__action">
-          {% if dispatch.status == "requested" %}
-            <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--primary">
-              Process Dispatch
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </a>
-          {% elif dispatch.status == "packed_awaiting_approval" %}
-            <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--success">
-              Review Packing
-            </a>
-          {% elif dispatch.status == "dispatched_by_warehouse" %}
-            <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--warning">
-              Complete Dispatch
-            </a>
-          {% else %}
-            <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--outline">
-              View Details
-            </a>
-          {% endif %}
-        </div>
-      </div>
-      {% empty %}
-      <div class="db-empty">
-        <strong>No dispatches found</strong>
-        <span>All caught up. New dispatch requests will appear here.</span>
-      </div>
-      {% endfor %}
-    </div>
-
   </div>
 
 </div>
@@ -664,18 +469,13 @@
 
 <script>
   function dbFilterTable(query) {
-    const q = (query || "").trim().toLowerCase();
-
-    document.querySelectorAll('.db-filterable-row').forEach(row => {
-      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-
-    document.querySelectorAll('.db-filterable-card').forEach(card => {
-      card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none';
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll('#db-table tbody tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
     });
   }
 </script>
 
-</body>
-</html>
 {% endblock %}
