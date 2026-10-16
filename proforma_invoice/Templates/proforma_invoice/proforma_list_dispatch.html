@@ -1,460 +1,1345 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dispatch Management | Admin</title>
-<style>
-    /* --- CSS VARIABLES & BASE --- */
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Dispatch Management | Oblu Operations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── DESIGN SYSTEM & TOKENS (ASKAI / MODERN SAAS) ── */
     :root {
-        --dark: #1e293b;
-        --light: #f8fafc;
-        --border: #e2e8f0;
-        --text-main: #334155;
-        --text-muted: #64748b;
+      --bg-page:        #F8FAFC;
+      --bg-card:        #FFFFFF;
+      --text-main:      #0F172A;
+      --text-muted:     #64748B;
+      --text-subtle:    #94A3B8;
+      --border-color:   #E2E8F0;
+      --border-subtle:  #F1F5F9;
+
+      /* Electric / Royal Blue Accent */
+      --primary:        #0052FF;
+      --primary-hover:  #0045D8;
+      --primary-light:  #EFF4FF;
+      --primary-border: #BFDBFE;
+
+      /* Status Colors */
+      --success:        #059669;
+      --success-light:  #ECFDF5;
+      --success-border: #A7F3D0;
+
+      --warning:        #D97706;
+      --warning-light:  #FFFBEB;
+      --warning-border: #FDE68A;
+
+      --info:           #0284C7;
+      --info-light:     #F0F9FF;
+      --info-border:    #BAE6FD;
+
+      --danger:         #DC2626;
+      --danger-light:   #FEF2F2;
+      --danger-border:  #FECACA;
+
+      --radius-sm:      8px;
+      --radius-md:      12px;
+      --radius-lg:      16px;
+      --radius-pill:    9999px;
+
+      --shadow-sm:      0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-card:    0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+      --shadow-hover:   0 4px 14px rgba(0, 82, 255, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background-color: var(--light);
-        color: var(--text-main);
-        line-height: 1.5;
+      background-color: var(--bg-page);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-main);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .container {
-        width: 95%;
-        max-width: 1500px;
-        margin: 20px auto;
+    /* ── TOP NAV HEADER ──────────────────────────── */
+    .dm-nav {
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    }
+    .dm-nav__inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .dm-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .dm-brand__logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 15px;
+      box-shadow: 0 2px 6px rgba(0, 82, 255, 0.25);
+    }
+    .dm-brand__title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+    .dm-brand__badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
     }
 
-    /* --- HEADER --- */
-    .header {
-        background-color: var(--dark);
-        color: white;
-        padding: 1rem 5%;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    .dm-nav__actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .dm-btn-home {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: #FFFFFF;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .dm-btn-home:hover {
+      background: #F8FAFC;
+      border-color: var(--text-subtle);
+      color: var(--primary);
     }
 
-    .btn-home {
-        color: #e2e8f0; text-decoration: none; border: 1px solid #475569;
-        padding: 5px 14px; border-radius: 6px; font-size: 0.85rem; transition: 0.2s;
-    }
-    .btn-home:hover { background: #334155; color: white; border-color: #64748b; }
-
-    /* --- FILTERS --- */
-    .filters-container {
-        background: white; padding: 18px 20px; border-radius: 10px;
-        margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid var(--border);
-    }
-    .filters-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .filters-form select, .filters-form input {
-        padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px;
-        font-size: 0.85rem; min-width: 150px; background-color: #fff; color: var(--text-main);
-        outline: none; transition: border-color 0.2s;
-    }
-    .filters-form select:focus, .filters-form input:focus {
-        border-color: #94a3b8;
-    }
-    .btn-apply {
-        background-color: var(--dark); color: white; border: none;
-        padding: 7px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
-        transition: 0.2s;
-    }
-    .btn-apply:hover { background-color: #334155; }
-
-    /* --- TABLE DESIGN --- */
-    .table-responsive {
-        width: 100%; overflow-x: auto; background: white;
-        border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid var(--border);
-    }
-    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
-    th {
-        background-color: #f8fafc; color: var(--text-muted); text-transform: uppercase;
-        font-size: 0.7rem; padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border);
-        letter-spacing: 0.5px; font-weight: 600;
-    }
-    td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: middle; }
-    tbody tr:hover { background-color: #fafbfc; }
-
-    /* --- STATUS & TIMER PILLS --- */
-    .status-pill {
-        padding: 3px 10px; border-radius: 20px; font-size: 0.72rem;
-        font-weight: 600; display: inline-block; text-transform: uppercase; letter-spacing: 0.3px;
-    }
-    .status-dispatched { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-    .status-pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-    .status-requested { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-    .status-initiated { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-    .status-processing { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-
-    .timer-box { font-family: monospace; font-weight: 600; font-size: 0.85rem; }
-    .timer-running { color: #d97706; }
-    .timer-done { color: #059669; }
-
-    /* --- DISTINCTLY COLORED ACTION BUTTONS --- */
-    .actions-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-
-    .btn-action {
-        text-decoration: none;
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 5px 11px;
-        border-radius: 6px;
-        color: white;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        transition: all 0.15s ease-in-out;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-        border: none;
-        font-family: inherit;
-        line-height: 1.4;
-    }
-    .btn-action:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
-    }
-    .btn-action:active {
-        transform: translateY(0);
+    /* ── PAGE LAYOUT ─────────────────────────────── */
+    .dm-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
     }
 
-    /* Specific button color variants */
-    .btn-view { background-color: #64748b; }       /* Slate Gray */
-    .btn-yes { background-color: #10b981; }        /* Emerald Green */
-    .btn-dispatch { background-color: #f59e0b; }   /* Amber / Orange */
-    .btn-no { background-color: #ef4444; }         /* Soft Red */
-    .btn-remarks { background-color: #0ea5e9; }    /* Sky Blue */
+    /* ── HERO BANNER ─────────────────────────────── */
+    .dm-hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .dm-hero__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      border: 1px solid var(--primary-border);
+    }
+    .dm-hero__title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+    }
+    .dm-hero__subtitle {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
 
-    /* Subtle label for Initiated */
-    .label-initiated {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: #0369a1;
-        background-color: #f0f9ff;
-        border: 1px solid #bae6fd;
-        padding: 4px 9px;
-        border-radius: 6px;
-        letter-spacing: 0.3px;
-        user-select: none;
+    /* ── FILTERS CARD ────────────────────────────── */
+    .dm-filter-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-card);
     }
-    .label-initiated::before {
-        content: "";
-        display: inline-block;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background-color: #0284c7;
+    .dm-filter-form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .dm-filter-search {
+      position: relative;
+      flex: 1 1 200px;
+      min-width: 180px;
+    }
+    .dm-filter-search svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-subtle);
+      pointer-events: none;
+    }
+    .dm-filter-search input {
+      width: 100%;
+      padding: 9px 12px 9px 36px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text-main);
+      background: #FFFFFF;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+    .dm-filter-search input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.12);
     }
 
-    .locked-text {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #059669;
-        padding: 4px 6px;
+    .dm-filter-select,
+    .dm-filter-date {
+      padding: 9px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text-main);
+      background: #FFFFFF;
+      outline: none;
+      transition: all 0.15s ease;
+      min-width: 140px;
+      flex: 1 1 140px;
+    }
+    .dm-filter-select:focus,
+    .dm-filter-date:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.12);
     }
 
-    /* --- COMMUNICATION MODAL (REMARKS) --- */
-    .custom-overlay {
-        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);
-        z-index: 99999; align-items: center; justify-content: center; padding: 20px;
+    .dm-btn-apply {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary);
+      color: #FFFFFF;
+      border: none;
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 82, 255, 0.2);
     }
-    .modal-content {
-        background: #ffffff; width: 100%; max-width: 460px; padding: 22px;
-        border-radius: 12px; border: 1px solid var(--border); color: var(--text-main);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    .dm-btn-apply:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
     }
-    #modalChatHistory {
-        height: 300px; overflow-y: auto; background: #f8fafc; padding: 14px;
-        border-radius: 8px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border);
+    .dm-btn-apply:active {
+      transform: translateY(0);
     }
-    .bubble { padding: 9px 13px; border-radius: 10px; font-size: 13px; line-height: 1.4; max-width: 85%; }
-    .rtag { font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; display: block; }
 
-    .b-sales { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e3a8a; align-self: flex-start; }
-    .b-accounts { background: #ecfdf5; border-left: 3px solid #10b981; color: #064e3b; align-self: flex-start; }
-    .b-admin { background: #fef2f2; border-left: 3px solid #ef4444; color: #7f1d1d; align-self: flex-start; }
+    .dm-btn-reset {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #F1F5F9;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .dm-btn-reset:hover {
+      background: #E2E8F0;
+      color: var(--text-main);
+    }
 
-    /* --- RESPONSIVENESS --- */
+    /* ── SCROLL HINT ─────────────────────────────── */
+    .dm-scroll-hint {
+      font-size: 12px;
+      color: var(--text-subtle);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── TABLE CONTAINER ─────────────────────────── */
+    .dm-table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .dm-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .dm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 1080px;
+    }
+    .dm-table thead th {
+      text-align: left;
+      padding: 13px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: #F8FAFC;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    .dm-table thead th:first-child { padding-left: 20px; }
+    .dm-table thead th:last-child  { padding-right: 20px; text-align: right; }
+
+    .dm-table tbody tr {
+      border-bottom: 1px solid var(--border-color);
+      transition: background-color 0.15s ease;
+    }
+    .dm-table tbody tr:last-child { border-bottom: none; }
+    .dm-table tbody tr:hover { background-color: #F8FAFC; }
+
+    .dm-table tbody td {
+      padding: 14px 16px;
+      vertical-align: middle;
+      color: #334155;
+    }
+    .dm-table tbody td:first-child { padding-left: 20px; }
+    .dm-table tbody td:last-child  { padding-right: 20px; text-align: right; }
+
+    /* ── MONO BADGES & CELL CONTENT ──────────────── */
+    .dm-mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+    }
+    .dm-id-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      border: 1px solid var(--primary-border);
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .dm-inv-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .dm-customer-name {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .dm-total {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .dm-courier-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      background: #F1F5F9;
+      color: #475569;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    /* ── STATUS PILLS (STRICTLY NO EMOJIS) ───────── */
+    .dm-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .dm-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dm-status--dispatched {
+      background: var(--success-light);
+      color: var(--success);
+      border: 1px solid var(--success-border);
+    }
+    .dm-status--dispatched .dm-status-dot { background: var(--success); }
+
+    .dm-status--initiated {
+      background: var(--info-light);
+      color: var(--info);
+      border: 1px solid var(--info-border);
+    }
+    .dm-status--initiated .dm-status-dot { background: var(--info); }
+
+    .dm-status--requested {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+    }
+    .dm-status--requested .dm-status-dot { background: var(--primary); }
+
+    .dm-status--pending {
+      background: var(--warning-light);
+      color: var(--warning);
+      border: 1px solid var(--warning-border);
+    }
+    .dm-status--pending .dm-status-dot { background: var(--warning); }
+
+    .dm-status--processing {
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid var(--border-color);
+    }
+    .dm-status--processing .dm-status-dot { background: #64748B; }
+
+    /* ── DURATION & TIMERS (NO EMOJIS) ───────────── */
+    .dm-timer {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .dm-timer svg { flex-shrink: 0; }
+    .dm-timer--running {
+      color: var(--warning);
+    }
+    .dm-timer--done {
+      color: var(--success);
+    }
+    .dm-timer--empty {
+      color: var(--text-subtle);
+    }
+
+    /* ── ACTION BUTTONS ──────────────────────────── */
+    .dm-actions-group {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .dm-btn-act {
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: #FFFFFF;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+      border: none;
+      font-family: inherit;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .dm-btn-act svg { flex-shrink: 0; }
+    .dm-btn-act:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+    }
+    .dm-btn-act:active {
+      transform: translateY(0);
+    }
+
+    .dm-btn-view {
+      background: #FFFFFF;
+      color: #334155;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+    .dm-btn-view:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+      color: var(--text-main);
+    }
+
+    .dm-btn-yes {
+      background: var(--success);
+      color: #FFFFFF;
+    }
+    .dm-btn-yes:hover {
+      background: #047857;
+    }
+
+    .dm-btn-dispatch {
+      background: var(--primary);
+      color: #FFFFFF;
+    }
+    .dm-btn-dispatch:hover {
+      background: var(--primary-hover);
+    }
+
+    .dm-btn-no {
+      background: var(--danger);
+      color: #FFFFFF;
+    }
+    .dm-btn-no:hover {
+      background: #B91C1C;
+    }
+
+    .dm-btn-remarks {
+      background: #FFFFFF;
+      color: var(--info);
+      border: 1px solid var(--info-border);
+      box-shadow: var(--shadow-sm);
+    }
+    .dm-btn-remarks:hover {
+      background: var(--info-light);
+      color: #0369A1;
+    }
+
+    .dm-label-initiated {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--info);
+      background-color: var(--info-light);
+      border: 1px solid var(--info-border);
+      padding: 5px 9px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+    .dm-label-initiated .dm-status-dot {
+      background: var(--info);
+    }
+
+    .dm-locked-done {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--success);
+      background: var(--success-light);
+      border: 1px solid var(--success-border);
+      padding: 5px 9px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── MOBILE CARD DECK (< 960px) ─────────────── */
+    .dm-mobile-deck {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+    }
+    .dm-card-item {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .dm-card-item__top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .dm-card-item__grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      background: #F8FAFC;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+    .dm-card-cell-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .dm-card-cell-val {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .dm-card-item__actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-top: 4px;
+    }
+    .dm-card-item__actions .dm-btn-act {
+      flex: 1 1 auto;
+      min-height: 40px;
+    }
+
+    /* ── RESPONSIVE BREAKPOINTS ──────────────────── */
+    @media (max-width: 960px) {
+      .dm-table-wrap { display: none; }
+      .dm-mobile-deck { display: flex; }
+      .dm-scroll-hint { display: none; }
+    }
     @media (max-width: 768px) {
-        .header { flex-direction: column; gap: 10px; text-align: center; }
-        .filters-form { flex-direction: column; align-items: stretch; }
-        .filters-form select, .filters-form input { width: 100%; }
-        .actions-group { justify-content: flex-start; }
-        .modal-content { width: 95%; height: auto; }
+      .dm-nav__inner { padding: 12px 16px; }
+      .dm-container { padding: 16px; }
+      .dm-hero__title { font-size: 22px; }
+      .dm-filter-form { flex-direction: column; align-items: stretch; }
+      .dm-filter-search,
+      .dm-filter-select,
+      .dm-filter-date,
+      .dm-btn-apply,
+      .dm-btn-reset {
+        width: 100%;
+        min-width: 100%;
+        min-height: 44px;
+      }
     }
-</style>
+
+    /* ── COMMUNICATION MODAL ─────────────────────── */
+    .dm-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .dm-modal {
+      background: #FFFFFF;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.15);
+      display: flex;
+      flex-direction: column;
+    }
+    .dm-modal__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 14px;
+    }
+    .dm-modal__title-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .dm-modal__title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+    }
+    .dm-modal__close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .dm-modal__close:hover {
+      background: #F1F5F9;
+      color: var(--text-main);
+    }
+
+    #modalChatHistory {
+      height: 300px;
+      overflow-y: auto;
+      background: #F8FAFC;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 1px solid var(--border-color);
+    }
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+      max-width: 88%;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .rtag {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
+      display: block;
+    }
+    .b-sales {
+      background: #EFF6FF;
+      border-left: 3px solid var(--primary);
+      color: #1E3A8A;
+      align-self: flex-start;
+    }
+    .b-accounts {
+      background: #ECFDF5;
+      border-left: 3px solid var(--success);
+      color: #064E3B;
+      align-self: flex-start;
+    }
+    .b-admin {
+      background: #FEF2F2;
+      border-left: 3px solid var(--danger);
+      color: #7F1D1D;
+      align-self: flex-start;
+    }
+
+    .dm-modal-input {
+      width: 100%;
+      background: #FFFFFF;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      outline: none;
+      resize: vertical;
+      font-size: 13.5px;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      min-height: 80px;
+    }
+    .dm-modal-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.12);
+    }
+
+    .dm-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+    }
+  </style>
 </head>
 <body>
 
-    <header class="header">
-        <h1 style="font-size: 1.35rem; font-weight: 600;">Dispatch Management</h1>
-        <a href="{% url 'home' %}" class="btn-home">Home</a>
-    </header>
+  <!-- ── TOP NAVIGATION ────────────────────────── -->
+  <header class="dm-nav">
+    <div class="dm-nav__inner">
+      <div class="dm-brand">
+        <div class="dm-brand__logo">O</div>
+        <span class="dm-brand__title">Oblu Operations</span>
+        <span class="dm-brand__badge">Dispatch Hub</span>
+      </div>
+      <div class="dm-nav__actions">
+        <a href="{% url 'home' %}" class="dm-btn-home">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          Home
+        </a>
+      </div>
+    </div>
+  </header>
 
-    <div class="container">
-        <!-- ---------------- FILTER BAR ---------------- -->
-        <div class="filters-container">
-            <form method="get" class="filters-form">
+  <div class="dm-container">
 
-                {% if request.user.is_accountant %}
-                <select name="created_by">
-                    <option value="">Created By</option>
-                    {% for u in users %}
-                        <option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>
-                            {{ u.username }}
-                        </option>
-                    {% endfor %}
-                </select>
+    <!-- ── PAGE HEADER ──────────────────────────── -->
+    <div class="dm-hero">
+      <div>
+        <div class="dm-hero__tag">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          Dispatch Management Platform
+        </div>
+        <h1 class="dm-hero__title">Dispatch Management</h1>
+        <p class="dm-hero__subtitle">Real-time overview of proforma requests, carrier routing, and fulfillment</p>
+      </div>
+    </div>
+
+    <!-- ── FILTER CARD ──────────────────────────── -->
+    <div class="dm-filter-card">
+      <form method="get" class="dm-filter-form">
+
+        <!-- Search Input (Compatible with backend f_id) -->
+        <div class="dm-filter-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input
+            type="text"
+            name="f_id"
+            value="{{ request.GET.f_id }}"
+            placeholder="Search by ID or Invoice #"
+          >
+        </div>
+
+        {% if request.user.is_accountant %}
+        <select name="created_by" class="dm-filter-select">
+          <option value="">Created By</option>
+          {% for u in users %}
+            <option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>
+              {{ u.username }}
+            </option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        <select name="customer" class="dm-filter-select">
+          <option value="">All Customers</option>
+          {% for c in customers %}
+            <option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>
+              {{ c.customer__name }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <input
+          type="date"
+          name="start_date"
+          value="{{ request.GET.start_date }}"
+          class="dm-filter-date"
+          title="Start date"
+        >
+        <input
+          type="date"
+          name="end_date"
+          value="{{ request.GET.end_date }}"
+          class="dm-filter-date"
+          title="End date"
+        >
+
+        <select name="sort_by" class="dm-filter-select">
+          <option value="">Sort By</option>
+          <option value="date_desc" {% if request.GET.sort_by == "date_desc" %}selected{% endif %}>Latest</option>
+          <option value="date_asc" {% if request.GET.sort_by == "date_asc" %}selected{% endif %}>Oldest</option>
+          <option value="customer" {% if request.GET.sort_by == "customer" %}selected{% endif %}>Customer</option>
+        </select>
+
+        <button type="submit" class="dm-btn-apply">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          Apply Filters
+        </button>
+        <a href="{% url 'proforma_invoice_dispatch' %}" class="dm-btn-reset">Reset</a>
+      </form>
+    </div>
+
+    <div class="dm-scroll-hint">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      Scroll table horizontally to view all columns
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </div>
+
+    <!-- ── TABLE VIEW (DESKTOP / TABLET) ────────── -->
+    <div class="dm-table-card">
+      <div class="dm-table-wrap">
+        <table class="dm-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Inv # / Customer</th>
+              <th>Created By</th>
+              <th>Grand Total</th>
+              <th>Courier Mode</th>
+              <th>Status</th>
+              <th>Duration (Wait Time)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in invoices %}
+            <tr>
+              <!-- ID -->
+              <td>
+                <span class="dm-id-badge">#{{ inv.id }}</span>
+              </td>
+
+              <!-- Inv # / Customer -->
+              <td>
+                <div class="dm-inv-title">#{{ inv.id }}</div>
+                <div class="dm-customer-name">{{ inv.customer.name }}</div>
+              </td>
+
+              <!-- Created By -->
+              <td>
+                <span style="font-weight: 500; color: #334155;">{{ inv.created_by }}</span>
+              </td>
+
+              <!-- Grand Total -->
+              <td>
+                <span class="dm-total">&#8377;{{ inv.calculate_final_total|floatformat:2 }}</span>
+              </td>
+
+              <!-- Courier Mode -->
+              <td>
+                <span class="dm-courier-tag">{{ inv.get_courier_mode_display|default:"Standard" }}</span>
+              </td>
+
+              <!-- Status Badge (Strictly NO Emojis) -->
+              <td>
+                {% if inv.dispatch_status == 'dispatched' %}
+                  <span class="dm-status-pill dm-status--dispatched">
+                    <span class="dm-status-dot"></span>
+                    Dispatched
+                  </span>
+                {% elif inv.dispatch_status == 'initiated' %}
+                  <span class="dm-status-pill dm-status--initiated">
+                    <span class="dm-status-dot"></span>
+                    Initiated
+                  </span>
+                {% elif inv.dispatch_status == 'requested' %}
+                  <span class="dm-status-pill dm-status--requested">
+                    <span class="dm-status-dot"></span>
+                    Requested
+                  </span>
+                {% elif inv.dispatch_status == 'pending' %}
+                  <span class="dm-status-pill dm-status--pending">
+                    <span class="dm-status-dot"></span>
+                    Hold / Pending
+                  </span>
+                {% else %}
+                  <span class="dm-status-pill dm-status--processing">
+                    <span class="dm-status-dot"></span>
+                    Processing
+                  </span>
                 {% endif %}
+              </td>
 
-                <select name="customer">
-                    <option value="">Customer</option>
-                    {% for c in customers %}
-                        <option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>
-                            {{ c.customer__name }}
-                        </option>
-                    {% endfor %}
-                </select>
+              <!-- Duration Timer (Strictly NO Emojis) -->
+              <td>
+                {% if inv.dispatch_requested_at %}
+                  {% if inv.dispatch_status == 'dispatched' and inv.dispatched_at %}
+                    <span class="dm-timer dm-timer--done">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      {{ inv.dispatch_requested_at|timesince:inv.dispatched_at }}
+                    </span>
+                  {% else %}
+                    <span class="dm-timer dm-timer--running">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      {{ inv.dispatch_requested_at|timesince }}
+                    </span>
+                  {% endif %}
+                {% else %}
+                  <span class="dm-timer dm-timer--empty">Not Requested</span>
+                {% endif %}
+              </td>
 
-                <input type="date" name="start_date" value="{{ request.GET.start_date }}">
-                <input type="date" name="end_date" value="{{ request.GET.end_date }}">
+              <!-- Actions Group (Strictly NO Emojis) -->
+              <td>
+                <div class="dm-actions-group">
+                  <!-- View Button -->
+                  <a href="{{ inv.get_absolute_url }}" class="dm-btn-act dm-btn-view" target="_blank" title="View invoice details">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    View
+                  </a>
 
-                <select name="sort_by">
-                    <option value="">Sort By</option>
-                    <option value="date_desc" {% if request.GET.sort_by == "date_desc" %}selected{% endif %}>Latest</option>
-                    <option value="date_asc" {% if request.GET.sort_by == "date_asc" %}selected{% endif %}>Oldest</option>
-                    <option value="customer" {% if request.GET.sort_by == "customer" %}selected{% endif %}>Customer</option>
-                </select>
+                  {% if inv.dispatch_status != 'dispatched' %}
 
-                <button type="submit" class="btn-apply">Apply Filters</button>
-                <a href="{% url 'proforma_invoice_dispatch' %}" style="font-size: 0.8rem; color: #64748b; margin-left: 8px; text-decoration: none;">Reset</a>
-            </form>
+                    <!-- YES Button -->
+                    {% if inv.dispatch_status == 'initiated' %}
+                      <span class="dm-label-initiated">
+                        <span class="dm-status-dot"></span>
+                        Initiated
+                      </span>
+                    {% else %}
+                      <a
+                        href="{% url 'set_dispatch' inv.id 'yes' %}"
+                        class="dm-btn-act dm-btn-yes"
+                        onclick="return confirm('Initiate dispatch for Invoice #{{ inv.id }}?')"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        YES
+                      </a>
+                    {% endif %}
+
+                    <!-- Dispatch Button -->
+                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="dm-btn-act dm-btn-dispatch">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                      Dispatch
+                    </a>
+
+                    <!-- NO Button (Hold) -->
+                    {% if inv.dispatch_status != 'pending' and inv.dispatch_status != 'initiated' %}
+                      <a
+                        href="{% url 'set_dispatch' inv.id 'no' %}"
+                        class="dm-btn-act dm-btn-no"
+                        onclick="return confirm('Put this on PENDING (Hold)?')"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        NO
+                      </a>
+                    {% endif %}
+
+                  {% else %}
+                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="dm-btn-act dm-btn-dispatch">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                      Dispatch
+                    </a>
+                    <span class="dm-locked-done">Done</span>
+                  {% endif %}
+
+                  <!-- Remarks Button -->
+                  <button
+                    type="button"
+                    class="dm-btn-act dm-btn-remarks"
+                    onclick="openRemarkModal('{{ inv.id }}')"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Remarks
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                <div style="font-weight: 700; font-size: 15px; color: var(--text-main); margin-bottom: 4px;">No Invoices Found</div>
+                <span style="font-size: 13px;">No dispatches match your selected filter criteria.</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── MOBILE CARD DECK (< 960px) ──────────── -->
+      <div class="dm-mobile-deck">
+        {% for inv in invoices %}
+        <div class="dm-card-item">
+          <div class="dm-card-item__top">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="dm-id-badge">#{{ inv.id }}</span>
+                <span class="dm-courier-tag">{{ inv.get_courier_mode_display|default:"Standard" }}</span>
+              </div>
+              <div style="font-size:14px; font-weight:700; color:var(--text-main); margin-top:6px;">
+                {{ inv.customer.name }}
+              </div>
+            </div>
+
+            <!-- Status Pill Mobile -->
+            <div>
+              {% if inv.dispatch_status == 'dispatched' %}
+                <span class="dm-status-pill dm-status--dispatched">
+                  <span class="dm-status-dot"></span>
+                  Dispatched
+                </span>
+              {% elif inv.dispatch_status == 'initiated' %}
+                <span class="dm-status-pill dm-status--initiated">
+                  <span class="dm-status-dot"></span>
+                  Initiated
+                </span>
+              {% elif inv.dispatch_status == 'requested' %}
+                <span class="dm-status-pill dm-status--requested">
+                  <span class="dm-status-dot"></span>
+                  Requested
+                </span>
+              {% elif inv.dispatch_status == 'pending' %}
+                <span class="dm-status-pill dm-status--pending">
+                  <span class="dm-status-dot"></span>
+                  Hold
+                </span>
+              {% else %}
+                <span class="dm-status-pill dm-status--processing">
+                  <span class="dm-status-dot"></span>
+                  Processing
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="dm-card-item__grid">
+            <div>
+              <div class="dm-card-cell-label">Grand Total</div>
+              <div class="dm-card-cell-val dm-mono">&#8377;{{ inv.calculate_final_total|floatformat:2 }}</div>
+            </div>
+            <div>
+              <div class="dm-card-cell-label">Created By</div>
+              <div class="dm-card-cell-val">{{ inv.created_by }}</div>
+            </div>
+            <div style="grid-column: span 2;">
+              <div class="dm-card-cell-label">Duration (Wait Time)</div>
+              <div class="dm-card-cell-val">
+                {% if inv.dispatch_requested_at %}
+                  {% if inv.dispatch_status == 'dispatched' and inv.dispatched_at %}
+                    <span class="dm-timer dm-timer--done">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      {{ inv.dispatch_requested_at|timesince:inv.dispatched_at }}
+                    </span>
+                  {% else %}
+                    <span class="dm-timer dm-timer--running">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      {{ inv.dispatch_requested_at|timesince }}
+                    </span>
+                  {% endif %}
+                {% else %}
+                  <span class="dm-timer dm-timer--empty">Not Requested</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile Actions -->
+          <div class="dm-card-item__actions">
+            <a href="{{ inv.get_absolute_url }}" class="dm-btn-act dm-btn-view" target="_blank">
+              View
+            </a>
+
+            {% if inv.dispatch_status != 'dispatched' %}
+              {% if inv.dispatch_status == 'initiated' %}
+                <span class="dm-label-initiated" style="justify-content:center;">
+                  <span class="dm-status-dot"></span>
+                  Initiated
+                </span>
+              {% else %}
+                <a
+                  href="{% url 'set_dispatch' inv.id 'yes' %}"
+                  class="dm-btn-act dm-btn-yes"
+                  onclick="return confirm('Initiate dispatch for Invoice #{{ inv.id }}?')"
+                >
+                  YES
+                </a>
+              {% endif %}
+
+              <a href="{% url 'open_dispatch_detail' inv.id %}" class="dm-btn-act dm-btn-dispatch">
+                Dispatch
+              </a>
+
+              {% if inv.dispatch_status != 'pending' and inv.dispatch_status != 'initiated' %}
+                <a
+                  href="{% url 'set_dispatch' inv.id 'no' %}"
+                  class="dm-btn-act dm-btn-no"
+                  onclick="return confirm('Put this on PENDING (Hold)?')"
+                >
+                  NO
+                </a>
+              {% endif %}
+            {% else %}
+              <a href="{% url 'open_dispatch_detail' inv.id %}" class="dm-btn-act dm-btn-dispatch">
+                Dispatch
+              </a>
+              <span class="dm-locked-done" style="text-align:center;">Done</span>
+            {% endif %}
+
+            <button
+              type="button"
+              class="dm-btn-act dm-btn-remarks"
+              onclick="openRemarkModal('{{ inv.id }}')"
+            >
+              Remarks
+            </button>
+          </div>
         </div>
-
-        <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 8px;">↔ Scroll table horizontally to view all columns</p>
-
-        <!-- ---------------- MAIN TABLE ---------------- -->
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Inv # / Customer</th>
-                        <th>Created By</th>
-                        <th>Grand Total</th>
-                        <th>Courier Mode</th>
-                        <th>Status</th>
-                        <th>Duration (Wait Time)</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for inv in invoices %}
-                    <tr>
-                        <td><span style="color: #64748b; font-family: monospace;">#{{ inv.id }}</span></td>
-                        <td>
-                            <strong style="color: #0f172a;">#{{ inv.id }}</strong><br>
-                            <span style="color: #64748b; font-size: 0.75rem;">{{ inv.customer.name }}</span>
-                        </td>
-                        <td>{{ inv.created_by }}</td>
-                        <td><strong style="color: #0f172a;">₹{{ inv.calculate_final_total|floatformat:2 }}</strong></td>
-                        <td>{{ inv.get_courier_mode_display }}</td>
-
-                        <!-- Status Badge -->
-                        <td>
-                            {% if inv.dispatch_status == 'dispatched' %}
-                                <span class="status-pill status-dispatched">✔ Dispatched</span>
-                            {% elif inv.dispatch_status == 'initiated' %}
-                                <span class="status-pill status-initiated">⚡ Initiated</span>
-                            {% elif inv.dispatch_status == 'requested' %}
-                                <span class="status-pill status-requested">🚀 Requested</span>
-                            {% elif inv.dispatch_status == 'pending' %}
-                                <span class="status-pill status-pending">⏳ Hold / Pending</span>
-                            {% else %}
-                                <span class="status-pill status-processing">Processing</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Duration Timer Logic -->
-                        <td class="timer-box">
-                            {% if inv.dispatch_requested_at %}
-                                {% if inv.dispatch_status == 'dispatched' and inv.dispatched_at %}
-                                    <span class="timer-done">{{ inv.dispatch_requested_at|timesince:inv.dispatched_at }}</span>
-                                {% else %}
-                                    <span class="timer-running">⏳ {{ inv.dispatch_requested_at|timesince }}</span>
-                                {% endif %}
-                            {% else %}
-                                <span style="color: #cbd5e1;">Not Requested</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Actions -->
-                        <td>
-                            <div class="actions-group">
-                                <!-- View Button (Slate) -->
-                                <a href="{{ inv.get_absolute_url }}" class="btn-action btn-view" target="_blank">View</a>
-
-                                {% if inv.dispatch_status != 'dispatched' %}
-
-                                    <!-- YES Button (Green) switches to label when initiated -->
-                                    {% if inv.dispatch_status == 'initiated' %}
-                                        <span class="label-initiated">Initiated</span>
-                                    {% else %}
-                                        <a href="{% url 'set_dispatch' inv.id 'yes' %}" class="btn-action btn-yes"
-                                           onclick="return confirm('Initiate dispatch for Invoice #{{ inv.id }}?')">YES</a>
-                                    {% endif %}
-
-                                    <!-- Dispatch Button (Orange) -->
-                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">Dispatch</a>
-
-                                    {% if inv.dispatch_status != 'pending' and inv.dispatch_status != 'initiated' %}
-                                        <!-- NO Button (Red) -->
-                                        <a href="{% url 'set_dispatch' inv.id 'no' %}" class="btn-action btn-no"
-                                           onclick="return confirm('Put this on PENDING (Hold)?')">NO</a>
-                                    {% endif %}
-
-                                {% else %}
-                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">Dispatch</a>
-                                    <span class="locked-text">Done</span>
-                                {% endif %}
-
-                                <!-- Remarks Button (Blue) -->
-                                <button type="button" class="btn-action btn-remarks" onclick="openRemarkModal('{{ inv.id }}')">
-                                    💬 Remarks
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 50px; color: #94a3b8;">No invoices found matching your filters.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        {% empty %}
+        <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color);">
+          <div style="font-weight: 700; font-size: 15px; color: var(--text-main); margin-bottom: 4px;">No Invoices Found</div>
+          <span style="font-size: 13px;">No dispatches match your selected filter criteria.</span>
         </div>
+        {% endfor %}
+      </div>
     </div>
 
-<!-- ==========================================
-     UNIFIED REMARK MODAL
-     ========================================== -->
-<div id="globalRemarkModal" class="custom-overlay">
-    <div class="modal-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
-            <h5 style="margin:0; font-size: 0.95rem; font-weight: 600; color: #0f172a;">💬 Communication Hub</h5>
-            <button onclick="closeRemarkModal()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:20px; line-height: 1;">&times;</button>
-        </div>
+  </div>
 
-        <div id="modalChatHistory">
-            <!-- History loads here -->
+  <!-- ── COMMUNICATION HUB MODAL (NO EMOJIS) ───── -->
+  <div id="globalRemarkModal" class="dm-modal-overlay">
+    <div class="dm-modal">
+      <div class="dm-modal__header">
+        <div class="dm-modal__title-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span class="dm-modal__title">Communication Hub</span>
         </div>
+        <button type="button" class="dm-modal__close" onclick="closeRemarkModal()">&times;</button>
+      </div>
 
-        <input type="hidden" id="modalInvoiceId">
-        <textarea id="modalRemarkInput" style="width:100%; background:#fff; color:#334155; border:1px solid var(--border); border-radius:8px; padding:10px; outline:none; resize:none; font-size: 13px; font-family: inherit;" rows="3" placeholder="Write to other departments..."></textarea>
+      <div id="modalChatHistory">
+        <!-- Conversation logs render here -->
+      </div>
 
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
-            <button type="button" class="btn-action btn-view" onclick="closeRemarkModal()">Cancel</button>
-            <button type="button" class="btn-action btn-yes" id="sendBtn" onclick="submitGlobalRemark()">Send Message</button>
-        </div>
+      <input type="hidden" id="modalInvoiceId">
+      <textarea
+        id="modalRemarkInput"
+        class="dm-modal-input"
+        rows="3"
+        placeholder="Type a message or internal dispatch note..."
+      ></textarea>
+
+      <div class="dm-modal-footer">
+        <button type="button" class="dm-btn-act dm-btn-view" onclick="closeRemarkModal()">Cancel</button>
+        <button type="button" class="dm-btn-act dm-btn-dispatch" id="sendBtn" onclick="submitGlobalRemark()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          Send Message
+        </button>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-function openRemarkModal(invoiceId) {
-    document.getElementById('modalInvoiceId').value = invoiceId;
-    document.getElementById('globalRemarkModal').style.display = 'flex';
-    document.getElementById('modalChatHistory').innerHTML = '<div style="color:#94a3b8; text-align:center; padding-top:50px; font-size:0.85rem;">Loading conversation...</div>';
-    loadRemarks(invoiceId);
-}
+  <script>
+    function openRemarkModal(invoiceId) {
+      document.getElementById('modalInvoiceId').value = invoiceId;
+      document.getElementById('globalRemarkModal').style.display = 'flex';
+      document.getElementById('modalChatHistory').innerHTML = '<div style="color:var(--text-subtle); text-align:center; padding-top:50px; font-size:13px;">Loading conversation...</div>';
+      loadRemarks(invoiceId);
+    }
 
-function loadRemarks(invoiceId) {
-    const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
+    function loadRemarks(invoiceId) {
+      const getUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invoiceId);
 
-    fetch(getUrl)
+      fetch(getUrl)
         .then(r => r.json())
         .then(data => {
-            const historyBox = document.getElementById('modalChatHistory');
-            historyBox.innerHTML = "";
+          const historyBox = document.getElementById('modalChatHistory');
+          historyBox.innerHTML = "";
 
-            if (!data.remarks || data.remarks.length === 0) {
-                historyBox.innerHTML = '<div style="color:#94a3b8; text-align:center; padding-top:50px; font-size:0.85rem;">No conversation yet.</div>';
-                return;
-            }
+          if (!data.remarks || data.remarks.length === 0) {
+            historyBox.innerHTML = '<div style="color:var(--text-subtle); text-align:center; padding-top:50px; font-size:13px;">No communication logs yet.</div>';
+            return;
+          }
 
-            data.remarks.forEach(r => {
-                const bClass = `b-${r.role}`;
-                historyBox.innerHTML += `
-                    <div class="bubble ${bClass}">
-                        <span class="rtag">${r.role} • ${r.time}</span>
-                        <strong>${r.user}:</strong> ${r.text}
-                    </div>`;
-            });
-            historyBox.scrollTop = historyBox.scrollHeight;
+          data.remarks.forEach(r => {
+            const bClass = `b-${r.role}`;
+            historyBox.innerHTML += `
+              <div class="bubble ${bClass}">
+                <span class="rtag">${r.role} &bull; ${r.time}</span>
+                <strong>${r.user}:</strong> ${r.text}
+              </div>`;
+          });
+          historyBox.scrollTop = historyBox.scrollHeight;
+        })
+        .catch(err => {
+          document.getElementById('modalChatHistory').innerHTML = '<div style="color:var(--danger); text-align:center; padding-top:50px; font-size:13px;">Failed to load messages.</div>';
         });
-}
+    }
 
-function submitGlobalRemark() {
-    const invId = document.getElementById('modalInvoiceId').value;
-    const text = document.getElementById('modalRemarkInput').value.trim();
-    if (!text) return;
+    function submitGlobalRemark() {
+      const invId = document.getElementById('modalInvoiceId').value;
+      const text = document.getElementById('modalRemarkInput').value.trim();
+      if (!text) return;
 
-    const btn = document.getElementById('sendBtn');
-    btn.disabled = true;
+      const btn = document.getElementById('sendBtn');
+      btn.disabled = true;
 
-    const formData = new FormData();
-    formData.append('invoice_id', invId);
-    formData.append('remark', text);
-    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      const formData = new FormData();
+      formData.append('invoice_id', invId);
+      formData.append('remark', text);
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-    const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
+      const postUrl = "{% url 'manage_invoice_remark' 0 %}".replace('0', invId);
 
-    fetch(postUrl, {
+      fetch(postUrl, {
         method: 'POST',
         body: formData,
-        headers: {'X-Requested-With': 'XMLHttpRequest'}
-    })
-    .then(r => {
-        if (!r.ok) throw new Error('404 or 500 error');
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Network error');
         return r.json();
-    })
-    .then(data => {
-        if(data.status === 'ok') {
-            document.getElementById('modalRemarkInput').value = "";
-            loadRemarks(invId);
+      })
+      .then(data => {
+        if (data.status === 'ok') {
+          document.getElementById('modalRemarkInput').value = "";
+          loadRemarks(invId);
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert("Check if URL is correct in urls.py");
-    })
-    .finally(() => btn.disabled = false);
-}
-
-function closeRemarkModal() {
-    document.getElementById('globalRemarkModal').style.display = 'none';
-}
-
-window.onclick = function(e) {
-    const modal = document.getElementById('globalRemarkModal');
-    if (e.target === modal) {
-        closeRemarkModal();
+      })
+      .catch(error => {
+        console.error('Error submitting remark:', error);
+        alert("Failed to send remark. Please try again.");
+      })
+      .finally(() => {
+        btn.disabled = false;
+      });
     }
-}
-</script>
+
+    function closeRemarkModal() {
+      document.getElementById('globalRemarkModal').style.display = 'none';
+    }
+
+    window.onclick = function(e) {
+      const modal = document.getElementById('globalRemarkModal');
+      if (e.target === modal) {
+        closeRemarkModal();
+      }
+    };
+  </script>
 
 </body>
 </html>

@@ -8181,6 +8181,102 @@ class DispatchDetailView(LoginRequiredMixin,TemplateView):
         )
         return context
 
+class DispatchDetailView(LoginRequiredMixin,TemplateView):
+    template_name = "dispatch/detail.html"
+
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+
+        dispatch = get_object_or_404(
+            DispatchRequest.objects.select_related(
+                "invoice",
+                "invoice__customer",
+                "shipment_method"
+            ),
+            pk=self.kwargs["pk"]
+        )
+
+        context["dispatch"] = dispatch
+
+        context["photos"] = (
+            dispatch.photos.all()
+            .order_by("-uploaded_at")
+        )
+
+        context["remarks"] = (
+            dispatch.remarks.all()
+        )
+
+        context["history"] = (
+            dispatch.history.all()
+        )
+
+        try:
+            context["invoice_file"] = dispatch.invoice_file
+        except:
+            context["invoice_file"] = None
+
+        try:
+            context["warehouse_dispatch"] = dispatch.warehousedispatch
+        except:
+            context["warehouse_dispatch"] = None
+
+        # Docket photos
+        if context["warehouse_dispatch"]:
+            context["docket_photos"] = (
+                DocketPhoto.objects
+                .filter(
+                    warehouse_dispatch=context["warehouse_dispatch"]
+                )
+                .order_by("-uploaded_at")
+            )
+        else:
+            context["docket_photos"] = []
+
+        context["shipment_methods"] = (
+            ShipmentMethod.objects
+            .filter(is_active=True)
+            .order_by("name")
+        )
+        is_warehouse_user = self.request.user.username.lower() == "warehouse"
+        role_override = self.request.GET.get("role")
+        if self.request.user.is_superuser and role_override:
+            context["is_warehouse"] = (role_override == "warehouse")
+            context["is_accountant"] = (role_override == "accountant")
+        else:
+            context["is_warehouse"] = is_warehouse_user
+            context["is_accountant"] = getattr(self.request.user, 'is_accountant', False) or (self.request.user.is_superuser and not is_warehouse_user)
+        return context
+
+
+class UploadInvoicePdfView(LoginRequiredMixin, View):
+
+    def post(self, request, pk):
+        dispatch = get_object_or_404(DispatchRequest, pk=pk)
+        invoice_pdf = request.FILES.get("invoice_pdf")
+        if not invoice_pdf:
+            messages.error(request, "Please select an Invoice PDF file to upload.")
+            return redirect("dispatch_detail", pk=dispatch.id)
+
+        if not invoice_pdf.name.lower().endswith(".pdf"):
+            messages.error(request, "Invalid file format. Only PDF (.pdf) documents are accepted for invoices.")
+            return redirect("dispatch_detail", pk=dispatch.id)
+
+        if invoice_pdf.size == 0:
+            messages.error(request, "The uploaded invoice PDF file is empty (0 bytes). Please upload a valid document.")
+            return redirect("dispatch_detail", pk=dispatch.id)
+
+        DispatchInvoice.objects.update_or_create(
+            dispatch_request=dispatch,
+            defaults={
+                "pdf": invoice_pdf,
+                "uploaded_by": request.user
+            }
+        )
+        messages.success(request, "Invoice PDF uploaded successfully.")
+        return redirect("dispatch_detail", pk=dispatch.id)
+
 
 class NotifyWarehouseView(LoginRequiredMixin, AccountantRequiredMixin, View):
 

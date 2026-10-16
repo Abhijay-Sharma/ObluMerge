@@ -143,4 +143,9 @@ urlpatterns = [
     path("api/product-tier-detail/<int:product_id>/", views.ProductTierDetailApiView.as_view(), name="api_product_tier_detail"),
     path("api/bulk-update-product-tiers/", views.BulkUpdateProductTiersApiView.as_view(), name="api_bulk_update_product_tiers"),
     path("api/save-single-product-pricing/", views.SaveSingleProductPricingApiView.as_view(), name="api_save_single_product_pricing"),
+path(
+        "dispatch/<int:pk>/upload-invoice/",
+        views.UploadInvoicePdfView.as_view(),
+        name="upload_dispatch_invoice"
+    ),
 ]
