@@ -238,18 +238,33 @@
                             <td class="{% if row.has_incentive %}product-green{% else %}product-red{% endif %}">{{ row.product }}</td>
                             <td>{{ row.quantity|floatformat:2 }}</td>
                             <td>₹{{ row.amount|floatformat:2 }}</td>
-                            <td>
+                             <td>
                                 {% if not row.is_trigger_on %}
                                     <span style="color: var(--accent-red); font-size: 11px; font-weight: bold;">✕ Trigger Off</span>
-                                {% elif row.payout_done %}
-                                    <span style="color: var(--accent-green); font-size: 11px; font-weight: bold;">✓ Paid by Admin</span>
-                                {% elif not row.is_fully_paid %}
-                                    <span style="color: var(--text-muted); font-size: 11px;">Waiting Payment</span>
+
                                 {% elif not row.has_incentive %}
                                     <span style="color: var(--text-muted); font-size: 11px;">Non-Incentive</span>
+
+                                {% elif row.payout_done %}
+                                    <span style="color: var(--accent-green); font-size: 11px; font-weight: bold;">✓ Paid by Admin</span>
+
+                                {% elif not row.is_fully_paid %}
+                                    <!-- 1. Invoice is UNPAID: Keep 'Waiting Payment' active -->
+                                    <span style="color: var(--text-muted); font-size: 11px; font-weight: bold;">Waiting Payment</span>
+
+                                    <!-- Sub-tag: Check if it's ALSO below MSRP -->
+                                    {% if not row.is_above_msp %}
+                                        <div style="color: var(--accent-yellow); font-size: 10px; font-weight: bold; margin-top: 2px;">
+                                            ✕ Below MSRP
+                                        </div>
+                                    {% endif %}
+
                                 {% elif not row.is_above_msp %}
+                                    <!-- 2. Invoice is PAID, but item was sold below MSRP -->
                                     <span style="color: var(--accent-yellow); font-size: 11px; font-weight: bold;">✕ Below MSRP</span>
+
                                 {% else %}
+                                    <!-- 3. Invoice is PAID and above MSRP -->
                                     <span class="product-green" style="font-size: 11px;">✓ Calculated</span>
                                 {% endif %}
                             </td>
