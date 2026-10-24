@@ -2856,6 +2856,99 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
 
         return ctx
 
+def send_payment_ticket_email(request, thread, action):
+    voucher_status = thread.voucher_status
+    customer = voucher_status.customer
+    voucher = voucher_status.voucher
+
+    # Get the customer's salesperson email
+    salesperson = customer.salesperson
+    salesperson_email = None
+
+    if salesperson and salesperson.user:
+        salesperson_email = salesperson.user.email
+
+    # Get the user's manager email
+    manager = getattr(request.user, "manager", None)
+    manager_user = getattr(manager, "user", None) if manager else None
+
+    manager_email = (
+        getattr(manager, "email", None)
+        or getattr(manager_user, "email", None)
+    )
+
+    # Build the ticket URL
+    page_link = "https://oblutools.com" + reverse(
+        "customers:payment_thread_detail",
+        args=[voucher_status.id],
+    )
+
+    # Choose subject and action text
+    if action == "RAISED":
+        subject = "🚨 Payment Ticket Raised"
+        action_text = "raised"
+    else:
+        subject = "✅ Payment Ticket Solved"
+        action_text = "solved"
+
+    salesperson_name = (
+        request.user.get_full_name()
+        or request.user.username
+    )
+
+    # Email body
+    body = f"""
+Hello,
+
+The user {salesperson_name} has {action_text} a payment ticket.
+
+Customer: {customer.name}
+Invoice: {voucher.voucher_number}
+Action: {action_text.title()}
+
+Please review the ticket details.
+
+Open Ticket:
+{page_link}
+
+Regards,
+OBLU Tools
+"""
+
+    # Only Nitin in the To field
+    to_emails = ["nitin@obluhc.com"]
+
+    # Other recipients in CC
+    cc_emails = [
+        salesperson_email,
+        manager_email,
+        request.user.email,
+        "abhijay.obluhc@gmail.com",
+        "management@obluhc.com",
+    ]
+
+    # Remove empty addresses, duplicates, and Nitin from CC
+    to_emails_lower = {email.lower() for email in to_emails}
+
+    cc_emails = list(dict.fromkeys(
+        email.strip()
+        for email in cc_emails
+        if email
+        and email.strip()
+        and email.strip().lower() not in to_emails_lower
+    ))
+
+    # Send email
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=body,
+        from_email="crm@oblutools.com",
+        to=to_emails,
+        cc=cc_emails,
+    )
+
+    msg.send(fail_silently=False)
+
 def export_payment_followup(request):
         # 1. REUSE FILTERING LOGIC
         user = request.user
@@ -3023,6 +3116,7 @@ def payment_followup_action(request):
             event_type="RAISED",
             performed_by=request.user
         )
+        send_payment_ticket_email(request, thread, "RAISED")
 
         return JsonResponse({"status": "ok"})
 
@@ -3039,9 +3133,9 @@ def payment_followup_action(request):
             event_type="SOLVED",
             performed_by=request.user
         )
+        send_payment_ticket_email(request, thread, "SOLVED")
 
         return JsonResponse({"status": "ok"})
-
 class CustomerEditView(AccountantRequiredMixin, View):
     template_name = "customers/edit_customer.html"
 
