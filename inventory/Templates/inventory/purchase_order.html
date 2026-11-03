@@ -1,351 +1,748 @@
 {% load static %}
-
-{% block title %}Purchase Order Generator{% endblock %}
-
-{% block extra_head %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Purchase Order Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* ── Base ─────────────────────────────────────────────────────────── */
-  .po-wrapper { padding: 24px; max-width: 100%; }
+  /* ── Base & Soft Light Palette ────────────────────────────────────── */
+  :root {
+    --bg-page: #faf9f5;
+    --bg-card: #ffffff;
+    --bg-subtle: #f8fafc;
+    --border-light: #e2e8f0;
+    --border-soft: #f1f5f9;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    --primary: #4f46e5;
+    --primary-soft: #eef2ff;
+  }
+
+  /* ── Full Viewport App Layout ────────────────────────────────────── */
+  {% if products is not None %}
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--bg-page);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .po-wrapper {
+    height: 100vh;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 18px 14px 18px;
+    box-sizing: border-box;
+    background-color: var(--bg-page);
+    overflow: hidden;
+  }
+  {% else %}
+  html, body {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-page);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .po-wrapper {
+    min-height: 100vh;
+    padding: 24px;
+    box-sizing: border-box;
+    background-color: var(--bg-page);
+  }
+  {% endif %}
 
   /* ── Category selector ───────────────────────────────────────────── */
   .category-card {
-    background:#fff; border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,.07);
-    padding:48px 40px; max-width:560px; margin:80px auto; text-align:center;
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .05);
+    padding: 48px 40px;
+    max-width: 520px;
+    margin: 70px auto;
+    text-align: center;
   }
-  .category-card h2 { font-size:1.6rem; font-weight:700; color:#1e293b; margin-bottom:8px; }
-  .category-card p  { color:#64748b; margin-bottom:28px; }
+  .category-card h2 { font-size: 1.55rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+  .category-card p  { color: var(--text-muted); margin-bottom: 28px; font-size: .95rem; }
   .category-card select {
-    width:100%; padding:12px 16px; border:2px solid #e2e8f0; border-radius:10px;
-    font-size:1rem; color:#334155; background:#f8fafc; margin-bottom:20px;
-    appearance:none; cursor:pointer;
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border-light);
+    border-radius: 10px;
+    font-size: .98rem;
+    color: var(--text-main);
+    background: var(--bg-subtle);
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .category-card select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .12);
   }
   .btn-primary {
-    background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none;
-    border-radius:10px; padding:13px 32px; font-size:1rem; font-weight:600;
-    cursor:pointer; width:100%; transition:opacity .2s;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 32px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: transform .15s, box-shadow .2s, opacity .2s;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, .2);
   }
-  .btn-primary:hover { opacity:.88; }
+  .btn-primary:hover { opacity: .94; transform: translateY(-1px); }
 
   /* ── Page header ─────────────────────────────────────────────────── */
   .po-header {
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom:24px; flex-wrap:wrap; gap:12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: var(--bg-card);
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .03);
   }
-  .po-header h1 { font-size:1.5rem; font-weight:700; color:#1e293b; margin:0; }
-  .badge-cat { background:#ede9fe; color:#6d28d9; border-radius:20px; padding:5px 14px; font-size:.85rem; font-weight:600; }
-  .right-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .po-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .po-header h1 { font-size: 1.35rem; font-weight: 700; color: var(--text-main); margin: 0; }
+  .badge-cat {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid #c7d2fe;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: .82rem;
+    font-weight: 600;
+  }
+  .right-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .right-actions select {
-    padding:8px 14px; border-radius:8px; border:1.5px solid #e2e8f0;
-    font-size:.9rem; background:#fff; color:#334155; cursor:pointer;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border-light);
+    font-size: .88rem;
+    font-weight: 500;
+    background: var(--bg-subtle);
+    color: var(--text-main);
+    cursor: pointer;
+    height: 38px;
   }
-  .btn-dl     { background:#10b981; color:#fff; border:none; padding:9px 20px; border-radius:8px; font-size:.9rem; font-weight:600; cursor:pointer; }
-  .btn-dl:hover { background:#059669; }
-  .btn-print  { background:#6366f1; color:#fff; border:none; padding:9px 20px; border-radius:8px; font-size:.9rem; font-weight:600; cursor:pointer; }
+  .right-actions select:focus { outline: none; border-color: var(--primary); }
+
+  .btn-dl, .btn-print, .btn-toggle-dead, .btn-legend {
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: .84rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all .15s ease;
+    white-space: nowrap;
+  }
+  .btn-dl { background: #10b981; color: #fff; border: none; }
+  .btn-dl:hover { background: #059669; }
+  .btn-print { background: var(--primary); color: #fff; border: none; }
+  .btn-print:hover { background: #4338ca; }
   .btn-toggle-dead {
-    background:#fff; border:1.5px solid #e2e8f0; color:#334155;
-    padding:9px 20px; border-radius:8px; font-size:.9rem; font-weight:600; cursor:pointer;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-light);
+    color: var(--text-main);
   }
-  .btn-toggle-dead.active { background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
+  .btn-toggle-dead:hover { background: var(--bg-subtle); border-color: #cbd5e1; }
+  .btn-toggle-dead.active { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+  .btn-legend {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-light);
+    color: var(--text-main);
+  }
+  .btn-legend:hover { background: var(--bg-subtle); border-color: #cbd5e1; }
 
   /* ── Summary strip ───────────────────────────────────────────────── */
-  .summary-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:14px; margin-bottom:28px; }
-  .sc { background:#fff; border-radius:12px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
-  .sc-label { font-size:.73rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; display:block; }
-  .sc-value { font-size:1.5rem; font-weight:700; color:#1e293b; display:block; margin-top:2px; }
-  .sc.danger .sc-value { color:#ef4444; }
-  .sc.warn   .sc-value { color:#f59e0b; }
-  .sc.green  .sc-value { color:#10b981; }
-  .sc.purple .sc-value { color:#7c3aed; }
-
-  /* ── Table ───────────────────────────────────────────────────────── */
-  .table-scroll { overflow-x:auto; border-radius:14px; box-shadow:0 4px 24px rgba(0,0,0,.07); }
-  .po-table { width:100%; border-collapse:collapse; background:#fff; font-size:.88rem; min-width:1800px; }
-  .po-table thead tr { background:#1e293b; color:#fff; }
-  .po-table thead th {
-    padding:13px 14px; text-align:left; font-weight:600;
-    font-size:.77rem; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+  .summary-strip {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
   }
-  .po-table thead th:first-child { border-radius:14px 0 0 0; }
-  .po-table thead th:last-child  { border-radius:0 14px 0 0; }
-  .po-table tbody tr.data-row { border-bottom:1px solid #f1f5f9; transition:background .15s; }
-  .po-table tbody tr.data-row:hover { background:#fafbff; }
-  .po-table td { padding:12px 14px; color:#334155; vertical-align:middle; }
+  .sc {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .02);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .sc-label { font-size: .68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .sc-value { font-size: 1.35rem; font-weight: 700; color: var(--text-main); margin-top: 3px; line-height: 1.1; }
+  .sc.danger { border-left: 4px solid #ef4444; }
+  .sc.danger .sc-value { color: #dc2626; }
+  .sc.warn   { border-left: 4px solid #f59e0b; }
+  .sc.warn   .sc-value { color: #d97706; }
+  .sc.green  { border-left: 4px solid #10b981; }
+  .sc.green  .sc-value { color: #059669; }
+  .sc.purple { border-left: 4px solid #8b5cf6; }
+  .sc.purple .sc-value { color: #7c3aed; }
 
-  tr.row-ok     { }
-  tr.row-warn   { background:#fffbeb !important; }
-  tr.row-urgent { background:#fff1f2 !important; }
-  tr.row-dead   { background:#f8fafc !important; opacity:.7; }
+  /* ── Sticky Table & Scroll Container ─────────────────────────────── */
+  .table-scroll {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    box-shadow: 0 4px 20px rgba(15, 23, 42, .05);
+    position: relative;
+  }
+
+  .table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .table-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+  .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+  .table-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .po-table {
+    width: 100%;
+    border-collapse: separate; /* Required for sticky headers to render correctly */
+    border-spacing: 0;
+    background: var(--bg-card);
+    font-size: .84rem;
+    min-width: 1800px;
+  }
+
+  /* Sticky Header */
+  .po-table thead tr {
+    background: #1e293b;
+    color: #fff;
+  }
+
+  .po-table thead th {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background-color: #1e293b;
+    color: #fff;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    border-bottom: 2px solid #0f172a;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  }
+
+  .po-table thead th small {
+    color: #cbd5e1;
+    font-size: .67rem;
+    text-transform: none;
+    letter-spacing: 0;
+    display: block;
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  /* Sticky First Two Columns (Checkbox + Product Name) on Desktop */
+  @media (min-width: 769px) {
+    /* Corner Header 1 (Checkbox) - top & left locked */
+    .po-table thead th:nth-child(1) {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 48px;
+      min-width: 48px;
+      max-width: 48px;
+      padding: 12px 0 !important;
+      text-align: center;
+      z-index: 60;
+      background-color: #1e293b !important;
+      box-sizing: border-box;
+    }
+    /* Body Column 1 (Checkbox) */
+    .po-table tbody tr.data-row td:nth-child(1) {
+      position: -webkit-sticky;
+      position: sticky;
+      left: 0;
+      width: 48px;
+      min-width: 48px;
+      max-width: 48px;
+      padding: 12px 0 !important;
+      text-align: center;
+      z-index: 20;
+      box-sizing: border-box;
+    }
+
+    /* Corner Header 2 (Product Name) - top & left locked */
+    .po-table thead th:nth-child(2) {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 0;
+      left: 48px;
+      min-width: 220px;
+      max-width: 260px;
+      z-index: 60;
+      background-color: #1e293b !important;
+      border-right: 1.5px solid #334155;
+      box-shadow: 3px 0 6px -2px rgba(15, 23, 42, 0.25);
+    }
+    /* Body Column 2 (Product Name) */
+    .po-table tbody tr.data-row td:nth-child(2) {
+      position: -webkit-sticky;
+      position: sticky;
+      left: 48px;
+      min-width: 220px;
+      max-width: 260px;
+      z-index: 20;
+      border-right: 1.5px solid var(--border-light);
+      box-shadow: 3px 0 6px -2px rgba(15, 23, 42, 0.08);
+    }
+  }
+
+  /* Ensure solid background on sticky column cells so scrolled text doesn't bleed through */
+  .po-table tbody tr.data-row td:nth-child(1),
+  .po-table tbody tr.data-row td:nth-child(2) {
+    background-color: #ffffff;
+  }
+  .po-table tbody tr.row-ok td:nth-child(1),
+  .po-table tbody tr.row-ok td:nth-child(2) {
+    background-color: #ffffff;
+  }
+  .po-table tbody tr.row-warn td:nth-child(1),
+  .po-table tbody tr.row-warn td:nth-child(2) {
+    background-color: #fffbeb !important;
+  }
+  .po-table tbody tr.row-urgent td:nth-child(1),
+  .po-table tbody tr.row-urgent td:nth-child(2) {
+    background-color: #fff1f2 !important;
+  }
+  .po-table tbody tr.row-dead td:nth-child(1),
+  .po-table tbody tr.row-dead td:nth-child(2) {
+    background-color: #f8fafc !important;
+  }
+  .po-table tbody tr.row-trigger-on td:nth-child(1),
+  .po-table tbody tr.row-trigger-on td:nth-child(2) {
+    background-color: #f5f3ff !important;
+  }
+  .po-table tbody tr.data-row:hover td:nth-child(1),
+  .po-table tbody tr.data-row:hover td:nth-child(2) {
+    background-color: #f1f5f9 !important;
+  }
+
+  .po-table tbody tr.data-row {
+    background-color: #ffffff;
+    transition: background-color .12s ease;
+  }
+  .po-table tbody tr.data-row td {
+    padding: 12px 14px;
+    color: #334155;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .po-table tbody tr.data-row:hover { background-color: #f8fafc !important; }
+
+  tr.row-ok     { background-color: #ffffff; }
+  tr.row-warn   { background-color: #fffbeb !important; }
+  tr.row-urgent { background-color: #fff1f2 !important; }
+  tr.row-dead   { background-color: #f8fafc !important; opacity: .78; }
 
   tr.row-trigger-on {
-    background:#f5f3ff !important;
-    box-shadow:inset 4px 0 0 #8b5cf6;
+    background-color: #f5f3ff !important;
+  }
+  tr.row-trigger-on td:first-child {
+    box-shadow: inset 4px 0 0 #8b5cf6;
   }
 
   /* ── Cell styles ─────────────────────────────────────────────────── */
-  .product-name { font-weight:600; color:#1e293b; }
+  .product-name { font-weight: 600; color: var(--text-main); line-height: 1.35; font-size: .88rem; }
+  .product-meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
   .new-product-toggle {
-    display:block;
-    margin-top:5px;
-    padding:3px 9px;
-    border-radius:6px;
-    font-size:.70rem;
-    font-weight:600;
-    cursor:pointer;
-    border:1px solid;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: .69rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all .15s;
   }
-
   .new-product-toggle.on {
-    background:#dcfce7;
-    border-color:#86efac;
-    color:#15803d;
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #15803d;
   }
-
   .new-product-toggle.off {
-    background:#f5f3ff;
-    border-color:#c4b5fd;
-    color:#7c3aed;
+    background: #f5f3ff;
+    border-color: #ddd6fe;
+    color: #6d28d9;
   }
-  .unit-badge   { display:inline-block; background:#f1f5f9; color:#64748b; border-radius:4px; padding:1px 6px; font-size:.75rem; margin-left:4px; }
-  .sub-note     { font-size:.72rem; color:#94a3b8; margin-top:2px; }
+  .unit-badge {
+    display: inline-block;
+    background: #f1f5f9;
+    color: #475569;
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-size: .72rem;
+    font-weight: 600;
+  }
+  .sub-note { font-size: .72rem; color: var(--text-light); margin-top: 3px; line-height: 1.3; }
 
-  .growth-cell  { display:flex; flex-direction:column; gap:4px; }
-  .growth-label { font-size:.7rem; color:#94a3b8; }
-  .gpill { display:inline-flex; align-items:center; gap:4px; border-radius:20px; padding:3px 9px; font-size:.78rem; font-weight:600; width:fit-content; }
-  .gpill.up   { background:#dcfce7; color:#16a34a; }
-  .gpill.down { background:#fee2e2; color:#dc2626; }
-  .gpill.flat { background:#f1f5f9; color:#64748b; }
+  .growth-cell  { display: flex; flex-direction: column; gap: 3px; }
+  .growth-label { font-size: .68rem; color: var(--text-light); font-weight: 500; }
+  .gpill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: .75rem;
+    font-weight: 600;
+    width: fit-content;
+  }
+  .gpill.up   { background: #dcfce7; color: #15803d; }
+  .gpill.down { background: #fee2e2; color: #b91c1c; }
+  .gpill.flat { background: #f1f5f9; color: #64748b; }
 
-  .pred-cell  { display:flex; flex-direction:column; gap:3px; }
-  .pred-row   { display:flex; justify-content:space-between; gap:8px; }
-  .pred-month { font-size:.73rem; color:#94a3b8; }
-  .pred-qty   { font-weight:600; color:#6366f1; }
-  .pred-muted { color:#94a3b8; font-size:.78rem; font-style:italic; }
+  .btn-sales-trigger {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
+    color: var(--primary);
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+  .btn-sales-trigger:hover {
+    background: var(--primary-soft);
+    border-color: #c7d2fe;
+  }
 
-  .tag-dead   { background:#fee2e2; color:#dc2626; border-radius:20px; padding:3px 10px; font-size:.78rem; font-weight:600; }
-  .tag-active { background:#dcfce7; color:#16a34a; border-radius:20px; padding:3px 10px; font-size:.78rem; font-weight:600; }
+  .pred-cell  { display: flex; flex-direction: column; gap: 3px; min-width: 115px; }
+  .pred-row   { display: flex; justify-content: space-between; gap: 10px; font-size: .8rem; }
+  .pred-month { font-size: .72rem; color: var(--text-light); font-weight: 500; }
+  .pred-qty   { font-weight: 600; color: var(--primary); }
+  .pred-muted { color: var(--text-light); font-size: .78rem; font-style: italic; }
 
-  .po-qty  { color:#6366f1; font-weight:700; }
-  .po-none { color:#cbd5e1; font-style:italic; font-size:.8rem; }
+  .tag-dead   { background: #fee2e2; color: #dc2626; border-radius: 20px; padding: 3px 10px; font-size: .75rem; font-weight: 600; display: inline-block; white-space: nowrap; }
+  .tag-active { background: #dcfce7; color: #15803d; border-radius: 20px; padding: 3px 10px; font-size: .75rem; font-weight: 600; display: inline-block; white-space: nowrap; }
 
-  .intransit-badge { display:inline-block; background:#dbeafe; color:#1d4ed8; border-radius:6px; padding:2px 7px; font-size:.74rem; font-weight:600; margin-top:3px; }
+  .po-qty  { color: var(--primary); font-weight: 700; }
+  .po-none { color: #cbd5e1; font-style: italic; font-size: .78rem; }
 
-  .del-date    { font-weight:600; color:#0369a1; }
-  .del-arrived { color:#10b981; font-weight:600; }
-  .del-none    { color:#cbd5e1; font-style:italic; font-size:.8rem; }
+  .intransit-badge {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: .73rem;
+    font-weight: 600;
+    margin-top: 3px;
+    white-space: nowrap;
+  }
 
-  /* rec cell */
-  .rec-qty  { font-size:1.05rem; font-weight:700; }
-  .rec-ok   .rec-qty { color:#10b981; }
-  .rec-warn .rec-qty { color:#f59e0b; }
-  .rec-urg  .rec-qty { color:#ef4444; }
-  .rec-note { font-size:.75rem; color:#94a3b8; margin-top:3px; }
-  .moq-badge { background:#fef3c7; color:#92400e; border-radius:6px; padding:2px 7px; font-size:.74rem; font-weight:600; display:inline-block; margin-top:4px; }
-  .ok-note  { color:#10b981; font-weight:600; font-size:.82rem; }
-  .dead-note { color:#64748b; font-size:.82rem; font-style:italic; }
-  .lasts-badge { display:inline-block; background:#f0fdf4; color:#166534; border-radius:6px; padding:2px 7px; font-size:.74rem; font-weight:600; margin-top:5px; }
+  .del-date    { font-weight: 600; color: #0369a1; }
+  .del-arrived { color: #10b981; font-weight: 600; }
+  .del-none    { color: #cbd5e1; font-style: italic; font-size: .78rem; }
 
-  /* overstock */
-  .over-tag  { background:#ede9fe; color:#6d28d9; border-radius:20px; padding:3px 10px; font-size:.78rem; font-weight:600; }
-  .mo-ok   { color:#10b981; font-weight:600; }
-  .mo-warn { color:#f59e0b; font-weight:600; }
-  .mo-low  { color:#ef4444; font-weight:600; }
+  /* Recommendation cell */
+  .rec-qty  { font-size: .98rem; font-weight: 700; }
+  .rec-ok   .rec-qty { color: #059669; }
+  .rec-warn .rec-qty { color: #d97706; }
+  .rec-urg  .rec-qty { color: #dc2626; }
+  .rec-note { font-size: .73rem; color: var(--text-muted); margin-top: 3px; }
+  .moq-badge { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 2px 7px; font-size: .72rem; font-weight: 600; display: inline-block; margin-top: 4px; }
+  .ok-note   { color: #059669; font-weight: 600; font-size: .82rem; }
+  .dead-note { color: var(--text-muted); font-size: .8rem; font-style: italic; }
+  .lasts-badge { display: inline-block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 6px; padding: 2px 7px; font-size: .72rem; font-weight: 600; margin-top: 4px; }
 
-  /* gst purchase cell */
-  .gst-date  { font-weight:600; color:#0369a1; }
-  .gst-qty   { color:#6366f1; font-weight:700; }
-  .gst-none  { color:#cbd5e1; font-style:italic; font-size:.8rem; }
+  /* Overstock & Runway */
+  .over-tag { background: #ede9fe; color: #6d28d9; border-radius: 20px; padding: 3px 10px; font-size: .74rem; font-weight: 600; display: inline-block; white-space: nowrap; }
+  .mo-ok    { color: #059669; font-weight: 600; }
+  .mo-warn  { color: #d97706; font-weight: 600; }
+  .mo-low   { color: #dc2626; font-weight: 600; }
+
+  /* GST purchase cell */
+  .gst-date { font-weight: 600; color: #0369a1; }
+  .gst-qty  { color: var(--primary); font-weight: 700; }
+  .gst-none { color: #cbd5e1; font-style: italic; font-size: .78rem; }
 
   /* ── Math breakdown rows ─────────────────────────────────────────── */
-  tr.math-row { display:none; }
-  tr.math-row.open { display:table-row; }
-  tr.math-row td { padding:0; border-bottom:2px solid #e2e8f0; }
+  tr.math-row { display: none; }
+  tr.math-row.open { display: table-row; }
+  tr.math-row td { padding: 0; border-bottom: 2px solid var(--border-light); }
 
   .math-panel {
-    background:#f8fafc; padding:20px 24px;
-    font-size:.83rem; color:#334155; line-height:1.7;
+    background: #f8fafc;
+    padding: 20px 24px;
+    font-size: .83rem;
+    color: #334155;
+    line-height: 1.65;
+    border-top: 1px solid var(--border-light);
   }
-  .math-panel h4 { font-size:.85rem; font-weight:700; color:#1e293b; margin:0 0 12px; }
-  .math-steps { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px 20px; margin-bottom:16px; }
-  .math-step { background:#fff; border-radius:8px; padding:10px 14px; border-left:3px solid #6366f1; }
-  .math-step.step-warn  { border-left-color:#f59e0b; }
-  .math-step.step-ok    { border-left-color:#10b981; }
-  .math-step.step-info  { border-left-color:#0ea5e9; }
-  .math-step .ms-label  { font-size:.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; }
-  .math-step .ms-value  { font-weight:700; color:#1e293b; font-size:.95rem; }
-  .math-step .ms-note   { font-size:.72rem; color:#64748b; margin-top:2px; }
-  .math-conclusion { margin-top:12px; padding:12px 16px; background:#fff; border-radius:8px; border:1.5px solid #e2e8f0; }
+  .math-panel h4 { font-size: .9rem; font-weight: 700; color: var(--text-main); margin: 0 0 14px; }
+  .math-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px 16px; margin-bottom: 16px; }
+  .math-step { background: var(--bg-card); border-radius: 10px; padding: 11px 14px; border: 1px solid var(--border-light); border-left: 3.5px solid var(--primary); }
+  .math-step.step-warn  { border-left-color: #f59e0b; }
+  .math-step.step-ok    { border-left-color: #10b981; }
+  .math-step.step-info  { border-left-color: #0ea5e9; }
+  .math-step .ms-label  { font-size: .7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .math-step .ms-value  { font-weight: 700; color: var(--text-main); font-size: .95rem; margin-top: 2px; }
+  .math-step .ms-note   { font-size: .72rem; color: var(--text-muted); margin-top: 2px; }
+  .math-conclusion { margin-top: 12px; padding: 12px 16px; background: var(--bg-card); border-radius: 10px; border: 1.5px solid var(--border-light); }
 
   /* Chart canvas wrapper */
-  .chart-wrap { position:relative; margin:16px 0 8px; background:#fff; border-radius:10px; padding:12px; border:1px solid #e2e8f0; overflow:hidden; }
-  .chart-wrap canvas { display:block; }
-  .chart-legend { display:flex; gap:16px; font-size:.75rem; color:#64748b; margin-bottom:8px; flex-wrap:wrap; }
-  .chart-legend span { display:flex; align-items:center; gap:5px; }
-  .cl-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .chart-wrap { position: relative; margin: 12px 0 8px; background: var(--bg-card); border-radius: 10px; padding: 12px; border: 1px solid var(--border-light); overflow: hidden; }
+  .chart-wrap canvas { display: block; }
+  .chart-legend { display: flex; gap: 16px; font-size: .75rem; color: var(--text-muted); margin-bottom: 8px; flex-wrap: wrap; }
+  .chart-legend span { display: flex; align-items: center; gap: 5px; }
+  .cl-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
   .btn-show-math {
-    background:none; border:1px solid #cbd5e1; border-radius:6px;
-    padding:3px 10px; font-size:.75rem; color:#64748b; cursor:pointer;
-    margin-top:6px; white-space:nowrap;
+    background: var(--bg-card);
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: .73rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    margin-top: 6px;
+    white-space: nowrap;
+    transition: all .15s;
   }
-  .btn-show-math:hover { background:#f1f5f9; border-color:#94a3b8; }
+  .btn-show-math:hover { background: #f1f5f9; border-color: #94a3b8; color: var(--text-main); }
 
-  /* ── Modal ────────────────────────────────────────────────────────── */
+  /* ── Modals ───────────────────────────────────────────────────────── */
   .modal-overlay {
-    display:none; position:fixed; inset:0; background:rgba(15,23,42,.45);
-    z-index:1000; align-items:center; justify-content:center;
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
   }
-  .modal-overlay.open { display:flex; }
+  .modal-overlay.open { display: flex; }
   .modal-box {
-    background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.18);
-    width:min(680px,94vw); max-height:80vh; display:flex; flex-direction:column;
-    overflow:hidden;
+    background: var(--bg-card);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .18);
+    width: min(680px, 100%);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   .modal-header {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:18px 22px; border-bottom:1px solid #e2e8f0; flex-shrink:0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-subtle);
+    flex-shrink: 0;
   }
-  .modal-header h3 { font-size:1rem; font-weight:700; color:#1e293b; margin:0; }
+  .modal-header h3 { font-size: .98rem; font-weight: 700; color: var(--text-main); margin: 0; }
   .modal-close {
-    background:none; border:none; font-size:1.4rem; cursor:pointer;
-    color:#94a3b8; line-height:1; padding:0 4px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
   }
-  .modal-close:hover { color:#ef4444; }
-  .modal-body { overflow-y:auto; padding:20px 22px; flex:1; }
-  .modal-loading { text-align:center; color:#94a3b8; padding:40px 0; font-size:.9rem; }
+  .modal-close:hover { color: #ef4444; background: #fee2e2; }
+  .modal-body { overflow-y: auto; padding: 18px 20px; flex: 1; }
+  .modal-loading { text-align: center; color: var(--text-light); padding: 40px 0; font-size: .9rem; }
 
-  /* Customer table in modal */
-  .cust-table { width:100%; border-collapse:collapse; font-size:.85rem; }
-  .cust-table thead tr { background:#f8fafc; }
-  .cust-table th { padding:9px 12px; text-align:left; font-size:.75rem; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e2e8f0; }
-  .cust-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; color:#334155; }
-  .cust-name { font-weight:600; color:#1e293b; }
-  .cust-total { font-weight:700; color:#6366f1; }
-  .cust-monthly-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
-  .cust-m-pill { background:#f1f5f9; border-radius:4px; padding:1px 6px; font-size:.72rem; color:#64748b; }
+  /* Tables inside modals */
+  .cust-table, .hist-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  .cust-table thead tr, .hist-table thead tr { background: var(--bg-subtle); }
+  .cust-table th, .hist-table th {
+    padding: 9px 12px;
+    text-align: left;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .cust-table td, .hist-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    color: #334155;
+  }
+  .hist-table tr:last-child td { border-bottom: none; }
+  .cust-name { font-weight: 600; color: var(--text-main); }
+  .cust-total { font-weight: 700; color: var(--primary); }
+  .cust-monthly-wrap { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .cust-m-pill { background: #f1f5f9; border-radius: 4px; padding: 2px 6px; font-size: .72rem; color: #475569; }
 
-  /* PO / GST history table in modal */
-  .hist-table { width:100%; border-collapse:collapse; font-size:.85rem; }
-  .hist-table thead tr { background:#f8fafc; }
-  .hist-table th { padding:9px 12px; text-align:left; font-size:.75rem; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e2e8f0; }
-  .hist-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; color:#334155; }
-  .hist-table tr:last-child td { border-bottom:none; }
-
-  /* small link-style buttons for modals */
   .btn-link {
-    background:none; border:none; color:#6366f1; font-size:.78rem; font-weight:600;
-    cursor:pointer; padding:0; text-decoration:underline; text-underline-offset:2px;
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
   }
-  .btn-link:hover { color:#4f46e5; }
+  .btn-link:hover { color: #3730a3; }
 
   /* ── Legend ──────────────────────────────────────────────────────── */
-  .legend-section { background:#fff; border-radius:14px; padding:32px 36px; box-shadow:0 2px 12px rgba(0,0,0,.06); margin-top:40px; }
-  .legend-section h2 { font-size:1.15rem; font-weight:700; color:#1e293b; margin-bottom:20px; }
-  .legend-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px; }
-  .li-item { display:flex; gap:14px; }
-  .li-icon { width:36px; height:36px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
-  .li-icon.purple { background:#ede9fe; } .li-icon.blue { background:#dbeafe; }
-  .li-icon.green  { background:#dcfce7; } .li-icon.red  { background:#fee2e2; }
-  .li-icon.amber  { background:#fef3c7; } .li-icon.slate { background:#f1f5f9; }
-  .li-text h4 { font-size:.9rem; font-weight:700; color:#1e293b; margin:0 0 4px; }
-  .li-text p  { font-size:.83rem; color:#64748b; margin:0; line-height:1.55; }
-
-  /* checkbox */
-  .cb-col { text-align:center; }
-  input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:#6366f1; }
-
-  .stage-badge{
-    display:inline-block;
-    padding:3px 8px;
-    border-radius:6px;
-    font-size:.75rem;
-    font-weight:600;
-    margin-top:6px;
+  .legend-section {
+    background: var(--bg-card);
+    border-radius: 14px;
+    padding: 24px 28px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .03);
+    margin: 28px 16px 24px 16px;
+    max-width: 1300px;
   }
+  .legend-section h2 { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0 0 18px; }
+  .legend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+  .li-item { display: flex; gap: 12px; }
+  .li-icon { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; }
+  .li-icon.purple { background: #ede9fe; } .li-icon.blue { background: #dbeafe; }
+  .li-icon.green  { background: #dcfce7; } .li-icon.red  { background: #fee2e2; }
+  .li-icon.amber  { background: #fef3c7; } .li-icon.slate { background: #f1f5f9; }
+  .li-text h4 { font-size: .88rem; font-weight: 700; color: var(--text-main); margin: 0 0 3px; }
+  .li-text p  { font-size: .8rem; color: var(--text-muted); margin: 0; line-height: 1.5; }
 
-.stage-factory{
-    background:#f3f4f6;
-    color:#374151;
-}
+  /* Checkbox */
+  .cb-col { text-align: center; }
+  input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
 
-.stage-shipping{
-    background:#dbeafe;
-    color:#1d4ed8;
-}
+  /* Transit Table */
+  .transit-table {
+    font-size: 11px;
+    white-space: nowrap;
+    border-collapse: collapse;
+    width: 100%;
+    background: var(--bg-card);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+  }
+  .transit-table th {
+    padding: 4px 6px;
+    text-align: center;
+    background: var(--bg-subtle);
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .transit-table td {
+    padding: 4px 6px;
+    text-align: center;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .transit-table tr:last-child td { border-bottom: none; }
 
-.stage-customs{
-    background:#fef3c7;
-    color:#92400e;
-}
-
-.stage-warehouse{
-    background:#ede9fe;
-    color:#6d28d9;
-}
-
-.stage-delivered{
-    background:#dcfce7;
-    color:#166534;
-}
-
-.stage-pill{
-    display:inline-block;
-    margin-top:6px;
-    padding:4px 10px;
-    border-radius:20px;
-    background:#eef4ff;
-    color:#2563eb;
-    font-size:.74rem;
-    font-weight:600;
-}
-
-.transit-table{
-    font-size:11px;
-    white-space:nowrap;
-}
-
-.transit-table th{
-    padding:3px 6px;
-    text-align:center;
-}
-
-.transit-table td{
-    padding:3px 6px;
-    text-align:center;
-    vertical-align:middle;
-}
-
-.sales-badge {
+  .sales-badge {
     display: inline-block;
     padding: 3px 8px;
     border-radius: 6px;
-    font-size: .75rem;
+    font-size: .74rem;
     font-weight: 600;
-}
+  }
+  .sales-badge.included { background: #dcfce7; color: #166534; }
+  .sales-badge.excluded { background: #fee2e2; color: #991b1b; }
 
-.sales-badge.included {
-    background: #dcfce7;
-    color: #166534;
-}
+  /* ── Mobile Responsive Overrides ─────────────────────────────────── */
+  @media (max-width: 768px) {
+    .po-wrapper { padding: 8px; }
+    .category-card { padding: 32px 20px; margin: 32px auto; }
+    .po-header { padding: 10px 12px; gap: 8px; }
+    .po-header h1 { font-size: 1.1rem; }
+    .right-actions { width: 100%; justify-content: stretch; }
+    .right-actions form { width: 100%; }
+    .right-actions select { width: 100%; }
+    .btn-toggle-dead, .btn-dl, .btn-print, .btn-legend { flex: 1; font-size: .76rem; padding: 0 8px; height: 34px; }
 
-.sales-badge.excluded {
-    background: #fee2e2;
-    color: #991b1b;
-}
+    .summary-strip {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .sc { padding: 8px 10px; }
+    .sc-value { font-size: 1.15rem; }
 
+    .table-scroll { border-radius: 10px; }
+    .po-table { font-size: .8rem; min-width: 1500px; }
+    .po-table thead th, .po-table tbody tr.data-row td { padding: 9px 10px; }
+
+    .legend-section { padding: 18px 16px; margin: 20px 8px; }
+    .legend-grid { grid-template-columns: 1fr; }
+
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal-box {
+      width: 100%;
+      max-height: 90vh;
+      border-radius: 16px 16px 0 0;
+    }
+  }
 
   @media print {
-    .no-print { display:none !important; }
-    .po-wrapper { padding:0; }
-    .table-scroll { box-shadow:none; overflow:visible; }
-    .po-table { min-width:unset; }
-    tr.math-row { display:none !important; }
-    .legend-section { break-before:page; }
-    .modal-overlay { display:none !important; }
+    .no-print { display: none !important; }
+    html, body, .po-wrapper { height: auto !important; overflow: visible !important; }
+    .po-wrapper { padding: 0; background: #fff; }
+    .table-scroll { box-shadow: none; overflow: visible !important; height: auto !important; max-height: none !important; border: none; }
+    .po-table { min-width: unset; }
+    .po-table thead th { position: static !important; }
+    tr.math-row { display: none !important; }
+    .legend-section { break-before: page; }
+    .modal-overlay { display: none !important; }
   }
 </style>
-{% endblock %}
+</head>
+<body>
 
-{% block content %}
 <div class="po-wrapper">
 
 {% if products is None %}
@@ -368,7 +765,7 @@
 {% else %}
 {# ── Header ──────────────────────────────────────────────────────────── #}
 <div class="po-header">
-  <div>
+  <div class="po-title-group">
     <h1>📦 Purchase Order Planner</h1>
     <span class="badge-cat">{% for cat in categories %}{% if cat.id == selected_category_id %}{{ cat.name }}{% endif %}{% endfor %}</span>
   </div>
@@ -386,6 +783,7 @@
     </button>
     <button class="btn-dl" onclick="downloadPO()">⬇ Download CSV</button>
     <button class="btn-print" onclick="window.print()">🖨 Print</button>
+    <button type="button" class="btn-legend" onclick="openModal('legendModal')">📖 Guide</button>
   </div>
 </div>
 
@@ -406,16 +804,16 @@
     <tr>
       <th class="cb-col no-print"><input type="checkbox" id="selectAll"></th>
       <th>Product</th>
-      <th>Current Stock<br><small style="font-weight:400;opacity:.7">Avg / day (Tally)</small></th>
-      <th>Growth<br><small style="font-weight:400;opacity:.7">1-Year / Last 3M</small></th>
+      <th>Current Stock<small>Avg / day (Tally)</small></th>
+      <th>Growth<small>1-Year / Last 3M</small></th>
       <th>Sales History</th>
-      <th>Sales Forecast<br><small style="font-weight:400;opacity:.7">M+1 / M+2 / M+3</small></th>
+      <th>Sales Forecast<small>M+1 / M+2 / M+3</small></th>
       <th>Dead Stock?</th>
       <th>Top Customers</th>
-      <th>Last Purchase Order<br><small style="font-weight:400;opacity:.7">Latest PO</small></th>
-      <th>GST Purchases<br><small style="font-weight:400;opacity:.7">Received stock</small></th>
+      <th>Last Purchase Order<small>Latest PO</small></th>
+      <th>GST Purchases<small>Received stock</small></th>
       <th>In Transit</th>
-      <th>Order Qty<br><small style="font-weight:400;opacity:.7">Recommendation</small></th>
+      <th>Order Qty<small>Recommendation</small></th>
       <th>Stock Runway</th>
     </tr>
   </thead>
@@ -433,8 +831,8 @@
 
     {# 1 — Product name #}
     <td>
-        <div class="product-name">{{ p.name }}</div>
-
+      <div class="product-name">{{ p.name }}</div>
+      <div class="product-meta-row">
         <button
             type="button"
             class="new-product-toggle {% if p.is_new_product %}on{% else %}off{% endif %}"
@@ -448,28 +846,25 @@
                 ○ New Product: OFF
             {% endif %}
         </button>
-
         <span class="unit-badge">{{ p.unit|default:"—" }}</span>
+      </div>
     </td>
 
     {# 2 — Current stock + avg daily (from tally) #}
     <td>
-      <strong style="font-size:1.05rem;color:#1e293b">{{ p.current_stock|floatformat:0 }}</strong>
-
+      <strong style="font-size:1.02rem;color:#1e293b">{{ p.current_stock|floatformat:0 }}</strong>
       <div class="sub-note">
         avg {{ p.avg_daily }}/day
-
         {% if p.is_new_product and p.landing_date %}
-            <span style="color:#10b981;font-size:.68rem">
+            <span style="color:#10b981;font-size:.68rem;display:block">
                 (Since {{ p.landing_date|date:"d M Y" }})
             </span>
         {% else %}
-            <span style="color:#6366f1;font-size:.68rem">
+            <span style="color:#6366f1;font-size:.68rem;display:block">
                 (Tally Apr-25)
             </span>
         {% endif %}
       </div>
-
     </td>
 
     {# 3 — Growth #}
@@ -481,7 +876,7 @@
         {% else %}
           <span class="gpill flat">N/A</span>
         {% endif %}
-        <span class="growth-label" style="margin-top:5px">Last 3M vs Prev 3M</span>
+        <span class="growth-label" style="margin-top:4px">Last 3M vs Prev 3M</span>
         {% if p.growth_3m is not None %}
           <span class="gpill {% if p.growth_3m >= 0 %}up{% else %}down{% endif %}">{% if p.growth_3m >= 0 %}▲{% else %}▼{% endif %} {{ p.growth_3m }}%</span>
         {% else %}
@@ -492,20 +887,23 @@
         {% endif %}
       </div>
     </td>
+
+    {# 4 — Sales History #}
     <td>
-      <button class="btn btn-sm btn-outline-info"
+      <button class="btn-sales-trigger"
               onclick="openSalesModal('{{ p.name|escapejs }}', {{ p.monthly_sales_json }}, {{ p.daily_sales_json }})">
         📈 Sales
       </button>
     </td>
-    {# 4 — Forecast #}
+
+    {# 5 — Forecast #}
     <td>
       {% if p.pred_m1 is not None %}
         <div class="pred-cell">
           <div class="pred-row"><span class="pred-month">M+1</span><span class="pred-qty">{{ p.pred_m1 }} {{ p.unit }}</span></div>
           <div class="pred-row"><span class="pred-month">M+2</span><span class="pred-qty">{{ p.pred_m2 }} {{ p.unit }}</span></div>
           <div class="pred-row"><span class="pred-month">M+3</span><span class="pred-qty">{{ p.pred_m3 }} {{ p.unit }}</span></div>
-          <div class="sub-note" style="margin-top:3px">Growth-adjusted</div>
+          <div class="sub-note" style="margin-top:2px">Growth-adjusted</div>
         </div>
       {% elif p.is_dead %}
         <span class="pred-muted">— Dead stock</span>
@@ -514,7 +912,7 @@
       {% endif %}
     </td>
 
-    {# 5 — Dead stock #}
+    {# 6 — Dead stock #}
     <td>
       {% if p.is_dead %}
         <span class="tag-dead">⚠ Dead Stock</span>
@@ -525,18 +923,18 @@
       {% endif %}
     </td>
 
-    {# 6 — Top customers (modal trigger) #}
+    {# 7 — Top customers (modal trigger) #}
     <td>
       <button class="btn-link" onclick="openCustomerModal({{ p.id }}, '{{ p.name|escapejs }}')">
         👥 View Top 5
       </button>
     </td>
 
-    {# 7 — Last Purchase Order (PO voucher) #}
+    {# 8 — Last Purchase Order (PO voucher) #}
     <td>
       {% if p.latest_po_date %}
         <div class="po-qty">{{ p.latest_po_qty|floatformat:0 }} {{ p.unit }}</div>
-        <div style="font-weight:600;font-size:.82rem">{{ p.latest_po_date|date:"d M Y" }}</div>
+        <div style="font-weight:600;font-size:.8rem">{{ p.latest_po_date|date:"d M Y" }}</div>
         {% if p.incoming_qty %}
           <span class="intransit-badge">🚚 In transit</span>
         {% endif %}
@@ -550,11 +948,11 @@
       {% endif %}
     </td>
 
-    {# 8 — GST Purchases (received stock) #}
+    {# 9 — GST Purchases (received stock) #}
     <td>
       {% if p.latest_gst_date %}
         <div class="gst-qty">{{ p.latest_gst_qty|floatformat:0 }} {{ p.unit }}</div>
-        <div class="gst-date" style="font-size:.82rem">{{ p.latest_gst_date|date:"d M Y" }}</div>
+        <div class="gst-date" style="font-size:.8rem">{{ p.latest_gst_date|date:"d M Y" }}</div>
         {% if p.gst_rows|length > 1 %}
           <button class="btn-link" style="display:block;margin-top:4px" onclick="openGSTModal({{ p.id }}, '{{ p.name|escapejs }}')">
             All {{ p.gst_rows|length }} receipts →
@@ -565,13 +963,10 @@
       {% endif %}
     </td>
 
-    {# 9 — In Transit #}
+    {# 10 — In Transit #}
     <td>
-
         {% if p.tracking_details %}
-
-        <table class="table table-sm table-bordered table-hover mb-0 transit-table">
-
+        <table class="transit-table">
             <thead>
                 <tr>
                     <th>Qty</th>
@@ -581,54 +976,36 @@
                     <th>Left</th>
                 </tr>
             </thead>
-
             <tbody>
-
             {% for po in p.tracking_details %}
-
                 <tr>
-
-                    <td>{{ po.incoming_qty|floatformat:0 }}</td>
-
+                    <td style="font-weight:600">{{ po.incoming_qty|floatformat:0 }}</td>
                     <td>{{ po.po_number }}</td>
-
                     <td>{{ po.stage }}</td>
-
                     <td>
                         {% if po.eta %}
                             {{ po.eta|date:"d M" }}
                         {% endif %}
                     </td>
-
                     <td>
                         {% if po.remaining_days is not None %}
                             {{ po.remaining_days }}
                         {% endif %}
                     </td>
-
                 </tr>
-
             {% endfor %}
-
             </tbody>
-
         </table>
-
         {% elif p.incoming_qty %}
-
         <div class="intransit-badge">
             🚚 {{ p.incoming_qty|floatformat:0 }}
         </div>
-
         {% else %}
-
         <span class="del-none">None</span>
-
         {% endif %}
-
     </td>
 
-    {# 10 — Order recommendation #}
+    {# 11 — Order recommendation #}
     <td>
       {% if p.order_urgency == "dead" %}
         <div class="dead-note">⛔ No order — dead stock</div>
@@ -662,7 +1039,7 @@
       {% endif %}
     </td>
 
-    {# 11 — Stock runway #}
+    {# 12 — Stock runway #}
     <td>
       {% if p.months_of_stock is not None %}
         {% if p.is_overstocked %}
@@ -680,7 +1057,7 @@
           <div class="sub-note">⚠ Very low</div>
         {% endif %}
       {% else %}
-        <span style="color:#cbd5e1;font-style:italic;font-size:.8rem">No sales data</span>
+        <span style="color:#cbd5e1;font-style:italic;font-size:.78rem">No sales data</span>
       {% endif %}
     </td>
   </tr>
@@ -698,72 +1075,55 @@
 
         <div class="math-steps">
             {% if p.tracking_details %}
-
                 <div class="math-step step-info" style="grid-column:1/-1">
-
                     <div class="ms-label" style="margin-bottom:10px">
                         🚚 Active Purchase Orders In Transit
                     </div>
-
-                    <table class="hist-table">
-
-                        <thead>
-                            <tr>
-                                <th>PO No.</th>
-                                <th>Qty</th>
-                                <th>Current Stage</th>
-                                <th>Days in Stage</th>
-                                <th>Remaining</th>
-                                <th>ETA</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-
-                        {% for po in p.tracking_details %}
-
-                            <tr>
-
-                                <td>{{ po.po_number }}</td>
-
-                                <td>{{ po.incoming_qty|floatformat:0 }} {{ p.unit }}</td>
-
-                                <td>{{ po.stage|default:"—" }}</td>
-
-                                <td>
-                                    {% if po.days_in_stage is not None %}
-                                        {{ po.days_in_stage }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-
-                                <td>
-                                    {% if po.remaining_days is not None %}
-                                        {{ po.remaining_days }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-
-                                <td>
-                                    {% if po.eta %}
-                                        {{ po.eta|date:"d M Y" }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-
-                            </tr>
-
-                        {% endfor %}
-
-                        </tbody>
-
-                    </table>
-
+                    <div style="overflow-x:auto">
+                      <table class="hist-table">
+                          <thead>
+                              <tr>
+                                  <th>PO No.</th>
+                                  <th>Qty</th>
+                                  <th>Current Stage</th>
+                                  <th>Days in Stage</th>
+                                  <th>Remaining</th>
+                                  <th>ETA</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                          {% for po in p.tracking_details %}
+                              <tr>
+                                  <td>{{ po.po_number }}</td>
+                                  <td>{{ po.incoming_qty|floatformat:0 }} {{ p.unit }}</td>
+                                  <td>{{ po.stage|default:"—" }}</td>
+                                  <td>
+                                      {% if po.days_in_stage is not None %}
+                                          {{ po.days_in_stage }}
+                                      {% else %}
+                                          —
+                                      {% endif %}
+                                  </td>
+                                  <td>
+                                      {% if po.remaining_days is not None %}
+                                          {{ po.remaining_days }}
+                                      {% else %}
+                                          —
+                                      {% endif %}
+                                  </td>
+                                  <td>
+                                      {% if po.eta %}
+                                          {{ po.eta|date:"d M Y" }}
+                                      {% else %}
+                                          —
+                                      {% endif %}
+                                  </td>
+                              </tr>
+                          {% endfor %}
+                          </tbody>
+                      </table>
+                    </div>
                 </div>
-
             {% endif %}
 
           <div class="math-step step-info">
@@ -781,9 +1141,7 @@
                     (Tally, Apr-25)
                 {% endif %}
               </div>
-
               <div class="ms-value">{{ s.avg_daily }}/day</div>
-
               <div class="ms-note">
                 {% if p.is_new_product and p.landing_date %}
                     Total sales since {{ p.landing_date|date:"d M Y" }} ÷ days elapsed
@@ -806,7 +1164,7 @@
           </div>
 
           {% if p.tracking_details %}
-            <div class="math-step step-info">
+          <div class="math-step step-info">
             <div class="ms-label">📬 Incoming (Open PO)</div>
             <div class="ms-value">{{ p.incoming_qty|floatformat:0 }} {{ p.unit }}</div>
             <div class="ms-note">
@@ -898,7 +1256,6 @@
       </div>
       {% endwith %}
 
-      {# Graph data passed via data attribute for JS #}
       <script type="application/json" id="graph-data-{{ forloop.counter }}">
         {{ p.graph_data_json|safe }}
       </script>
@@ -913,9 +1270,8 @@
   {% endfor %}
   </tbody>
 </table>
-</div>
 
-{# ── Legend ────────────────────────────────────────────────────────────── #}
+{# ── Legend (Inside Scroll Container) ──────────────────────────────────── #}
 <div class="legend-section" id="legend">
   <h2>📖 How to Read This Report</h2>
   <div class="legend-grid">
@@ -993,8 +1349,10 @@
   </div>
 </div>
 
+</div>{# Closes .table-scroll #}
+
 {% endif %}
-</div>
+</div>{# Closes .po-wrapper #}
 
 {# ───────────────────────────────────────────────────────────────────────────
    MODALS
@@ -1038,9 +1396,10 @@
     </div>
   </div>
 </div>
-<!--modal for showing product monthly sales-->
+
+{# Monthly Sales Modal #}
 <div class="modal-overlay" id="salesModal">
-  <div class="modal-box" style="width:min(750px,94vw)">
+  <div class="modal-box" style="width:min(750px,100%)">
     <div class="modal-header">
       <h3>📈 <span id="salesModalTitle"></span></h3>
       <button class="modal-close" onclick="closeModal('salesModal')">×</button>
@@ -1062,8 +1421,10 @@
     </div>
   </div>
 </div>
+
+{# Daily Sales Drilldown Modal #}
 <div class="modal-overlay" id="dailySalesModal">
-  <div class="modal-box" style="width:min(700px,94vw)">
+  <div class="modal-box" style="width:min(700px,100%)">
     <div class="modal-header">
       <h3>📅 <span id="dailySalesModalTitle"></span></h3>
       <button class="modal-close" onclick="closeModal('dailySalesModal')">×</button>
@@ -1085,15 +1446,94 @@
   </div>
 </div>
 
-{% endblock %}
+{# Legend / Guide Modal #}
+<div class="modal-overlay" id="legendModal">
+  <div class="modal-box" style="width:min(880px, 95vw);max-height:88vh">
+    <div class="modal-header">
+      <h3>📖 Purchase Order Guide &amp; Legend</h3>
+      <button class="modal-close" onclick="closeModal('legendModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="legend-grid">
+        <div class="li-item">
+          <div class="li-icon blue">📊</div>
+          <div class="li-text">
+            <h4>Current Stock &amp; Avg Daily</h4>
+            <p>Live stock quantity from inventory. <em>Avg/day</em> is calculated from Tally TAX INVOICE data starting April 2025 — total qty sold ÷ days since April 1, 2025. This is the most reliable consumption figure.</p>
+          </div>
+        </div>
 
-{% block extra_scripts %}
+        <div class="li-item">
+          <div class="li-icon green">📈</div>
+          <div class="li-text">
+            <h4>Growth (1-Year YoY &amp; 3M vs Prev 3M)</h4>
+            <p><strong>1-Year:</strong> total Tally sales last 12 months vs previous 12 months. <strong>3M:</strong> last 3 months vs 3 months before (Tally data). Blended monthly growth rate used in forecasting.</p>
+          </div>
+        </div>
+
+        <div class="li-item">
+          <div class="li-icon purple">🔮</div>
+          <div class="li-text">
+            <h4>Sales Forecast (M+1 / M+2 / M+3)</h4>
+            <p>Monthly growth rate (blended from 1Y + 3M) applied compoundingly to avg daily sales. M+1 = avg × (1+rate), M+2 = avg × (1+rate)², M+3 = avg × (1+rate)³. Shown only for active products.</p>
+          </div>
+        </div>
+
+        <div class="li-item">
+          <div class="li-icon red">💀</div>
+          <div class="li-text">
+            <h4>Dead Stock</h4>
+            <p>No TAX INVOICE sale in the last 90 days. Dead items are excluded from ordering logic. Use "Hide Dead Stock" button to remove them from view.</p>
+          </div>
+        </div>
+
+        <div class="li-item">
+          <div class="li-icon slate">👥</div>
+          <div class="li-text">
+            <h4>Top Customers</h4>
+            <p>Click "View Top 5" to see the top 5 customers by total quantity purchased for that product, with a month-by-month breakdown. Loaded on demand via API.</p>
+          </div>
+        </div>
+
+        <div class="li-item">
+          <div class="li-icon slate">🛒</div>
+          <div class="li-text">
+            <h4>Last Purchase Order &amp; GST Purchases</h4>
+            <p><strong>PO:</strong> PURCHASE ORDER vouchers we made (from Dec 2024). <strong>GST Purchases:</strong> received and booked stock. Click "All X POs/receipts" for full history modal with date and qty.</p>
+          </div>
+        </div>
+
+        <div class="li-item">
+          <div class="li-icon amber">📬</div>
+          <div class="li-text">
+            <h4>Order Recommendation Algorithm</h4>
+            <p>
+              1. Simulate daily stock drawdown with growth-adjusted consumption for 180 days.<br>
+              2. Find the day stock hits zero → <em>runway</em>.<br>
+              3. <em>Reorder point</em> = runway − lead time. If ≤ 0 → order immediately.<br>
+              4. Qty = 3-month growth-adjusted forecast × 1.20 buffer − stock on arrival.<br>
+              5. Round up to MOQ if needed. Click <em>Show working</em> for the full graph.
+            </p>
+          </div>
+        </div>
+
+        <div class="li-item">
+          <div class="li-icon purple">📦</div>
+          <div class="li-text">
+            <h4>Stock Runway</h4>
+            <p>Current stock ÷ (avg/day × 30) = months until stock runs out (flat avg, conservative estimate). Overstocked = 9+ months.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
 
 function toggleNewProduct(button) {
-
     const itemId = button.dataset.itemId;
 
     fetch(button.dataset.toggleUrl, {
@@ -1105,7 +1545,6 @@ function toggleNewProduct(button) {
     })
     .then(response => response.json())
     .then(data => {
-
         if (!data.success) {
             alert(data.error || "Something went wrong");
             return;
@@ -1121,7 +1560,6 @@ function toggleNewProduct(button) {
             button.innerHTML = "○ New Product: OFF";
         }
 
-        // Reload so Avg Daily and PO calculation update
         window.location.reload();
     })
     .catch(error => {
@@ -1129,7 +1567,6 @@ function toggleNewProduct(button) {
         alert("Unable to update product.");
     });
 }
-
 
 function getCookie(name) {
     let cookieValue = null;
@@ -1155,7 +1592,6 @@ function getCookie(name) {
 Chart.register(window['chartjs-plugin-annotation']);
 
 // ── PO / GST data embedded from Django ──────────────────────────────────────
-// We pass all PO and GST rows as JSON so we don't need a separate API call for them
 const ALL_PO_DATA = {
   {% for p in products %}
   "{{ p.id }}": {
@@ -1217,7 +1653,6 @@ function toggleMath(id, btn) {
   btn.textContent = open ? "🔼 Hide working" : "🔍 Show working";
 
   if (open) {
-    // Extract counter from id e.g. "math-3" → "3"
     const counter = id.replace("math-", "");
     if (!drawnCharts.has(counter)) {
       drawnCharts.add(counter);
@@ -1227,277 +1662,206 @@ function toggleMath(id, btn) {
 }
 
 function drawStockChart(counter) {
-      const canvas = document.getElementById("chart-" + counter);
-      if (!canvas) {
-        console.error("Canvas not found: chart-" + counter);
-        return;
+  const canvas = document.getElementById("chart-" + counter);
+  if (!canvas) {
+    console.error("Canvas not found: chart-" + counter);
+    return;
+  }
+
+  const rawData = document.getElementById("graph-data-" + counter);
+  const rawMeta = document.getElementById("graph-meta-" + counter);
+  if (!rawData || !rawMeta) {
+    console.error("Graph data not found for counter: " + counter);
+    return;
+  }
+
+  let graphData, meta;
+  const annotations = {};
+  try {
+    graphData = JSON.parse(rawData.textContent.trim());
+    meta      = JSON.parse(rawMeta.textContent.trim());
+  } catch (e) {
+    console.error("JSON parse error for chart-" + counter, e, rawData.textContent);
+    return;
+  }
+
+  if (!graphData || graphData.length === 0) {
+    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:20px">No graph data available.</p>';
+    return;
+  }
+
+  canvas.style.width  = "100%";
+  canvas.style.height = "180px";
+  canvas.width  = canvas.parentElement.offsetWidth || 800;
+  canvas.height = 180;
+
+  const labels     = graphData.map(d => "Day " + d.day);
+  const stockVals  = graphData.map(d => d.stock);
+  const bufferVals = graphData.map(d => d.buffer_line);
+
+  const reorderPoint = meta.reorder_point;
+  const deliveryDay  = meta.delivery_days;
+  const shipments    = meta.shipments || [];
+
+  const reorderMarker = graphData.map(p =>
+    p.day === reorderPoint ? p.stock : null
+  );
+
+  const deliveryMarker = graphData.map(p =>
+    p.day === deliveryDay ? p.stock : null
+  );
+
+  const shipmentMarker = graphData.map(point => {
+    const ship = shipments.find(s => {
+      const eta = new Date(s.eta);
+      const today = new Date();
+      const diff = Math.round((eta - today) / 86400000);
+      return diff === point.day;
+    });
+    return ship ? point.stock : null;
+  });
+
+  annotations.today = {
+    type: "line",
+    xMin: meta.today,
+    xMax: meta.today,
+    borderColor: "#2563eb",
+    borderWidth: 2,
+    label: {
+      display: true,
+      content: "Today",
+      position: "start"
+    }
+  };
+
+  if (meta.reorder_point != null) {
+    annotations.reorder = {
+      type: "line",
+      xMin: meta.reorder_point,
+      xMax: meta.reorder_point,
+      borderColor: "#f59e0b",
+      borderWidth: 2,
+      label: {
+        display: true,
+        content: "Order",
+        position: "start"
       }
-
-      const rawData = document.getElementById("graph-data-" + counter);
-      const rawMeta = document.getElementById("graph-meta-" + counter);
-      if (!rawData || !rawMeta) {
-        console.error("Graph data not found for counter: " + counter);
-        return;
-      }
-
-      let graphData, meta;
-      const annotations = {};
-      try {
-        graphData = JSON.parse(rawData.textContent.trim());
-        meta      = JSON.parse(rawMeta.textContent.trim());
-      } catch (e) {
-        console.error("JSON parse error for chart-" + counter, e, rawData.textContent);
-        return;
-      }
-
-      if (!graphData || graphData.length === 0) {
-        canvas.parentElement.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:20px">No graph data available.</p>';
-        return;
-      }
-
-      // ── Force explicit pixel dimensions so Chart.js can render in hidden-then-shown row
-      canvas.style.width  = "100%";
-      canvas.style.height = "180px";
-      canvas.width  = canvas.parentElement.offsetWidth || 800;
-      canvas.height = 180;
-
-      const labels     = graphData.map(d => "Day " + d.day);
-      const stockVals  = graphData.map(d => d.stock);
-      const bufferVals = graphData.map(d => d.buffer_line);
-
-      const reorderPoint = meta.reorder_point;
-      const deliveryDay  = meta.delivery_days;
-      const shipments    = meta.shipments || [];
-
-      const reorderMarker = graphData.map(p =>
-        p.day === reorderPoint ? p.stock : null
-      );
-
-      const deliveryMarker = graphData.map(p =>
-        p.day === deliveryDay ? p.stock : null
-      );
-
-      const shipmentMarker = graphData.map(point => {
-
-            const ship = shipments.find(s => {
-
-                const eta = new Date(s.eta);
-                const today = new Date();
-
-                const diff = Math.round(
-                    (eta - today) / 86400000
-                );
-
-                return diff === point.day;
-
-            });
-
-            return ship ? point.stock : null;
-
-      });
-
-      // TODAY
-    annotations.today = {
-        type: "line",
-        xMin: meta.today,
-        xMax: meta.today,
-        borderColor: "#2563eb",
-        borderWidth: 2,
-        label: {
-            display: true,
-            content: "Today",
-            position: "start"
-        }
     };
+  }
 
-    // REORDER
-    if (meta.reorder_point != null) {
+  if (meta.stockout_day != null) {
+    annotations.stockout = {
+      type: "line",
+      xMin: meta.stockout_day,
+      xMax: meta.stockout_day,
+      borderColor: "#ef4444",
+      borderWidth: 3,
+      label: {
+        display: true,
+        content: "Stock Out",
+        position: "start"
+      }
+    };
+  }
 
-        annotations.reorder = {
-
-            type: "line",
-
-            xMin: meta.reorder_point,
-
-            xMax: meta.reorder_point,
-
-            borderColor: "#f59e0b",
-
-            borderWidth: 2,
-
-            label: {
-
-                display: true,
-
-                content: "Order",
-
-                position: "start"
-
-            }
-
-        };
-
-    }
-
-    // STOCKOUT
-
-    if (meta.stockout_day != null) {
-
-        annotations.stockout = {
-
-            type: "line",
-
-            xMin: meta.stockout_day,
-
-            xMax: meta.stockout_day,
-
-            borderColor: "#ef4444",
-
-            borderWidth: 3,
-
-            label: {
-
-                display: true,
-
-                content: "Stock Out",
-
-                position: "start"
-
-            }
-
-        };
-
-    }
-
-new Chart(canvas, {
+  new Chart(canvas, {
     type: "line",
     data: {
       labels,
       datasets: [
         {
-            label: "Stock Level",
-            data: stockVals,
-            borderColor: "#6366f1",
-            backgroundColor: "rgba(99,102,241,.12)",
-            fill: true,
-            tension: 0.3,
-            pointRadius: 0,
-            borderWidth: 2,
+          label: "Stock Level",
+          data: stockVals,
+          borderColor: "#6366f1",
+          backgroundColor: "rgba(99,102,241,.12)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 2,
         },
-
         {
-            label: "Buffer",
-            data: bufferVals,
-            borderColor: "#ef4444",
-            borderDash: [5,4],
-            fill:false,
-            pointRadius:0,
+          label: "Buffer",
+          data: bufferVals,
+          borderColor: "#ef4444",
+          borderDash: [5,4],
+          fill: false,
+          pointRadius: 0,
         },
-
         {
-            label:"Reorder Point",
-            data: reorderMarker,
-            showLine:false,
-            pointRadius:8,
-            pointBackgroundColor:"#f59e0b",
+          label: "Reorder Point",
+          data: reorderMarker,
+          showLine: false,
+          pointRadius: 8,
+          pointBackgroundColor: "#f59e0b",
         },
-
         {
-            label:"New Order Arrival",
-            data: deliveryMarker,
-            showLine:false,
-            pointRadius:8,
-            pointBackgroundColor:"#22c55e",
+          label: "New Order Arrival",
+          data: deliveryMarker,
+          showLine: false,
+          pointRadius: 8,
+          pointBackgroundColor: "#22c55e",
         },
-
         {
-            label:"Incoming Shipment",
-            data: shipmentMarker,
-            showLine:false,
-            pointRadius:8,
-            pointBackgroundColor:"#2563eb",
+          label: "Incoming Shipment",
+          data: shipmentMarker,
+          showLine: false,
+          pointRadius: 8,
+          pointBackgroundColor: "#2563eb",
         }
-
       ]
-
     },
-
-options: {
-    responsive: false,
-    maintainAspectRatio: false,
-    animation: false,
-
-    plugins: {
-        annotation: {
-            annotations: annotations
-        },
-
-        legend: {
-            display: false
-        },
-
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        annotation: { annotations: annotations },
+        legend: { display: false },
         tooltip: {
-            mode: "index",
-            intersect: false,
-
-            callbacks: {
-                label(ctx) {
-                    return ctx.dataset.label + ": " + Math.round(ctx.parsed.y);
-                },
-
-                afterBody(items) {
-                    const point = graphData[items[0].dataIndex];
-
-                    if (!point.events.length)
-                        return [];
-
-                    const lines = [""];
-
-                    point.events.forEach(e => {
-                        lines.push("PO : " + e.po);
-                        lines.push("Qty : " + e.qty);
-                        lines.push("Stage : " + e.stage);
-                        lines.push("ETA : " + e.eta);
-                        lines.push("");
-                    });
-
-                    return lines;
-                }
+          mode: "index",
+          intersect: false,
+          callbacks: {
+            label(ctx) {
+              return ctx.dataset.label + ": " + Math.round(ctx.parsed.y);
+            },
+            afterBody(items) {
+              const point = graphData[items[0].dataIndex];
+              if (!point.events || !point.events.length) return [];
+              const lines = [""];
+              point.events.forEach(e => {
+                lines.push("PO : " + e.po);
+                lines.push("Qty : " + e.qty);
+                lines.push("Stage : " + e.stage);
+                lines.push("ETA : " + e.eta);
+                lines.push("");
+              });
+              return lines;
             }
+          }
         }
-    },
-
-    scales: {
+      },
+      scales: {
         x: {
-            ticks: {
-                maxTicksLimit: 10,
-                font: { size: 10 }
-            },
-            grid: {
-                display: false
-            }
+          ticks: { maxTicksLimit: 10, font: { size: 10 } },
+          grid: { display: false }
         },
-
         y: {
-            ticks: {
-                font: { size: 10 },
-                callback: v => v.toLocaleString()
-            },
-            grid: {
-                color: "#f1f5f9"
-            },
-            beginAtZero: true
+          ticks: {
+            font: { size: 10 },
+            callback: v => v.toLocaleString()
+          },
+          grid: { color: "#f1f5f9" },
+          beginAtZero: true
         }
+      }
     }
-}
-});
+  });
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add("open"); }
 function closeModal(id) { document.getElementById(id).classList.remove("open"); }
 
-// Close on overlay click
 document.querySelectorAll(".modal-overlay").forEach(ov => {
   ov.addEventListener("click", e => { if (e.target === ov) ov.classList.remove("open"); });
 });
@@ -1588,10 +1952,9 @@ function escHtml(s) {
 // ── Download CSV ──────────────────────────────────────────────────────────────
 function downloadPO() {
   const headers = [
-    "Product","Unit","Stock","Avg/day","Growth 1Y","Growth 3M","Monthly Growth%",
-    "M+1","M+2","M+3","Dead?","Latest PO Qty","Latest PO Date",
-    "Latest GST Qty","Latest GST Date","In Transit Qty","In Transit ETA",
-    "Order Qty","Lasts (months)","Runway (months)"
+    "Product","Current Stock & Avg/day","Growth","Sales History",
+    "Sales Forecast","Dead Stock?","Top Customers","Last Purchase Order",
+    "GST Purchases","In Transit","Order Recommendation","Stock Runway"
   ];
   const rows = document.querySelectorAll("#poTable tbody tr.data-row");
   const csv  = [headers.join(",")];
@@ -1607,7 +1970,7 @@ function downloadPO() {
   a.click();
 }
 
-let _currentDailyData = {};  // store daily data for the currently open product
+let _currentDailyData = {};
 
 function openSalesModal(productName, monthlyData, dailyData) {
   _currentDailyData = dailyData || {};
@@ -1643,12 +2006,12 @@ function openSalesModal(productName, monthlyData, dailyData) {
       datasets: [{
         label: 'Qty Sold',
         data: monthlyData.map(r => r.qty),
-        backgroundColor: 'rgba(99,102,241,0.6)',
-        borderColor: 'rgba(99,102,241,1)',
+        backgroundColor: 'rgba(79, 70, 229, 0.65)',
+        borderColor: 'rgba(79, 70, 229, 1)',
         borderWidth: 1,
+        borderRadius: 4,
       }]
     },
-
     options: {
       responsive: false,
       maintainAspectRatio: false,
@@ -1684,35 +2047,25 @@ function openDailySalesModal(month) {
     tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;text-align:center;padding:20px">No data</td></tr>';
   } else {
     rows.forEach(r => {
-
-        tbody.innerHTML += `
-        <tr>
-
-            <td>${r.date}</td>
-
-            <td>${escHtml(r.party)}</td>
-
-            <td style="font-weight:700;color:#6366f1">
-                ${r.qty}
-            </td>
-
-            <td>
-                ${
-                    r.status === "Excluded"
-                        ? '<span class="sales-badge excluded">Excluded</span>'
-                        : '<span class="sales-badge included">Included</span>'
-                }
-            </td>
-
-            <td>
-                ${r.reason || "—"}
-            </td>
-
-        </tr>`;
+      tbody.innerHTML += `
+      <tr>
+          <td>${r.date}</td>
+          <td>${escHtml(r.party)}</td>
+          <td style="font-weight:700;color:#4f46e5">${r.qty}</td>
+          <td>
+              ${
+                  r.status === "Excluded"
+                      ? '<span class="sales-badge excluded">Excluded</span>'
+                      : '<span class="sales-badge included">Included</span>'
+              }
+          </td>
+          <td>${r.reason || "—"}</td>
+      </tr>`;
     });
   }
 
   openModal('dailySalesModal');
 }
 </script>
-{% endblock %}
+</body>
+</html>
