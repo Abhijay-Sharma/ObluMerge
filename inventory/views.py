@@ -808,7 +808,7 @@ class Index(AccountantRequiredMixin, TemplateView):
             color_scheme = category_colors[(idx - 1) % len(category_colors)]
             top_categories.append({
                 "rank": idx,
-                "name": cat["product__category__name"] or "Uncategorized",
+                "name": cat["item__category__name"] or "Uncategorized",
                 "sales_value": val,
                 "sales_value_display": format_inr(val),
                 "units_sold": f"{qty:,}",
