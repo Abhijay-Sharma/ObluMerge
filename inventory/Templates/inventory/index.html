@@ -1,11 +1,6 @@
 {% extends 'inventory/base.html' %}
 {% load static %}
 
-{% block extra_head %}
-<!-- Chart.js for analytics -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-{% endblock %}
-
 {% block content %}
 
 <style>
@@ -96,7 +91,7 @@
     }
 
     .content-wrapper {
-        max-width: 1360px;
+        max-width: 100%;
         width: 100%;
         min-width: 0;
         margin: 0 auto;
@@ -189,7 +184,7 @@
         box-shadow: 0 4px 14px rgba(70, 150, 128, 0.35);
     }
 
-    /* Date Anchor Notice Banner */
+    /* Date Horizon & Custom Date Picker Banner */
     .date-anchor-banner {
         display: flex;
         align-items: center;
@@ -213,6 +208,126 @@
 
     .date-anchor-info strong {
         color: var(--oblu-slate-900);
+    }
+
+    .range-badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: var(--radius-pill);
+        background: var(--oblu-teal-soft);
+        color: var(--oblu-teal-deep);
+        margin-left: 6px;
+    }
+
+    /* Custom Date Picker Form Controls */
+    .custom-date-picker-form {
+        display: flex;
+        align-items: center;
+        margin: 0;
+    }
+
+    .date-picker-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #ffffff;
+        padding: 3px 6px 3px 10px;
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-pill);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .date-picker-wrap:focus-within {
+        border-color: var(--oblu-teal);
+        box-shadow: 0 0 0 3px var(--oblu-teal-soft);
+    }
+
+    .date-input-field {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .date-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--oblu-slate-400);
+    }
+
+    .date-native-input {
+        border: none;
+        background: transparent;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--oblu-slate-800);
+        padding: 3px 2px;
+        font-family: inherit;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .date-native-input::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        filter: opacity(0.6);
+        transition: filter 0.2s;
+    }
+
+    .date-native-input::-webkit-calendar-picker-indicator:hover {
+        filter: opacity(1);
+    }
+
+    .date-sep {
+        color: var(--oblu-slate-400);
+        font-size: 0.72rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .date-apply-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 13px;
+        background: linear-gradient(135deg, #5eae99 0%, #469680 100%);
+        border: none;
+        border-radius: var(--radius-pill);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #ffffff;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        box-shadow: 0 2px 6px rgba(70, 150, 128, 0.28);
+    }
+
+    .date-apply-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(70, 150, 128, 0.38);
+    }
+
+    .date-reset-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 9px;
+        background: var(--oblu-slate-100);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: var(--radius-pill);
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--oblu-slate-600);
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+
+    .date-reset-link:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #dc2626;
     }
 
     .anchor-toggle-btn {
@@ -510,7 +625,7 @@
     }
 
     .health-segment {
-        transition: width 0.6s ease;
+        transition: width 0.18s ease;
     }
 
     .health-segment.healthy {
@@ -718,7 +833,7 @@
     .progress-fill-sleek {
         height: 100%;
         border-radius: var(--radius-pill);
-        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: width 0.18s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     /* Product list items */
@@ -1460,10 +1575,39 @@
         .date-anchor-banner {
             flex-direction: column;
             align-items: stretch;
-            gap: 10px;
+            gap: 12px;
             padding: 12px 14px;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        .custom-date-picker-form {
+            width: 100%;
+        }
+
+        .date-picker-wrap {
+            width: 100%;
+            flex-wrap: wrap;
+            box-sizing: border-box;
+            border-radius: var(--radius-inner);
+            padding: 8px 10px;
+            gap: 8px;
+            justify-content: space-between;
+        }
+
+        .date-input-field {
+            flex: 1 1 42%;
+            min-width: 110px;
+        }
+
+        .date-native-input {
+            width: 100%;
+        }
+
+        .date-apply-btn, .date-reset-link {
+            flex: 1 1 100%;
+            justify-content: center;
+            padding: 7px 12px;
         }
 
         .date-anchor-info {
@@ -1746,53 +1890,69 @@
             <!-- Controls: Period Selector & Quick Actions -->
             <div class="controls-cluster">
                 <div class="filter-pills-bar">
-                    <a href="?period=3d{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
-                       class="filter-pill {% if period == '3d' %}active{% endif %}">
-                        3 Days
+                    <a href="?period=1m"
+                       class="filter-pill {% if period == '1m' and not is_custom %}active{% endif %}"
+                       title="Full Calendar Month (1 to {{ last_day_of_month }})">
+                        Full Month (1–{{ last_day_of_month }})
                     </a>
-                    <a href="?period=3w{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
-                       class="filter-pill {% if period == '3w' %}active{% endif %}">
-                        3 Weeks
-                    </a>
-                    <a href="?period=1m{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
-                       class="filter-pill {% if period == '1m' %}active{% endif %}">
-                        1 Month
-                    </a>
-                    <a href="?period=3m{% if is_snapshot_anchor %}&anchor=snapshot{% else %}&anchor=today{% endif %}"
-                       class="filter-pill {% if period == '3m' %}active{% endif %}">
+                    <a href="?period=3m"
+                       class="filter-pill {% if period == '3m' and not is_custom %}active{% endif %}">
                         3 Months
                     </a>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- Date Horizon / Data Anchor Notice Banner -->
-        <div class="date-anchor-banner">
-            <div class="date-anchor-info">
-                <i class="bi bi-calendar3 text-teal" style="font-size: 1rem;"></i>
-                <div>
-                    <strong>Active Range:</strong> {{ date_range_display }} ({{ period_label }})
-                    <span style="color: var(--oblu-slate-400); margin: 0 6px;">•</span>
-                    {% if is_snapshot_anchor %}
-                    <span>Anchored to <strong>Latest Ledger Entry ({{ max_daily_date|date:"d M Y" }})</strong> — ensures real sales & category telemetry.</span>
-                    {% else %}
-                    <span>Anchored to <strong>Current Live Date (Today: {{ today_date|date:"d M Y" }})</strong>.</span>
+                    <a href="?period=3w"
+                       class="filter-pill {% if period == '3w' and not is_custom %}active{% endif %}">
+                        3 Weeks
+                    </a>
+                    <a href="?period=3d"
+                       class="filter-pill {% if period == '3d' and not is_custom %}active{% endif %}">
+                        3 Days
+                    </a>
+                    {% if is_custom %}
+                    <span class="filter-pill active" style="cursor: default;" title="Custom Range Active">
+                        <i class="bi bi-calendar2-range me-1"></i> Custom Range
+                    </span>
                     {% endif %}
                 </div>
             </div>
+        </div>
 
-            <div>
-                {% if is_snapshot_anchor %}
-                <a href="?period={{ period }}&anchor=today" class="anchor-toggle-btn" title="Calculate strictly relative to today's calendar date">
-                    <i class="bi bi-arrow-repeat"></i> Switch to Live Calendar (Today: {{ today_date|date:"d M Y" }})
-                </a>
-                {% else %}
-                <a href="?period={{ period }}&anchor=snapshot" class="anchor-toggle-btn" title="Calculate relative to latest recorded database transaction">
-                    <i class="bi bi-database-check"></i> Switch to Latest Ledger ({{ max_daily_date|date:"d M Y" }})
-                </a>
-                {% endif %}
+        <!-- Date Horizon / Customizable Date Banner -->
+        <div class="date-anchor-banner">
+            <div class="date-anchor-info">
+                <i class="bi bi-calendar3 text-teal" style="font-size: 1.15rem; flex-shrink: 0;"></i>
+                <div>
+                    <div>
+                        <strong>Active Range:</strong> {{ date_range_display }}
+                        <span class="range-badge">{% if is_custom %}Custom Period{% else %}{{ period_label }}{% endif %}</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--oblu-slate-500); margin-top: 2px;">
+                        Showing inventory telemetry, velocity charts & sales metrics across <strong>{{ duration_days }} days</strong>.
+                    </div>
+                </div>
             </div>
+
+            <!-- Customizable Date Range Form -->
+            <form method="GET" action="{% url 'dashboard' %}" class="custom-date-picker-form">
+                <div class="date-picker-wrap">
+                    <div class="date-input-field">
+                        <span class="date-label">From:</span>
+                        <input type="date" name="start_date" value="{{ start_date_iso }}" class="date-native-input" required>
+                    </div>
+                    <span class="date-sep"><i class="bi bi-arrow-right"></i></span>
+                    <div class="date-input-field">
+                        <span class="date-label">To:</span>
+                        <input type="date" name="end_date" value="{{ end_date_iso }}" class="date-native-input" required>
+                    </div>
+                    <button type="submit" class="date-apply-btn" title="Apply Custom Date Range to all graphs and values">
+                        <i class="bi bi-funnel"></i> Apply
+                    </button>
+                    {% if is_custom %}
+                    <a href="{% url 'dashboard' %}" class="date-reset-link" title="Reset to default full month">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
         </div>
 
         <!-- =====================================================
@@ -2431,6 +2591,12 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                resizeDelay: 0,
+                animation: {
+                    resize: {
+                        duration: 0
+                    }
+                },
                 interaction: {
                     mode: 'index',
                     intersect: false,
@@ -2515,7 +2681,25 @@
     };
 
     initDashboardCharts();
-    document.addEventListener("turbo:load", initDashboardCharts);
+
+    // Replace handlers from the previous Turbo visit instead of retaining one
+    // chart initializer per dashboard visit.
+    if (window.__obluInventoryChartTurboHandler) {
+        document.removeEventListener("turbo:load", window.__obluInventoryChartTurboHandler);
+    }
+    window.__obluInventoryChartTurboHandler = initDashboardCharts;
+    document.addEventListener("turbo:load", window.__obluInventoryChartTurboHandler);
+
+    if (window.__obluInventoryChartBeforeCache) {
+        document.removeEventListener("turbo:before-cache", window.__obluInventoryChartBeforeCache);
+    }
+    window.__obluInventoryChartBeforeCache = function() {
+        if (window.velocityChart && typeof window.velocityChart.destroy === "function") {
+            window.velocityChart.destroy();
+            window.velocityChart = null;
+        }
+    };
+    document.addEventListener("turbo:before-cache", window.__obluInventoryChartBeforeCache);
 })();
 </script>
 {% endif %}
