@@ -649,8 +649,10 @@ class Index(AccountantRequiredMixin, TemplateView):
         context["days_behind"] = (today - max_daily_date).days if max_daily_date else 0
 
         # ── 2. Executive KPIs & Previous Period Comparison ──
-        sales_agg = DailyStockData.objects.filter(
-            date__gte=start_date, date__lte=end_date, outwards_quantity__gt=0
+        sales_agg = VoucherStockItem.objects.filter(
+        voucher__voucher_type__iexact="TAX INVOICE",
+        voucher__date__gte=start_date,
+        voucher__date__lte=end_date,
         ).aggregate(
             total_val=Sum("amount"),
             total_qty=Sum("quantity")
