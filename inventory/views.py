@@ -851,71 +851,84 @@ class Index(AccountantRequiredMixin, TemplateView):
         for idx, p in enumerate(prod_qs, 1):
             val = float(p["prod_val"] or 0)
             qty_sold = int(round(p["prod_qty"] or 0))
-            current_stock = p["product__quantity"]
-            if current_stock is None:
-                current_stock = 0
+            current_stock = p["item__quantity"] or 0
 
-            # Determine threshold
             threshold = (
-                p["product__min_quantity_outwards"]
-                if p["product__min_quantity_outwards"] and p["product__min_quantity_outwards"] > 0
+                p["item__min_quantity_outwards"]
+                if p["item__min_quantity_outwards"] and p["item__min_quantity_outwards"] > 0
                 else (
-                    p["product__min_quantity_average"]
-                    if p["product__min_quantity_average"] and p["product__min_quantity_average"] > 0
-                    else p["product__min_quantity"]
+                    p["item__min_quantity_average"]
+                    if p["item__min_quantity_average"] and p["item__min_quantity_average"] > 0
+                    else p["item__min_quantity"]
                 )
             )
 
             is_running_low = False
             is_critical = False
+
             if current_stock <= 0:
                 is_running_low = True
                 is_critical = True
                 low_stock_fast_movers += 1
                 stock_ratio = 0
             elif threshold and threshold > 0:
-                stock_ratio = min(int(round((current_stock / threshold) * 100)), 100)
+                stock_ratio = min(
+                    int(round((current_stock / threshold) * 100)),
+                    100,
+                )
                 if current_stock < threshold:
                     is_running_low = True
                     low_stock_fast_movers += 1
             else:
                 stock_ratio = 100
 
-            # Initials for avatar
-            p_name = p["product__name"] or "Item"
+            p_name = p["item__name"] or "Item"
             p_words = [w for w in p_name.replace(",", " ").split() if w]
-            p_initials = (p_words[0][:2] if len(p_words) == 1 else p_words[0][0] + p_words[1][0]).upper()
+            p_initials = (
+                p_words[0][:2]
+                if len(p_words) == 1
+                else p_words[0][0] + p_words[1][0]
+            ).upper()
+
+            category = p["item__category__name"] or "Uncategorized"
 
             prod_dict = {
                 "rank": idx,
-                "id": p["product__id"],
+                "id": p["item__id"],
                 "name": p_name,
                 "initials": p_initials,
-                "category": p["product__category__name"] or "Uncategorized",
+                "category": category,
                 "sales_value": val,
                 "sales_value_display": format_inr(val),
                 "units_sold": f"{qty_sold:,}",
                 "current_stock": current_stock,
-                "min_threshold": threshold if (threshold and threshold > 0) else "N/A",
+                "min_threshold": (
+                    threshold if threshold and threshold > 0 else "N/A"
+                ),
                 "stock_ratio": stock_ratio,
                 "is_running_low": is_running_low,
                 "is_critical": is_critical,
-                "unit": p["product__unit"] or "units",
+                "unit": p["item__unit"] or "units",
             }
             top_products.append(prod_dict)
 
-            # Build smart alert if running low or out of stock
             if is_running_low:
                 smart_alerts.append({
-                    "product_id": p["product__id"],
+                    "product_id": p["item__id"],
                     "product_name": p_name,
-                    "category": p["product__category__name"] or "Uncategorized",
+                    "category": category,
                     "current_stock": current_stock,
-                    "min_threshold": threshold if (threshold and threshold > 0) else "N/A",
+                    "min_threshold": (
+                        threshold if threshold and threshold > 0 else "N/A"
+                    ),
                     "units_sold": f"{qty_sold:,}",
                     "sales_value_display": format_inr(val),
                     "severity": "critical" if is_critical else "warning",
-                    "severity_label": "CRITICAL STOCKOUT" if is_critical else "HIGH DEMAND DEFICIT",
+                    "severity_label": (
+                        "CRITICAL STOCKOUT"
+                        if is_critical
+                        else "HIGH DEMAND DEFICIT"
+                    ),
                     "message": (
                         "Zero stock available! Top-selling SKU is completely out of stock."
                         if is_critical
@@ -1101,6 +1114,7 @@ class Index(AccountantRequiredMixin, TemplateView):
         }
 
         return context
+
 
 class Dashboard(AccountantRequiredMixin, View):
     def get(self,request):
