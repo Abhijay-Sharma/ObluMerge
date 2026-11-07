@@ -1,0 +1,144 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Policy Compliance Management — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Policy Compliance Dashboard</h3>
+      <p class="text-muted small mb-0">Track company-wide policy acknowledgment rates, quiz scores, and employee compliance status</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'hrms:policy_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-grid me-1"></i>Employee Library
+      </a>
+      <a href="{% url 'hrms:policy_add' %}" class="btn btn-primary btn-sm rounded-pill px-3">
+        <i class="bi bi-plus-circle me-1"></i>New Policy
+      </a>
+    </div>
+  </div>
+
+  <!-- Metric Overview Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-primary-subtle text-primary h-100">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="small fw-semibold text-muted">Active Policies</div>
+            <h3 class="fw-bold mb-0 text-primary">{{ total_policies }}</h3>
+          </div>
+          <div class="fs-1"><i class="bi bi-file-earmark-check-fill"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-info-subtle text-info h-100">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="small fw-semibold text-muted">Total Employees Monitored</div>
+            <h3 class="fw-bold mb-0 text-info">{{ total_employees }}</h3>
+          </div>
+          <div class="fs-1"><i class="bi bi-people-fill"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-success-subtle text-success h-100">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="small fw-semibold text-muted">Mandatory Compliance Active</div>
+            <h3 class="fw-bold mb-0 text-success">100% Audit Tracked</h3>
+          </div>
+          <div class="fs-1"><i class="bi bi-shield-lock-fill"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Policies Table with Progress Bars -->
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+    <div class="card-header bg-white p-3 border-bottom d-flex justify-content-between align-items-center">
+      <h5 class="fw-bold mb-0">Policy Compliance Rates</h5>
+      <span class="badge bg-light text-dark border">{{ policy_stats|length }} Policies</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+        <thead class="table-light">
+          <tr>
+            <th>Policy Title</th>
+            <th>Category</th>
+            <th>Effective Date</th>
+            <th>Quiz Included</th>
+            <th style="min-width: 200px;">Compliance Progress</th>
+            <th>Acknowledged / Total</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in policy_stats %}
+            <tr>
+              <td>
+                <div class="fw-bold text-dark">{{ item.policy.title }}</div>
+                {% if item.policy.is_mandatory %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0" style="font-size: 0.68rem;">MANDATORY</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border">{{ item.policy.get_category_display }}</span>
+              </td>
+              <td>{{ item.policy.effective_from|date:"d M Y" }}</td>
+              <td>
+                {% if item.has_quiz %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2">
+                    <i class="bi bi-question-circle me-1"></i>{{ item.policy.quiz_question_count }} Qs
+                  </span>
+                {% else %}
+                  <span class="text-muted small">No Quiz</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="progress flex-grow-1 rounded-pill" style="height: 8px;">
+                    <div class="progress-bar {% if item.percentage >= 80 %}bg-success{% elif item.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ item.percentage }}%;" aria-valuenow="{{ item.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                  <span class="fw-bold small {% if item.percentage >= 80 %}text-success{% elif item.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                    {{ item.percentage }}%
+                  </span>
+                </div>
+              </td>
+              <td>
+                <span class="fw-bold">{{ item.ack_count }}</span> <span class="text-muted">/ {{ item.total_employees }}</span>
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <a href="{% url 'hrms:policy_detail' item.policy.id %}" class="btn btn-outline-secondary" title="View">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <a href="{% url 'hrms:policy_edit' item.policy.id %}" class="btn btn-outline-primary" title="Edit Policy & Quiz">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <a href="{% url 'hrms:policy_delete' item.policy.id %}" class="btn btn-outline-danger" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                No policies found.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

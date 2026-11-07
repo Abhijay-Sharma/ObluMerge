@@ -1,0 +1,518 @@
+{% extends "hrms/base.html" %}
+{% block title %}{% if object %}Edit Offer Template — {{ object.name }}{% else %}New Offer Template{% endif %} — Hiring{% endblock %}
+{% block page_title %}{% if object %}Edit Offer Template{% else %}Create Offer Template{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-hero-bar {
+    background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%);
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.25);
+  }
+  .form-hero-bar .title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .form-hero-bar .icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: #fff;
+  }
+  .form-hero-bar h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .form-hero-bar .sub {
+    font-size: 0.82rem;
+    color: #a7f3d0;
+    margin-top: 0.2rem;
+  }
+  .btn-back-soft {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 10px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+  }
+  .btn-back-soft:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    transform: translateX(-2px);
+  }
+
+  .hiring-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.2s ease;
+  }
+  .hiring-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+  }
+  .hiring-card-header {
+    background: #fbfbfe;
+    border-bottom: 1px solid #f1f3f8;
+    padding: 1rem 1.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #1f2937;
+  }
+  .hiring-card-header .title-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .hiring-card-header i {
+    color: #059669;
+    font-size: 1.1rem;
+  }
+  .hiring-card-body {
+    padding: 1.4rem 1.5rem;
+  }
+
+  .field-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .field-label {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .field-label .req {
+    color: #ef4444;
+    font-weight: 700;
+  }
+  .hiring-card input[type="text"],
+  .hiring-card select,
+  .hiring-card textarea {
+    display: block;
+    width: 100%;
+    padding: 0.62rem 0.85rem;
+    font-size: 0.88rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #1f2937;
+    background-color: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  }
+  .hiring-card input:focus,
+  .hiring-card select:focus,
+  .hiring-card textarea:focus {
+    background-color: #ffffff;
+    border-color: #059669;
+    outline: 0;
+    box-shadow: 0 0 0 3.5px rgba(5, 150, 105, 0.14);
+  }
+  .hiring-card input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 5px;
+    accent-color: #059669;
+    cursor: pointer;
+  }
+  .hiring-card textarea.font-monospace {
+    font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace !important;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    background-color: #0f172a;
+    color: #f8fafc;
+    border: 1.5px solid #1e293b;
+  }
+  .hiring-card textarea.font-monospace:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.25);
+    background-color: #020617;
+    color: #ffffff;
+  }
+  .field-help {
+    font-size: 0.76rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+  .field-error {
+    font-size: 0.78rem;
+    color: #dc2626;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* Placeholder Token Chips */
+  .token-chip {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-family: monospace;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.15s ease;
+    user-select: none;
+    margin-bottom: 0.4rem;
+  }
+  .token-chip:hover {
+    background: #d1fae5;
+    border-color: #34d399;
+    transform: translateY(-1px);
+    color: #047857;
+  }
+  .token-chip i {
+    font-size: 0.7rem;
+    color: #10b981;
+  }
+
+  /* Live Preview Box */
+  .preview-container {
+    background: #ffffff;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 1.25rem;
+    min-height: 250px;
+    max-height: 480px;
+    overflow-y: auto;
+    font-size: 0.88rem;
+    color: #1e293b;
+  }
+
+  .form-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.85rem;
+    padding-top: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .btn-submit-gradient {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 11px;
+    padding: 0.65rem 1.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+    transition: all 0.2s ease;
+  }
+  .btn-submit-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(5, 150, 105, 0.45);
+    color: #ffffff;
+  }
+  .btn-cancel-soft {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    border-radius: 11px;
+    padding: 0.65rem 1.35rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+  }
+  .btn-cancel-soft:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Hero Header -->
+  <div class="form-hero-bar">
+    <div class="title-group">
+      <div class="icon-box">
+        <i class="bi bi-file-earmark-richtext-fill"></i>
+      </div>
+      <div>
+        <h2>{% if object %}Edit Offer Template — {{ object.name }}{% else %}Create Offer Letter Template{% endif %}</h2>
+        <div class="sub">Design standardized appointment letters with dynamic candidate & compensation merge tokens</div>
+      </div>
+    </div>
+    <a href="{% url 'hrms:offertemplate_list' %}" class="btn-back-soft">
+      <i class="bi bi-arrow-left"></i> All Templates
+    </a>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger rounded-4 shadow-sm border-0 mb-4 d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-octagon-fill fs-5 text-danger"></i>
+    <div>{{ form.non_field_errors|join:", " }}</div>
+  </div>
+  {% endif %}
+
+  <form method="post" id="offerTemplateForm" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+
+      <!-- Left Column: Template Name, Switch & HTML Editor (8 cols) -->
+      <div class="col-lg-8">
+        
+        <!-- Header & Identity -->
+        <div class="hiring-card">
+          <div class="hiring-card-header">
+            <div class="title-left">
+              <i class="bi bi-tag"></i>
+              <span>Template Identity & Status</span>
+            </div>
+          </div>
+          <div class="hiring-card-body">
+            <div class="row g-3 align-items-center">
+              {% if form.name %}
+              <div class="col-md-8 field-wrapper">
+                <label class="field-label" for="{{ form.name.id_for_label }}">
+                  Template Title <span class="req">*</span>
+                </label>
+                {{ form.name }}
+                <div class="field-help"><i class="bi bi-info-circle me-1"></i>E.g., Full-Time Engineering Offer, Executive Contract, Intern Stipend Agreement</div>
+                {% if form.name.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.name.errors|join:", " }}</div>{% endif %}
+              </div>
+              {% endif %}
+
+              {% if form.is_active %}
+              <div class="col-md-4">
+                <div class="p-3 bg-light rounded-3 border d-flex align-items-center gap-3 mt-md-2">
+                  {{ form.is_active }}
+                  <div>
+                    <label class="form-check-label fw-bold text-dark mb-0" for="{{ form.is_active.id_for_label }}" style="cursor:pointer;">
+                      Active Template
+                    </label>
+                    <div class="text-muted small">Available for offers</div>
+                  </div>
+                </div>
+                {% if form.is_active.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.is_active.errors|join:", " }}</div>{% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- HTML Body Editor -->
+        <div class="hiring-card">
+          <div class="hiring-card-header">
+            <div class="title-left">
+              <i class="bi bi-code-square"></i>
+              <span>Template Content (HTML & Tokens)</span>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLivePreviewToggle" onclick="togglePreviewTab()">
+                <i class="bi bi-eye me-1"></i>Toggle Live Preview
+              </button>
+            </div>
+          </div>
+          <div class="hiring-card-body">
+            {% if form.body_html %}
+            <div class="field-wrapper" id="editorWrap">
+              <label class="field-label" for="{{ form.body_html.id_for_label }}">
+                HTML Template Body <span class="req">*</span>
+              </label>
+              {{ form.body_html }}
+              <div class="field-help"><i class="bi bi-info-circle me-1"></i>Click any placeholder token in the right panel to insert it at cursor position.</div>
+              {% if form.body_html.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.body_html.errors|join:", " }}</div>{% endif %}
+            </div>
+            
+            <div id="previewWrap" style="display:none;" class="mt-2">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold text-muted small text-uppercase"><i class="bi bi-play-circle me-1"></i>Real-time Preview (Sample Merged Data)</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">Live Render</span>
+              </div>
+              <div class="preview-container" id="livePreviewBox">
+                <!-- Rendered dynamically via JS -->
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Interactive Placeholders & Quick Reference (4 cols) -->
+      <div class="col-lg-4">
+
+        <!-- Token Pills Card -->
+        <div class="hiring-card">
+          <div class="hiring-card-header">
+            <div class="title-left">
+              <i class="bi bi-magic"></i>
+              <span>Dynamic Merge Tokens</span>
+            </div>
+          </div>
+          <div class="hiring-card-body">
+            <p class="text-muted small mb-3">
+              Click any token below to insert it directly into your template content:
+            </p>
+
+            <div class="d-flex flex-column gap-1">
+              <button type="button" class="token-chip text-start border-0" onclick="insertToken('{% verbatim %}{{candidate_name}}{% endverbatim %}')">
+                <i class="bi bi-plus-circle"></i> {% verbatim %}{{candidate_name}}{% endverbatim %}
+                <span class="text-muted fw-normal ms-auto" style="font-size:.7rem;">Candidate Full Name</span>
+              </button>
+
+              <button type="button" class="token-chip text-start border-0" onclick="insertToken('{% verbatim %}{{job_title}}{% endverbatim %}')">
+                <i class="bi bi-plus-circle"></i> {% verbatim %}{{job_title}}{% endverbatim %}
+                <span class="text-muted fw-normal ms-auto" style="font-size:.7rem;">Target Designation</span>
+              </button>
+
+              <button type="button" class="token-chip text-start border-0" onclick="insertToken('{% verbatim %}{{company_name}}{% endverbatim %}')">
+                <i class="bi bi-plus-circle"></i> {% verbatim %}{{company_name}}{% endverbatim %}
+                <span class="text-muted fw-normal ms-auto" style="font-size:.7rem;">Employer Entity</span>
+              </button>
+
+              <button type="button" class="token-chip text-start border-0" onclick="insertToken('{% verbatim %}{{ctc_offered}}{% endverbatim %}')">
+                <i class="bi bi-plus-circle"></i> {% verbatim %}{{ctc_offered}}{% endverbatim %}
+                <span class="text-muted fw-normal ms-auto" style="font-size:.7rem;">Annual CTC</span>
+              </button>
+
+              <button type="button" class="token-chip text-start border-0" onclick="insertToken('{% verbatim %}{{offer_date}}{% endverbatim %}')">
+                <i class="bi bi-plus-circle"></i> {% verbatim %}{{offer_date}}{% endverbatim %}
+                <span class="text-muted fw-normal ms-auto" style="font-size:.7rem;">Offer Release Date</span>
+              </button>
+
+              <button type="button" class="token-chip text-start border-0" onclick="insertToken('{% verbatim %}{{joining_date}}{% endverbatim %}')">
+                <i class="bi bi-plus-circle"></i> {% verbatim %}{{joining_date}}{% endverbatim %}
+                <span class="text-muted fw-normal ms-auto" style="font-size:.7rem;">Expected Joining</span>
+              </button>
+            </div>
+
+            <hr class="my-3 text-muted opacity-25">
+
+            <div class="p-3 bg-light rounded-3 border">
+              <div class="fw-bold small text-dark mb-1"><i class="bi bi-lightbulb-fill text-warning me-1"></i>Design Tip</div>
+              <div class="text-muted" style="font-size:.78rem; line-height:1.45;">
+                Standard HTML tags like <code>&lt;h1&gt;</code>, <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;table&gt;</code>, and inline styling are fully supported for PDF export.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions-bar">
+      <a href="{% url 'hrms:offertemplate_list' %}" class="btn-cancel-soft">
+        <i class="bi bi-x-circle"></i> Cancel
+      </a>
+      <button type="submit" class="btn-submit-gradient">
+        <i class="bi bi-check-circle-fill"></i> {% if object %}Save Template Changes{% else %}Create Offer Template{% endif %}
+      </button>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+  function insertToken(token) {
+    const textarea = document.querySelector('textarea[name="body_html"]');
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    textarea.value = text.substring(0, start) + token + text.substring(end);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = start + token.length;
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const textarea = document.querySelector('textarea[name="body_html"]');
+    const previewBox = document.getElementById('livePreviewBox');
+    if (!textarea || !previewBox) return;
+
+    let content = textarea.value || '<p class="text-muted fst-italic">No template content yet...</p>';
+    // Replace tokens with sample data
+    content = content.replace(/{{\s*candidate_name\s*}}/g, '<strong style="color:#059669;">Jane Doe</strong>');
+    content = content.replace(/{{\s*job_title\s*}}/g, '<strong>Senior Full-Stack Engineer</strong>');
+    content = content.replace(/{{\s*company_name\s*}}/g, '<strong>Oblu Technologies Pvt Ltd</strong>');
+    content = content.replace(/{{\s*ctc_offered\s*}}/g, '<strong>₹18,50,000</strong>');
+    content = content.replace(/{{\s*offer_date\s*}}/g, '<strong>' + new Date().toLocaleDateString() + '</strong>');
+    content = content.replace(/{{\s*joining_date\s*}}/g, '<strong>' + new Date(Date.now() + 30*86400000).toLocaleDateString() + '</strong>');
+
+    previewBox.innerHTML = content;
+  }
+
+  function togglePreviewTab() {
+    const previewWrap = document.getElementById('previewWrap');
+    const btn = document.getElementById('btnLivePreviewToggle');
+    if (previewWrap.style.display === 'none') {
+      updatePreview();
+      previewWrap.style.display = 'block';
+      btn.innerHTML = '<i class="bi bi-code me-1"></i>Hide Preview';
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-outline-secondary');
+    } else {
+      previewWrap.style.display = 'none';
+      btn.innerHTML = '<i class="bi bi-eye me-1"></i>Toggle Live Preview';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-outline-secondary');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.querySelector('textarea[name="body_html"]');
+    if (textarea) {
+      textarea.addEventListener('input', updatePreview);
+    }
+  });
+</script>
+{% endblock %}

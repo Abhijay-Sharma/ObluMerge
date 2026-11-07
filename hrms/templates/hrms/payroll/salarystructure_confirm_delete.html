@@ -1,0 +1,17 @@
+{% extends "hrms/base.html" %}
+{% block title %}Delete Salary Structure{% endblock %}
+{% block page_title %}Delete Salary Structure{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <div class="card-body">
+    <p>Delete salary structure <strong>{{ object.name }}</strong>? Employee salaries referencing it will keep their
+    values but lose the structure link.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete</button>
+      <a href="{% url 'hrms:salarystructure_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,298 @@
+{% extends "hrms/base.html" %}
+{% block title %}Manager Dashboard{% endblock %}
+{% block page_title %}Team Management Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .manager-stat-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        border: 1px solid #f1f5f9;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .manager-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
+    }
+    .emp-avatar { width: 38px; height: 38px; background: #eef2ff; color: #6366f1; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .table thead th { background: #f8fafc; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; color: #64748b; border: none; padding: 12px 16px; }
+    .table tbody td { padding: 12px 16px; vertical-align: middle; }
+    .section-header { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+    .card-shell { border-radius: 16px; border: 1px solid #f1f5f9; background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2">
+
+    <!-- 1. TOP STATS CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="manager-stat-card border-start border-4 border-primary">
+                <div class="small text-muted fw-bold">DIRECT SUBORDINATES</div>
+                <div class="h3 mb-0 fw-bold text-dark">{{ subordinate_count }} Staff</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="manager-stat-card border-start border-4 border-warning">
+                <div class="small text-warning fw-bold">PENDING LEAVE APPROVALS</div>
+                <div class="h3 mb-0 fw-bold text-warning">{{ pending_leaves.count }} Requests</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="manager-stat-card border-start border-4 border-success">
+                <div class="small text-success fw-bold">TEAM ATTENDANCE (THIS MONTH)</div>
+                <div class="h3 mb-0 fw-bold text-success">{{ team_stats.present }} Present Days</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="manager-stat-card border-start border-4 border-danger">
+                <div class="small text-danger fw-bold">PENALTIES / HALF DAYS</div>
+                <div class="h3 mb-0 fw-bold text-danger">{{ team_stats.half_day }} Instances</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. PENDING LEAVE APPROVALS SECTION -->
+    <div class="card-shell mb-4">
+        <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+            <div class="fw-bold text-dark fs-6">
+                <i class="bi bi-clock-history text-warning me-2"></i>Subordinate Leave Requests Awaiting Your Approval
+            </div>
+            <span class="badge bg-warning-subtle text-warning px-3 py-1">{{ pending_leaves.count }} Pending</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Employee</th>
+                        <th>Leave Type</th>
+                        <th>Dates &amp; Duration</th>
+                        <th>Reason</th>
+                        <th>Applied On</th>
+                        <th class="text-end pe-4">Manager Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in pending_leaves %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="emp-avatar me-3">{{ app.employee.first_name|first }}{{ app.employee.last_name|first }}</div>
+                                <div>
+                                    <div class="fw-bold text-dark">{{ app.employee.full_name }}</div>
+                                    <small class="text-muted">{{ app.employee.designation.title|default:"Staff" }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ app.leave_type.code }}</div>
+                            <small class="text-muted">{{ app.leave_type.name }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark" style="font-size: 0.85rem;">
+                                {{ app.start_date|date:"d M Y" }} &rarr; {{ app.end_date|date:"d M Y" }}
+                            </div>
+                            <small class="badge bg-light text-dark border">{{ app.total_days }} Day(s) &middot; {{ app.get_day_type_display }}</small>
+                        </td>
+                        <td>
+                            <div class="small text-dark" style="max-width: 250px;">
+                                {{ app.reason|default:"<span class='text-muted italic'>No reason</span>"|safe }}
+                            </div>
+                        </td>
+                        <td><small class="text-muted">{{ app.applied_on|date:"d M Y, h:i A" }}</small></td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group btn-group-sm">
+                                <form method="post" action="{% url 'hrms:manager_leave_approve' app.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success px-3" title="Approve & Escalate to HR">
+                                        <i class="bi bi-check-lg me-1"></i> Approve
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal" data-app-id="{{ app.pk }}" data-emp-name="{{ app.employee.full_name }}" data-url="{% url 'hrms:manager_leave_reject' app.pk %}">
+                                    <i class="bi bi-x-lg me-1"></i> Reject
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            <i class="bi bi-check-circle display-6 d-block mb-2 text-success"></i>
+                            No pending leave requests from your subordinates. You're all caught up!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 3. SUBORDINATES & TODAY'S ATTENDANCE -->
+    <div class="row g-4">
+        <!-- Subordinates Attendance Report -->
+        <div class="col-lg-8">
+            <div class="card-shell">
+                <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+                    <div class="fw-bold text-dark fs-6">
+                        <i class="bi bi-calendar-check text-primary me-2"></i>Subordinates Today's Attendance
+                    </div>
+                    <small class="text-muted">{% now "l, d F Y" %}</small>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Subordinate</th>
+                                <th>Status Today</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Late Minutes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in team_today_list %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="emp-avatar me-3">{{ item.employee.first_name|first }}{{ item.employee.last_name|first }}</div>
+                                        <div>
+                                            <div class="fw-bold text-dark">{{ item.employee.full_name }}</div>
+                                            <small class="text-muted">{{ item.employee.department.name|default:"Staff" }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if item.record %}
+                                        {% if item.record.status == 'present' %}
+                                            <span class="badge bg-success-subtle text-success px-2 py-1"><i class="bi bi-check-circle me-1"></i>Present</span>
+                                        {% elif item.record.status == 'half_day' %}
+                                            <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="bi bi-exclamation-triangle me-1"></i>Half Day</span>
+                                        {% elif item.record.status == 'on_leave' %}
+                                            <span class="badge bg-info-subtle text-info px-2 py-1"><i class="bi bi-calendar2 me-1"></i>On Leave</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ item.status }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border px-2 py-1">Not Checked In</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.check_in %}
+                                        <span class="fw-bold text-dark">{{ item.check_in|date:"h:i A" }}</span>
+                                    {% else %}
+                                        <span class="text-muted">--</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.check_out %}
+                                        <span class="fw-bold text-dark">{{ item.check_out|date:"h:i A" }}</span>
+                                    {% else %}
+                                        <span class="text-muted">--</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.late_minutes > 0 %}
+                                        <span class="badge bg-danger-subtle text-danger">{{ item.late_minutes }} mins</span>
+                                    {% else %}
+                                        <span class="text-success small"><i class="bi bi-check me-1"></i>On Time</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No subordinates assigned to you yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subordinates Quick Directory -->
+<!--        <div class="col-lg-4">-->
+<!--            <div class="card-shell">-->
+<!--                <div class="p-3 border-bottom">-->
+<!--                    <div class="fw-bold text-dark fs-6">-->
+<!--                        <i class="bi bi-people text-indigo me-2"></i>My Subordinates ({{ subordinate_count }})-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="p-3">-->
+<!--                    <div class="list-group list-group-flush">-->
+<!--                        {% for sub in subordinates %}-->
+<!--                        <div class="list-group-item px-0 py-2 border-bottom d-flex align-items-center justify-content-between">-->
+<!--                            <div class="d-flex align-items-center">-->
+<!--                                <div class="emp-avatar me-3" style="width: 32px; height: 32px; font-size: 0.8rem;">{{ sub.first_name|first }}{{ sub.last_name|first }}</div>-->
+<!--                                <div>-->
+<!--                                    <div class="fw-bold text-dark small">{{ sub.full_name }}</div>-->
+<!--                                    <small class="text-muted" style="font-size: 0.72rem;">{{ sub.designation.title|default:"Staff" }}</small>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                            <span class="badge bg-light text-dark border small">{{ sub.employee_code }}</span>-->
+<!--                        </div>-->
+<!--                        {% empty %}-->
+<!--                        <div class="text-muted small text-center py-3">No subordinates reporting directly to you.</div>-->
+<!--                        {% endfor %}-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+    </div>
+</div>
+
+<!-- REJECTION MODAL -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="rejectModalForm" method="post" action="">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger" id="rejectModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Reject Leave Request
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <p class="small text-muted mb-3">
+                        You are rejecting the leave application for <strong id="modalEmpName">Staff</strong>. Please enter the reason for rejection:
+                    </p>
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label small fw-bold text-dark">Reason for Rejection <span class="text-danger">*</span></label>
+                        <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required placeholder="Enter rejection reason..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm px-4">Confirm Rejection</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const rejectModal = document.getElementById('rejectModal');
+        if (rejectModal) {
+            rejectModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const empName = button.getAttribute('data-emp-name');
+                const actionUrl = button.getAttribute('data-url');
+
+                const modalEmpName = rejectModal.querySelector('#modalEmpName');
+                const modalForm = rejectModal.querySelector('#rejectModalForm');
+                const reasonInput = rejectModal.querySelector('#rejection_reason');
+
+                if (modalEmpName) modalEmpName.textContent = empName;
+                if (modalForm) modalForm.action = actionUrl;
+                if (reasonInput) reasonInput.value = '';
+            });
+        }
+    });
+</script>
+{% endblock %}

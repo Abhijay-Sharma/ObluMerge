@@ -40,6 +40,8 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'access_control',
+    'hrms',
     'docs',
     'request_logs',
     'meta',
@@ -86,6 +88,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'hrms.context_processors.hrms_role',
+                'hrms.context_processors.hrms_company_context',
+                'access_control.context_processors.rbac_context',
             ],
         },
     },

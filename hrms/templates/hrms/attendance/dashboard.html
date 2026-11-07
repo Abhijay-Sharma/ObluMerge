@@ -1,0 +1,209 @@
+{% extends "hrms/base.html" %}
+{% block title %}Daily Punch Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-teal: #0d9488;
+        --border-color: #e5e7eb;
+        --sticky-col-width: 280px;
+    }
+
+    .dashboard-wrapper {
+        padding: 1.5rem;
+        background: #f9fafb;
+    }
+
+    /* Fixed Table Layout with Matrix Support */
+    .matrix-container {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid var(--border-color);
+        overflow: auto; /* Enable both scrolls */
+        max-height: 75vh;
+    }
+
+    .attendance-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    /* Sticky Header Logic */
+    .attendance-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #f3f4f6;
+        padding: 10px;
+        font-size: 11px;
+        text-align: center;
+        border-bottom: 2px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+    }
+
+    /* Sticky Vertical Column (Employee Info) */
+    .sticky-emp-col {
+        position: sticky;
+        left: 0;
+        z-index: 25;
+        background: white !important;
+        width: var(--sticky-col-width);
+        min-width: var(--sticky-col-width);
+        border-right: 2px solid var(--border-color) !important;
+    }
+
+    thead th.sticky-emp-col {
+        z-index: 30; /* Higher than other headers */
+    }
+
+    /* Cell Styling */
+    .punch-cell {
+        min-width: 100px;
+        text-align: center;
+        padding: 8px 4px;
+        border-right: 1px solid #f0f0f0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 11px;
+    }
+
+    /* Marking Styles */
+    .mark {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 10px;
+        margin-bottom: 2px;
+    }
+    .mark-fd { background: #dcfce7; color: #166534; } /* Green Full Day */
+    .mark-hd { background: #fef9c3; color: #854d0e; } /* Yellow Half Day */
+    .mark-leave { background: #dbeafe; color: #1e40af; } /* Blue Leaves */
+    .mark-grace { border: 1px solid #f97316; color: #c2410c; } /* Orange Grace */
+    .mark-absent { background: #fee2e2; color: #991b1b; }
+
+    .time-text {
+        display: block;
+        color: #64748b;
+        line-height: 1.2;
+    }
+
+    /* Responsive Filter Bar */
+    .filter-bar {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold m-0"><i class="bi bi-calendar-check me-2"></i>Daily Punch Report</h5>
+        <div class="btn-group">
+            <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-download me-1"></i> Export Excel</button>
+            <a href="{% url 'hrms:attendance_record_add' %}" class="btn btn-sm btn-dark">Add Attendance</a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="small fw-bold text-muted">Employee Search</label>
+                <select name="employee" class="form-select form-select-sm">
+                    <option value="">All Employees</option>
+                    {% for emp in employees_list %}
+                        <option value="{{ emp.id }}">{{ emp.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">From</label>
+                <input type="date" name="from" value="{{ filters.from }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">To</label>
+                <input type="date" name="to" value="{{ filters.to }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100">Filter</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Matrix Table -->
+    <div class="matrix-container">
+        <table class="attendance-table">
+            <thead>
+                <tr>
+                    <th class="sticky-emp-col">Employee Details</th>
+                    {% for d in date_list %}
+                        <th>
+                            {{ d|date:"D" }}<br>
+                            <span class="text-dark">{{ d|date:"d M" }}</span>
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td class="sticky-emp-col">
+                        <div class="d-flex align-items-center p-2">
+                            <div class="bg-light border rounded px-2 py-1 me-2 small fw-bold text-teal">
+                                {{ emp.employee_code }}
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 13px;">{{ emp.full_name }}</div>
+                                <div class="text-muted small" style="font-size: 11px;">{{ emp.designation.title }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    {% for d in date_list %}
+                        {% with record=matrix|get_item:emp.id|get_item:d %}
+                        <td class="punch-cell">
+                            {% if record.status != 'empty' %}
+                                <!-- Markings -->
+                                <div>
+                                    {% if record.status == 'present' %}
+                                        <span class="mark mark-fd">FD</span>
+                                    {% elif record.status == 'half_day' %}
+                                        <span class="mark mark-hd">HD</span>
+                                    {% elif record.status == 'on_leave' %}
+                                        <span class="mark mark-leave">{{ record.label }}</span>
+                                    {% elif record.status == 'absent' %}
+                                        <span class="mark mark-absent">ABS</span>
+                                    {% endif %}
+
+                                    {% if record.is_grace %}
+                                        <span class="mark mark-grace" title="Late: {{ record.late }}m">G</span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Times -->
+                                {% if record.check_in %}
+                                    <span class="time-text text-primary">{{ record.check_in|time:"h:i A" }}</span>
+                                {% endif %}
+                                {% if record.check_out %}
+                                    <span class="time-text text-danger">{{ record.check_out|time:"h:i A" }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted opacity-25">-</span>
+                            {% endif %}
+                        </td>
+                        {% endwith %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

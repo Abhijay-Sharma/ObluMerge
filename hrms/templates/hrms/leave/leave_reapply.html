@@ -1,0 +1,67 @@
+{% extends "hrms/base.html" %}
+
+{% block title %}Re-Apply for Leave — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-primary text-white p-4">
+          <h4 class="fw-bold mb-1"><i class="bi bi-arrow-repeat me-2"></i>Re-Apply for Leave</h4>
+          <p class="text-white-50 small mb-0">Re-applying for application #{{ view.original_app.id }} ({{ view.original_app.leave_type.name }}).</p>
+        </div>
+        <div class="card-body p-4">
+          {% if view.original_app.rejection_reason %}
+            <div class="alert alert-danger border-0 rounded-3 p-3 mb-4 small">
+              <strong>Previous Rejection Reason:</strong> {{ view.original_app.rejection_reason }}
+            </div>
+          {% endif %}
+
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Leave Type</label>
+              {{ form.leave_type }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Day Type</label>
+              {{ form.day_type }}
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold">Start Date*</label>
+                {{ form.start_date }}
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold">End Date*</label>
+                {{ form.end_date }}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Updated Reason / Clarifications*</label>
+              {{ form.reason }}
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Updated Supporting Document (Optional)</label>
+              {{ form.supporting_document }}
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{% url 'hrms:leave_detail' view.original_app.id %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+              <button type="submit" class="btn btn-primary rounded-pill px-5 fw-semibold">
+                <i class="bi bi-send me-1"></i>Submit Re-Application
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "hrms/base.html" %}
+{% block title %}Delete Department{% endblock %}
+{% block page_title %}Delete Department{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <div class="card-body">
+    <p>Delete department <strong>{{ object.name }}</strong>? This can't be undone.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete</button>
+      <a href="{% url 'hrms:department_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "hrms/base.html" %}
+{% block title %}Job Postings{% endblock %}
+{% block page_title %}Job Postings{% endblock %}
+
+{% block extra_css %}
+<style>
+  .job-card {
+    border: 1.5px solid #e8eaf0;
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem;
+    background: #fff;
+    transition: box-shadow .18s, border-color .18s, transform .15s;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    height: 100%;
+  }
+  .job-card:hover { box-shadow: 0 6px 24px rgba(99,102,241,.13); border-color: #a5b4fc; transform: translateY(-2px); }
+  .job-card .jc-title { font-size: 1.05rem; font-weight: 700; color: #1e1b4b; line-height: 1.25; }
+  .job-card .jc-meta { font-size: .8rem; color: #6b7280; }
+  .jc-pill { font-size: .7rem; font-weight: 600; padding: .22rem .65rem; border-radius: 99px; display: inline-flex; align-items: center; gap: .3rem; }
+  .pill-full   { background: #dbeafe; color: #1d4ed8; }
+  .pill-part   { background: #fef3c7; color: #92400e; }
+  .pill-contract{ background: #fce7f3; color: #9d174d; }
+  .pill-intern { background: #d1fae5; color: #065f46; }
+  .pill-active { background: #dcfce7; color: #166534; }
+  .pill-closed { background: #f1f5f9; color: #64748b; }
+  .stat-chip { background: #f3f4f6; border-radius: 8px; padding: .25rem .65rem; font-size: .78rem; font-weight: 600; color: #374151; }
+  .jc-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: auto; padding-top: .5rem; border-top: 1px solid #f1f5f9; }
+  .btn-kanban { background: linear-gradient(135deg,#8b5cf6,#6366f1); color: #fff !important; border: none; }
+  .btn-kanban:hover { opacity: .88; }
+  .ats-header { background: linear-gradient(135deg,#1e1b4b 0%,#312e81 60%,#4f46e5 100%); border-radius: 16px; padding: 1.5rem 2rem; color: #fff; margin-bottom: 1.5rem; }
+  .search-bar input { border-radius: 10px; border: 1.5px solid #e5e7eb; padding: .45rem 1rem; font-size: .88rem; }
+  .search-bar input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.15); }
+  .empty-state { background: #faf5ff; border: 2px dashed #c4b5fd; border-radius: 16px; padding: 3rem; text-align: center; color: #7c3aed; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header strip -->
+<div class="ats-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+  <div>
+    <h2 class="mb-1 fw-bold" style="font-size:1.4rem;"><i class="bi bi-briefcase-fill me-2"></i>Job Postings</h2>
+    <p class="mb-0 opacity-75" style="font-size:.85rem;">{{ postings|length }} posting{{ postings|length|pluralize }} · Manage your active hiring pipeline</p>
+  </div>
+  <a href="{% url 'hrms:jobposting_add' %}" class="btn btn-light fw-semibold px-4" style="border-radius:10px;">
+    <i class="bi bi-plus-lg me-1"></i>Post a Job
+  </a>
+</div>
+
+<!-- Search / filter bar -->
+<div class="search-bar d-flex gap-2 mb-4 flex-wrap" x-data="{q:'',type:'',active:''}">
+  <input type="text" x-model="q" placeholder="Search title or location…" class="form-control" style="max-width:280px;">
+  <select x-model="type" class="form-select" style="max-width:160px; border-radius:10px; border:1.5px solid #e5e7eb; font-size:.88rem;">
+    <option value="">All Types</option>
+    <option value="full_time">Full Time</option>
+    <option value="part_time">Part Time</option>
+    <option value="contract">Contract</option>
+    <option value="intern">Intern</option>
+  </select>
+  <select x-model="active" class="form-select" style="max-width:140px; border-radius:10px; border:1.5px solid #e5e7eb; font-size:.88rem;">
+    <option value="">All Status</option>
+    <option value="active">Active</option>
+    <option value="closed">Closed</option>
+  </select>
+</div>
+
+{% if postings %}
+<div class="row g-3">
+  {% for job in postings %}
+  <div class="col-xl-4 col-lg-6">
+    <div class="job-card">
+      <!-- Title + type pill -->
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div class="jc-title">{{ job.title }}</div>
+        <span class="jc-pill {% if job.job_type == 'full_time' %}pill-full{% elif job.job_type == 'part_time' %}pill-part{% elif job.job_type == 'contract' %}pill-contract{% else %}pill-intern{% endif %} text-nowrap">
+          <i class="bi {% if job.job_type == 'full_time' %}bi-briefcase{% elif job.job_type == 'intern' %}bi-mortarboard{% else %}bi-clock{% endif %}"></i>
+          {{ job.get_job_type_display }}
+        </span>
+      </div>
+
+      <!-- Meta -->
+      <div class="jc-meta d-flex flex-wrap gap-2">
+        {% if job.department %}<span><i class="bi bi-building me-1"></i>{{ job.department }}</span>{% endif %}
+        {% if job.location %}<span><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</span>{% endif %}
+        <span><i class="bi bi-calendar3 me-1"></i>{{ job.posted_on|date:"d M Y" }}</span>
+        {% if job.closing_date %}<span class="text-danger"><i class="bi bi-hourglass-split me-1"></i>Closes {{ job.closing_date|date:"d M" }}</span>{% endif %}
+      </div>
+
+      <!-- Stats row -->
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <span class="stat-chip"><i class="bi bi-people me-1"></i>{{ job.applications.count }} applicant{{ job.applications.count|pluralize }}</span>
+        <span class="jc-pill {% if job.is_active %}pill-active{% else %}pill-closed{% endif %}">
+          <i class="bi {% if job.is_active %}bi-circle-fill{% else %}bi-slash-circle{% endif %}"></i>
+          {% if job.is_active %}Active{% else %}Closed{% endif %}
+        </span>
+      </div>
+
+      <!-- Description snippet -->
+      {% if job.description %}
+      <p class="mb-0 text-muted" style="font-size:.8rem; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+        {{ job.description|truncatechars:120 }}
+      </p>
+      {% endif %}
+
+      <!-- Actions -->
+      <div class="jc-actions">
+        <a href="{% url 'hrms:application_list' %}?job={{ job.id }}" class="btn btn-sm btn-outline-secondary flex-grow-1">
+          <i class="bi bi-list-ul me-1"></i>Applications
+        </a>
+        {% if job.pipeline_stages.count %}
+        <a href="{% url 'hrms:job_kanban' job.pk %}" class="btn btn-sm btn-kanban flex-grow-1">
+          <i class="bi bi-kanban me-1"></i>Kanban
+        </a>
+        {% endif %}
+        <div class="dropdown">
+          <button class="btn btn-sm btn-light border" data-bs-toggle="dropdown">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
+            <li><a class="dropdown-item" href="{% url 'hrms:jobposting_edit' job.pk %}"><i class="bi bi-pencil me-2 text-muted"></i>Edit</a></li>
+            <li><a class="dropdown-item" href="{% url 'hrms:jobpipeline_manage' job.pk %}"><i class="bi bi-diagram-3 me-2 text-muted"></i>Manage Pipeline</a></li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li><a class="dropdown-item text-danger" href="{% url 'hrms:jobposting_delete' job.pk %}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state">
+  <i class="bi bi-briefcase" style="font-size:3rem; display:block; margin-bottom:1rem;"></i>
+  <h5 class="fw-semibold">No job postings yet</h5>
+  <p class="text-muted mb-3">Create your first role to start building your hiring pipeline.</p>
+  <a href="{% url 'hrms:jobposting_add' %}" class="btn btn-primary px-4">
+    <i class="bi bi-plus-lg me-1"></i>Post a Job
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}

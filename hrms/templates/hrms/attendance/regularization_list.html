@@ -1,0 +1,255 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Punch Regularization Requests — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="bi bi-clock-history text-warning me-2"></i>Punch Regularization</h3>
+      <p class="text-muted small mb-0">Request or review corrections for missed punches and biometric errors</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'hrms:attendance_matrix' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-grid-3x3-gap me-1"></i>Matrix View
+      </a>
+      <button class="btn btn-warning btn-sm rounded-pill px-3 text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#applyRegularizeModal">
+        <i class="bi bi-plus-circle me-1"></i>Request Regularization
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter & Requests Table -->
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+    <div class="card-header bg-white p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <form method="get" class="d-flex gap-2 align-items-center flex-grow-1 flex-md-grow-0">
+        <select name="status" class="form-select form-select-sm rounded-3" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending Review</option>
+          <option value="approved" {% if request.GET.status == 'approved' %}selected{% endif %}>Approved</option>
+          <option value="rejected" {% if request.GET.status == 'rejected' %}selected{% endif %}>Rejected</option>
+        </select>
+        {% if request.GET.status %}
+          <a href="{% url 'hrms:regularization_list' %}" class="btn btn-link btn-sm text-decoration-none">Clear</a>
+        {% endif %}
+      </form>
+      <div class="small text-muted">Showing {{ requests|length }} request(s)</div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-stack-sm" style="font-size: 0.88rem;">
+        <thead class="table-light">
+          <tr>
+            <th>Employee</th>
+            <th>Attendance Date</th>
+            <th>Requested Punch</th>
+            <th>Reason &amp; Proof</th>
+            <th>Status</th>
+            <th>Reviewed By</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in requests %}
+            <tr>
+              <td class="stack-head">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="avatar-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 34px; height: 34px;">
+                    {{ req.employee.first_name|slice:":1" }}
+                  </div>
+                  <div>
+                    <div class="fw-semibold text-dark">{{ req.employee.full_name }}</div>
+                    <div class="small text-muted">{{ req.employee.employee_code }} • {{ req.employee.department.name|default:"—" }}</div>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Date">
+                <div><div class="fw-semibold">{{ req.attendance_date|date:"D, d M Y" }}</div>
+                <div class="small text-muted">Applied: {{ req.created_at|date:"d M H:i" }}</div></div>
+              </td>
+              <td data-label="Requested">
+                <div>
+                  <span class="badge bg-light text-dark border">In: {{ req.requested_check_in|date:"H:i"|default:"—" }}</span>
+                  <span class="badge bg-light text-dark border ms-1">Out: {{ req.requested_check_out|date:"H:i"|default:"—" }}</span>
+                </div>
+              </td>
+              <td data-label="Reason">
+                <div><div class="text-truncate" style="max-width: 220px;" title="{{ req.reason }}">{{ req.reason }}</div>
+                {% if req.proof_document %}
+                  <a href="{{ req.proof_document.url }}" target="_blank" class="small text-primary text-decoration-none">
+                    <i class="bi bi-paperclip me-1"></i>View Attachment
+                  </a>
+                {% endif %}</div>
+              </td>
+              <td data-label="Status">
+                {% if req.status == 'pending' %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill">
+                    <i class="bi bi-hourglass-split me-1"></i>Pending Review
+                  </span>
+                {% elif req.status == 'approved' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
+                    <i class="bi bi-check-circle me-1"></i>Approved
+                  </span>
+                {% elif req.status == 'rejected' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill" data-bs-toggle="tooltip" title="{{ req.rejection_reason }}">
+                    <i class="bi bi-x-circle me-1"></i>Rejected
+                  </span>
+                {% endif %}
+              </td>
+              <td data-label="Reviewed By">
+                {% if req.reviewed_by %}
+                  <div><div class="small fw-semibold">{{ req.reviewed_by.username }}</div>
+                  <div class="small text-muted">{{ req.reviewed_on|date:"d M H:i" }}</div></div>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td class="text-end" data-label="Actions">
+                {% if is_hr and req.status == 'pending' %}
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-success btn-sm rounded-start-pill px-3" onclick="submitReview('{{ req.id }}', 'approved', '')">
+                      <i class="bi bi-check-lg me-1"></i>Approve
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm rounded-end-pill px-3" onclick="openRejectModal('{{ req.id }}', '{{ req.employee.full_name }}', '{{ req.attendance_date }}')">
+                      <i class="bi bi-x-lg me-1"></i>Reject
+                    </button>
+                  </div>
+                {% elif req.status == 'rejected' and req.rejection_reason %}
+                  <button class="btn btn-outline-secondary btn-sm rounded-pill px-2" data-bs-toggle="tooltip" title="Reason: {{ req.rejection_reason }}">
+                    <i class="bi bi-info-circle"></i> Reason
+                  </button>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                No punch regularization requests found.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Apply Regularization -->
+<div class="modal fade" id="applyRegularizeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="post" action="{% url 'hrms:regularization_apply' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">
+            <i class="bi bi-clock-history text-warning me-2"></i>Request Punch Regularization
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Attendance Date*</label>
+            {{ apply_form.attendance_date }}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Correct Check-In*</label>
+              {{ apply_form.requested_check_in }}
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Correct Check-Out</label>
+              {{ apply_form.requested_check_out }}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Reason for Missed / Incorrect Punch*</label>
+            {{ apply_form.reason }}
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Supporting Proof (Optional screenshot/ticket)</label>
+            {{ apply_form.proof_document }}
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold text-dark">
+            <i class="bi bi-send me-1"></i>Submit Request
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: HR Reject with Mandatory Reason -->
+<div class="modal fade" id="rejectRegularizeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form id="rejectForm" method="post" action="">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="rejected">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold text-danger">
+            <i class="bi bi-x-circle text-danger me-2"></i>Reject Regularization Request
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3">
+          <p class="text-muted small mb-3">
+            Rejecting request for <strong id="rejectEmpName">—</strong> on <strong id="rejectDate">—</strong>.
+          </p>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-danger">Mandatory Reason for Rejection*</label>
+            <textarea name="rejection_reason" class="form-control rounded-3" rows="3" placeholder="Provide a detailed reason why this request cannot be approved..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger rounded-pill px-4">
+            <i class="bi bi-x-lg me-1"></i>Confirm Rejection
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openRejectModal(reqId, empName, attDate) {
+    document.getElementById('rejectForm').action = "/hrms/attendance/regularize/" + reqId + "/review/";
+    document.getElementById('rejectEmpName').innerText = empName;
+    document.getElementById('rejectDate').innerText = attDate;
+    new bootstrap.Modal(document.getElementById('rejectRegularizeModal')).show();
+  }
+
+  function submitReview(reqId, status, reason) {
+    if (confirm("Are you sure you want to approve this punch regularization?")) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = "/hrms/attendance/regularize/" + reqId + "/review/";
+
+      const csrf = document.createElement('input');
+      csrf.type = 'hidden';
+      csrf.name = 'csrfmiddlewaretoken';
+      csrf.value = '{{ csrf_token }}';
+      form.appendChild(csrf);
+
+      const st = document.createElement('input');
+      st.type = 'hidden';
+      st.name = 'status';
+      st.value = status;
+      form.appendChild(st);
+
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+</script>
+{% endblock %}

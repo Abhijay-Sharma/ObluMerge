@@ -1,0 +1,541 @@
+{% extends "hrms/base.html" %}
+{% block title %}Asset Command Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --accent-indigo: #4f46e5;
+        --soft-bg: #f8fafc;
+    }
+
+    /* Top Cards Clickable & Glass Effect */
+    .stat-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .stat-card-glass {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 1.15rem 1.35rem;
+        transition: all 0.22s ease;
+        cursor: pointer;
+    }
+    .stat-card-glass:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px -5px rgba(0,0,0,0.06);
+        border-color: var(--accent-indigo);
+    }
+    .stat-card-glass.active-card {
+        border-color: #0f172a !important;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10);
+        background: #f8fafc;
+    }
+
+    /* View Toggle Switcher */
+    .view-toggle-btn {
+        border: 1px solid #cbd5e1;
+        background: white;
+        color: #475569;
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 8px;
+        transition: all 0.15s ease;
+    }
+    .view-toggle-btn.active {
+        background: #4f46e5;
+        color: white;
+        border-color: #4f46e5;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+    }
+
+    /* Accordion Customization */
+    .asset-accordion .accordion-item {
+        border: none;
+        background: transparent;
+        margin-bottom: 1rem;
+    }
+
+    .asset-accordion .accordion-button {
+        background: white !important;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px !important;
+        padding: 1.1rem 1.25rem;
+        box-shadow: none;
+        transition: all 0.2s ease;
+    }
+
+    .asset-accordion .accordion-button:not(.collapsed) {
+        border-color: var(--accent-indigo);
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.08);
+    }
+
+    /* Inner Row Styling */
+    .asset-row-detailed {
+        background: #ffffff;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        padding: 0.85rem 1.1rem;
+        margin-bottom: 0.65rem;
+        display: flex;
+        align-items: center;
+        transition: all 0.18s;
+    }
+    .asset-row-detailed:hover { background: #faf5ff; border-color: #c4b5fd; }
+
+    .meta-label { font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .meta-value { font-size: 0.85rem; font-weight: 600; color: #1e293b; }
+
+    /* Icons */
+    .category-icon-bg {
+        width: 42px; height: 42px;
+        background: #f1f5f9;
+        color: var(--accent-indigo);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .status-pill {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        display: inline-block;
+    }
+    .pill-available { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .pill-assigned { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+    .pill-repair { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+
+    .count-tag {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        color: #475569;
+        margin-left: 6px;
+    }
+
+    /* Master Table Styling */
+    .master-table-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+    .master-table-card table thead th {
+        background: #f8fafc;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        font-weight: 800;
+        color: #64748b;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 12px 16px;
+    }
+    .master-table-card table tbody td {
+        padding: 12px 16px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .master-table-card table tbody tr:hover {
+        background: #faf8ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-3 px-md-4 bg-light min-vh-100">
+
+    <!-- 1. HEADER & CONTROLS -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-bold mb-1 text-dark d-flex align-items-center">
+                <i class="bi bi-laptop me-2 text-primary"></i>Asset Command Center
+            </h3>
+            <p class="text-muted small mb-0"><i class="bi bi-shield-check me-1 text-success"></i>Live Hardware Inventory &amp; Lifecycle Management</p>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- VIEW TOGGLE BUTTONS -->
+            <div class="btn-group p-1 bg-white border rounded-3 shadow-xs me-2" role="group">
+                <button type="button" class="btn view-toggle-btn active" id="btnViewAccordion" onclick="switchAssetView('accordion')">
+                    <i class="bi bi-view-list me-1"></i>Grouped View
+                </button>
+                <button type="button" class="btn view-toggle-btn" id="btnViewTable" onclick="switchAssetView('table')">
+                    <i class="bi bi-table me-1"></i>Master Table
+                </button>
+            </div>
+
+            {% if hrms_is_hr %}
+            <a href="{% url 'hrms:asset_add' %}" class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm fw-semibold">
+                <i class="bi bi-plus-lg me-1"></i> Add Hardware
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 2. INTERACTIVE TOP STAT CARDS -->
+    <div class="row g-3 mb-4">
+        <!-- Total Inventory -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'hrms:asset_list' %}" class="stat-card-link">
+                <div class="stat-card-glass {% if not current_status_filter %}active-card border-dark{% endif %} d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="meta-label">Total Inventory</small>
+                        <div class="h3 fw-bold mb-0 text-dark">{{ total_count }}</div>
+                    </div>
+                    <div class="text-muted opacity-50"><i class="bi bi-box-seam h2 mb-0"></i></div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Available Units -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'hrms:asset_list' %}?status=available" class="stat-card-link">
+                <div class="stat-card-glass border-start border-success border-4 {% if current_status_filter == 'available' %}active-card{% endif %} d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="meta-label text-success">Available Units</small>
+                        <div class="h3 fw-bold mb-0 text-success">{{ available_count }}</div>
+                    </div>
+                    <div class="text-success opacity-50"><i class="bi bi-check-circle h2 mb-0"></i></div>
+                </div>
+            </a>
+        </div>
+
+        <!-- In Use / Issued -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'hrms:asset_list' %}?status=assigned" class="stat-card-link">
+                <div class="stat-card-glass border-start border-primary border-4 {% if current_status_filter == 'assigned' %}active-card{% endif %} d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="meta-label text-primary">In Use / Issued</small>
+                        <div class="h3 fw-bold mb-0 text-primary">{{ assigned_count }}</div>
+                    </div>
+                    <div class="text-primary opacity-50"><i class="bi bi-person-check h2 mb-0"></i></div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Maintenance / Under Repair -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'hrms:asset_list' %}?status=under_repair" class="stat-card-link">
+                <div class="stat-card-glass border-start border-warning border-4 {% if current_status_filter == 'under_repair' %}active-card{% endif %} d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="meta-label text-warning">Under Repair</small>
+                        <div class="h3 fw-bold mb-0 text-warning">{{ repair_count }}</div>
+                    </div>
+                    <div class="text-warning opacity-50"><i class="bi bi-tools h2 mb-0"></i></div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- 3. LIVE SEARCH & QUICK ACCORDION ACTIONS BAR -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-xs mb-3 gap-2">
+        <div class="position-relative flex-grow-1" style="max-width: 380px;">
+            <i class="bi bi-search position-absolute text-muted" style="top: 10px; left: 14px; font-size: 0.85rem;"></i>
+            <input type="text" id="assetLiveSearch" onkeyup="filterAssetsLive()"
+                   class="form-control form-control-sm rounded-pill ps-5 pe-3 bg-light border-0"
+                   placeholder="Quick filter by asset name, model, serial, holder...">
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <div id="accordionToggleControls" class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-light border rounded-pill px-3" onclick="toggleAllAccordions(true)">
+                    <i class="bi bi-arrows-expand me-1"></i>Expand All
+                </button>
+                <button type="button" class="btn btn-sm btn-light border rounded-pill px-3" onclick="toggleAllAccordions(false)">
+                    <i class="bi bi-arrows-collapse me-1"></i>Collapse All
+                </button>
+            </div>
+
+            {% if current_status_filter %}
+            <a href="{% url 'hrms:asset_list' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                <i class="bi bi-x-circle me-1"></i>Clear Status Filter
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ================= 4A. VIEW 1: CATEGORIZED ACCORDION ================= -->
+    <div id="viewAccordionContainer" class="accordion asset-accordion">
+        {% for group in structured_assets %}
+        <div class="accordion-item asset-category-block" data-cat-id="{{ group.id }}">
+            <h2 class="accordion-header">
+                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}">
+                    <div class="d-flex align-items-center w-100 me-2">
+                        <div class="category-icon-bg me-3">
+                            <i class="bi {% if 'Phone' in group.name or 'Mobile' in group.name %}bi-phone{% elif 'Laptop' in group.name %}bi-laptop{% elif 'Tablet' in group.name %}bi-tablet{% elif 'Sim' in group.name %}bi-sim{% else %}bi-pc-display{% endif %}"></i>
+                        </div>
+
+                        <div class="me-auto">
+                            <span class="fw-bold fs-5 text-dark">{{ group.name|upper }}</span>
+                            <div class="d-flex flex-wrap mt-1">
+                                <span class="count-tag"><i class="bi bi-layers me-1"></i>{{ group.total }} Total</span>
+                                <span class="count-tag text-success bg-success-subtle"><i class="bi bi-check2 me-1"></i>{{ group.available }} Available</span>
+                                <span class="count-tag text-primary bg-primary-subtle"><i class="bi bi-person me-1"></i>{{ group.assigned }} In Use</span>
+                            </div>
+                        </div>
+                    </div>
+                </button>
+            </h2>
+
+            <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#viewAccordionContainer">
+                <div class="accordion-body px-0 pt-3 pb-2">
+                    <!-- Column Header -->
+                    <div class="d-flex px-4 mb-2 text-muted small fw-bold text-uppercase d-none d-md-flex">
+                        <div style="flex: 2.5;">Device &amp; Identification</div>
+                        <div style="flex: 1;">Purchase Date</div>
+                        <div style="flex: 1.5;">Assigned Holder</div>
+                        <div style="flex: 1.2;" class="text-end">Status &amp; Actions</div>
+                    </div>
+
+                    {% for a in group.assets %}
+                    <div class="asset-row-detailed mx-3 mb-2 asset-searchable-row"
+                         data-search-text="{{ a.name|lower }} {{ a.model_number|default:''|lower }} {{ a.serial_number|default:''|lower }} {{ a.phone_number|default:''|lower }} {{ a.employee.full_name|default:''|lower }} {{ a.status|lower }}">
+                        <!-- 1. DEVICE INFO -->
+                        <div style="flex: 2.5;" class="d-flex align-items-center">
+                            <div class="p-2 bg-light rounded-3 me-3 text-muted flex-shrink-0">
+                                <i class="bi {% if a.sim %}bi-phone-vibrate{% else %}bi-qr-code-scan{% endif %} fs-5"></i>
+                            </div>
+                            <div class="overflow-hidden">
+                                <a href="{% url 'hrms:asset_detail' a.pk %}" class="text-decoration-none">
+                                    <div class="fw-bold text-dark text-truncate mb-0">
+                                        {{ a.name }}{% if a.model_number %} <span class="text-muted small fw-normal">({{ a.model_number }})</span>{% endif %}
+                                    </div>
+                                </a>
+                                <div class="small text-muted font-monospace text-truncate">
+                                    SN: <strong>{{ a.serial_number|default:"No Serial" }}</strong>
+                                    {% if a.phone_number %} &bull; Tel: {{ a.phone_number }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. DATES -->
+                        <div style="flex: 1;" class="ps-2 d-none d-md-block">
+                            <div class="meta-label">Acquired</div>
+                            <div class="meta-value">{{ a.purchase_date|date:"d M Y"|default:"--" }}</div>
+                        </div>
+
+                        <!-- 3. CURRENT HOLDER -->
+                        <div style="flex: 1.5;" class="ps-2">
+                            {% if a.employee %}
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 28px; height: 28px; font-size: 10px; font-weight: 800;">
+                                    {{ a.employee.first_name|first }}{{ a.employee.last_name|first }}
+                                </div>
+                                <div class="overflow-hidden">
+                                    <div class="meta-value text-truncate mb-0">{{ a.employee.full_name }}</div>
+                                    <div class="text-muted" style="font-size: 0.68rem;">Issued: {{ a.assigned_on|date:"d M Y"|default:"Recently" }}</div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <span class="badge bg-light text-muted border"><i class="bi bi-box me-1"></i>In Warehouse</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- 4. STATUS & ACTION -->
+                        <div style="flex: 1.2;" class="text-end">
+                            <div class="d-flex align-items-center justify-content-end gap-2">
+                                {% if a.status == 'assigned' %}
+                                    <span class="status-pill pill-assigned">In Use</span>
+                                {% elif a.status == 'available' %}
+                                    <span class="status-pill pill-available">Available</span>
+                                {% elif a.status == 'under_repair' %}
+                                    <span class="status-pill pill-repair">Maintenance</span>
+                                {% else %}
+                                    <span class="status-pill bg-secondary text-white">{{ a.get_status_display }}</span>
+                                {% endif %}
+
+                                <div class="btn-group shadow-xs">
+                                    <a href="{% url 'hrms:asset_detail' a.pk %}" class="btn btn-sm btn-white border py-1 px-2" title="View"><i class="bi bi-eye"></i></a>
+                                    {% if hrms_is_hr %}
+                                    <a href="{% url 'hrms:asset_edit' a.pk %}" class="btn btn-sm btn-white border py-1 px-2" title="Edit"><i class="bi bi-pencil"></i></a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="card p-5 text-center shadow-sm border-0 rounded-4">
+            <i class="bi bi-archive display-4 text-muted opacity-25"></i>
+            <h5 class="mt-3 text-muted">No hardware assets found matching the selected filter.</h5>
+            <div class="mt-2">
+                <a href="{% url 'hrms:asset_list' %}" class="btn btn-sm btn-outline-primary rounded-pill px-4">
+                    View All Hardware
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ================= 4B. VIEW 2: MASTER TABLE VIEW (TOGGLE) ================= -->
+    <div id="viewTableContainer" class="master-table-card mb-4" style="display: none;">
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Asset Name &amp; Model</th>
+                        <th>Category</th>
+                        <th>Serial Number</th>
+                        <th>Assigned Holder</th>
+                        <th>Purchase Date</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="masterTableBody">
+                    {% for a in flat_assets %}
+                    <tr class="asset-searchable-row"
+                        data-search-text="{{ a.name|lower }} {{ a.model_number|default:''|lower }} {{ a.serial_number|default:''|lower }} {{ a.category.name|default:''|lower }} {{ a.employee.full_name|default:''|lower }} {{ a.status|lower }}">
+                        <td class="text-muted small">{{ forloop.counter }}</td>
+                        <td>
+                            <a href="{% url 'hrms:asset_detail' a.pk %}" class="fw-bold text-dark text-decoration-none">
+                                {{ a.name }}
+                            </a>
+                            {% if a.model_number %}
+                            <div class="text-muted small">{{ a.model_number }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ a.category.name|default:"General" }}</span>
+                        </td>
+                        <td>
+                            <span class="font-monospace small fw-bold text-secondary">{{ a.serial_number|default:"--" }}</span>
+                        </td>
+                        <td>
+                            {% if a.employee %}
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 26px; height: 26px; font-size: 10px; font-weight: bold;">
+                                    {{ a.employee.first_name|first }}{{ a.employee.last_name|first }}
+                                </div>
+                                <span class="small fw-semibold text-dark">{{ a.employee.full_name }}</span>
+                            </div>
+                            {% else %}
+                            <span class="badge bg-light text-muted border">In Warehouse</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ a.purchase_date|date:"d M Y"|default:"--" }}</td>
+                        <td class="text-center">
+                            {% if a.status == 'assigned' %}
+                                <span class="status-pill pill-assigned">In Use</span>
+                            {% elif a.status == 'available' %}
+                                <span class="status-pill pill-available">Available</span>
+                            {% elif a.status == 'under_repair' %}
+                                <span class="status-pill pill-repair">Maintenance</span>
+                            {% else %}
+                                <span class="status-pill bg-secondary text-white">{{ a.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <div class="btn-group">
+                                <a href="{% url 'hrms:asset_detail' a.pk %}" class="btn btn-sm btn-white border py-1 px-2" title="View"><i class="bi bi-eye"></i></a>
+                                {% if hrms_is_hr %}
+                                <a href="{% url 'hrms:asset_edit' a.pk %}" class="btn btn-sm btn-white border py-1 px-2" title="Edit"><i class="bi bi-pencil"></i></a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-archive fs-1 d-block mb-2"></i>
+                            No hardware assets found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 1. Switch between Grouped Accordion and Master Table views
+    function switchAssetView(mode) {
+        const accordionView = document.getElementById('viewAccordionContainer');
+        const tableView     = document.getElementById('viewTableContainer');
+        const btnAccordion  = document.getElementById('btnViewAccordion');
+        const btnTable      = document.getElementById('btnViewTable');
+        const accordionControls = document.getElementById('accordionToggleControls');
+
+        if (mode === 'table') {
+            accordionView.style.display = 'none';
+            tableView.style.display = 'block';
+            btnAccordion.classList.remove('active');
+            btnTable.classList.add('active');
+            if (accordionControls) accordionControls.style.display = 'none';
+            localStorage.setItem('hrms_asset_view_mode', 'table');
+        } else {
+            accordionView.style.display = 'block';
+            tableView.style.display = 'none';
+            btnAccordion.classList.add('active');
+            btnTable.classList.remove('active');
+            if (accordionControls) accordionControls.style.display = 'flex';
+            localStorage.setItem('hrms_asset_view_mode', 'accordion');
+        }
+    }
+
+    // 2. Expand All or Collapse All accordions
+    function toggleAllAccordions(expand) {
+        const collapses = document.querySelectorAll('#viewAccordionContainer .accordion-collapse');
+        collapses.forEach(el => {
+            const instance = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+            if (expand) {
+                instance.show();
+            } else {
+                instance.hide();
+            }
+        });
+    }
+
+    // 3. Fast real-time live search filter
+    function filterAssetsLive() {
+        const query = document.getElementById('assetLiveSearch').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.asset-searchable-row');
+
+        rows.forEach(row => {
+            const text = row.getAttribute('data-search-text') || '';
+            if (!query || text.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Hide category blocks in accordion view if all child rows are hidden
+        const categoryBlocks = document.querySelectorAll('.asset-category-block');
+        categoryBlocks.forEach(block => {
+            const visibleRows = block.querySelectorAll('.asset-row-detailed:not([style*="display: none"])');
+            if (!query || visibleRows.length > 0) {
+                block.style.display = '';
+            } else {
+                block.style.display = 'none';
+            }
+        });
+    }
+
+    // Restore saved view preference
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedMode = localStorage.getItem('hrms_asset_view_mode');
+        if (savedMode === 'table') {
+            switchAssetView('table');
+        }
+    });
+</script>
+{% endblock %}

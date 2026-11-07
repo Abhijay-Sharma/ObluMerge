@@ -1,0 +1,95 @@
+{% extends "hrms/base.html" %}
+{% block title %}Add Timing Version{% endblock %}
+{% block page_title %}New Attendance Timing Version{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm" style="max-width:650px;">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-clock-history me-2"></i>Configure Timing Rule</h6>
+  </div>
+  <div class="card-body p-4">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.errors %}
+        <div class="alert alert-danger pb-0">
+            <ul class="small fw-bold">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li>{{ field.label }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+      {% endif %}
+
+      <div class="row g-3">
+        {# The most important field for versioning: When does this start? #}
+        <div class="col-md-12">
+          <label class="form-label fw-bold text-muted small">Target Company</label>
+          {{ form.company }}
+        </div>
+
+        <div class="col-md-12 bg-light p-3 rounded border mb-2">
+            <label class="form-label fw-bold">Effective From Date</label>
+            {{ form.effective_from }}
+            <div class="form-text small">Select the start of the month (e.g., 2026-08-01) this timing will begin.</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">{{ form.office_start_time.label }}</label>
+          {{ form.office_start_time }}
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">{{ form.office_end_time.label }}</label>
+          {{ form.office_end_time }}
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">Grace Window (Mins)</label>
+          {{ form.grace_minutes }}
+          <div class="form-text x-small">Minutes allowed after start time.</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">Graces Allowed/Month</label>
+          {{ form.grace_allowed_count }}
+          <div class="form-text x-small">Number of monthly waivers.</div>
+        </div>
+
+          <div class="col-md-4">
+          <label class="form-label small fw-bold">Half-Day Threshold (Hrs)</label>
+          {{ form.half_day_threshold_hours }}
+          <div class="form-text x-small">Work hours below this = HD.</div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Full-Day Threshold (Hrs)</label>
+          {{ form.full_day_threshold_hours }}
+          <div class="form-text x-small">Work hours for FD (e.g., 8).</div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Overtime After (Hrs)</label>
+          {{ form.overtime_threshold_hours }}
+          <div class="form-text x-small">Hrs after which OT starts.</div>
+        </div>
+
+      </div>
+
+      <div class="mt-4 pt-3 border-top d-flex gap-2">
+        <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">Save Version</button>
+        <a href="{% url 'hrms:attendance_policy' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="mt-4 text-muted small" style="max-width: 650px;">
+    <strong>Tip:</strong> If you are setting rules for August, select <strong>August 1st</strong> as the effective date.
+    The system will automatically apply these timings to all attendance records and payroll calculations from that date onwards.
+</div>
+{% endblock %}

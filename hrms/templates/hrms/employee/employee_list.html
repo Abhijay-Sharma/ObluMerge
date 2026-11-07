@@ -1,0 +1,222 @@
+{% extends "hrms/base.html" %}
+{% block title %}Employee Directory{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Card & UI Styling */
+    .stat-card { border: none; border-radius: 16px; transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-3px); }
+    .filter-card { border: none; border-radius: 12px; background: #fff; }
+    .employee-table-card { border: none; border-radius: 16px; overflow: hidden; }
+
+    /* Avatar Branding */
+    .avatar-init {
+        width: 38px; height: 38px;
+        background: #f1f5f9; color: #475569;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.85rem; border: 1px solid #e2e8f0;
+    }
+
+    /* Status Pills */
+    .pill { font-size: 0.65rem; padding: 4px 10px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .pill-active { background: #dcfce7; color: #15803d; }
+    .pill-leave { background: #fef9c3; color: #a16207; }
+    .pill-other { background: #f1f5f9; color: #475569; }
+
+    /* Mobile Responsiveness Hacks */
+    @media (max-width: 768px) {
+        .hide-mobile { display: none !important; }
+        .page-header { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+        .add-btn { width: 100%; text-align: center; }
+        .search-box { width: 100% !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4 page-header">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="fw-bold mb-0">Employee Directory</h2>
+                {% if active_company %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                        <i class="bi bi-building me-1"></i>{{ active_company.name }}
+                    </span>
+                {% else %}
+                    <span class="badge bg-light text-muted border rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                        <i class="bi bi-globe2 me-1"></i>All Global Units
+                    </span>
+                {% endif %}
+            </div>
+            <p class="text-muted small mb-0 mt-1">Browse and manage registered staff profiles for the active company.</p>
+        </div>
+        <a href="{% url 'hrms:employee_add' %}" class="btn btn-primary rounded-pill px-4 shadow-sm add-btn">
+            <i class="bi bi-person-plus-fill me-2"></i> Add Employee
+        </a>
+    </div>
+
+    <!-- Quick Stats (Solid UI 🔥) -->
+    <div class="row g-3 mb-4">
+        <!-- Total Staff -->
+        <div class="col-6 col-md-3">
+            <div class="card stat-card shadow-sm p-3 border-0" style="background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); color: white;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="small opacity-75 fw-bold text-uppercase">Total Staff</div>
+                        <div class="h2 mb-0 fw-bold">{{ total_count }}</div>
+                    </div>
+                    <div class="p-2 rounded-3" style="background: rgba(255,255,255,0.2);"><i class="bi bi-people h4 mb-0"></i></div>
+                </div>
+            </div>
+        </div>
+
+    <!-- Active Staff -->
+    <div class="col-6 col-md-3">
+        <div class="card stat-card shadow-sm p-3 border-0" style="background: #fff; border-left: 4px solid #10b981 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted fw-bold text-uppercase">Active Staff</div>
+                    <div class="h2 mb-0 fw-bold text-dark">{{ active_count }}</div>
+                </div>
+                <div class="text-success opacity-50"><i class="bi bi-check-circle-fill h4 mb-0"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Departments (Requested) -->
+    <div class="col-6 col-md-3">
+        <div class="card stat-card shadow-sm p-3 border-0" style="background: #fff; border-left: 4px solid #f59e0b !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted fw-bold text-uppercase">Departments</div>
+                    <div class="h2 mb-0 fw-bold text-dark">{{ dept_count }}</div>
+                </div>
+                <div class="text-warning opacity-50"><i class="bi bi-building h4 mb-0"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relieved/Inactive (Requested) -->
+    <div class="col-6 col-md-3">
+        <div class="card stat-card shadow-sm p-3 border-0" style="background: #fff; border-left: 4px solid #ef4444 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted fw-bold text-uppercase">Relieved/Left</div>
+                    <div class="h2 mb-0 fw-bold text-dark">{{ exited_count }}</div>
+                </div>
+                <div class="text-danger opacity-50"><i class="bi bi-person-x-fill h4 mb-0"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- Filter Bar -->
+    <div class="card filter-card shadow-sm mb-4">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-12 col-md-5 col-lg-4">
+                    <div class="input-group input-group-sm bg-light rounded-pill px-3 py-1 border">
+                        <span class="input-group-text bg-transparent border-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" value="{{ q|default:'' }}" class="form-control bg-transparent border-0 search-box" placeholder="Search name, code, email...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <select name="status" class="form-select form-select-sm border-0 bg-light rounded-pill px-3 border">
+                        <option value="">All Statuses</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 col-lg-1">
+                    <button class="btn btn-sm btn-dark w-100 rounded-pill" type="submit">Filter</button>
+                </div>
+                <div class="col-12 col-md-2 col-lg-1">
+                    <a href="{% url 'hrms:employee_list' %}" class="btn btn-sm btn-outline-secondary w-100 rounded-pill">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Employee Table -->
+    <div class="card employee-table-card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr class="small text-muted text-uppercase">
+                        <th class="ps-4">Employee</th>
+                        <th class="hide-mobile">Code</th>
+                        <th class="hide-mobile">Department</th>
+                        <th class="hide-mobile">Designation</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                    <tr style="cursor: pointer;" onclick="window.location='{% url 'hrms:employee_detail' emp.pk %}'">
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-init me-3">{{ emp.first_name|first }}{{ emp.last_name|first }}</div>
+                                <div>
+                                    <div class="fw-bold small text-dark mb-0">{{ emp.full_name }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">{{ emp.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="hide-mobile small fw-bold text-primary">{{ emp.employee_code }}</td>
+                        <td class="hide-mobile small text-muted">{{ emp.department|default:"--" }}</td>
+                        <td class="hide-mobile small text-muted">{{ emp.designation|default:"--" }}</td>
+                        <td class="text-center">
+                            {% if emp.status == 'active' %}
+                                <span class="pill pill-active">Active</span>
+                            {% elif emp.status == 'on_leave' %}
+                                <span class="pill pill-leave">On Leave</span>
+                            {% else %}
+                                <span class="pill pill-other">{{ emp.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="dropdown" onclick="event.stopPropagation();">
+                                <button class="btn btn-light btn-sm rounded-circle p-2" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                    <li><a class="dropdown-item small" href="{% url 'hrms:employee_detail' emp.pk %}"><i class="bi bi-eye me-2"></i> View Profile</a></li>
+                                    <li><a class="dropdown-item small" href="{% url 'hrms:employee_edit' emp.pk %}"><i class="bi bi-pencil me-2"></i> Edit Details</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item small text-danger" href="{% url 'hrms:employee_delete' emp.pk %}"><i class="bi bi-trash me-2"></i> Delete</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-5 text-muted">No employees found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav class="mt-4 d-flex justify-content-center">
+        <ul class="pagination pagination-sm shadow-sm">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q|default:'' }}&status={{ status|default:'' }}"><i class="bi bi-chevron-left"></i></a></li>
+            {% endif %}
+
+            <li class="page-item disabled"><span class="page-link px-4 fw-bold text-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q|default:'' }}&status={{ status|default:'' }}"><i class="bi bi-chevron-right"></i></a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+</div>
+{% endblock %}

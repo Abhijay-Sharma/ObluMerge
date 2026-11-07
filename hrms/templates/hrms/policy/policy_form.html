@@ -1,0 +1,266 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}{% if object %}Edit Policy{% else %}Create Policy{% endif %} — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-primary text-white p-4 border-0">
+          <h4 class="fw-bold mb-1">
+            <i class="bi bi-file-earmark-plus me-2"></i>{% if object %}Edit Policy{% else %}Create New Policy &amp; Summary Quiz{% endif %}
+          </h4>
+          <p class="text-white-50 small mb-0">Upload official PDF/Word documents and configure mandatory comprehension questions for employees.</p>
+        </div>
+
+        <div class="card-body p-4">
+          <form method="post" enctype="multipart/form-data" id="policyForm">
+            {% csrf_token %}
+
+            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-info-circle text-primary me-2"></i>1. Policy Details</h5>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Company*</label>
+                {{ form.company }}
+                {% if form.company.errors %}<div class="text-danger small">{{ form.company.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Category*</label>
+                {{ form.category }}
+                {% if form.category.errors %}<div class="text-danger small">{{ form.category.errors }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Policy Title*</label>
+                {{ form.title }}
+                {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Brief Summary / Overview</label>
+                {{ form.description }}
+                {% if form.description.errors %}<div class="text-danger small">{{ form.description.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Effective From*</label>
+                {{ form.effective_from }}
+                {% if form.effective_from.errors %}<div class="text-danger small">{{ form.effective_from.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Effective To (Optional)</label>
+                {{ form.effective_to }}
+                {% if form.effective_to.errors %}<div class="text-danger small">{{ form.effective_to.errors }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Upload Document (PDF or Word .docx)*</label>
+                {{ form.document }}
+                {% if form.document.errors %}<div class="text-danger small">{{ form.document.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <div class="form-check form-switch mt-2">
+                  {{ form.is_mandatory }}
+                  <label class="form-check-label fw-semibold" for="{{ form.is_mandatory.id_for_label }}">
+                    Mandatory Policy (All active employees must acknowledge)
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-check form-switch mt-2">
+                  {{ form.is_active }}
+                  <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">
+                    Policy is Active &amp; Published
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Dynamic Summary Quiz Builder -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-question-diamond text-warning me-2"></i>2. Summary Quiz Questions (Optional)</h5>
+                <p class="text-muted small mb-0">Add multiple choice or True/False questions that employees must answer correctly to acknowledge.</p>
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="addQuestion()">
+                <i class="bi bi-plus-circle me-1"></i>Add Question
+              </button>
+            </div>
+
+            <!-- Hidden field for JSON data -->
+            <input type="hidden" name="quiz_data_json" id="quizDataJson" value="">
+
+            <div id="quizContainer" class="d-flex flex-column gap-3 mb-4">
+              <!-- Questions will be rendered here dynamically -->
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+              <a href="{% url 'hrms:policy_manage' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+              <button type="button" class="btn btn-primary rounded-pill px-5 fw-semibold" onclick="submitPolicyForm()">
+                <i class="bi bi-check-circle me-1"></i>Save Policy &amp; Quiz
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let questions = [];
+
+  // If editing an existing policy, load its quiz_data
+  {% if object and object.quiz_data %}
+    try {
+      questions = {{ object.quiz_data|safe }};
+    } catch(e) {
+      questions = [];
+    }
+  {% endif %}
+
+  function renderQuestions() {
+    const container = document.getElementById('quizContainer');
+    container.innerHTML = '';
+
+    if (questions.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-light border rounded-3 text-center py-4 text-muted small">
+          <i class="bi bi-question-circle fs-3 d-block mb-1 text-secondary"></i>
+          No quiz questions configured yet. Click "Add Question" above to add comprehension questions.
+        </div>
+      `;
+      return;
+    }
+
+    questions.forEach((q, qIndex) => {
+      const qCard = document.createElement('div');
+      qCard.className = 'card border rounded-4 shadow-sm p-4 bg-light bg-opacity-25';
+
+      let optionsHtml = '';
+      if (q.type === 'mcq') {
+        optionsHtml = `
+          <div class="mb-2 fw-semibold small text-muted">Options (Select radio for the correct answer):</div>
+          <div class="d-flex flex-column gap-2">
+            ${(q.options || []).map((opt, oIndex) => `
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white">
+                  <input class="form-check-input mt-0" type="radio" name="correct_${qIndex}" value="${oIndex}" ${parseInt(q.correct) === oIndex ? 'checked' : ''} onchange="updateCorrect(${qIndex}, ${oIndex})">
+                </span>
+                <input type="text" class="form-control" value="${opt}" placeholder="Option ${oIndex + 1}" oninput="updateOption(${qIndex}, ${oIndex}, this.value)">
+                <button class="btn btn-outline-danger" type="button" onclick="removeOption(${qIndex}, ${oIndex})"><i class="bi bi-trash"></i></button>
+              </div>
+            `).join('')}
+          </div>
+          <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 mt-2" onclick="addOption(${qIndex})">
+            + Add another option
+          </button>
+        `;
+      } else if (q.type === 'true_false') {
+        optionsHtml = `
+          <div class="mb-2 fw-semibold small text-muted">Correct Answer:</div>
+          <div class="d-flex gap-4">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="correct_${qIndex}" value="true" ${String(q.correct) === 'true' ? 'checked' : ''} onchange="updateCorrect(${qIndex}, 'true')">
+              <label class="form-check-label fw-semibold text-success">True</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="correct_${qIndex}" value="false" ${String(q.correct) === 'false' ? 'checked' : ''} onchange="updateCorrect(${qIndex}, 'false')">
+              <label class="form-check-label fw-semibold text-danger">False</label>
+            </div>
+          </div>
+        `;
+      }
+
+      qCard.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="badge bg-primary rounded-pill px-3 py-1">Question #${qIndex + 1}</span>
+          <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="removeQuestion(${qIndex})">
+            <i class="bi bi-trash me-1"></i>Delete Question
+          </button>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-9">
+            <label class="form-label small fw-semibold">Question Text*</label>
+            <input type="text" class="form-control rounded-3" value="${q.question || ''}" placeholder="e.g. What is the standard office arrival grace window?" oninput="updateQuestionText(${qIndex}, this.value)" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Question Type</label>
+            <select class="form-select rounded-3" onchange="updateQuestionType(${qIndex}, this.value)">
+              <option value="mcq" ${q.type === 'mcq' ? 'selected' : ''}>Multiple Choice</option>
+              <option value="true_false" ${q.type === 'true_false' ? 'selected' : ''}>True / False</option>
+            </select>
+          </div>
+        </div>
+        ${optionsHtml}
+      `;
+      container.appendChild(qCard);
+    });
+  }
+
+  function addQuestion() {
+    questions.push({
+      question: '',
+      type: 'mcq',
+      options: ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+      correct: 0
+    });
+    renderQuestions();
+  }
+
+  function removeQuestion(index) {
+    questions.splice(index, 1);
+    renderQuestions();
+  }
+
+  function updateQuestionText(qIndex, val) {
+    questions[qIndex].question = val;
+  }
+
+  function updateQuestionType(qIndex, val) {
+    questions[qIndex].type = val;
+    if (val === 'mcq' && (!questions[qIndex].options || questions[qIndex].options.length === 0)) {
+      questions[qIndex].options = ['Option 1', 'Option 2'];
+      questions[qIndex].correct = 0;
+    } else if (val === 'true_false') {
+      questions[qIndex].correct = 'true';
+    }
+    renderQuestions();
+  }
+
+  function updateOption(qIndex, oIndex, val) {
+    questions[qIndex].options[oIndex] = val;
+  }
+
+  function addOption(qIndex) {
+    if (!questions[qIndex].options) questions[qIndex].options = [];
+    questions[qIndex].options.push(`Option ${questions[qIndex].options.length + 1}`);
+    renderQuestions();
+  }
+
+  function removeOption(qIndex, oIndex) {
+    if (questions[qIndex].options.length > 2) {
+      questions[qIndex].options.splice(oIndex, 1);
+      renderQuestions();
+    } else {
+      alert('A multiple choice question must have at least 2 options.');
+    }
+  }
+
+  function updateCorrect(qIndex, val) {
+    questions[qIndex].correct = val;
+  }
+
+  function submitPolicyForm() {
+    document.getElementById('quizDataJson').value = JSON.stringify(questions);
+    document.getElementById('policyForm').submit();
+  }
+
+  document.addEventListener('DOMContentLoaded', renderQuestions);
+</script>
+{% endblock %}

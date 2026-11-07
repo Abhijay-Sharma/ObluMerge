@@ -1,0 +1,342 @@
+/* ============================================================
+   PREMIUM UI ENHANCEMENTS — Oblu HRMS
+   Dedicated stylesheet for animations, transitions & loader.
+   Loaded AFTER style.css so it layers on top without conflicts.
+   ============================================================ */
+
+/* ─────────────────────────────────────────────────────────────
+   0. SHARED TIMING TOKENS
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:      180ms;
+  --dur-normal:    320ms;
+  --dur-slow:      480ms;
+  --stagger-gap:   45ms;
+  --loader-bg:     rgba(15, 23, 42, 0.65);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   1. 3D TUMBLING CUBE PAGE LOADER
+   ───────────────────────────────────────────────────────────── */
+.hrms-page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 28px;
+  background: var(--loader-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 1;
+  transition: opacity 0.35s var(--ease-out-expo);
+  pointer-events: all;
+}
+
+.hrms-page-loader.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Cube scene */
+.cube-scene {
+  width: 52px;
+  height: 52px;
+  perspective: 260px;
+}
+
+.cube {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: cubeTumble 1.8s infinite var(--ease-out-expo);
+}
+
+.cube__face {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  opacity: 0.92;
+}
+
+/* Face colours — vibrant multi-colour palette */
+.cube__face--front  { background: #2fb8a3; transform: rotateY(  0deg) translateZ(26px); }
+.cube__face--back   { background: #6366f1; transform: rotateY(180deg) translateZ(26px); }
+.cube__face--right  { background: #f43f5e; transform: rotateY( 90deg) translateZ(26px); }
+.cube__face--left   { background: #f59e0b; transform: rotateY(-90deg) translateZ(26px); }
+.cube__face--top    { background: #0ea5e9; transform: rotateX( 90deg) translateZ(26px); }
+.cube__face--bottom { background: #a855f7; transform: rotateX(-90deg) translateZ(26px); }
+
+@keyframes cubeTumble {
+  0%   { transform: rotateX(  0deg) rotateY(  0deg) rotateZ(  0deg); }
+  25%  { transform: rotateX( 90deg) rotateY( 90deg) rotateZ(  0deg); }
+  50%  { transform: rotateX(180deg) rotateY(180deg) rotateZ( 90deg); }
+  75%  { transform: rotateX(270deg) rotateY( 90deg) rotateZ(180deg); }
+  100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
+}
+
+.loader-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   2. STAGGERED ENTRANCE ANIMATIONS
+   ───────────────────────────────────────────────────────────── */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Table rows */
+tbody tr {
+  animation: fadeSlideIn var(--dur-slow) var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i, 0) * var(--stagger-gap));
+}
+
+/* Stat cards, accordion items, generic cards */
+.stat-card,
+.accordion-item,
+.hrms-content > .card,
+.hrms-content .card,
+.hrms-content .row > [class*="col"] > .card {
+  animation: fadeSlideIn var(--dur-slow) var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i, 0) * var(--stagger-gap));
+}
+
+/* ─────────────────────────────────────────────────────────────
+   3. TACTILE MICRO-INTERACTIONS — BUTTONS
+   ───────────────────────────────────────────────────────────── */
+.btn {
+  transition:
+    transform var(--dur-fast) var(--ease-out-expo),
+    box-shadow var(--dur-normal) var(--ease-out-expo),
+    background-color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px) scale(1.015);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.btn:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+  transition-duration: 60ms !important;
+}
+
+/* Action icon buttons (small icon-only) */
+.btn-sm i,
+.btn i.bi {
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.btn:hover i.bi {
+  transform: scale(1.08);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   4. BADGES & STATUS PILLS — GLOW BORDERS
+   ───────────────────────────────────────────────────────────── */
+.badge,
+.status-pill {
+  transition:
+    box-shadow var(--dur-normal) var(--ease-out-expo),
+    transform var(--dur-fast) var(--ease-out-expo);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.badge:hover,
+.status-pill:hover {
+  transform: translateY(-1px);
+}
+
+/* Contextual glow */
+.badge.bg-success-subtle,
+.badge-active,
+.badge-approved,
+.badge-paid {
+  box-shadow: 0 0 0 1px rgba(47, 184, 163, 0.25), 0 0 12px rgba(47, 184, 163, 0.10);
+}
+.badge.bg-danger-subtle {
+  box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.25), 0 0 12px rgba(244, 63, 94, 0.10);
+}
+.badge.bg-warning-subtle {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25), 0 0 12px rgba(245, 158, 11, 0.10);
+}
+.badge.bg-primary-subtle {
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 0 12px rgba(99, 102, 241, 0.10);
+}
+.badge.bg-info-subtle {
+  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.25), 0 0 12px rgba(14, 165, 233, 0.10);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   5. FORM FIELDS — FOCUS RING & AMBIENT SHADOW
+   ───────────────────────────────────────────────────────────── */
+.form-control,
+.form-select {
+  transition:
+    border-color var(--dur-normal) var(--ease-out-expo),
+    box-shadow var(--dur-normal) var(--ease-out-expo);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--accent, #2fb8a3);
+  box-shadow:
+    0 0 0 3px rgba(47, 184, 163, 0.15),
+    0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   6. ACCORDION — SMOOTH EXPAND / COLLAPSE
+   ───────────────────────────────────────────────────────────── */
+.accordion-collapse,
+.collapse:not(.hrms-nav .collapse) {
+  transition: height var(--dur-slow) var(--ease-out-expo) !important;
+}
+
+.accordion-button {
+  transition:
+    background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    box-shadow var(--dur-normal) var(--ease-out-expo);
+}
+
+.accordion-button:not(.collapsed) {
+  box-shadow: inset 0 -2px 0 0 var(--accent, #2fb8a3);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   7. MODAL — 3D SCALE-UP ENTRANCE
+   ───────────────────────────────────────────────────────────── */
+.modal.fade .modal-dialog {
+  transform: scale(0.95) translateY(10px);
+  transition: transform var(--dur-slow) var(--ease-out-expo),
+              opacity var(--dur-slow) var(--ease-out-expo);
+}
+
+.modal.show .modal-dialog {
+  transform: scale(1) translateY(0);
+}
+
+.modal-backdrop.show {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   8. ALERT MESSAGES — SLIDE-IN
+   ───────────────────────────────────────────────────────────── */
+.alert.fade.show {
+  animation: fadeSlideIn var(--dur-slow) var(--ease-out-expo) backwards;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   9. SIDEBAR NAV HOVER REFINEMENT
+   ───────────────────────────────────────────────────────────── */
+.hrms-nav .nav-link {
+  transition:
+    background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-out-expo);
+}
+
+.hrms-nav .nav-link:hover {
+  transform: translateX(2px);
+}
+
+.hrms-sublist a {
+  transition:
+    background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    padding-left var(--dur-fast) var(--ease-out-expo);
+}
+
+.hrms-sublist a:hover {
+  padding-left: 14px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   10. CARD HOVER LIFT (non-stat generic cards)
+   ───────────────────────────────────────────────────────────── */
+.hrms-content .card {
+  transition:
+    transform var(--dur-normal) var(--ease-out-expo),
+    box-shadow var(--dur-normal) var(--ease-out-expo);
+}
+
+.hrms-content .card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   11. TABLE ROW HOVER HIGHLIGHT
+   ───────────────────────────────────────────────────────────── */
+tbody tr {
+  transition: background-color var(--dur-fast) ease;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   12. TOPBAR SUBTLE SHADOW
+   ───────────────────────────────────────────────────────────── */
+.hrms-topbar {
+  transition: box-shadow var(--dur-normal) ease;
+  box-shadow: 0 1px 0 var(--border, #e4e8ef);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   99. ACCESSIBILITY — REDUCED MOTION
+   ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .hrms-page-loader {
+    transition: none;
+  }
+
+  .cube {
+    animation: none;
+  }
+
+  tbody tr,
+  .stat-card,
+  .accordion-item,
+  .hrms-content .card {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

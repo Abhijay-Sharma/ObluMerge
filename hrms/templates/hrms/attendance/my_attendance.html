@@ -1,0 +1,579 @@
+{% extends "hrms/base.html" %}
+{% block title %}Attendance Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+        --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        --glass-bg: rgba(255, 255, 255, 0.95);
+        --border-color: #f1f5f9;
+    }
+
+    body { background-color: #f8fafc; }
+
+    .attendance-card {
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        background: var(--glass-bg);
+        transition: transform 0.2s ease;
+    }
+
+    .punch-clock {
+        font-size: 3.5rem;
+        font-weight: 800;
+        background: linear-gradient(to bottom, #1e293b, #475569);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .btn-punch {
+        padding: 14px 28px;
+        border-radius: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+    }
+
+    .btn-punch-in {
+        background: var(--success-gradient);
+        color: white;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-punch-in:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-punch-out {
+        background: white;
+        color: #ef4444;
+        border: 2px solid #ef4444;
+    }
+
+    .btn-punch-out:hover:not(:disabled) {
+        background: #fef2f2;
+        transform: translateY(-2px);
+    }
+
+    .btn-punch:disabled {
+        opacity: 0.6;
+        filter: grayscale(1);
+        transform: none !important;
+    }
+
+    .status-pill {
+        padding: 6px 16px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .time-card-mini {
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 15px;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Grace Dots */
+    .grace-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        background: #e2e8f0;
+        transition: all 0.3s ease;
+    }
+    .grace-dot.used { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+    .grace-dot.active {
+        background: #10b981;
+        animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .time-pill {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        background: #f1f5f9;
+        color: #334155;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .table-attendance thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+        padding: 15px;
+        border-top: none;
+    }
+
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        color: #10b981;
+        font-weight: 700;
+        font-size: 0.75rem;
+        gap: 5px;
+    }
+
+    .live-dot {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: blink 1.5s infinite;
+    }
+
+    .month-stat-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .month-stat-chip .chip-count {
+        font-weight: 800;
+        font-size: 0.95rem;
+    }
+    @media (max-width: 768px) {
+        .attendance-card { border-radius: 14px; }
+        .punch-clock { font-size: 2.4rem; }
+        .month-stat-chip { font-size: 0.72rem; padding: 4px 8px; }
+        .table-attendance td, .table-attendance th { padding: 10px 8px !important; font-size: 0.8rem; }
+        .time-pill { font-size: 0.78rem; padding: 2px 6px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    {% if not employee %}
+    <div class="alert alert-warning border-0 shadow-lg rounded-4 p-4">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-person-exclamation fs-1 me-3"></i>
+            <div>
+                <h5 class="mb-1 fw-bold">Profile Not Linked</h5>
+                <p class="mb-0">Please contact HR to link your user account with your employee profile.</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <div class="row g-4">
+        <!-- Main Punching Section -->
+        <div class="col-lg-8">
+            <div class="card attendance-card h-100 border-0">
+                <div class="card-body p-4 p-md-5">
+                    <div class="d-flex justify-content-between align-items-center mb-5">
+                        <div>
+                            <h4 class="fw-800 text-slate-800 mb-1">Daily Attendance</h4>
+                            <p class="text-muted fw-500 mb-0"><i class="bi bi-calendar3 me-2"></i>{{ today_record.attendance_date|date:"l, d F Y"|default:"Today" }}</p>
+                        </div>
+                        <span class="status-pill {% if today_record.status == 'present' %}bg-success text-white{% elif today_record.status == 'half_day' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}">
+                            {{ today_record.get_status_display|default:"Not Clocked In" }}
+                        </span>
+                    </div>
+
+                    <div class="row g-5 align-items-center">
+                        <div class="col-md-6 text-center border-md-end">
+                            <label class="text-uppercase small fw-bold text-muted mb-2 d-block">Current Local Time</label>
+                            <div id="liveClock" class="punch-clock mb-4">00:00:00</div>
+
+                            <div class="d-flex justify-content-center gap-3">
+                                <form method="post" action="{% url 'hrms:attendance_check_in' %}">
+                                    {% csrf_token %}
+<!--                                    <button type="submit" class="btn btn-punch btn-punch-in"-->
+<!--                                            {% if today_record and today_record.check_in %}disabled{% endif %}>-->
+<!--                                        <i class="bi bi-box-arrow-in-right me-2"></i>Punch In-->
+<!--                                    </button>-->
+                                </form>
+                                <form method="post" action="{% url 'hrms:attendance_check_out' %}">
+                                    {% csrf_token %}
+<!--                                    <button type="submit" class="btn btn-punch btn-punch-out"-->
+<!--                                            {% if not today_record or not today_record.check_in or today_record.check_out %}disabled{% endif %}>-->
+<!--                                        Punch Out-->
+<!--                                    </button>-->
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 ps-md-5">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="time-card-mini">
+                                        <small class="text-muted text-uppercase d-block mb-1 fw-bold" style="font-size: 0.65rem;">Check In</small>
+                                        <span class="fw-bold text-slate-700">
+                                            {% if today_record.check_in %}{{ today_record.check_in|time:"H:i" }}{% else %}--:--{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="time-card-mini">
+                                        <small class="text-muted text-uppercase d-block mb-1 fw-bold" style="font-size: 0.65rem;">Check Out</small>
+                                        <span class="fw-bold text-slate-700">
+                                            {% if today_record.check_out %}{{ today_record.check_out|time:"H:i" }}{% else %}--:--{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="time-card-mini bg-white border-primary shadow-sm">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Working Hours</small>
+                                            <!-- TIMER CLOSE LOGIC: Only show "Live" if checked in but not checked out -->
+                                            {% if today_record.check_in and not today_record.check_out %}
+                                            <div class="live-indicator">
+                                                <div class="live-dot"></div> LIVE
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="fs-3 fw-800 text-primary">{{ today_record.total_hours|default:"0.00" }} <small class="fs-6 fw-normal text-muted">hrs</small></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grace Validity Section -->
+        <div class="col-lg-4">
+            <div class="card attendance-card h-100 border-0 overflow-hidden">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-warning-subtle p-2 rounded-3 me-3 text-warning">
+                            <i class="bi bi-shield-check fs-4"></i>
+                        </div>
+                        <h6 class="fw-bold mb-0">Grace Policy</h6>
+                    </div>
+
+                    <p class="text-muted small mb-4">Monthly allowed grace arrivals: <span class="badge bg-slate-100 text-slate-800">{{ grace_max|default:"0" }}</span></p>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small fw-bold text-slate-600">Usage Tracker</span>
+                            <span class="small text-slate-500">{{ grace_used }} / {{ grace_max }} used</span>
+                        </div>
+                        <div class="grace-indicator d-flex flex-wrap gap-2">
+                            {% for i in "x"|rjust:grace_max %}
+                                <div class="grace-dot
+                                    {% if forloop.counter <= grace_used %}used{% elif forloop.counter == grace_used|add:1 %}active{% endif %}"
+                                    data-bs-toggle="tooltip"
+                                    title="Instance {{ forloop.counter }}">
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="p-3 rounded-4 bg-slate-50 border border-slate-100">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-info-circle text-primary"></i>
+                            <div class="small text-slate-600">
+                                <strong>Policy:</strong> Late check-in up to <span class="text-primary fw-bold">{{ grace_minutes_limit }}m</span> is auto-marked as grace.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History / Monthly Attendance Report Table -->
+    <div class="card attendance-card mt-5 border-0">
+        <div class="p-3 p-md-4 border-bottom">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <h5 class="fw-bold mb-0 text-slate-800">Attendance History</h5>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold">
+                            {{ month_name }} {{ sel_year }}
+                        </span>
+                        {% if is_current_month %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">Current Month</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted small mb-0 mt-1">Month-wise attendance summary & daily punch details</p>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-lg-auto justify-content-between justify-content-lg-end">
+                    <!-- Month & Year Filter Form -->
+                    <form method="get" class="d-flex flex-wrap align-items-center gap-2 mb-0" id="monthFilterForm">
+                        <!-- Quick Prev / Next Month Navigation -->
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Month Navigation">
+                            <a href="?month={{ prev_month }}&year={{ prev_year }}&order={{ sort_order }}"
+                               class="btn btn-outline-secondary"
+                               title="Previous Month ({{ prev_month }}/{{ prev_year }})">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                            <a href="?month={{ next_month }}&year={{ next_year }}&order={{ sort_order }}"
+                               class="btn btn-outline-secondary"
+                               title="Next Month ({{ next_month }}/{{ next_year }})">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </div>
+
+                        <!-- Month Selector -->
+                        <select name="month" class="form-select form-select-sm fw-semibold" style="width: auto; min-width: 130px;" onchange="this.form.submit()">
+                            {% for m_num, m_label in months_choices %}
+                                <option value="{{ m_num }}" {% if m_num == sel_month %}selected{% endif %}>{{ m_label }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <!-- Year Selector -->
+                        <select name="year" class="form-select form-select-sm fw-semibold" style="width: auto; min-width: 90px;" onchange="this.form.submit()">
+                            {% for y in year_choices %}
+                                <option value="{{ y }}" {% if y == sel_year %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <input type="hidden" name="order" value="{{ sort_order }}">
+
+                        {% if not is_current_month %}
+                        <a href="{% url 'hrms:my_attendance' %}" class="btn btn-sm btn-light border text-muted px-2" title="Jump to current month">
+                            <i class="bi bi-calendar-check me-1"></i>Today
+                        </a>
+                        {% endif %}
+                    </form>
+
+                    <!-- Download Report Button -->
+                    {% if employee %}
+                        {% if sel_month and sel_year %}
+                        <a href="{% url 'hrms:employee_punch_report' emp_id=employee.id month=sel_month year=sel_year %}"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold text-nowrap">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Report
+                        </a>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold text-nowrap" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i>Print Report
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Month Summary Stats Strip (Responsive) -->
+        <div class="px-3 px-md-4 py-3 bg-slate-50 border-bottom">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="small fw-bold text-slate-500 text-uppercase me-2 d-none d-md-inline" style="font-size: 0.7rem; letter-spacing: 0.5px;">Summary:</span>
+                <div class="month-stat-chip">
+                    <span class="text-success"><i class="bi bi-check-circle-fill"></i></span>
+                    <span>Full Days:</span>
+                    <span class="chip-count text-success">{{ summary.present|default:"0" }}</span>
+                </div>
+                <div class="month-stat-chip">
+                    <span class="text-warning"><i class="bi bi-shield-check"></i></span>
+                    <span>Grace:</span>
+                    <span class="chip-count text-warning">{{ summary.grace|default:"0" }}</span>
+                </div>
+                <div class="month-stat-chip">
+                    <span class="text-info"><i class="bi bi-clock-half"></i></span>
+                    <span>Half Days:</span>
+                    <span class="chip-count text-info-emphasis">{{ summary.half_day|default:"0" }}</span>
+                </div>
+                <div class="month-stat-chip">
+                    <span class="text-primary"><i class="bi bi-calendar-event"></i></span>
+                    <span>Leaves:</span>
+                    <span class="chip-count text-primary">{{ summary.on_leave|default:"0" }}</span>
+                </div>
+                <div class="month-stat-chip">
+                    <span class="text-danger"><i class="bi bi-x-circle-fill"></i></span>
+                    <span>Absents:</span>
+                    <span class="chip-count text-danger">{{ summary.absent|default:"0" }}</span>
+                </div>
+                <div class="month-stat-chip">
+                    <span class="text-secondary"><i class="bi bi-cup-hot"></i></span>
+                    <span>Holidays/Off:</span>
+                    <span class="chip-count text-secondary">{{ summary.holiday|default:0|add:summary.week_off|default:0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Report Table (No Pagination) -->
+        <div class="table-responsive">
+            <table class="table table-attendance align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4 text-nowrap">
+                            <a href="?month={{ sel_month }}&year={{ sel_year }}&order={% if sort_order == 'desc' %}asc{% else %}desc{% endif %}"
+                               class="text-decoration-none text-secondary d-inline-flex align-items-center gap-1"
+                               title="Click to toggle sort order">
+                                Date & Day
+                                <i class="bi {% if sort_order == 'desc' %}bi-arrow-down text-primary{% else %}bi-arrow-up text-primary{% endif %}"></i>
+                            </a>
+                        </th>
+                        <th class="text-nowrap">Status</th>
+                        <th class="text-nowrap">Punch In</th>
+                        <th class="text-nowrap">Punch Out</th>
+                        <th class="text-nowrap">Duration</th>
+                        <th class="text-nowrap">Remark / Grace</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    {% for rec in records %}
+                    <tr style="border-bottom: 1px solid #f8fafc;" class="{% if rec.date == today %}table-active bg-primary-subtle bg-opacity-25{% elif rec.status == 'week_off' or rec.status == 'holiday' %}bg-light bg-opacity-50{% elif rec.status == 'future' %}opacity-75{% endif %}">
+                        <td class="ps-4 text-nowrap">
+                            <div class="d-flex align-items-center gap-2">
+                                <div>
+                                    <div class="fw-bold text-slate-700">{{ rec.date|date:"d M" }}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">{{ rec.date|date:"l" }}</div>
+                                </div>
+                                {% if rec.date == today %}
+                                    <span class="badge bg-primary text-white rounded-pill px-2 py-1" style="font-size: 0.65rem;">Today</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-nowrap">
+                            {% if rec.status == 'present' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-bold">
+                                    Present
+                                </span>
+                            {% elif rec.status == 'grace' %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-2 fw-bold">
+                                    Grace ({{ rec.badge }})
+                                </span>
+                            {% elif rec.status == 'half_day' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-2 fw-bold">
+                                    Half Day
+                                </span>
+                            {% elif rec.status == 'on_leave' %}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 fw-bold">
+                                    {{ rec.leave.code|default:"On Leave" }}
+                                </span>
+                            {% elif rec.status == 'holiday' %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-3 py-2 fw-bold">
+                                    Holiday
+                                </span>
+                            {% elif rec.status == 'week_off' %}
+                                <span class="badge bg-light text-muted border rounded-pill px-3 py-2 fw-semibold">
+                                    Week Off
+                                </span>
+                            {% elif rec.status == 'future' %}
+                                <span class="badge bg-light text-muted border-0 rounded-pill px-3 py-2">
+                                    --
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2 fw-bold">
+                                    Absent
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            {% if rec.check_in %}
+                                <span class="time-pill">{{ rec.check_in|time:"H:i" }}</span>
+                            {% else %}
+                                <span class="text-muted opacity-50 small">--:--</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            {% if rec.check_out %}
+                                <span class="time-pill">{{ rec.check_out|time:"H:i" }}</span>
+                            {% else %}
+                                <span class="text-muted opacity-50 small">--:--</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            {% if rec.hours > 0 %}
+                                <span class="fw-800 text-slate-700">{{ rec.hours }}h</span>
+                            {% else %}
+                                <span class="text-muted opacity-50 small">--</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                {% if rec.late_minutes > 0 %}
+                                    {% if rec.late_minutes <= grace_minutes_limit %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">
+                                            <i class="bi bi-shield-check me-1"></i>Grace: {{ rec.late_minutes }}m
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                            <i class="bi bi-clock-history me-1"></i>Late: {{ rec.late_minutes }}m
+                                        </span>
+                                    {% endif %}
+                                {% elif rec.check_in %}
+                                    <span class="text-muted small">On Time</span>
+                                {% elif rec.leave %}
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                        {{ rec.leave.name }} {% if rec.is_auto_leave %}<small>(Auto)</small>{% endif %}
+                                    </span>
+                                {% elif rec.holiday_name %}
+                                    <span class="text-muted small"><i class="bi bi-calendar2-heart me-1 text-danger"></i>{{ rec.holiday_name }}</span>
+                                {% elif rec.status == 'week_off' %}
+                                    <span class="text-muted small">Sunday</span>
+                                {% elif rec.status == 'future' %}
+                                    <span class="text-muted opacity-50 small">Future</span>
+                                {% else %}
+                                    <span class="text-danger small">No Punch</span>
+                                {% endif %}
+
+                                {% if rec.is_edited %}
+                                    <span class="badge bg-secondary-subtle text-secondary" data-bs-toggle="tooltip" title="{{ rec.edit_tooltip|default:'Manually edited by HR' }}">
+                                        <i class="bi bi-pencil-fill" style="font-size: 0.65rem;"></i>
+                                    </span>
+                                {% endif %}
+
+                                {% if rec.penalty_amount > 0 %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                        <i class="bi bi-currency-rupee"></i>{{ rec.penalty_amount }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar-x fs-1 d-block mb-2 text-slate-300"></i>
+                            No attendance records for {{ month_name }} {{ sel_year }}.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateClock() {
+        const now = new Date();
+        const clock = document.getElementById('liveClock');
+        if (clock) {
+            clock.textContent = now.toLocaleTimeString('en-GB', { hour12: false });
+        }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(t => new bootstrap.Tooltip(t));
+</script>
+{% endblock %}

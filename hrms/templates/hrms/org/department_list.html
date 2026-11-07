@@ -1,0 +1,266 @@
+{% extends "hrms/base.html" %}
+{% block title %}Org Structure{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Premium Variables */
+    :root {
+        --glass-bg: rgba(255, 255, 255, 0.95);
+        --tree-line: #e0e6ed;
+        --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    }
+
+    .org-header-card {
+        background: var(--accent-gradient);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.2);
+    }
+
+    /* Accordion Customization */
+    .dept-accordion .accordion-item {
+        border: none;
+        background: transparent;
+        margin-bottom: 1rem;
+    }
+
+    .dept-card-header {
+        background: white !important;
+        border-radius: 12px !important;
+        padding: 1.25rem;
+        border: 1px solid #f1f5f9 !important;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .dept-card-header:not(.collapsed) {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .dept-card-header::after {
+        display: none; /* Hide default icon */
+    }
+
+    /* The Vertical Tree Line */
+    .dept-content {
+        margin-left: 2.2rem;
+        border-left: 2px dashed var(--tree-line);
+        padding-left: 1.5rem;
+        padding-top: 1rem;
+    }
+
+    /* Designation Styling */
+    .designation-block {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .designation-block::before {
+        content: "";
+        position: absolute;
+        left: -1.5rem;
+        top: 14px;
+        width: 1rem;
+        border-top: 2px dashed var(--tree-line);
+    }
+
+    .desig-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: #94a3b8;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Employee Pill Styling */
+    .employee-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+    }
+
+    .employee-pill {
+        background: white;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .employee-pill:hover {
+        border-color: #6366f1;
+        background: #f8fafc;
+        transform: translateX(5px);
+    }
+
+    .emp-avatar {
+        width: 40px;
+        height: 40px;
+        background: #eef2ff;
+        color: #6366f1;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        margin-right: 12px;
+        font-size: 0.9rem;
+    }
+
+    .emp-info .emp-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+
+    .emp-info .emp-code {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-family: 'Monaco', monospace;
+    }
+
+    /* Status Dot */
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    /* Count Badges */
+    .glass-badge {
+        background: rgba(99, 102, 241, 0.1);
+        color: #6366f1;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    .chevron-icon {
+        transition: transform 0.3s ease;
+        color: #94a3b8;
+    }
+
+    .dept-card-header:not(.collapsed) .chevron-icon {
+        transform: rotate(90deg);
+        color: #6366f1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- 1. Header Section -->
+    {% for company in companies %}
+    <div class="org-header-card d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold mb-1">{{ company.name }}</h2>
+            <p class="mb-0 opacity-75"><i class="bi bi-diagram-3 me-2"></i> Organisation Structure & Workforce Hierarchy</p>
+        </div>
+        <div class="d-none d-md-block text-end">
+            <div class="h4 mb-0 fw-bold">{{ company.employees.count }}</div>
+            <small class="opacity-75">Total Workforce</small>
+        </div>
+    </div>
+
+    <!-- 2. Global Actions -->
+    <div class="d-flex gap-2 mb-4">
+        <a href="{% url 'hrms:department_add' %}" class="btn btn-dark btn-sm rounded-pill px-3">
+            <i class="bi bi-plus-lg me-1"></i> New Department
+        </a>
+        <a href="{% url 'hrms:designation_add' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            Add Designation
+        </a>
+    </div>
+
+    <!-- 3. The Tree Accordion -->
+    <div class="accordion dept-accordion" id="orgAccordion{{ company.id }}">
+        {% for dept in company.departments.all %}
+        <div class="accordion-item">
+            <div class="accordion-header">
+                <button class="accordion-button collapsed dept-card-header" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDept{{ dept.id }}">
+                    <div class="d-flex align-items-center w-100">
+                        <i class="bi bi-chevron-right chevron-icon me-3"></i>
+                        <div class="me-auto">
+                            <h5 class="mb-0 fw-bold text-dark">{{ dept.name }}</h5>
+                            <small class="text-muted">{{ dept.designations.count }} Active Designations</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="glass-badge">{{ dept.employees.count }} Members</span>
+                            <a href="{% url 'hrms:department_edit' dept.pk %}" class="btn btn-light btn-sm rounded-circle">
+                                <i class="bi bi-pencil-fill text-primary" style="font-size: 0.7rem;"></i>
+                            </a>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
+            <div id="collapseDept{{ dept.id }}" class="accordion-collapse collapse" data-bs-parent="#orgAccordion{{ company.id }}">
+                <div class="accordion-body p-0">
+                    <div class="dept-content">
+
+                        {% for desig in dept.designations.all %}
+                        <div class="designation-block">
+                            <div class="desig-label">
+                                <i class="bi bi-layers-half"></i> {{ desig.title }}
+                                <span class="ms-2 opacity-50">— {{ desig.employees.count }}</span>
+                            </div>
+
+                            <div class="employee-grid">
+                                {% for emp in desig.employees.all %}
+                                <a href="{% url 'hrms:employee_detail' emp.pk %}" class="employee-pill">
+                                    <div class="emp-avatar">
+                                        {{ emp.first_name|slice:":1" }}{{ emp.last_name|slice:":1" }}
+                                    </div>
+                                    <div class="emp-info">
+                                        <div class="emp-name">{{ emp.full_name }}</div>
+                                        <div class="emp-code">{{ emp.employee_code }}</div>
+                                    </div>
+                                    {% if emp.status == 'active' %}
+                                    <div class="status-indicator"></div>
+                                    {% endif %}
+                                </a>
+                                {% empty %}
+                                <div class="ps-2"><small class="text-muted italic">No employees assigned</small></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted small py-2">No designations created yet.</p>
+                        {% endfor %}
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center p-5 card border-0 shadow-sm">
+            <i class="bi bi-inbox h1 text-muted"></i>
+            <p class="text-muted">No departments found. Start by adding one above.</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

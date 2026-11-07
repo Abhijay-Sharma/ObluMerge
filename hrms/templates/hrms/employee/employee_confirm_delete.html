@@ -1,0 +1,17 @@
+{% extends "hrms/base.html" %}
+{% block title %}Delete Employee{% endblock %}
+{% block page_title %}Delete Employee{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <div class="card-body">
+    <p>Delete employee <strong>{{ object.full_name }}</strong> ({{ object.employee_code }})? This can't be undone
+    and will remove their attendance, leave, and payroll history.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete</button>
+      <a href="{% url 'hrms:employee_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

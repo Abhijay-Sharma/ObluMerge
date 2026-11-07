@@ -1,0 +1,167 @@
+{% extends "hrms/base.html" %}
+{% block title %}Attendance Configuration{% endblock %}
+
+{% block extra_css %}
+<style>
+    .policy-card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .section-label { font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+    .time-badge { font-family: 'Monaco', monospace; background: #f1f5f9; color: #1e293b; padding: 4px 10px; border-radius: 8px; font-weight: 700; border: 1px solid #e2e8f0; }
+    .rule-pill { background: #eff6ff; color: #3b82f6; font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+
+    /* Responsive Table Tweaks */
+    @media (max-width: 768px) {
+        .hide-mobile { display: none !important; }
+        .policy-header { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+        .action-btn { width: 100%; text-align: center; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Page Header & Global Action -->
+    <div class="d-flex justify-content-between align-items-center mb-4 policy-header">
+        <div>
+            <h2 class="fw-bold mb-0">Attendance Rules</h2>
+            <p class="text-muted small mb-0">Define shift boundaries, grace periods, and overtime thresholds.</p>
+        </div>
+        <div class="d-flex gap-2 action-btn">
+            {# URL fixed for creating new policy version #}
+             <a href="{% url 'hrms:attendance_policy_create' %}" class="btn btn-dark rounded-pill px-4 shadow-sm">
+                <i class="bi bi-plus-lg me-2"></i> Add Specific Timing Version
+            </a>
+        </div>
+    </div>
+
+    <!-- SECTION 1: MASTER DEFAULTS -->
+    <div class="mb-5">
+        <div class="d-flex align-items-center mb-3">
+            <div class="bg-primary rounded-circle p-1 me-2"></div>
+            <span class="section-label">Active Company Master Defaults</span>
+        </div>
+        <div class="card policy-card overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr class="small text-muted">
+                            <th class="ps-4 py-3">Company Unit</th>
+                            <th>Shift Window</th>
+                            <th>Grace Policy</th>
+                            <th class="hide-mobile">Thresholds (HD/OT)</th>
+                            <th class="text-end pe-4">Control</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for company in companies %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ company.name }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">Primary Global Settings</div>
+                            </td>
+                            <td>
+                                <span class="time-badge">{{ company.office_start_time|time:"h:i A" }} – {{ company.office_end_time|time:"h:i A" }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span class="rule-pill"><i class="bi bi-shield-check me-1"></i>{{ company.grace_minutes }}m Window</span>
+                                    <span class="rule-pill"><i class="bi bi-repeat me-1"></i>{{ company.grace_allowed_count }}/mo</span>
+                                </div>
+                            </td>
+                            <td class="hide-mobile">
+                                <div class="small fw-bold">HD: <span class="text-primary">{{ company.half_day_threshold|default:"4.0" }}h</span></div>
+                                <div class="small fw-bold">OT: <span class="text-success">{{ company.overtime_threshold|default:"9.0" }}h</span></div>
+                            </td>
+                            <td class="text-end pe-4">
+                                {# Standard Company edit URL #}
+                                <a href="{% url 'hrms:company_edit' company.pk %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold">
+                                    Edit Defaults
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center py-5 text-muted">No company settings found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2: TIMING VERSIONS (HISTORY) -->
+    <div class="mb-4">
+        <div class="d-flex align-items-center mb-3">
+            <div class="bg-warning rounded-circle p-1 me-2"></div>
+            <span class="section-label">Historical Timing Versions & Overrides</span>
+        </div>
+        <div class="card policy-card overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr class="small text-muted">
+                            <th class="ps-4 py-3">Version Context</th>
+                            <th>Effective Date</th>
+                            <th>Applied Hours</th>
+                            <th class="hide-mobile">Grace Rules</th>
+                            <th class="text-end pe-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for policy in policy_versions %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold">{{ policy.company.name }}</div>
+                                <span class="text-muted small">Special Seasonal Policy</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-calendar-event me-2 text-primary"></i>
+                                    <span class="fw-bold">{{ policy.effective_from|date:"M d, Y" }}</span>
+                                </div>
+                            </td>
+                            <td><span class="time-badge">{{ policy.office_start_time|time:"h:i A" }} – {{ policy.office_end_time|time:"h:i A" }}</span></td>
+                            <td class="hide-mobile">
+                                <span class="small text-muted">{{ policy.grace_minutes }} min · {{ policy.grace_allowed_count }}/mo</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                {% if forloop.first %}
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-3">CURRENT VERSION</span>
+                                {% else %}
+                                    <span class="badge bg-light text-muted rounded-pill px-3">ARCHIVED</span>
+                                {% endif %}
+                                {# URL fixed for editing specific versions #}
+                                <a href="{% url 'hrms:attendance_policy_edit' policy.pk %}" class="btn btn-link btn-sm ms-2"><i class="bi bi-pencil-square"></i></a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center py-4 text-muted small">No historical versions configured.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO BOX -->
+    <div class="card border-0 shadow-sm rounded-4" style="background: #f8fafc; border: 1px dashed #cbd5e1 !important;">
+        <div class="card-body">
+            <h6 class="fw-bold text-dark"><i class="bi bi-lightbulb-fill text-warning me-2"></i>How versioning protects your data:</h6>
+            <div class="row mt-3">
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="fw-bold small text-primary mb-1">1. Historical Accuracy</div>
+                    <p class="small text-muted mb-0">If you change your shift time in July, your January reports will still calculate based on the old January rules.</p>
+                </div>
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="fw-bold small text-primary mb-1">2. Seasonal Logic</div>
+                    <p class="small text-muted mb-0">Easily switch between Winter and Summer timings by creating a new "Timing Version" for that month.</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="fw-bold small text-primary mb-1">3. Automated Payroll</div>
+                    <p class="small text-muted mb-0">The payroll engine automatically detects which version was active for any given pay cycle.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

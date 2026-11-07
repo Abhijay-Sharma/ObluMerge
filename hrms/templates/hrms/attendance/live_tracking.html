@@ -1,0 +1,89 @@
+{% extends 'hrms/base.html' %}
+{% load static %}
+
+{% block title %}Live Field Tracking{% endblock %}
+
+<!--Manager / Admin Live Map Dashboard-->
+
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-0 font-weight-bold">Live Employee Tracking</h4>
+            <small class="text-muted">Realtime GPS locations and active route histories</small>
+        </div>
+        <div>
+            <span class="badge bg-success px-3 py-2 text-white">Auto-Refreshing (30s)</span>
+        </div>
+    </div>
+    
+    <div id="trackingMap" style="width: 100%; height: 78vh; border-radius: 10px; border: 1px solid #ddd;"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Initialize map centered at Delhi coordinates
+    const map = L.map('trackingMap').setView([28.6139, 77.2090], 11);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    let markersLayer = L.layerGroup().addTo(map);
+    let pathsLayer = L.layerGroup().addTo(map);
+
+    async function refreshTrackingFeed() {
+        try {
+            const res = await fetch('{% url "hrms:api_live_feed" %}');
+            const data = await res.json();
+
+            markersLayer.clearLayers();
+            pathsLayer.clearLayers();
+            const points = [];
+
+            data.active_staff.forEach(emp => {
+                points.push(emp.coords);
+
+                // Draw route breadcrumbs
+                if (emp.route && emp.route.length > 1) {
+                    L.polyline(emp.route, {
+                        color: '#0284c7',
+                        weight: 4,
+                        opacity: 0.75,
+                        dashArray: '5, 10'
+                    }).addTo(pathsLayer);
+                }
+
+                // Popup details
+                let popupCard = `
+                    <div style="font-size: 13px; min-width: 150px;">
+                        <strong>${emp.name}</strong> (${emp.code})<br/>
+                        <span class="badge bg-primary text-white" style="font-size:10px;">Active Duty</span><br/>
+                        <b>Check-In:</b> ${emp.check_in}<br/>
+                        <b>Last Seen:</b> ${emp.last_seen}<br/>
+                `;
+                if (emp.photo) {
+                    popupCard += `<img src="${emp.photo}" style="width: 110px; height: 110px; object-fit: cover; border-radius: 6px; margin-top: 6px;"/>`;
+                }
+                popupCard += `</div>`;
+
+                L.marker(emp.coords).bindPopup(popupCard).addTo(markersLayer);
+            });
+
+            if (points.length > 0 && !map.hasAutoFit) {
+                map.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
+                map.hasAutoFit = true;
+            }
+        } catch (err) {
+            console.error('Failed to sync live feed:', err);
+        }
+    }
+
+    refreshTrackingFeed();
+    setInterval(refreshTrackingFeed, 30000);
+</script>
+{% endblock %}

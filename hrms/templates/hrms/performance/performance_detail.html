@@ -1,0 +1,38 @@
+{% extends "hrms/base.html" %}
+{% block title %}Performance Review{% endblock %}
+{% block page_title %}Review — {{ review.employee.full_name }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px;">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <div>
+        <p class="mb-1"><strong>Period:</strong> {{ review.review_period_from }} – {{ review.review_period_to }}</p>
+        <p class="mb-1"><strong>Review Date:</strong> {{ review.review_date }}</p>
+        <p class="mb-1"><strong>Reviewer:</strong> {{ review.reviewer|default:"—" }}</p>
+        <p class="mb-0"><strong>Rating:</strong> {{ review.rating }}/5</p>
+      </div>
+      <span class="badge fs-6 {% if review.status == 'acknowledged' %}text-bg-success{% elif review.status == 'submitted' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+        {{ review.get_status_display }}
+      </span>
+    </div>
+
+    <h6>Comments</h6>
+    <p class="text-muted">{{ review.comments|default:"—"|linebreaksbr }}</p>
+
+    <h6>Goals</h6>
+    <p class="text-muted">{{ review.goals|default:"—"|linebreaksbr }}</p>
+
+    {% if review.status == 'submitted' %}
+      <form method="post" action="{% url 'hrms:performance_acknowledge' review.pk %}"
+            onsubmit="return confirm('Acknowledge this review?');">
+        {% csrf_token %}
+        <button class="btn text-white" style="background:var(--accent);">Acknowledge Review</button>
+      </form>
+    {% endif %}
+    {% if hrms_is_hr %}
+      <a href="{% url 'hrms:performance_edit' review.pk %}" class="btn btn-outline-secondary mt-2">Edit</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,873 @@
+{% extends 'hrms/base.html' %}
+{% load static %}
+
+{% block title %}Enroll Employee Face{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Clean Professional Card Shell ─────────────────────────── */
+.enroll-card {
+    max-width: 540px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+}
+
+.enroll-card .card-header {
+    background: #ffffff;
+    padding: 22px 24px 18px 24px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.enroll-header-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+/* ── Form Inputs ────────────────────────────────────────────── */
+.enroll-label {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+.enroll-select {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #0f172a;
+    background-color: #ffffff;
+    transition: all 0.2s ease;
+}
+.enroll-select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* ── Viewport & Overlays ────────────────────────────────────── */
+.enroll-viewport {
+    position: relative;
+    width: 100%;
+    height: 350px;
+    background: #0f172a;
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 0 auto;
+    border: 1px solid #e2e8f0;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.enroll-viewport video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirrored view */
+}
+.enroll-viewport canvas.mesh-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* ── Face Guide Target Oval ─────────────────────────────────── */
+.enroll-guide-container {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 3;
+}
+.enroll-target-oval {
+    width: 185px;
+    height: 245px;
+    border-radius: 50%;
+    border: 3px solid #ef4444; /* Default: Red */
+    box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.4), 0 0 16px rgba(239, 68, 68, 0.4);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+.enroll-target-oval.amber {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.35), 0 0 20px rgba(245, 158, 11, 0.45);
+}
+.enroll-target-oval.green {
+    border-color: #10b981;
+    box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.3), 0 0 28px rgba(16, 185, 129, 0.6);
+    animation: oval-pulse 1.8s ease-in-out infinite;
+}
+@keyframes oval-pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.02); }
+}
+
+/* ── Real-Time Feedback Pill ────────────────────────────────── */
+.enroll-feedback-wrap {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 5;
+    pointer-events: none;
+}
+.enroll-feedback-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 18px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    border-radius: 30px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.25s ease;
+}
+.enroll-feedback-pill.red   { border-color: rgba(239, 68, 68, 0.6); color: #fca5a5; }
+.enroll-feedback-pill.amber { border-color: rgba(245, 158, 11, 0.6); color: #fde68a; }
+.enroll-feedback-pill.green { border-color: rgba(16, 185, 129, 0.8); color: #6ee7b7; background: rgba(6, 78, 59, 0.88); }
+
+/* ── Snapshot Preview ───────────────────────────────────────── */
+.snapshot-preview-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #0f172a;
+}
+.snapshot-preview-layer img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.snapshot-preview-layer.visible { display: flex; }
+
+/* ── Overlays ───────────────────────────────────────────────── */
+.enroll-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 8;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.enroll-overlay.active {
+    display: flex;
+    opacity: 1;
+    pointer-events: all;
+}
+
+.enroll-spinner {
+    width: 46px;
+    height: 46px;
+    border: 4px solid rgba(99, 102, 241, 0.2);
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.enroll-check-circle {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    transform: scale(0);
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+}
+.enroll-check-circle i { font-size: 30px; color: #fff; }
+@keyframes popIn { to { transform: scale(1); } }
+
+.overlay-title { color: #0f172a; font-size: 15px; font-weight: 700; }
+.overlay-sub   { color: #64748b; font-size: 13px; text-align: center; max-width: 80%; }
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.btn-capture {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 10px;
+    padding: 11px 20px;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+.btn-capture:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+    color: #fff;
+}
+.btn-capture:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-save-bio {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14.5px;
+    border-radius: 10px;
+    padding: 13px 24px;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+.btn-save-bio:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+    color: #fff;
+}
+.btn-save-bio:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-retake {
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    font-weight: 600;
+}
+
+/* ── Flash Effect ───────────────────────────────────────────── */
+.flash-effect { animation: flashAnim 0.25s ease-out; }
+@keyframes flashAnim {
+    0%   { filter: brightness(2.5); }
+    100% { filter: brightness(1); }
+}
+
+/* ── Camera Error Banner ────────────────────────────────────── */
+.cam-error-banner {
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #dc2626;
+    text-align: start;
+}
+.cam-error-banner.visible { display: flex; }
+
+/* ── File input styling ─────────────────────────────────────── */
+.enroll-file-input {
+    background-color: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #475569;
+}
+.enroll-file-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card enroll-card mx-auto">
+
+        <!-- Header -->
+        <div class="card-header text-center">
+            <div class="enroll-header-icon">
+                <i class="bi bi-person-bounding-box"></i>
+            </div>
+            <h5 class="mb-1 fw-bold text-dark">Face Biometric Enrollment</h5>
+            <small class="text-muted">Register high-precision 512-D facial vectors with liveness check</small>
+        </div>
+
+        <div class="card-body p-4">
+            <form id="enrollForm" enctype="multipart/form-data" data-no-loader>
+                {% csrf_token %}
+
+                <!-- Employee selector -->
+                <div class="mb-3 text-start">
+                    <label for="employeeSelect" class="form-label enroll-label">
+                        <i class="bi bi-person-fill me-1 text-primary"></i>Select Employee
+                    </label>
+                    <select class="form-select enroll-select" id="employeeSelect" name="employee_id" required>
+                        <option value="">— Choose Employee to Enroll —</option>
+                        {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.employee_code }} — {{ emp.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Camera error banner -->
+                <div class="cam-error-banner" id="camErrorBanner">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-5 flex-shrink-0"></i>
+                    <span id="camErrorMsg">
+                        Camera access blocked. Please allow camera permissions in the browser address bar.
+                    </span>
+                </div>
+
+                <!-- Live camera viewport -->
+                <div class="enroll-viewport mb-3" id="enrollViewport">
+                    <video id="enrollVideo" autoplay playsinline muted></video>
+                    <canvas id="enrollMeshCanvas" class="mesh-canvas"></canvas>
+                    <canvas id="snapshotCanvas" style="display: none;"></canvas>
+
+                    <!-- Snapshot preview overlay -->
+                    <div class="snapshot-preview-layer" id="snapshotPreviewLayer">
+                        <img id="snapshotPreviewImg" alt="Face Preview">
+                    </div>
+
+                    <!-- Face guide target oval -->
+                    <div class="enroll-guide-container">
+                        <div class="enroll-target-oval" id="targetOval"></div>
+                    </div>
+
+                    <!-- Dynamic Real-Time Feedback Pill -->
+                    <div class="enroll-feedback-wrap">
+                        <span class="enroll-feedback-pill red" id="feedbackPill">
+                            <i class="bi bi-person-bounding-box me-1"></i>Position your face in the oval
+                        </span>
+                    </div>
+
+                    <!-- Processing overlay -->
+                    <div class="enroll-overlay" id="processOverlay">
+                        <div class="enroll-spinner"></div>
+                        <div class="overlay-title" id="processTitle">Analyzing Face…</div>
+                        <div class="overlay-sub" id="processSub">Checking liveness, blur, and extracting 512-D vectors</div>
+                    </div>
+
+                    <!-- Success overlay -->
+                    <div class="enroll-overlay" id="enrollSuccessOverlay">
+                        <div class="enroll-check-circle">
+                            <i class="bi bi-check-lg"></i>
+                        </div>
+                        <div class="overlay-title text-success" id="enrollSuccessTitle">Biometrics Enrolled!</div>
+                        <div class="overlay-sub" id="enrollSuccessSub">Face profile successfully registered.</div>
+                    </div>
+                </div>
+
+                <!-- Capture & Retake Controls -->
+                <div class="row g-2 mb-3">
+                    <div class="col-8">
+                        <button type="button" class="btn btn-capture" id="captureBtn" disabled>
+                            <i class="bi bi-camera-fill me-2"></i>Capture Photo
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-outline-secondary w-100 btn-retake" id="retakeBtn" style="display: none;">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Retake
+                        </button>
+                    </div>
+                </div>
+
+                <!-- File upload fallback -->
+                <div class="d-flex align-items-center gap-2 text-muted small mb-2">
+                    <hr class="flex-grow-1"> or upload a clear photo <hr class="flex-grow-1">
+                </div>
+                <input class="form-control form-control-sm mb-3 enroll-file-input"
+                       type="file" id="facePhoto" name="photo" accept="image/*">
+
+                <!-- Status alert box -->
+                <div id="enrollStatus" class="alert d-none py-2 mb-3 text-start" style="font-size: 13px; border-radius: 10px;"></div>
+
+                <!-- Save Biometrics button -->
+                <button type="submit" id="saveBtn" class="btn btn-save-bio" disabled>
+                    <i class="bi bi-shield-check me-2"></i>Complete &amp; Save Biometrics
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MediaPipe Dependencies from Google CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+<script>
+// ── DOM References ───────────────────────────────────────────
+const video          = document.getElementById('enrollVideo');
+const meshCanvas     = document.getElementById('enrollMeshCanvas');
+const snapCanvas     = document.getElementById('snapshotCanvas');
+const targetOval     = document.getElementById('targetOval');
+const feedbackPill   = document.getElementById('feedbackPill');
+const previewLayer   = document.getElementById('snapshotPreviewLayer');
+const previewImg     = document.getElementById('snapshotPreviewImg');
+const captureBtn     = document.getElementById('captureBtn');
+const retakeBtn      = document.getElementById('retakeBtn');
+const saveBtn        = document.getElementById('saveBtn');
+const fileInput      = document.getElementById('facePhoto');
+const form           = document.getElementById('enrollForm');
+const statusBox      = document.getElementById('enrollStatus');
+const processOverlay = document.getElementById('processOverlay');
+const processTitle   = document.getElementById('processTitle');
+const processSub     = document.getElementById('processSub');
+const successOverlay = document.getElementById('enrollSuccessOverlay');
+const successTitle   = document.getElementById('enrollSuccessTitle');
+const successSub     = document.getElementById('enrollSuccessSub');
+const camErrorBanner = document.getElementById('camErrorBanner');
+const camErrorMsg    = document.getElementById('camErrorMsg');
+
+// ── State Variables ──────────────────────────────────────────
+let mediaStream       = null;
+let cameraReady       = false;
+let isProcessing      = false;
+let capturedBlob      = null;
+let capturedBase64    = null;
+let stableFramesCount = 0;
+const READY_FRAMES_REQUIRED = 6;
+
+// Minimalist Face ID landmark subset
+const LANDMARK_SUBSET = [
+    10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+    397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+    172, 58,  132, 93,  234, 127, 162, 21,  54,  103, 67,  109,
+    1, 4, 5, 195, 197, 6, 168, 8, 9, 151,
+    33, 133, 362, 263,
+    61, 291, 0, 17
+];
+
+// ── MediaPipe Setup ──────────────────────────────────────────
+let faceMesh = null;
+try {
+    faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+    faceMesh.setOptions({
+        maxNumFaces: 2,
+        refineLandmarks: false,
+        minDetectionConfidence: 0.55,
+        minTrackingConfidence: 0.55
+    });
+    faceMesh.onResults(onFaceMeshResults);
+} catch (err) {
+    console.warn('[Enroll] MediaPipe failed to initialize, using direct video fallback:', err);
+}
+
+// ── Camera Startup ───────────────────────────────────────────
+async function initCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showCameraError('Camera API unavailable in this browser. Please use a modern browser over HTTPS or localhost.');
+        return;
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false
+        });
+        mediaStream = stream;
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play().then(() => {
+                cameraReady = true;
+                resizeCanvas();
+                if (faceMesh) {
+                    startMediaPipeLoop();
+                } else {
+                    captureBtn.disabled = false;
+                    setGuideState('green', 'Ready to Capture');
+                }
+            }).catch(() => {
+                cameraReady = true;
+                captureBtn.disabled = false;
+            });
+        };
+    } catch (err) {
+        console.error('[Enroll] Camera access error:', err);
+        showCameraError(
+            'Camera access blocked. ' +
+            (err.name === 'NotAllowedError'
+                ? 'Please click the camera icon in your address bar and allow access.'
+                : 'Ensure the page is served over localhost or HTTPS.')
+        );
+    }
+}
+
+function showCameraError(msg) {
+    camErrorMsg.innerHTML = msg;
+    camErrorBanner.classList.add('visible');
+    captureBtn.disabled = true;
+}
+
+function stopCamera() {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+    }
+    cameraReady = false;
+}
+
+window.addEventListener('beforeunload', stopCamera);
+
+function resizeCanvas() {
+    meshCanvas.width = video.clientWidth || 480;
+    meshCanvas.height = video.clientHeight || 350;
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ── MediaPipe Real-Time Analysis Loop ────────────────────────
+async function startMediaPipeLoop() {
+    if (!mediaStream || isProcessing || capturedBlob) return;
+    if (video.readyState >= 2 && faceMesh) {
+        try {
+            await faceMesh.send({ image: video });
+        } catch (e) {
+            // Non-fatal frame drop
+        }
+    }
+    requestAnimationFrame(startMediaPipeLoop);
+}
+
+function onFaceMeshResults(results) {
+    if (isProcessing || capturedBlob) return;
+
+    const ctx = meshCanvas.getContext('2d');
+    ctx.clearRect(0, 0, meshCanvas.width, meshCanvas.height);
+
+    const w = meshCanvas.width;
+    const h = meshCanvas.height;
+    const targetX = w / 2;
+    const targetY = h / 2;
+    const targetH = 245;
+
+    const faces = results.multiFaceLandmarks;
+
+    if (!faces || faces.length === 0) {
+        stableFramesCount = 0;
+        setGuideState('red', 'Position face in oval');
+        captureBtn.disabled = true;
+        return;
+    }
+
+    if (faces.length > 1) {
+        stableFramesCount = 0;
+        setGuideState('red', 'Multiple faces detected · Only 1 person allowed');
+        captureBtn.disabled = true;
+        return;
+    }
+
+    const landmarks = faces[0];
+    let minX = 1.0, maxX = 0.0, minY = 1.0, maxY = 0.0;
+    for (const lm of landmarks) {
+        if (lm.x < minX) minX = lm.x;
+        if (lm.x > maxX) maxX = lm.x;
+        if (lm.y < minY) minY = lm.y;
+        if (lm.y > maxY) maxY = lm.y;
+    }
+
+    const facePixelH = (maxY - minY) * h;
+    const facePixelCenterX = (1.0 - (minX + maxX) / 2) * w;
+    const facePixelCenterY = ((minY + maxY) / 2) * h;
+
+    const offsetNormX = (facePixelCenterX - targetX) / w;
+    const offsetNormY = (facePixelCenterY - targetY) / h;
+    const sizeRatio = facePixelH / targetH;
+
+    // Draw Minimalist Face ID Landmarks
+    ctx.save();
+    ctx.fillStyle = targetOval.classList.contains('green') ? 'rgba(52, 211, 153, 0.85)' :
+                    targetOval.classList.contains('amber') ? 'rgba(251, 191, 36, 0.75)' :
+                    'rgba(239, 68, 68, 0.65)';
+
+    for (const idx of LANDMARK_SUBSET) {
+        const lm = landmarks[idx];
+        if (!lm) continue;
+        const lx = (1.0 - lm.x) * w;
+        const ly = lm.y * h;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 1.8, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    ctx.restore();
+
+    if (sizeRatio < 0.65) {
+        stableFramesCount = 0;
+        setGuideState('red', 'Move closer to camera');
+        captureBtn.disabled = true;
+    } else if (sizeRatio > 1.35) {
+        stableFramesCount = 0;
+        setGuideState('red', 'Step back slightly');
+        captureBtn.disabled = true;
+    } else if (Math.abs(offsetNormX) > 0.16) {
+        stableFramesCount = 0;
+        setGuideState('red', offsetNormX > 0 ? 'Move slightly left' : 'Move slightly right');
+        captureBtn.disabled = true;
+    } else if (Math.abs(offsetNormY) > 0.16) {
+        stableFramesCount = 0;
+        setGuideState('red', offsetNormY > 0 ? 'Move up slightly' : 'Move down slightly');
+        captureBtn.disabled = true;
+    } else if (Math.abs(offsetNormX) > 0.08 || Math.abs(offsetNormY) > 0.08 || sizeRatio < 0.80 || sizeRatio > 1.20) {
+        stableFramesCount = 0;
+        setGuideState('amber', 'Center face · Hold still');
+        captureBtn.disabled = true;
+    } else {
+        stableFramesCount++;
+        if (stableFramesCount >= READY_FRAMES_REQUIRED) {
+            setGuideState('green', 'Face Aligned ✓ · Tap to Capture');
+            captureBtn.disabled = false;
+        } else {
+            setGuideState('amber', `Hold still... (${Math.round((stableFramesCount / READY_FRAMES_REQUIRED) * 100)}%)`);
+            captureBtn.disabled = true;
+        }
+    }
+}
+
+function setGuideState(color, text) {
+    targetOval.className = `enroll-target-oval ${color}`;
+    feedbackPill.className = `enroll-feedback-pill ${color}`;
+    feedbackPill.innerHTML = `<i class="bi bi-${color === 'green' ? 'check-circle-fill' : color === 'amber' ? 'hourglass-split' : 'person-bounding-box'} me-1"></i>${text}`;
+}
+
+// ── Snapshot Capture ─────────────────────────────────────────
+captureBtn.addEventListener('click', () => {
+    if (!cameraReady || video.readyState < 2) return;
+
+    const w = video.videoWidth || 640;
+    const h = video.videoHeight || 480;
+    snapCanvas.width = w;
+    snapCanvas.height = h;
+    const ctx = snapCanvas.getContext('2d');
+
+    // Draw un-mirrored for accurate facial embedding
+    ctx.drawImage(video, 0, 0, w, h);
+
+    // Flash animation
+    video.classList.add('flash-effect');
+    setTimeout(() => video.classList.remove('flash-effect'), 250);
+
+    capturedBase64 = snapCanvas.toDataURL('image/jpeg', 0.95);
+    snapCanvas.toBlob(blob => {
+        capturedBlob = blob;
+
+        // Display preview
+        previewImg.src = capturedBase64;
+        previewLayer.classList.add('visible');
+        retakeBtn.style.display = 'block';
+        captureBtn.disabled = true;
+        saveBtn.disabled = false;
+
+        // Clear any file input selection
+        fileInput.value = '';
+
+        showStatus('Photo captured successfully! Click "Complete & Save Biometrics" to register.', 'success');
+    }, 'image/jpeg', 0.95);
+});
+
+// ── Retake Photo ─────────────────────────────────────────────
+retakeBtn.addEventListener('click', () => {
+    capturedBlob = null;
+    capturedBase64 = null;
+    previewLayer.classList.remove('visible');
+    previewImg.src = '';
+    retakeBtn.style.display = 'none';
+    saveBtn.disabled = true;
+    stableFramesCount = 0;
+    setGuideState('red', 'Position face in oval');
+    hideStatus();
+    if (faceMesh) {
+        startMediaPipeLoop();
+    } else {
+        captureBtn.disabled = false;
+    }
+});
+
+// ── File Upload Fallback ─────────────────────────────────────
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        // Reset camera capture if user picks a file
+        capturedBlob = null;
+        capturedBase64 = null;
+        retakeBtn.style.display = 'none';
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            previewLayer.classList.add('visible');
+            retakeBtn.style.display = 'block';
+            retakeBtn.innerText = 'Clear Photo';
+        };
+        reader.readAsDataURL(file);
+
+        saveBtn.disabled = false;
+        captureBtn.disabled = true;
+        showStatus('Image file selected. Ready to enroll biometrics.', 'info');
+    }
+});
+
+// ── Status Alert Helpers ─────────────────────────────────────
+function showStatus(msg, type) {
+    statusBox.className = `alert alert-${type} py-2 mb-3 text-start`;
+    statusBox.innerHTML = msg;
+    statusBox.classList.remove('d-none');
+}
+
+function hideStatus() {
+    statusBox.classList.add('d-none');
+}
+
+// ── Form Submission (AJAX) ────────────────────────────────────
+form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const employeeId = document.getElementById('employeeSelect').value;
+    if (!employeeId) {
+        showStatus('<i class="bi bi-exclamation-circle-fill me-1"></i>Please select an employee.', 'warning');
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('employee_id', employeeId);
+    fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    // Priority: Captured camera blob -> File upload -> Base64 data
+    if (capturedBlob) {
+        fd.append('photo', capturedBlob, 'enroll_face.jpg');
+    } else if (fileInput.files.length > 0) {
+        fd.append('photo', fileInput.files[0]);
+    } else if (capturedBase64) {
+        fd.append('image_data', capturedBase64);
+    } else {
+        showStatus('<i class="bi bi-exclamation-circle-fill me-1"></i>Please capture a photo or upload an image file.', 'warning');
+        return;
+    }
+
+    saveBtn.disabled = true;
+    captureBtn.disabled = true;
+    retakeBtn.disabled = true;
+    processTitle.innerText = 'Extracting Facial Features…';
+    processSub.innerText = 'Validating liveness, image quality & checking for duplicates…';
+    processOverlay.classList.add('active');
+    hideStatus();
+
+    try {
+        const res = await fetch('{% url "hrms:enroll_face" %}', {
+            method: 'POST',
+            body: fd
+        });
+
+        const data = await res.json().catch(() => {
+            throw new Error('Server returned an invalid response.');
+        });
+
+        processOverlay.classList.remove('active');
+
+        if (res.ok && data.success) {
+            stopCamera();
+            successTitle.innerText = 'Biometrics Enrolled!';
+            successSub.innerText = data.message || 'Face profile successfully registered.';
+            successOverlay.classList.add('active');
+
+            showStatus(
+                `<i class="bi bi-check-circle-fill me-1"></i>${data.message || 'Face enrolled successfully!'}`,
+                'success'
+            );
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 2500);
+
+        } else {
+            saveBtn.disabled = false;
+            retakeBtn.disabled = false;
+            if (!capturedBlob) captureBtn.disabled = false;
+
+            const code = data.code || 'UNKNOWN';
+            const msg  = data.message || data.error || 'Failed to enroll face.';
+
+            if (code === 'DUPLICATE_FACE') {
+                showStatus(
+                    `<div class="d-flex gap-2">
+                        <i class="bi bi-shield-slash-fill text-danger fs-5 flex-shrink-0"></i>
+                        <div>
+                            <strong>Duplicate Face Detected!</strong><br>
+                            ${msg}
+                        </div>
+                    </div>`,
+                    'danger'
+                );
+            } else if (code === 'MULTIPLE_FACES') {
+                showStatus(
+                    `<i class="bi bi-people-fill me-1"></i><strong>Multiple Faces Detected:</strong> Only one person may be in frame during enrollment.`,
+                    'warning'
+                );
+            } else if (code === 'NO_FACE') {
+                showStatus(
+                    `<i class="bi bi-person-x-fill me-1"></i><strong>No Face Detected:</strong> Please position your face directly in front of the camera with good lighting.`,
+                    'warning'
+                );
+            } else if (code === 'FACE_TOO_BLURRY') {
+                showStatus(
+                    `<i class="bi bi-camera-fill me-1"></i><strong>Image Too Blurry:</strong> Please hold still during capture or wipe your camera lens.`,
+                    'warning'
+                );
+            } else if (code === 'BAD_LIGHTING') {
+                showStatus(
+                    `<i class="bi bi-brightness-high-fill me-1"></i><strong>Poor Lighting:</strong> The image is too dark or overexposed. Move to an evenly lit area.`,
+                    'warning'
+                );
+            } else if (code === 'SPOOF_DETECTED') {
+                showStatus(
+                    `<i class="bi bi-shield-exclamation me-1"></i><strong>Liveness Verification Failed:</strong> Please present a real live face directly to the camera.`,
+                    'danger'
+                );
+            } else {
+                showStatus(
+                    `<i class="bi bi-exclamation-triangle-fill me-1"></i>${msg}`,
+                    'danger'
+                );
+            }
+        }
+    } catch (err) {
+        processOverlay.classList.remove('active');
+        saveBtn.disabled = false;
+        retakeBtn.disabled = false;
+        showStatus(
+            `<i class="bi bi-x-circle-fill me-1"></i>Network or server error (${err.message || 'Please try again'}).`,
+            'danger'
+        );
+    }
+});
+
+// Initialize camera on page load
+initCamera();
+</script>
+{% endblock %}

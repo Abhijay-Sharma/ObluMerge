@@ -1,0 +1,226 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}{{ policy.title }} — Policy &amp; Quiz — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'hrms:policy_list' %}" class="text-decoration-none">Policy Library</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ policy.title }}</li>
+    </ol>
+  </nav>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+
+      <!-- Header Card -->
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-primary text-white">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-white text-primary rounded-pill px-3 py-1 fw-bold">{{ policy.get_category_display }}</span>
+                {% if policy.is_mandatory %}
+                  <span class="badge bg-danger rounded-pill px-3 py-1 fw-bold">MANDATORY</span>
+                {% endif %}
+                <span class="text-white-50 small">Effective: {{ policy.effective_from|date:"d M Y" }}</span>
+              </div>
+              <h2 class="fw-bold mb-2">{{ policy.title }}</h2>
+              <p class="text-white-50 mb-0" style="max-width: 680px;">{{ policy.description }}</p>
+            </div>
+            {% if is_acknowledged %}
+              <div class="bg-white bg-opacity-10 border border-white border-opacity-25 rounded-4 p-3 text-center">
+                <div class="badge bg-success rounded-pill px-3 py-1 mb-1">
+                  <i class="bi bi-patch-check-fill me-1"></i>Acknowledged
+                </div>
+                <div class="small text-white-50">On {{ acknowledgement.acknowledged_on|date:"d M Y H:i" }}</div>
+                {% if acknowledgement.quiz_score is not None %}
+                  <div class="fw-bold text-white fs-5 mt-1">{{ acknowledgement.quiz_score }}% Score</div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- If already acknowledged: Show Certificate / Completed Banner -->
+      {% if is_acknowledged %}
+        <div class="alert alert-success border-0 shadow-sm rounded-4 p-4 mb-4 d-flex align-items-center gap-3">
+          <i class="bi bi-shield-check fs-1 text-success"></i>
+          <div>
+            <h5 class="fw-bold mb-1 text-success">Compliance Verified &amp; Locked</h5>
+            <p class="mb-0 text-muted small">
+              You have completed the required review and passed the summary questionnaire for this policy.
+              Your acknowledgment has been officially recorded in the compliance audit trail.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Multi-Step Flow Form -->
+      <form method="post" id="policyFlowForm">
+        {% csrf_token %}
+
+        <!-- STEP 1: Policy Document Card -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-white p-4 border-bottom">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                1
+              </div>
+              <div>
+                <h5 class="fw-bold mb-0">Step 1: Read &amp; Review Policy Document</h5>
+                <p class="text-muted small mb-0">Please download or view the official document thoroughly before answering questions.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            {% if policy.document %}
+              <div class="p-4 bg-light rounded-4 border d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="fs-1 text-primary">
+                    {% if policy.get_file_extension == 'pdf' %}
+                      <i class="bi bi-file-earmark-pdf-fill text-danger"></i>
+                    {% else %}
+                      <i class="bi bi-file-earmark-word-fill text-primary"></i>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-1">{{ policy.document.name|slice:"9:" }}</h6>
+                    <div class="text-muted small">Official Document • {{ policy.get_file_extension|upper }} Format</div>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <a href="{{ policy.document.url }}" target="_blank" class="btn btn-primary rounded-pill px-4" id="readDocBtn" onclick="enableNextStep()">
+                    <i class="bi bi-eye me-1"></i>Open &amp; Read Document
+                  </a>
+                  <a href="{{ policy.document.url }}" download class="btn btn-outline-secondary rounded-pill px-3">
+                    <i class="bi bi-download"></i>
+                  </a>
+                </div>
+              </div>
+            {% else %}
+              <div class="alert alert-secondary border-0 rounded-3 mb-0">
+                <i class="bi bi-info-circle me-2"></i>No attachment document uploaded for this policy. Please review the summary description above.
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- STEP 2: Summary Quiz Questionnaire -->
+        {% if policy.has_quiz %}
+          <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white p-4 border-bottom">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="avatar-sm bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                    2
+                  </div>
+                  <div>
+                    <h5 class="fw-bold mb-0">Step 2: Policy Comprehension Quiz</h5>
+                    <p class="text-muted small mb-0">Answer all questions correctly (minimum 80% passing score required).</p>
+                  </div>
+                </div>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-2">
+                  {{ policy.quiz_question_count }} Question(s)
+                </span>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              {% for q in policy.quiz_data %}
+                <div class="p-4 mb-3 rounded-4 border bg-light bg-opacity-50">
+                  <div class="fw-bold text-dark mb-3 fs-6">
+                    <span class="text-primary me-2">Q{{ forloop.counter }}.</span>{{ q.question }}
+                  </div>
+
+                  {% if q.type == 'mcq' %}
+                    <div class="d-flex flex-column gap-2">
+                      {% for opt in q.options %}
+                        <div class="form-check p-3 rounded-3 border bg-white cursor-pointer option-box">
+                          <input class="form-check-input ms-0 me-3" type="radio" name="question_{{ forloop.parentloop.counter0 }}" id="q_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" value="{{ forloop.counter0 }}" required {% if is_acknowledged %}disabled{% endif %}>
+                          <label class="form-check-label w-100 fw-medium" for="q_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}">
+                            {{ opt }}
+                          </label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% elif q.type == 'true_false' %}
+                    <div class="d-flex gap-3">
+                      <div class="form-check p-3 rounded-3 border bg-white flex-grow-1 option-box">
+                        <input class="form-check-input ms-0 me-3" type="radio" name="question_{{ forloop.parentloop.counter0 }}" id="q_{{ forloop.parentloop.counter0 }}_true" value="true" required {% if is_acknowledged %}disabled{% endif %}>
+                        <label class="form-check-label w-100 fw-medium" for="q_{{ forloop.parentloop.counter0 }}_true">
+                          <i class="bi bi-check-circle text-success me-1"></i>True
+                        </label>
+                      </div>
+                      <div class="form-check p-3 rounded-3 border bg-white flex-grow-1 option-box">
+                        <input class="form-check-input ms-0 me-3" type="radio" name="question_{{ forloop.parentloop.counter0 }}" id="q_{{ forloop.parentloop.counter0 }}_false" value="false" required {% if is_acknowledged %}disabled{% endif %}>
+                        <label class="form-check-label w-100 fw-medium" for="q_{{ forloop.parentloop.counter0 }}_false">
+                          <i class="bi bi-x-circle text-danger me-1"></i>False
+                        </label>
+                      </div>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- STEP 3: Mandatory Legal Acknowledgment -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-white p-4 border-bottom">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                {% if policy.has_quiz %}3{% else %}2{% endif %}
+              </div>
+              <div>
+                <h5 class="fw-bold mb-0">Step {% if policy.has_quiz %}3{% else %}2{% endif %}: Mandatory Compliance Acknowledgment</h5>
+                <p class="text-muted small mb-0">Legal verification statement required for HR compliance record.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <div class="p-4 rounded-4 bg-light border mb-4">
+              <div class="form-check d-flex align-items-start gap-3">
+                <input class="form-check-input mt-1" type="checkbox" name="acknowledge_checkbox" id="ackCheckbox" value="1" required {% if is_acknowledged %}checked disabled{% endif %}>
+                <label class="form-check-label fw-semibold text-dark lh-base" for="ackCheckbox">
+                  I acknowledge that I have read, fully understand, and agree to abide by all terms, conditions, and regulations outlined in the <u>{{ policy.title }}</u>. I confirm that all quiz responses provided above represent my own understanding.
+                </label>
+              </div>
+            </div>
+
+            <input type="hidden" name="ack_statement" value="I acknowledge that I have read and fully understand all terms and conditions of {{ policy.title }}.">
+
+            {% if not is_acknowledged %}
+              <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'hrms:policy_list' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary rounded-pill px-5 py-2 fw-semibold">
+                  <i class="bi bi-shield-check me-1"></i>Submit Quiz &amp; Acknowledge
+                </button>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+</div>
+
+<style>
+  .option-box {
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .option-box:hover {
+    border-color: #0d6efd !important;
+    background-color: #f8faff !important;
+  }
+</style>
+{% endblock %}

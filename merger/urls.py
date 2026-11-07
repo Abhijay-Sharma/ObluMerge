@@ -56,4 +56,6 @@ urlpatterns = [
     path("meta/", include("meta.urls")),
     path("logs/", include('request_logs.urls')),
     path("docs/", include("docs.urls")),
+    path('hrms/', include('hrms.urls')),
+    path('api/auth/', include('access_control.urls')),
 ]

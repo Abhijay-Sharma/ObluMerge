@@ -1,0 +1,218 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}{% if object %}Edit {{ object.full_name }}{% else %}Add New Employee{% endif %} — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'hrms:employee_list' %}" class="text-decoration-none">Employees</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{% if object %}Edit Profile{% else %}New Employee{% endif %}</li>
+    </ol>
+  </nav>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-primary text-white p-4 border-0">
+          <h4 class="fw-bold mb-1">
+            <i class="bi bi-person-badge me-2"></i>{% if object %}Edit Employee Profile: {{ object.full_name }}{% else %}Register New Employee{% endif %}
+          </h4>
+          <p class="text-white-50 small mb-0">Manage organizational assignments, personal credentials, and reporting relationships.</p>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger border-0 rounded-3 mb-4">
+                {{ form.non_field_errors }}
+              </div>
+            {% endif %}
+
+            <!-- SECTION 1: Work Identity & Code -->
+            <div class="mb-4">
+              <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                <i class="bi bi-briefcase text-primary me-2"></i>1. Organizational Assignment
+              </h5>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Company*</label>
+                  {{ form.company }}
+                  {% if form.company.errors %}<div class="text-danger small mt-1">{{ form.company.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Department*</label>
+                  {{ form.department }}
+                  {% if form.department.errors %}<div class="text-danger small mt-1">{{ form.department.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Designation*</label>
+                  {{ form.designation }}
+                  {% if form.designation.errors %}<div class="text-danger small mt-1">{{ form.designation.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Employee Code*</label>
+                  {{ form.employee_code }}
+                  {% if form.employee_code.errors %}<div class="text-danger small mt-1">{{ form.employee_code.errors|striptags }}</div>{% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 2: Personal Information -->
+            <div class="mb-4">
+              <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                <i class="bi bi-person text-primary me-2"></i>2. Personal Details
+              </h5>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">First Name*</label>
+                  {{ form.first_name }}
+                  {% if form.first_name.errors %}<div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Last Name</label>
+                  {{ form.last_name }}
+                  {% if form.last_name.errors %}<div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Email Address*</label>
+                  {{ form.email }}
+                  {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Contact Phone*</label>
+                  {{ form.phone }}
+                  {% if form.phone.errors %}<div class="text-danger small mt-1">{{ form.phone.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Gender</label>
+                  {{ form.gender }}
+                  {% if form.gender.errors %}<div class="text-danger small mt-1">{{ form.gender.errors|striptags }}</div>{% endif %}
+                </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Marital Status</label>
+                    {{ form.marital_status }}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Date of Birth</label>
+                  {{ form.date_of_birth }}
+                  {% if form.date_of_birth.errors %}<div class="text-danger small mt-1">{{ form.date_of_birth.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Father's Name</label>
+                  {{ form.father_name }}
+                  {% if form.father_name.errors %}<div class="text-danger small mt-1">{{ form.father_name.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Mother's Name</label>
+                  {{ form.mother_name }}
+                  {% if form.mother_name.errors %}<div class="text-danger small mt-1">{{ form.mother_name.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Residential Address</label>
+                  {{ form.address }}
+                  {% if form.address.errors %}<div class="text-danger small mt-1">{{ form.address.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Emergency Contact Information</label>
+                  {{ form.emergency_contact }}
+                  {% if form.emergency_contact.errors %}<div class="text-danger small mt-1">{{ form.emergency_contact.errors|striptags }}</div>{% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 3: Employment Status & Dates -->
+            <div class="mb-4">
+              <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                <i class="bi bi-calendar-check text-primary me-2"></i>3. Employment Lifecycle &amp; Shift
+              </h5>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Date of Joining*</label>
+                  {{ form.date_of_joining }}
+                  {% if form.date_of_joining.errors %}<div class="text-danger small mt-1">{{ form.date_of_joining.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Date of Confirmation</label>
+                  {{ form.date_of_confirmation }}
+                  {% if form.date_of_confirmation.errors %}<div class="text-danger small mt-1">{{ form.date_of_confirmation.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Employment Type</label>
+                  {{ form.employment_type }}
+                  {% if form.employment_type.errors %}<div class="text-danger small mt-1">{{ form.employment_type.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Active Status</label>
+                  {{ form.status }}
+                  {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Holiday Calendar</label>
+                  {{ form.holiday_calendar }}
+                  {% if form.holiday_calendar.errors %}<div class="text-danger small mt-1">{{ form.holiday_calendar.errors|striptags }}</div>{% endif %}
+                </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Attendance Punch Mode*</label>
+                {{ form.attendance_mode }}
+                <div class="form-text small text-muted">Office Only (Reception Tablet) vs Remote/Field Allowed (Personal Phone)</div>
+                {% if form.attendance_mode.errors %}<div class="text-danger small mt-1">{{ form.attendance_mode.errors|striptags }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-bold"><i class="bi bi-calendar2-range text-primary me-1"></i>Leave Policy Mode*</label>
+                {{ form.leave_policy_mode }}
+                <div class="form-text small text-muted">Annual Wise (take leave anytime up to annual balance) vs Month Wise (strict monthly quota)</div>
+                {% if form.leave_policy_mode.errors %}<div class="text-danger small mt-1">{{ form.leave_policy_mode.errors|striptags }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- SECTION 4: Managerial Hierarchy -->
+            <div class="mb-4">
+              <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                <i class="bi bi-diagram-3 text-primary me-2"></i>4. Managerial Hierarchy
+              </h5>
+              <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                  <div class="p-3 bg-light rounded-4 border">
+                    <div class="form-check form-switch mb-1">
+                      {{ form.is_manager }}
+                      <label class="form-check-label fw-bold text-dark ms-2" for="{{ form.is_manager.id_for_label }}">
+                        Designate as Reporting Manager
+                      </label>
+                    </div>
+                    <div class="form-text small text-muted">If checked, this employee will appear in manager dropdowns and can approve subordinate leaves.</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Reporting Manager</label>
+                  {{ form.reporting_manager }}
+                  <div class="form-text small">Select the direct manager who will review leave &amp; attendance regularizations.</div>
+                  {% if form.reporting_manager.errors %}<div class="text-danger small mt-1">{{ form.reporting_manager.errors|striptags }}</div>{% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+              <a href="{% if object %}{% url 'hrms:employee_detail' object.pk %}{% else %}{% url 'hrms:employee_list' %}{% endif %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+              <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
+                <i class="bi bi-check2-circle me-1"></i>Save Employee Profile
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

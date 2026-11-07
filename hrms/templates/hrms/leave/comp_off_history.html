@@ -1,0 +1,480 @@
+{% extends "hrms/base.html" %}
+{% block title %}My Comp Off Credits{% endblock %}
+{% block page_title %}Compensatory Off Credits{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --co-primary: #7c3aed;
+    --co-primary-light: #ede9fe;
+    --co-available: #10b981;
+    --co-availed: #6366f1;
+  }
+
+  .co-header-card {
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    border-radius: 20px;
+    color: white;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .co-header-card::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -8%;
+    width: 260px;
+    height: 260px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+  }
+
+  .co-stat-box {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    padding: 0.85rem 1.25rem;
+    transition: transform 0.2s ease;
+  }
+  .co-stat-box:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .co-nav-pills {
+    background: #f1f5f9;
+    padding: 6px;
+    border-radius: 12px;
+    display: inline-flex;
+    gap: 6px;
+  }
+  .co-nav-pills .nav-link {
+    border-radius: 9px;
+    padding: 8px 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #64748b;
+    border: none;
+    transition: all 0.2s ease;
+  }
+  .co-nav-pills .nav-link.active {
+    background: white;
+    color: #7c3aed;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .co-table-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 4px 12px -2px rgba(0,0,0,0.04);
+  }
+  .co-table-card table thead th {
+    background: #f8fafc;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 800;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 14px 16px;
+  }
+  .co-table-card table tbody td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    border-color: #f1f5f9;
+  }
+  .co-table-card table tbody tr.main-row:hover { background: #faf8ff; }
+
+  .detail-drawer {
+    background: #fbfbfe;
+    border-top: 1px dashed #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 14px 20px;
+  }
+
+  .badge-available  { background: #dcfce7; color: #15803d; border-radius: 8px; padding: 4px 10px; font-size: 0.75rem; font-weight: 700; }
+  .badge-partial    { background: #fef3c7; color: #b45309; border-radius: 8px; padding: 4px 10px; font-size: 0.75rem; font-weight: 700; }
+  .badge-availed    { background: #e0e7ff; color: #4338ca; border-radius: 8px; padding: 4px 10px; font-size: 0.75rem; font-weight: 700; }
+  .badge-expired    { background: #f3f4f6; color: #6b7280; border-radius: 8px; padding: 4px 10px; font-size: 0.75rem; font-weight: 700; }
+
+  .toggle-btn {
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .toggle-btn:hover {
+    background: #ede9fe;
+    color: #7c3aed;
+    border-color: #c4b5fd;
+  }
+
+  .empty-state { text-align: center; padding: 3.5rem 1rem; color: #9ca3af; }
+  .empty-state i { font-size: 3rem; margin-bottom: 0.75rem; display: block; opacity: 0.4; }
+
+  @media (max-width: 575.98px) {
+    .co-header-card { padding: 1.25rem; border-radius: 16px; }
+    .co-stat-box { padding: 0.65rem 0.85rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 py-md-4">
+
+  <!-- Header Banner & KPI Cards -->
+  <div class="co-header-card">
+    <div class="row align-items-center g-3">
+      <div class="col-12 col-lg-5">
+        <div class="d-flex align-items-center">
+          <div class="me-3 p-3 rounded-circle bg-white bg-opacity-20 d-none d-sm-flex align-items-center justify-content-center" style="width: 58px; height: 58px;">
+            <i class="bi bi-wallet2 fs-3 text-white"></i>
+          </div>
+          <div>
+            <h4 class="mb-1 fw-bold text-white">My Compensatory Off</h4>
+            <p class="mb-0 opacity-75 small">Track credits earned from Sunday/Holiday work &amp; redeemed leaves</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-5">
+        <div class="row g-2">
+          <div class="col-4">
+            <div class="co-stat-box text-center">
+              <span class="small opacity-75 d-block" style="font-size:0.72rem;">AVAILABLE</span>
+              <strong class="fs-4 text-white">{{ comp_off_balance|floatformat:1 }}</strong>
+              <span class="small opacity-75">day{{ comp_off_balance|pluralize }}</span>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="co-stat-box text-center">
+              <span class="small opacity-75 d-block" style="font-size:0.72rem;">TOTAL EARNED</span>
+              <strong class="fs-4 text-white">{{ total_earned|floatformat:1 }}</strong>
+              <span class="small opacity-75">day{{ total_earned|pluralize }}</span>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="co-stat-box text-center">
+              <span class="small opacity-75 d-block" style="font-size:0.72rem;">REDEEMED</span>
+              <strong class="fs-4 text-white">{{ availed_credits|floatformat:1 }}</strong>
+              <span class="small opacity-75">day{{ availed_credits|pluralize }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-2 text-lg-end">
+        <a href="{% url 'hrms:leave_apply' %}" class="btn btn-light fw-bold rounded-pill px-3 py-2 w-100 shadow-sm text-purple" style="color: #6d28d9;">
+          <i class="bi bi-plus-circle me-1"></i> Apply CO Leave
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Switcher (Tabs) -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <ul class="nav co-nav-pills" id="coTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="earned-tab" data-bs-toggle="pill" data-bs-target="#earnedPane" type="button" role="tab">
+          <i class="bi bi-gift-fill me-1 text-purple" style="color:var(--co-primary);"></i>
+          Credits Earned (I Have)
+          <span class="badge bg-purple-subtle text-purple border ms-1" style="background:#ede9fe; color:#7c3aed;">{{ comp_off_records|length }}</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="taken-tab" data-bs-toggle="pill" data-bs-target="#takenPane" type="button" role="tab">
+          <i class="bi bi-calendar2-check-fill me-1 text-primary"></i>
+          Comp-Off Taken (Leaves Used)
+          <span class="badge bg-primary-subtle text-primary border ms-1">{{ redeemed_leaves|length }}</span>
+        </button>
+      </li>
+    </ul>
+
+    <div class="text-muted small">
+      <i class="bi bi-info-circle me-1"></i> Click <span class="badge bg-light text-dark border">Details <i class="bi bi-chevron-down"></i></span> to expand full breakdown
+    </div>
+  </div>
+
+  <div class="tab-content" id="coTabsContent">
+
+    <!-- ================= TAB 1: CREDITS EARNED ================= -->
+    <div class="tab-pane fade show active" id="earnedPane" role="tabpanel">
+      <div class="co-table-card">
+        <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-list-stars me-2 text-primary" style="color:var(--co-primary);"></i>
+            Earned Credits Pool
+          </h6>
+          <span class="text-muted small">Total {{ comp_off_records|length }} credit record{{ comp_off_records|length|pluralize }}</span>
+        </div>
+
+        {% if comp_off_records %}
+        <div class="table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead>
+              <tr>
+                <th style="width:48px;">#</th>
+                <th>Earned Date &amp; Day</th>
+                <th>Occasion / Reason</th>
+                <th class="text-center">Credit Earned</th>
+                <th class="text-center">Used</th>
+                <th class="text-center">Remaining</th>
+                <th class="text-center">Status</th>
+                <th class="text-end pe-3">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rec in comp_off_records %}
+              <tr class="main-row">
+                <td class="text-muted small">{{ forloop.counter }}</td>
+                <td>
+                  <div class="fw-bold text-dark">{{ rec.worked_date|date:"d M Y" }}</div>
+                  <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i>{{ rec.worked_date|date:"l" }}</div>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ rec.holiday_name|default:"Sunday / Weekly Off" }}</span>
+                  {% if rec.hours_worked and rec.hours_worked > 0 %}
+                    <span class="text-muted small ms-1">({{ rec.hours_worked|floatformat:1 }} hrs)</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <span class="fw-bold text-success" style="font-size:1.05rem;">+{{ rec.credits_earned|floatformat:1 }}</span>
+                  <span class="small text-muted">day</span>
+                </td>
+                <td class="text-center">
+                  {% if rec.credits_used and rec.credits_used > 0 %}
+                    <span class="fw-semibold text-danger">-{{ rec.credits_used|floatformat:1 }}</span>
+                  {% else %}
+                    <span class="text-muted">0.0</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <span class="fw-bold {% if rec.credits_remaining > 0 %}text-purple{% else %}text-muted{% endif %}" style="color:{% if rec.credits_remaining > 0 %}#7c3aed{% endif %}; font-size:1.05rem;">
+                    {{ rec.credits_remaining|floatformat:1 }}
+                  </span>
+                  <span class="small text-muted">day</span>
+                </td>
+                <td class="text-center">
+                  {% if rec.status == 'available' %}
+                    <span class="badge-available">✓ Available</span>
+                  {% elif rec.status == 'partial' %}
+                    <span class="badge-partial">⏳ Partially Used</span>
+                  {% elif rec.status == 'availed' %}
+                    <span class="badge-availed">✓ Fully Availed</span>
+                  {% else %}
+                    <span class="badge-expired">Expired</span>
+                  {% endif %}
+                </td>
+                <td class="text-end pe-3">
+                  <button class="btn toggle-btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRec{{ rec.id }}" aria-expanded="false">
+                    Details <i class="bi bi-chevron-down ms-1"></i>
+                  </button>
+                </td>
+              </tr>
+              <!-- Expandable Row -->
+              <tr class="collapse" id="collapseRec{{ rec.id }}">
+                <td colspan="8" class="p-0 border-0">
+                  <div class="detail-drawer">
+                    <div class="row g-3 align-items-center">
+                      <div class="col-md-4">
+                        <span class="text-muted small d-block">WORKED PUNCH AUDIT</span>
+                        <div class="fw-semibold text-dark mt-1">
+                          {{ rec.worked_date|date:"l, d F Y" }}
+                        </div>
+                        <div class="small text-muted">
+                          Occasion: <strong>{{ rec.holiday_name|default:"Sunday / Weekly Off" }}</strong>
+                          {% if rec.hours_worked %}&bull; Total Hours: <strong>{{ rec.hours_worked }} hrs</strong>{% endif %}
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <span class="text-muted small d-block">REDEMPTION STATUS</span>
+                        {% if rec.status == 'available' %}
+                          <div class="text-success small fw-semibold mt-1">
+                            <i class="bi bi-check-circle me-1"></i> Fully available for applying leave ({{ rec.credits_remaining }} day left).
+                          </div>
+                        {% elif rec.availed_leave_app %}
+                          <div class="small mt-1">
+                            Consumed by:
+                            <a href="{% url 'hrms:leave_detail' rec.availed_leave_app.pk %}" class="fw-bold text-decoration-none" style="color:var(--co-primary);">
+                              Leave Application #{{ rec.availed_leave_app.pk }}
+                            </a>
+                            <div class="text-muted">
+                              Leave Date: <strong>{{ rec.availed_leave_app.start_date|date:"d M Y" }}</strong> ({{ rec.availed_leave_app.total_days }} day)
+                            </div>
+                          </div>
+                        {% else %}
+                          <div class="small text-muted mt-1">
+                            Used: {{ rec.credits_used|floatformat:1 }} day | Left: {{ rec.credits_remaining|floatformat:1 }} day
+                          </div>
+                        {% endif %}
+                      </div>
+                      <div class="col-md-4 text-md-end">
+                        {% if rec.credits_remaining > 0 %}
+                          <a href="{% url 'hrms:leave_apply' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="bi bi-send me-1"></i> Apply Leave with this Credit
+                          </a>
+                        {% else %}
+                          <span class="badge bg-light text-muted border p-2">This credit has been completely utilized</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if is_paginated %}
+        <div class="p-3 border-top d-flex justify-content-center">
+          <nav>
+            <ul class="pagination pagination-sm mb-0">
+              {% if page_obj.has_previous %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+              {% endif %}
+              <li class="page-item active"><a class="page-link" href="#">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</a></li>
+              {% if page_obj.has_next %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+          <i class="bi bi-calendar2-x"></i>
+          <h5 class="fw-semibold text-dark">No Comp Off Credits Yet</h5>
+          <p class="text-muted small">Credits are earned automatically whenever you punch in on a Sunday or an assigned company holiday.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ================= TAB 2: COMP-OFF LEAVES TAKEN ================= -->
+    <div class="tab-pane fade" id="takenPane" role="tabpanel">
+      <div class="co-table-card">
+        <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-calendar2-check-fill me-2 text-primary"></i>
+            Comp-Off Leaves Taken (Redeemed History)
+          </h6>
+          <span class="text-muted small">{{ redeemed_leaves|length }} leave application{{ redeemed_leaves|length|pluralize }}</span>
+        </div>
+
+        {% if redeemed_leaves %}
+        <div class="table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead>
+              <tr>
+                <th style="width:48px;">#</th>
+                <th>Leave Dates Taken</th>
+                <th>Duration</th>
+                <th>Reason</th>
+                <th>Applied On</th>
+                <th class="text-center">Status</th>
+                <th>Reviewer / Approver</th>
+                <th class="text-end pe-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for app in redeemed_leaves %}
+              <tr class="main-row">
+                <td class="text-muted small">{{ forloop.counter }}</td>
+                <td>
+                  <div class="fw-bold text-dark">
+                    {{ app.start_date|date:"d M Y" }}
+                    {% if app.start_date != app.end_date %}
+                      <i class="bi bi-arrow-right mx-1 text-muted"></i> {{ app.end_date|date:"d M Y" }}
+                    {% endif %}
+                  </div>
+                  <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i>{{ app.start_date|date:"l" }}</div>
+                </td>
+                <td>
+                  <span class="badge bg-purple-subtle text-purple border" style="background:#ede9fe; color:#7c3aed; font-size:0.8rem;">
+                    {{ app.total_days }} Day{% if app.total_days != 1 %}s{% endif %}
+                  </span>
+                  <div class="text-muted small">{{ app.get_day_type_display }}</div>
+                </td>
+                <td>
+                  <div class="text-dark small text-break" style="max-width:220px;">
+                    {{ app.reason|default:"<span class='text-muted'>--</span>"|safe }}
+                  </div>
+                </td>
+                <td>
+                  <div class="small text-dark">{{ app.applied_on|date:"d M Y" }}</div>
+                  <div class="small text-muted">{{ app.applied_on|date:"h:i A" }}</div>
+                </td>
+                <td class="text-center">
+                  {% if app.status == 'approved' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">✓ Approved</span>
+                  {% elif app.status == 'pending_manager' or app.status == 'pending_hr' %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">⏳ Pending Review</span>
+                  {% elif app.status == 'cancelled' %}
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Cancelled</span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Rejected</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if app.approved_by %}
+                    <div class="small fw-semibold text-dark">{{ app.approved_by.get_full_name|default:app.approved_by.username }}</div>
+                    <div class="small text-muted">{{ app.approved_on|date:"d M Y" }}</div>
+                  {% else %}
+                    <span class="text-muted small">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-end pe-3">
+                  <a href="{% url 'hrms:leave_detail' app.pk %}" class="btn toggle-btn">
+                    View <i class="bi bi-arrow-right ms-1"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <i class="bi bi-calendar-check"></i>
+          <h5 class="fw-semibold text-dark">No Comp-Off Leaves Taken Yet</h5>
+          <p class="text-muted small">When you apply and take leaves against your earned comp-off pool, they will appear here with dates and status.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Rotate chevron icon on collapse toggle
+  document.addEventListener('DOMContentLoaded', function() {
+    const collapseEls = document.querySelectorAll('.collapse');
+    collapseEls.forEach(el => {
+      el.addEventListener('show.bs.collapse', function() {
+        const btn = document.querySelector(`[data-bs-target="#${this.id}"]`);
+        if (btn) btn.innerHTML = 'Hide <i class="bi bi-chevron-up ms-1"></i>';
+      });
+      el.addEventListener('hide.bs.collapse', function() {
+        const btn = document.querySelector(`[data-bs-target="#${this.id}"]`);
+        if (btn) btn.innerHTML = 'Details <i class="bi bi-chevron-down ms-1"></i>';
+      });
+    });
+  });
+</script>
+{% endblock %}

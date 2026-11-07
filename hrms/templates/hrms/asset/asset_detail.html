@@ -1,0 +1,296 @@
+{% extends "hrms/base.html" %}
+{% block title %}Asset Detail | {{ asset.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root { --slate-900: #0f172a; --indigo-600: #4f46e5; }
+    .device-header { background: linear-gradient(135deg, var(--slate-900) 0%, #1e293b 100%); border-radius: 24px; color: white; padding: 2.5rem; margin-bottom: 2rem; }
+    .device-icon-box { width: 80px; height: 80px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; border: 1px solid rgba(255, 255, 255, 0.2); }
+    .detail-card { border: none; border-radius: 20px; background: white; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.04); height: 100%; }
+    .label-caps { font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+    .value-text { font-size: 1rem; font-weight: 600; color: var(--slate-900); }
+    .password-container { background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 12px; padding: 12px 16px; }
+    .blur-text { filter: blur(5px); transition: filter 0.3s ease; user-select: none; }
+    .unblur { filter: blur(0); user-select: auto; }
+    .status-indicator { padding: 6px 16px; border-radius: 50px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
+    .status-available { background: #dcfce7; color: #15803d; }
+    .status-assigned { background: #e0e7ff; color: #4338ca; }
+    .active-row { border-left: 4px solid var(--indigo-600); background: #fcfdff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+    <!-- 1. HERO HEADER -->
+    <div class="device-header shadow-lg">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-4">
+            <div class="d-flex align-items-center gap-4">
+                <div class="device-icon-box">
+                    <i class="bi
+                        {% if 'Phone' in asset.category.name or 'Mobile' in asset.category.name %}bi-phone
+                        {% elif 'Sim' in asset.category.name %}bi-sim-fill
+                        {% elif 'Laptop' in asset.category.name %}bi-laptop
+                        {% else %}bi-cpu{% endif %}">
+                    </i>
+                </div>
+                <div class="text-center text-md-start">
+                    <div class="label-caps text-white-50 mb-1">Asset Identity</div>
+                    <h1 class="fw-bold mb-1">{{ asset.name }}</h1>
+                    <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-3 mt-2">
+                        <span class="small opacity-75">
+                            <i class="bi bi-upc-scan me-1"></i>
+                            {% if 'Sim' in asset.category.name %}ICCID:{% else %}SN:{% endif %} {{ asset.serial_number|default:"No Serial" }}
+                        </span>
+                        <span class="small opacity-75"><i class="bi bi-tag me-1"></i> {{ asset.category.name|default:"General" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                {% if is_hr %}
+                    <a href="{% url 'hrms:asset_edit' asset.pk %}" class="btn btn-light rounded-pill px-4 fw-bold">Edit Specs</a>
+                    {% if asset.employee %}
+                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow" data-bs-toggle="modal" data-bs-target="#returnModal">
+                            <i class="bi bi-arrow-return-left me-2"></i>Return Asset
+                        </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- LEFT: SPECIFICATIONS -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card detail-card p-4">
+                <div class="label-caps mb-4"><i class="bi bi-info-circle me-2"></i>Hardware Intelligence</div>
+
+                <div class="row g-4">
+                    <div class="col-6">
+                        <div class="label-caps">Status</div>
+                        <div class="mt-1">
+                            <span class="status-indicator {% if asset.status == 'available' %}status-available{% else %}status-assigned{% endif %}">
+                                {{ asset.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="label-caps">Procured On</div>
+                        <div class="value-text">{{ asset.purchase_date|date:"d M Y"|default:"--" }}</div>
+                    </div>
+
+                    <!-- Warranty & Vendor Info -->
+                    <div class="col-6">
+                        <div class="label-caps">Warranty Expiry</div>
+                        <div class="value-text">{{ asset.warranty_expiry|date:"d M Y"|default:"--" }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="label-caps">Vendor / Supplier</div>
+                        <div class="value-text text-truncate" title="{{ asset.vendor_name }}">{{ asset.vendor_name|default:"--" }}</div>
+                    </div>
+
+                    {% if asset.invoice_document %}
+                    <div class="col-12">
+                        <div class="label-caps">Purchase Invoice</div>
+                        <div class="mt-1">
+                            <a href="{{ asset.invoice_document.url }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                <i class="bi bi-file-earmark-pdf me-1"></i>Download Invoice
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- SHOW SIM DETAILS TOGETHER -->
+                    {% if asset.sim or asset.phone_number %}
+                    <div class="col-12 border-top pt-3">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="label-caps">Network / SIM</div>
+                                <div class="value-text text-primary">{{ asset.sim|default:"--" }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="label-caps">Phone Number</div>
+                                <div class="value-text">{{ asset.phone_number|default:"--" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if asset.device_password %}
+                    <div class="col-12 border-top pt-3">
+                        <div class="label-caps">Security Credentials</div>
+                        <div class="password-container mt-2 d-flex justify-content-between align-items-center">
+                            <div class="font-monospace fw-bold text-danger blur-text" id="passText">
+                                {{ asset.device_password }}
+                            </div>
+                            <button class="btn btn-link btn-sm text-muted p-0" id="togglePass">
+                                <i class="bi bi-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="col-12 mt-4 pt-3 border-top">
+                        <div class="label-caps mb-3">Current Custodian</div>
+                        {% if asset.employee %}
+                        <div class="d-flex align-items-center p-3 rounded-4 bg-light">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px; font-weight: 800;">
+                                {{ asset.employee.first_name|first }}
+                            </div>
+                            <div>
+                                <div class="value-text mb-0">{{ asset.employee.full_name }}</div>
+                                <div class="small text-muted">Issued: {{ asset.assigned_on|date:"d M Y" }}</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3 bg-light rounded-4 text-muted small">Available for Assignment</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: HISTORY TIMELINE -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card detail-card h-100 overflow-hidden">
+                <div class="card-header bg-white py-4 px-4 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Custody Chain &amp; Lifecycle History</h5>
+                    <span class="badge bg-light text-dark border rounded-pill px-3">{{ history|length }} Records</span>
+                </div>
+                <div class="table-responsive">
+
+<!-- Table inside RIGHT: HISTORY TIMELINE -->
+<table class="table align-middle mb-0">
+    <thead>
+        <tr class="text-muted small fw-bold">
+            <th class="ps-4">Custodian</th>
+            <th>Handover Date</th>
+            <th>Return Date</th>
+            <th>Tenure / Duration</th>
+            <th>Condition & Remarks</th>
+            <th class="text-end pe-4">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for h in history %}
+        <tr class="{% if h.is_still_using %}active-row{% endif %}">
+            <td class="ps-4 py-3">
+                <div class="fw-bold text-dark">{{ h.employee.full_name }}</div>
+                <small class="text-muted">{{ h.employee.employee_code }}</small>
+            </td>
+            <td>{{ h.assigned_date|date:"d M Y" }}</td>
+            <td>{{ h.returned_date|date:"d M Y"|default:"--" }}</td>
+            <td class="fw-semibold text-dark">{{ h.duration_display }}</td>
+            <td>
+                {% if h.is_still_using %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">Active Custody</span>
+                {% elif h.returned_in_good_condition == True %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Good Condition</span>
+                {% elif h.returned_in_good_condition == False %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill" title="{{ h.return_remarks }}">
+                        Damaged / Defect
+                    </span>
+                    {% if h.return_remarks %}
+                        <div class="small text-muted mt-1 fst-italic">"{{ h.return_remarks|truncatewords:6 }}"</div>
+                    {% endif %}
+                {% endif %}
+            </td>
+            <td class="text-end pe-4">
+                {% if h.is_still_using %}
+                    <span class="badge bg-primary rounded-pill">CURRENT HOLDER</span>
+                {% else %}
+                    <span class="badge bg-light text-secondary border">RETURNED</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-5 text-muted">No assignment records found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return Asset Modal -->
+{% if asset.employee %}
+<div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="post" action="{% url 'hrms:asset_return' asset.pk %}">
+        {% csrf_token %}
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold text-dark">
+            <i class="bi bi-arrow-return-left text-danger me-2"></i>Return Asset from {{ asset.employee.full_name }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3">
+          <p class="text-muted small mb-3">Please record the condition and remarks upon unassigning this asset.</p>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Return Condition*</label>
+            <div class="d-flex gap-3 mt-1">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="returned_in_good_condition" id="condGood" value="yes" checked onchange="toggleRemarks(false)">
+                <label class="form-check-label fw-semibold text-success" for="condGood">
+                  <i class="bi bi-check-circle me-1"></i>Good Condition
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="returned_in_good_condition" id="condDamaged" value="no" onchange="toggleRemarks(true)">
+                <label class="form-check-label fw-semibold text-danger" for="condDamaged">
+                  <i class="bi bi-exclamation-triangle me-1"></i>Damaged / Missing Parts
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" id="remarksLabel">Condition Notes / Remarks (Mandatory if damaged)</label>
+            <textarea name="return_remarks" id="returnRemarks" class="form-control rounded-3" rows="3" placeholder="Notes about physical condition, scratches, charger returned..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+            Confirm Return
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+    const toggle = document.getElementById('togglePass');
+    if (toggle) {
+        toggle.addEventListener('click', function() {
+            const passText = document.getElementById('passText');
+            const eyeIcon = document.getElementById('eyeIcon');
+            passText.classList.toggle('unblur');
+            eyeIcon.classList.toggle('bi-eye');
+            eyeIcon.classList.toggle('bi-eye-slash');
+        });
+    }
+
+    function toggleRemarks(isDamaged) {
+      const textarea = document.getElementById('returnRemarks');
+      const label = document.getElementById('remarksLabel');
+      if (isDamaged) {
+        textarea.required = true;
+        label.classList.add('text-danger');
+        label.innerText = 'Mandatory Damage / Defect Description*';
+      } else {
+        textarea.required = false;
+        label.classList.remove('text-danger');
+        label.innerText = 'Condition Notes / Remarks (Optional)';
+      }
+    }
+</script>
+{% endblock %}

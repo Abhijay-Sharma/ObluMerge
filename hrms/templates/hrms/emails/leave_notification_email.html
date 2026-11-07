@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 25px; color: #2d3748; }
+    .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    .header { padding: 24px; color: #ffffff; text-align: center; }
+    .bg-applied { background-color: #2b6cb0; }
+    .bg-approved { background-color: #2f855a; }
+    .bg-rejected { background-color: #c53030; }
+    .header h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+    .content { padding: 24px; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 15px; }
+    .badge-applied { background: #ebf8ff; color: #2b6cb0; }
+    .badge-approved { background: #f0fff4; color: #276749; }
+    .badge-rejected { background: #fff5f5; color: #9b2c2c; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .table td { padding: 10px 12px; border-bottom: 1px solid #edf2f7; font-size: 14px; }
+    .table td.lbl { width: 35%; font-weight: 600; color: #718096; }
+    .table td.val { width: 65%; color: #1a202c; }
+    .reason-box { background-color: #f7fafc; border-left: 4px solid #cbd5e0; padding: 12px 16px; margin-top: 20px; font-size: 14px; border-radius: 0 4px 4px 0; }
+    .reason-box.alert { border-left-color: #e53e3e; background-color: #fff5f5; }
+    .cta { text-align: center; margin-top: 30px; }
+    .btn { display: inline-block; background-color: #1a202c; color: #ffffff !important; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; }
+    .footer { padding: 16px; text-align: center; font-size: 12px; color: #a0aec0; border-top: 1px solid #edf2f7; }
+</style>
+</head>
+<body>
+<div class="card">
+    <div class="header {% if 'REJECTED' in event_type %}bg-rejected{% elif 'APPROVED' in event_type %}bg-approved{% else %}bg-applied{% endif %}">
+        <h2>
+            {% if event_type == 'APPLIED' %}New Leave Request Received
+            {% elif event_type == 'MANAGER_APPROVED' %}Leave Escalation: Manager Approved
+            {% elif event_type == 'MANAGER_REJECTED' %}Leave Request Rejected by Manager
+            {% elif event_type == 'HR_APPROVED' %}Leave Application Approved
+            {% elif event_type == 'HR_REJECTED' %}Leave Application Rejected by HR
+            {% endif %}
+        </h2>
+    </div>
+
+    <div class="content">
+        <div>
+            {% if event_type == 'APPLIED' %}
+                <span class="status-badge badge-applied">Pending Manager Review</span>
+                <p>Hello <strong>{{ manager.full_name|default:"Reporting Manager" }}</strong>, an employee in your team has requested time off:</p>
+            {% elif event_type == 'MANAGER_APPROVED' %}
+                <span class="status-badge badge-approved">Manager Approved & Escalated</span>
+                <p>Hello <strong>HR Team</strong>, this leave request was approved by <strong>{{ manager.full_name }}</strong> and is pending HR finalization:</p>
+            {% elif 'REJECTED' in event_type %}
+                <span class="status-badge badge-rejected">Request Rejected</span>
+                <p>Hello <strong>{{ employee.full_name }}</strong>, your leave application has been rejected:</p>
+            {% elif event_type == 'HR_APPROVED' %}
+                <span class="status-badge badge-approved">Final Approval Granted</span>
+                <p>Hello <strong>{{ employee.full_name }}</strong>, your leave application has been reviewed and approved:</p>
+            {% endif %}
+        </div>
+
+        <table class="table">
+            <tr>
+                <td class="lbl">Employee</td>
+                <td class="val"><strong>{{ employee.full_name }}</strong> ({{ employee.employee_code }})</td>
+            </tr>
+            <tr>
+                <td class="lbl">Department</td>
+                <td class="val">{{ employee.department.name|default:"—" }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Reporting Manager</td>
+                <td class="val">{{ manager.full_name|default:"—" }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Leave Type</td>
+                <td class="val">{{ application.leave_type.name }} ({{ application.leave_type.code }})</td>
+            </tr>
+            <tr>
+                <td class="lbl">Duration / Type</td>
+                <td class="val">{{ application.total_days }} Day(s) [{{ application.get_day_type_display }}]</td>
+            </tr>
+            <tr>
+                <td class="lbl">Dates</td>
+                <td class="val"><strong>{{ application.start_date|date:"d M, Y" }}</strong> to <strong>{{ application.end_date|date:"d M, Y" }}</strong></td>
+            </tr>
+        </table>
+
+        {% if reason %}
+            <div class="reason-box {% if 'REJECTED' in event_type %}alert{% endif %}">
+                <strong>{% if 'REJECTED' in event_type %}Rejection Reason:{% else %}Employee Reason:{% endif %}</strong><br>
+                {{ reason }}
+            </div>
+        {% endif %}
+
+        <div class="cta">
+            <a href="{{ portal_url }}" class="btn">Review in Portal</a>
+        </div>
+    </div>
+    <div class="footer">
+        Automated HRMS Leave Notification • OBLU Tools
+    </div>
+</div>
+</body>
+</html>

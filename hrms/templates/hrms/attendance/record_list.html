@@ -1,0 +1,312 @@
+{% extends "hrms/base.html" %}
+{% block title %}Daily Punch Report{% endblock %}
+{% load custom_tags %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --accent-color: #0d9488;
+        --border-color: #e2e8f0;
+    }
+
+    .report-container { padding: 1rem; background: #f8fafc; min-height: 100vh; }
+
+    /* Compact Sticky Header */
+    .filter-sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+        background: #f8fafc;
+        padding-bottom: 0.75rem;
+    }
+
+    .filter-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color);
+    }
+
+    /* Fixed widths for filter elements to prevent expansion */
+    .filter-group-emp { width: 250px; }
+    .filter-group-date { width: 140px; }
+    .filter-group-btn { width: 110px; }
+
+    .table-responsive-custom {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        overflow: auto;
+        max-height: 72vh;
+        border: 1px solid var(--border-color);
+    }
+
+    .punch-table { border-collapse: separate; border-spacing: 0; font-size: 0.75rem; width: max-content; }
+
+    /* Sticky Column Logic */
+    .sticky-col { position: sticky; left: 0; background: white; z-index: 10; border-right: 1px solid #e2e8f0 !important; min-width: 100px; }
+    .sticky-col-2 { left: 100px; min-width: 180px; z-index: 10; background: white; border-right: 1px solid #e2e8f0 !important;}
+    .sticky-col-3 { left: 280px; min-width: 150px; z-index: 10; background: white; border-right: 3px solid #64748b !important; }
+
+    .punch-table thead th {
+        position: sticky;
+        top: 0;
+        background: #f1f5f9;
+        z-index: 20;
+        padding: 10px;
+        border-bottom: 2px solid #cbd5e1;
+        text-align: center;
+        min-width: 90px;
+        color: #475569;
+    }
+
+    /* Row Hover Highlight */
+    .punch-table tbody tr:hover td {
+        background-color: #f0fdfa !important;
+        transition: background 0.1s ease;
+    }
+
+    .punch-cell { padding: 6px !important; border: 1px solid #f1f5f9; text-align: center; vertical-align: middle; }
+    .punch-time { font-weight: 600; display: block; font-size: 10px; }
+    .in-time { color: #059669; }
+    .out-time { color: #dc2626; }
+
+    .status-mark { display: inline-block; font-size: 9px; font-weight: 800; margin-top: 2px; padding: 1px 4px; border-radius: 3px; }
+    .mark-fd { color: #059669; background: #ecfdf5; }
+    .mark-hd { color: #d97706; background: #fffbeb; }
+    .mark-abs { color: #dc2626; background: #fef2f2; }
+
+    .punch-cell.is-changed { background-color: #fef9c3 !important; border: 1px solid #facc15 !important; }
+
+    .form-control-sm, .form-select-sm { border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.8rem; }
+    .mark-sun { color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .mark-future { color: #94a3b8; font-weight: normal; opacity: 0.5; }
+    .mark-hol {
+    color: #4f46e5;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    font-size: 8px !important;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <div class="filter-sticky-header">
+        <div class="filter-card card border-0 p-2">
+            <form method="get" class="d-flex align-items-end flex-wrap gap-2">
+
+                <div class="filter-group-emp">
+                    <label class="small fw-bold text-muted mb-0" style="font-size: 10px;">Employee</label>
+                    <select name="employee" class="form-select form-select-sm shadow-none">
+                        <option value="">All Employees</option>
+                        {% for emp in employees %}
+                            <option value="{{ emp.pk }}" {% if filters.employee == emp.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ emp.employee_code }} - {{ emp.full_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group-date">
+                    <label class="small fw-bold text-muted mb-0" style="font-size: 10px;">From</label>
+                    <input type="date" name="from" value="{{ start_date|date:'Y-m-d' }}" class="form-control form-control-sm shadow-none">
+                </div>
+
+                <div class="filter-group-date">
+                    <label class="small fw-bold text-muted mb-0" style="font-size: 10px;">To</label>
+                    <input type="date" name="to" value="{{ end_date|date:'Y-m-d' }}" class="form-control form-control-sm shadow-none">
+                </div>
+
+                <div class="filter-group-btn">
+                    <button class="btn btn-sm btn-dark w-100 fw-bold" type="submit">Filter</button>
+                </div>
+
+                <div class="ms-auto">
+                    {% if request.user.is_superuser %}
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" id="btn-edit" class="btn btn-outline-primary fw-bold" onclick="toggleEditMode()">Edit</button>
+                            <button type="button" id="btn-save" class="btn btn-success d-none fw-bold" onclick="savePunches()">Save</button>
+                        </div>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive-custom">
+        <table class="table mb-0 punch-table">
+            <thead>
+                <tr>
+                    <th class="sticky-col">Code</th>
+                    <th class="sticky-col-2">Name</th>
+                    <th class="sticky-col-3">Department</th>
+                    {% for date in date_list %}
+                        <th class="{% if date|date:'D' == 'Sun' %}text-danger{% endif %}">
+                            <div class="small opacity-75 fw-normal">{{ date|date:"D" }}</div>
+                            {{ date|date:"d M" }}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td class="sticky-col fw-bold">{{ emp.employee_code }}</td>
+                    <td class="sticky-col-2 fw-bold">
+                        <a href="{% url 'hrms:employee_punch_report' emp_id=emp.id month=start_date.month year=start_date.year %}"
+                           class="text-decoration-none text-dark link-primary" title="View Full Report">
+                            {{ emp.full_name }}
+                        </a>
+                    </td>
+
+                    <td class="sticky-col-3 text-muted">{{ emp.department.name|truncatechars:18 }}</td>
+
+                    {% for date in date_list %}
+                        <td class="punch-cell" data-emp="{{ emp.id }}" data-date="{{ date|date:'Y-m-d' }}">
+                            {% with rec=attendance_matrix|dict_key:emp.id|dict_key:date %}
+<div class="view-mode">
+    {% if rec %}
+        {% if rec.status == 'on_leave' %}
+            <span class="status-mark bg-primary text-white">{{ rec.display_label }}</span>
+
+        {% elif rec.status == 'present' or rec.status == 'half_day' %}
+            <span class="punch-time in-time">{{ rec.check_in|time:"h:i A" }}</span>
+            <span class="punch-time out-time">{{ rec.check_out|time:"h:i A"|default:"--" }}</span>
+
+            {% if rec.status == 'present' %}
+                <span class="status-mark mark-fd">FD</span>
+            {% else %}
+                <span class="status-mark mark-hd">HD</span>
+            {% endif %}
+
+            {% if rec.display_label %}
+                <div style="margin-top: 2px;">
+                    <span class="badge {% if 'Exhausted' in rec.display_label %}bg-danger{% else %}bg-warning text-dark{% endif %}" style="font-size: 8px;">
+                        {{ rec.display_label }}
+                    </span>
+                </div>
+            {% endif %}
+        {% elif rec.status == 'holiday' %}
+        <span class="status-mark mark-hol">HOL</span>
+        <div class="text-muted" style="font-size: 7px; line-height: 1; margin-top: 2px;">{{ rec.display_label|truncatechars:10 }}</div>
+
+
+
+        {% elif rec.status == 'sunday' %}
+            <span class="status-mark mark-sun">SUN</span>
+
+        {% elif rec.status == 'future' %}
+            <span class="mark-future">—</span>
+
+        {% elif rec.status == 'absent' %}
+            <span class="status-mark mark-abs">ABS</span>
+
+        {% else %}
+             <span class="text-muted opacity-25">—</span>
+        {% endif %}
+    {% else %}
+        <span class="text-muted opacity-25">—</span>
+    {% endif %}
+</div>
+                                <div class="edit-mode d-none">
+                                    <input type="time" class="in-input mb-1 form-control form-control-sm p-0" value="{{ rec.check_in|date:'H:i' }}" style="font-size: 10px; height: 20px; text-align: center;">
+                                    <input type="time" class="out-input form-control form-control-sm p-0" value="{{ rec.check_out|date:'H:i' }}" style="font-size: 10px; height: 20px; text-align: center;">
+                                </div>
+                            {% endwith %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function toggleEditMode() {
+    const isEditing = document.getElementById('btn-save').classList.contains('d-none');
+    if (isEditing) {
+        document.querySelectorAll('.view-mode').forEach(el => el.classList.add('d-none'));
+        document.querySelectorAll('.edit-mode').forEach(el => el.classList.remove('d-none'));
+        document.getElementById('btn-edit').innerText = 'Cancel';
+        document.getElementById('btn-edit').classList.replace('btn-outline-primary', 'btn-outline-danger');
+        document.getElementById('btn-save').classList.remove('d-none');
+    } else {
+        location.reload();
+    }
+}
+
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('in-input') || e.target.classList.contains('out-input')) {
+        e.target.closest('.punch-cell').classList.add('is-changed');
+    }
+});
+
+function savePunches() {
+    const btnSave = document.getElementById('btn-save');
+    const originalText = btnSave.innerText;
+    const changedCells = document.querySelectorAll('.punch-cell.is-changed');
+
+    if (changedCells.length === 0) {
+        alert("No changes detected.");
+        toggleEditMode();
+        return;
+    }
+
+    btnSave.disabled = true;
+    btnSave.innerText = "Saving...";
+
+    const updates = [];
+    changedCells.forEach(cell => {
+        updates.push({
+            emp_id: cell.getAttribute('data-emp'),
+            date: cell.getAttribute('data-date'),
+            in_time: cell.querySelector('.in-input').value,
+            out_time: cell.querySelector('.out-input').value
+        });
+    });
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ updates: updates })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert("Error: " + data.message);
+            btnSave.disabled = false;
+            btnSave.innerText = originalText;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Server error.");
+        btnSave.disabled = false;
+        btnSave.innerText = originalText;
+    });
+}
+</script>
+{% endblock %}

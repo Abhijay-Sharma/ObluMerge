@@ -1,0 +1,234 @@
+{% extends "hrms/base.html" %}
+{% block title %}Designations & Hierarchy{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --level-bg: #f0fdf4;
+        --level-text: #166534;
+        --border-color: #f1f5f9;
+    }
+
+    .designation-container {
+        background: #f8fafc;
+        min-height: 100vh;
+        padding-bottom: 3rem;
+    }
+
+    /* Stats Header */
+    .stats-row {
+        margin-bottom: 2rem;
+    }
+    .mini-stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+
+    /* List Styling */
+    .desig-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .desig-card:hover {
+        transform: translateX(8px);
+        border-color: var(--accent);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+    }
+
+    /* Level Badge - Dynamic Colors based on level */
+    .level-indicator {
+        width: 45px;
+        height: 45px;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        line-height: 1;
+        background: #eef2ff;
+        color: #4338ca;
+        border: 1px solid #e0e7ff;
+    }
+    .level-label { font-size: 0.6rem; text-transform: uppercase; margin-top: 2px; }
+
+    /* Role Info */
+    .role-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+    .dept-tag {
+        font-size: 0.75rem;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        border: 1px solid #e2e8f0;
+        background: white;
+        color: #64748b;
+    }
+    .action-btn:hover {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+    .btn-delete:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+    }
+
+    .occupancy-badge {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="designation-container">
+    <div class="container-fluid py-4">
+
+        <!-- 1. Header Section -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark mb-1">Roles & Designations</h2>
+                <p class="text-muted mb-0">Define organizational hierarchy levels and job titles.</p>
+            </div>
+            <a href="{% url 'hrms:designation_add' %}" class="btn btn-dark rounded-pill px-4 shadow-sm">
+                <i class="bi bi-plus-lg me-2"></i> Add Designation
+            </a>
+        </div>
+
+        <!-- 2. Statistics Bar -->
+        <div class="row stats-row g-3">
+            <div class="col-md-3">
+                <div class="mini-stat-card d-flex align-items-center gap-3">
+                    <div class="bg-primary-subtle p-3 rounded-circle text-primary"><i class="bi bi-briefcase h4 mb-0"></i></div>
+                    <div>
+                        <h4 class="fw-bold mb-0">{{ designations.count }}</h4>
+                        <small class="text-muted">Total Designations</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mini-stat-card d-flex align-items-center gap-3">
+                    <div class="bg-success-subtle p-3 rounded-circle text-success"><i class="bi bi-person-badge h4 mb-0"></i></div>
+                    <div>
+                        <h4 class="fw-bold mb-0">{{ designations.first.company.employees.count|default:0 }}</h4>
+                        <small class="text-muted">Assigned Employees</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. The Designation List -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex flex-column gap-2">
+                    <!-- Table Header (Labels) -->
+                    <div class="px-4 py-2 d-none d-md-flex text-muted small fw-bold text-uppercase">
+<!--                        <div style="width: 60px;">Level</div>-->
+                        <div class="flex-grow-1 ms-3">Designation Details</div>
+                        <div style="width: 200px;">Department</div>
+                        <div style="width: 150px;">Occupancy</div>
+                        <div style="width: 100px;" class="text-end">Actions</div>
+                    </div>
+
+                    {% for d in designations %}
+                    <div class="desig-card p-3">
+                        <div class="d-flex align-items-center">
+                            <!-- Hierarchy Level -->
+<!--                            <div class="level-indicator">-->
+<!--                                <span class="level-label">Level</span>-->
+<!--                                {{ d.level }}-->
+<!--                            </div>-->
+
+                            <!-- Title & Company -->
+                            <div class="flex-grow-1 ms-4">
+                                <h6 class="role-title">{{ d.title }}</h6>
+                                <div class="dept-tag">
+                                    <i class="bi bi-building"></i> {{ d.company.name }}
+                                </div>
+                            </div>
+
+                            <!-- Department -->
+                            <div style="width: 200px;" class="d-none d-md-block">
+                                <span class="badge bg-light text-dark fw-medium rounded-pill px-3 py-2 border">
+                                    <i class="bi bi-folder2 me-1"></i> {{ d.department.name|default:"General" }}
+                                </span>
+                            </div>
+
+                            <!-- Occupancy Count -->
+                            <div style="width: 150px;" class="d-none d-md-block">
+                                <span class="occupancy-badge">
+                                    <i class="bi bi-people-fill me-1"></i> {{ d.employees.count }} Staff
+                                </span>
+                            </div>
+
+                            <!-- Actions -->
+                            <div style="width: 100px;" class="text-end">
+                                <a href="{% url 'hrms:designation_edit' d.pk %}" class="action-btn" title="Edit Role">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{% url 'hrms:designation_delete' d.pk %}" class="action-btn btn-delete text-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="card p-5 text-center border-dashed">
+                        <div class="mb-3 display-6 text-muted"><i class="bi bi-shield-lock"></i></div>
+                        <h5>No Roles Defined</h5>
+                        <p class="text-muted">Create your first designation to start assigning roles to staff.</p>
+                        <a href="{% url 'hrms:designation_add' %}" class="btn btn-primary btn-sm">Add Now</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Pagination -->
+        {% if is_paginated %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link rounded-circle mx-1" href="?page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+                {% endif %}
+
+                <li class="page-item active"><span class="page-link rounded-circle mx-1">0{{ page_obj.number }}</span></li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link rounded-circle mx-1" href="?page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

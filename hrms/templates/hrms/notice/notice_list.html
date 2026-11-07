@@ -1,0 +1,92 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Company Notices — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="bi bi-megaphone text-primary me-2"></i>Company Notice Board</h3>
+      <p class="text-muted small mb-0">Official announcements, updates, circulars, and event notifications</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if is_hr %}
+        <a href="{% url 'hrms:notice_add' %}" class="btn btn-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-plus-circle me-1"></i>Post Notice
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Notices List -->
+  <div class="row g-3 g-md-4">
+    {% for notice in notices %}
+      <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 p-3 p-md-4 transition-all">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+            <div>
+              {% if notice.category == 'urgent' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-bold mb-2 d-inline-block">
+                  <i class="bi bi-exclamation-octagon me-1"></i>URGENT
+                </span>
+              {% elif notice.category == 'event' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold mb-2 d-inline-block">
+                  <i class="bi bi-calendar-event me-1"></i>EVENT
+                </span>
+              {% elif notice.category == 'update' %}
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fw-bold mb-2 d-inline-block">
+                  <i class="bi bi-arrow-repeat me-1"></i>POLICY UPDATE
+                </span>
+              {% else %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold mb-2 d-inline-block">
+                  GENERAL
+                </span>
+              {% endif %}
+              <h5 class="fw-bold text-dark mb-1">{{ notice.title }}</h5>
+              <div class="text-muted small">
+                <i class="bi bi-calendar3 me-1"></i>{{ notice.notice_date|date:"D, d M Y" }}
+                {% if notice.expiry_date %} • Expires: {{ notice.expiry_date|date:"d M Y" }}{% endif %}
+              </div>
+            </div>
+            {% if is_hr %}
+              <div class="dropdown">
+                <button class="btn btn-light btn-sm rounded-circle" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                  <li><a class="dropdown-item" href="{% url 'hrms:notice_edit' notice.id %}"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                  <li><a class="dropdown-item text-danger" href="{% url 'hrms:notice_delete' notice.id %}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                </ul>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="text-muted small mb-4 lh-base" style="white-space: pre-line;">
+            {{ notice.message|truncatewords:60 }}
+          </div>
+
+          <div class="pt-3 border-top mt-auto d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <div>
+              {% if notice.document %}
+                <a href="{{ notice.document.url }}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                  <i class="bi bi-paperclip me-1"></i>Attachment
+                </a>
+              {% endif %}
+            </div>
+            <a href="{% url 'hrms:notice_detail' notice.id %}" class="btn btn-primary btn-sm rounded-pill px-4">
+              Read Notice <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12 text-center py-5 text-muted">
+        <i class="bi bi-bell-slash fs-1 d-block mb-2 text-secondary"></i>
+        No active company notices at this time.
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

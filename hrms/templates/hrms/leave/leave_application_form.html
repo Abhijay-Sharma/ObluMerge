@@ -1,0 +1,355 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Apply for Leave — HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+  .leave-stat-card {
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 14px 16px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .leave-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  }
+  .conditional-field-wrapper {
+    display: none;
+    transition: all 0.25s ease-in-out;
+  }
+  .required-asterisk {
+    color: #dc3545;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'hrms:my_leave' %}" class="text-decoration-none">Leaves</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Apply for Leave</li>
+    </ol>
+  </nav>
+
+  <!-- ================= DYNAMIC LEAVE QUOTA & BALANCE CARDS ================= -->
+  <div class="row g-2 mb-4">
+    {% for card in dynamic_cards %}
+      <div class="col-6 col-md-4 col-xl">
+        <div class="leave-stat-card border-start border-4 {% if card.is_comp_off %}border-purple{% elif card.is_emergency %}border-danger{% elif card.code == 'EL' %}border-success{% elif card.code == 'CL' %}border-primary{% else %}border-info{% endif %} shadow-sm" {% if card.is_comp_off %}style="border-left-color:#7c3aed !important;"{% endif %}>
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <span class="text-muted text-uppercase fw-bold" style="font-size: 0.68rem;">{{ card.name }} ({{ card.code }})</span>
+              <h5 class="mb-0 fw-bold text-dark mt-1">
+                {% if card.is_comp_off %}
+                  {{ card.annual_balance }} <small class="text-muted fs-6 fw-normal">/ {{ card.annual_quota }} Days</small>
+                {% elif card.is_emergency %}
+                  {{ card.annual_balance }} <small class="text-muted fs-6 fw-normal">Days</small>
+                {% elif card.leave_mode == 'annual' %}
+                  {{ card.annual_balance }} <small class="text-muted fs-6 fw-normal">/ {{ card.annual_quota }} Days</small>
+                {% else %}
+                  {{ card.monthly_available }} <small class="text-muted fs-6 fw-normal">/ {{ card.monthly_quota }}</small>
+                {% endif %}
+              </h5>
+            </div>
+            <div class="badge {% if card.is_comp_off %}rounded-3 p-2 fs-6{% elif card.is_emergency %}bg-danger-subtle text-danger rounded-3 p-2 fs-6{% else %}bg-primary-subtle text-primary rounded-3 p-2 fs-6{% endif %}" {% if card.is_comp_off %}style="background:#ede9fe !important; color:#6d28d9 !important;"{% endif %}>
+              {% if card.is_comp_off %}<i class="bi bi-wallet2"></i>{% elif card.is_emergency %}<i class="bi bi-hospital"></i>{% else %}<i class="bi bi-calendar-check"></i>{% endif %}
+            </div>
+          </div>
+          <div class="small text-muted mt-2" style="font-size: 0.70rem;">
+            {% if card.is_comp_off %}
+              Pool: <strong>{{ card.annual_quota }}</strong> | Used: <strong>{{ card.used_days }}</strong> | Left: <strong class="text-success">{{ card.annual_balance }}</strong>
+            {% elif card.is_emergency %}
+              Full Year Allocation (Emergency Only)
+            {% elif card.leave_mode == 'annual' %}
+              Annual Pool: <strong>{{ card.annual_balance }}</strong> Days Available
+            {% else %}
+              Year Limit: <strong>{{ card.annual_quota }}</strong> (Bal: {{ card.annual_balance }})
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="alert alert-light border small text-muted py-2 mb-0">
+          <i class="bi bi-info-circle me-1"></i> No special leave entitlements assigned for your profile category.
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- ================= MAIN FORM CARD ================= -->
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-primary text-white p-4 border-0">
+          <h4 class="fw-bold mb-1"><i class="bi bi-calendar-plus me-2"></i>Apply for Leave</h4>
+          <p class="text-white-50 small mb-0">Fill out details below for reporting manager and HR approval.</p>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+          <form method="post" enctype="multipart/form-data" id="leaveForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger border-0 rounded-3 small mb-4">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% if form.employee %}
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Employee <span class="required-asterisk">*</span></label>
+                {{ form.employee }}
+                {% if form.employee.errors %}<div class="text-danger small mt-1">{{ form.employee.errors|striptags }}</div>{% endif %}
+              </div>
+            {% endif %}
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Leave Type <span class="required-asterisk">*</span></label>
+                {{ form.leave_type }}
+                {% if form.leave_type.errors %}<div class="text-danger small mt-1">{{ form.leave_type.errors|striptags }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Duration Type <span class="required-asterisk">*</span></label>
+                {{ form.day_type }}
+                {% if form.day_type.errors %}<div class="text-danger small mt-1">{{ form.day_type.errors|striptags }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Start Date <span class="required-asterisk">*</span></label>
+                {{ form.start_date }}
+                {% if form.start_date.errors %}<div class="text-danger small mt-1">{{ form.start_date.errors|striptags }}</div>{% endif %}
+              </div>
+              <div class="col-md-6" id="endDateWrapper">
+                <label class="form-label small fw-bold">End Date <span class="required-asterisk">*</span></label>
+                {{ form.end_date }}
+                {% if form.end_date.errors %}<div class="text-danger small mt-1">{{ form.end_date.errors|striptags }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- DYNAMIC OVER-DUE / SALARY DEDUCTION WARNING BOX -->
+            <div id="excessLeaveWarning" class="alert alert-warning border-0 rounded-3 small mb-3 conditional-field-wrapper" style="background-color: #fffbeb; border-left: 4px solid #f59e0b !important;">
+              <div class="d-flex align-items-start">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-2 mt-0"></i>
+                <div>
+                  <strong class="text-dark">Over-quota Alert:</strong>
+                  <div id="excessLeaveMessage" class="text-dark mt-1"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sick Leave Alert Banner -->
+            <div id="sickLeaveAlert" class="alert alert-warning border-0 rounded-3 small mb-3 conditional-field-wrapper">
+              <i class="bi bi-info-circle-fill me-2"></i><strong>Sick Leave Policy:</strong> Requires a minimum duration of 2 consecutive days and a mandatory medical certificate upload below.
+            </div>
+
+            <!-- CONDITIONAL: Relationship (Bereavement Leave) -->
+            <div class="mb-3 conditional-field-wrapper" id="relationshipWrapper">
+              <label class="form-label small fw-bold">Relationship <span class="required-asterisk">*</span> <span class="text-muted fw-normal">(Parent / Sibling / Spouse / Child / Relative)</span></label>
+              {{ form.relationship }}
+              {% if form.relationship.errors %}<div class="text-danger small mt-1">{{ form.relationship.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- CONDITIONAL: Leave Stage (Maternity / Paternity) -->
+            <div class="mb-3 conditional-field-wrapper" id="leaveStageWrapper">
+              <label class="form-label small fw-bold">Leave Stage <span class="required-asterisk">*</span> <span class="text-muted fw-normal">(Pre-Natal / Post-Natal)</span></label>
+              {{ form.leave_stage }}
+              {% if form.leave_stage.errors %}<div class="text-danger small mt-1">{{ form.leave_stage.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- CONDITIONAL: Supporting Document -->
+            <div class="mb-3 conditional-field-wrapper" id="supportingDocWrapper">
+              <label class="form-label small fw-bold" id="docLabel">Supporting Document / Proof <span class="required-asterisk" id="docRequiredStar">*</span></label>
+              {{ form.supporting_document }}
+              {% if form.supporting_document.errors %}<div class="text-danger small mt-1">{{ form.supporting_document.errors|striptags }}</div>{% endif %}
+              <div class="form-text small" id="docHelpText">Upload medical certificate or supporting proof (PDF / JPEG).</div>
+            </div>
+
+            <!-- COMMON MANDATORY: Reason -->
+            <div class="mb-4">
+              <label class="form-label small fw-bold">Reason for Leave <span class="required-asterisk">*</span></label>
+              {{ form.reason }}
+              {% if form.reason.errors %}<div class="text-danger small mt-1">{{ form.reason.errors|striptags }}</div>{% endif %}
+              <div class="form-text small">Please state specific details for manager and HR audit.</div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+              <a href="{% url 'hrms:my_leave' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+              <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm" id="submitBtn">
+                <i class="bi bi-send me-1"></i>Submit Application
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. Pass Dynamic Balances from Django to JavaScript
+    const leaveBalances = {
+      {% for card in dynamic_cards %}
+        "{{ card.name|lower|escapejs }}": {
+          "available": parseFloat("{{ card.monthly_available }}") || 0,
+          "quota": parseFloat("{{ card.monthly_quota }}") || 0,
+          "name": "{{ card.name|escapejs }}",
+          "is_emergency": {{ card.is_emergency|yesno:"true,false" }}
+        },
+      {% endfor %}
+    };
+
+    const leaveTypeSelect = document.querySelector('select[name="leave_type"]');
+    const dayTypeSelect = document.querySelector('select[name="day_type"]');
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    const endDateWrapper = document.getElementById('endDateWrapper');
+
+    const relationshipWrapper = document.getElementById('relationshipWrapper');
+    const relationshipInput = document.querySelector('select[name="relationship"], input[name="relationship"]');
+
+    const leaveStageWrapper = document.getElementById('leaveStageWrapper');
+    const leaveStageInput = document.querySelector('select[name="leave_stage"], input[name="leave_stage"]');
+
+    const supportingDocWrapper = document.getElementById('supportingDocWrapper');
+    const supportingDocInput = document.querySelector('input[name="supporting_document"]');
+    const sickLeaveAlert = document.getElementById('sickLeaveAlert');
+
+    const excessLeaveWarning = document.getElementById('excessLeaveWarning');
+    const excessLeaveMessage = document.getElementById('excessLeaveMessage');
+
+    function checkLiveExcessDays() {
+      if (!leaveTypeSelect || !startDateInput || !endDateInput) return;
+
+      const selectedOption = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+      const leaveText = (selectedOption ? selectedOption.text : '').toLowerCase().trim();
+
+      // Find matching balance from dynamic dict
+      let matchedInfo = null;
+      for (const [key, info] of Object.entries(leaveBalances)) {
+        if (leaveText.includes(key) || key.includes(leaveText)) {
+          matchedInfo = info;
+          break;
+        }
+      }
+
+      if (!matchedInfo || matchedInfo.is_emergency) {
+        if (excessLeaveWarning) excessLeaveWarning.style.display = 'none';
+        return;
+      }
+
+      const isHalfDay = dayTypeSelect && dayTypeSelect.value === 'half';
+      let requestedDays = 0;
+
+      if (isHalfDay) {
+        requestedDays = 0.5;
+      } else if (startDateInput.value && endDateInput.value) {
+        const start = new Date(startDateInput.value);
+        const end = new Date(endDateInput.value);
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+          requestedDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        }
+      }
+
+      const available = matchedInfo.available;
+
+      if (requestedDays > available) {
+        const excess = (requestedDays - available).toFixed(1);
+        excessLeaveMessage.innerHTML = `You have only <strong>${available} day(s)</strong> of <strong>${matchedInfo.name}</strong> left in your balance. Applying for <strong>${requestedDays} days</strong> means <strong>${available} day(s)</strong> will be marked as paid and the remaining <strong>${excess} day(s)</strong> will be marked as <strong>Leave Without Pay (LWP)</strong> and deducted from your salary.`;
+        excessLeaveWarning.style.display = 'block';
+      } else {
+        excessLeaveWarning.style.display = 'none';
+      }
+    }
+
+    function syncFormFields() {
+      if (!leaveTypeSelect) return;
+      const selectedOption = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+      const selectedText = (selectedOption ? selectedOption.text : '').toLowerCase().trim();
+      const selectedVal = (selectedOption ? selectedOption.value : '').toLowerCase().trim();
+
+      const isSick = selectedText.includes('sick') || selectedVal.includes('sl');
+      const isBereavement = selectedText.includes('breave') || selectedText.includes('bereave') || selectedVal.includes('bl');
+      const isMaternity = selectedText.includes('matern') || selectedVal.includes('mtl');
+      const isPaternity = selectedText.includes('patern') || selectedVal.includes('pl');
+
+      // 1. Sick Leave
+      if (isSick) {
+        sickLeaveAlert.style.display = 'block';
+        supportingDocWrapper.style.display = 'block';
+        if (supportingDocInput) supportingDocInput.required = true;
+      } else {
+        sickLeaveAlert.style.display = 'none';
+        if (!isBereavement && !isMaternity && !isPaternity) {
+          supportingDocWrapper.style.display = 'none';
+          if (supportingDocInput) supportingDocInput.required = false;
+        }
+      }
+
+      // 2. Bereavement Leave
+      if (isBereavement) {
+        relationshipWrapper.style.display = 'block';
+        if (relationshipInput) relationshipInput.required = true;
+      } else {
+        relationshipWrapper.style.display = 'none';
+        if (relationshipInput) relationshipInput.required = false;
+      }
+
+      // 3. Maternity / Paternity
+      if (isMaternity || isPaternity) {
+        leaveStageWrapper.style.display = 'block';
+        supportingDocWrapper.style.display = 'block';
+        if (leaveStageInput) leaveStageInput.required = true;
+      } else {
+        leaveStageWrapper.style.display = 'none';
+        if (leaveStageInput) leaveStageInput.required = false;
+      }
+
+      checkLiveExcessDays();
+    }
+
+    function handleDurationChange() {
+      if (dayTypeSelect && endDateWrapper && dayTypeSelect.value === 'half') {
+        endDateWrapper.style.opacity = '0.5';
+        endDateWrapper.style.pointerEvents = 'none';
+        if (startDateInput && endDateInput) {
+          endDateInput.value = startDateInput.value;
+        }
+      } else if (endDateWrapper) {
+        endDateWrapper.style.opacity = '1';
+        endDateWrapper.style.pointerEvents = 'auto';
+      }
+      checkLiveExcessDays();
+    }
+
+    if (leaveTypeSelect) leaveTypeSelect.addEventListener('change', syncFormFields);
+    if (dayTypeSelect) dayTypeSelect.addEventListener('change', handleDurationChange);
+
+    if (startDateInput) {
+      startDateInput.addEventListener('change', function() {
+        if (dayTypeSelect && dayTypeSelect.value === 'half' && endDateInput) {
+          endDateInput.value = this.value;
+        }
+        checkLiveExcessDays();
+      });
+    }
+
+    if (endDateInput) {
+      endDateInput.addEventListener('change', checkLiveExcessDays);
+    }
+
+    syncFormFields();
+    handleDurationChange();
+  });
+</script>
+{% endblock %}

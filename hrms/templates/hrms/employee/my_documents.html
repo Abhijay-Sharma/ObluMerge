@@ -1,0 +1,26 @@
+{% extends "hrms/base.html" %}
+{% block title %}My Documents{% endblock %}
+{% block page_title %}My Documents{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle table-stack-sm">
+      <thead class="table-light"><tr><th>Type</th><th>Description</th><th>Issued</th><th>Expiry</th><th></th></tr></thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr>
+          <td class="stack-head"><span class="fw-semibold">{{ doc.get_document_type_display }}</span></td>
+          <td class="text-muted" data-label="Description"><span>{{ doc.description|default:"—" }}</span></td>
+          <td data-label="Issued"><span>{{ doc.issued_on|default:"—" }}</span></td>
+          <td data-label="Expiry"><span>{{ doc.expiry_on|default:"—" }}</span></td>
+          <td data-label="File"><a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">Open</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-4">No documents on file yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+    .email-container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .email-header { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #ffffff; padding: 24px 30px; }
+    .email-header h2 { margin: 0 0 6px 0; font-size: 20px; font-weight: 700; }
+    .email-header p { margin: 0; opacity: 0.85; font-size: 13px; }
+    .badge-status { display: inline-block; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; margin-top: 10px; }
+    .status-applied { background: #dbeafe; color: #1e40af; }
+    .status-mgr-appr { background: #dcfce7; color: #166534; }
+    .status-mgr-rej { background: #fee2e2; color: #991b1b; }
+    .status-hr-appr { background: #dcfce7; color: #166534; }
+    .status-hr-rej { background: #fee2e2; color: #991b1b; }
+    .email-body { padding: 30px; }
+    .detail-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 20px; }
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #edf2f7; font-size: 14px; }
+    .detail-row:last-child { border-bottom: none; }
+    .label { color: #64748b; font-weight: 600; width: 40%; }
+    .value { color: #0f172a; font-weight: 600; width: 60%; text-align: right; }
+    .reason-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; margin: 16px 0; font-size: 13.5px; color: #78350f; }
+    .action-note { font-size: 13px; color: #64748b; margin-top: 20px; line-height: 1.5; }
+    .email-footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 30px; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="email-header">
+      <h2>{{ title }}</h2>
+      <p>{{ company_name|default:"HRMS Portal" }} &middot; Leave Management System</p>
+      {% if badge_text %}
+      <span class="badge-status {{ badge_class }}">{{ badge_text }}</span>
+      {% endif %}
+    </div>
+    <div class="email-body">
+      <p style="font-size: 15px; margin-top: 0; line-height: 1.5;">{{ greeting_message }}</p>
+      
+      <div class="detail-card">
+        <div class="detail-row">
+          <span class="label">Employee Name</span>
+          <span class="value">{{ employee.full_name }} ({{ employee.employee_code }})</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Department</span>
+          <span class="value">{{ employee.department.name|default:"Staff" }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Leave Type</span>
+          <span class="value">{{ application.leave_type.name }} ({{ application.leave_type.code }})</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Leave Duration</span>
+          <span class="value">{{ application.start_date|date:"d M Y" }} to {{ application.end_date|date:"d M Y" }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Total Days / Type</span>
+          <span class="value">{{ application.total_days }} Day(s) &middot; {{ application.get_day_type_display }}</span>
+        </div>
+        {% if balance_left is not None %}
+        <div class="detail-row">
+          <span class="label">Current Available Balance</span>
+          <span class="value">{{ balance_left }} Days</span>
+        </div>
+        {% endif %}
+        {% if reporting_manager %}
+        <div class="detail-row">
+          <span class="label">Reporting Manager</span>
+          <span class="value">{{ reporting_manager.full_name }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if application.reason %}
+      <div class="reason-box">
+        <strong>Reason for Leave:</strong><br>
+        {{ application.reason }}
+      </div>
+      {% endif %}
+
+      {% if action_reason %}
+      <div class="reason-box" style="background:#fef2f2; border-left-color:#ef4444; color:#991b1b;">
+        <strong>Decision / Rejection Note:</strong><br>
+        {{ action_reason }}
+      </div>
+      {% endif %}
+
+      <div class="action-note">
+        {{ next_step_instruction }}
+      </div>
+    </div>
+    <div class="email-footer">
+      This is an automated notification from Oblu HRMS. Please do not reply directly to this email address.
+    </div>
+  </div>
+</body>
+</html>

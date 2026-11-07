@@ -1,0 +1,192 @@
+{% extends "hrms/base.html" %}
+{% block title %}Payroll Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --money-green: #10b981;
+        --slate-800: #1e293b;
+    }
+
+    .salary-stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.25rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+    }
+
+    /* Financial Table Styling */
+    .salary-table thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 800;
+        padding: 1rem;
+        border: none;
+    }
+
+    .salary-row { transition: all 0.2s; }
+    .salary-row:hover { background-color: #fcfdff; }
+
+    .ctc-amount {
+        font-family: 'Monaco', monospace;
+        font-weight: 800;
+        color: var(--money-green);
+        font-size: 1rem;
+    }
+
+    .breakdown-box {
+        font-size: 0.75rem;
+        color: #64748b;
+        line-height: 1.4;
+    }
+
+    .avatar-init {
+        width: 38px; height: 38px;
+        background: #f1f5f9;
+        color: #475569;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700;
+    }
+
+    .status-pill {
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 4px 12px;
+        border-radius: 20px;
+        text-transform: uppercase;
+    }
+
+    .validity-badge {
+        font-size: 0.7rem;
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 6px;
+        color: #475569;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- 1. FINANCIAL SUMMARY -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="salary-stat-card border-start border-primary border-4">
+                <small class="text-muted fw-bold text-uppercase">Total Annual Liability</small>
+                <div class="h3 fw-bold mb-0 text-dark">₹ {{ total_ctc }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="salary-stat-card border-start border-success border-4">
+                <small class="text-muted fw-bold text-uppercase">Avg. Annual CTC</small>
+                <div class="h3 fw-bold mb-0 text-dark">₹ {{ avg_ctc|floatformat:0 }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="salary-stat-card border-start border-info border-4">
+                <small class="text-muted fw-bold text-uppercase">Active Structures</small>
+                <div class="h3 fw-bold mb-0 text-dark">{{ active_count }} <small class="fs-6 text-muted">Employees</small></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. SEARCH & ACTION BAR -->
+    <div class="card border-0 shadow-sm mb-4 rounded-4">
+        <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <form method="get" class="d-flex gap-2">
+                    <select name="employee" class="form-select form-select-sm rounded-pill" style="width:260px;">
+                        <option value="">Filter by Employee...</option>
+                        {% for emp in employees %}
+                        <option value="{{ emp.pk }}" {% if selected_employee == emp.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ emp.full_name }} ({{ emp.employee_code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-sm btn-dark rounded-pill px-3" type="submit">Filter</button>
+                </form>
+                <a href="{% url 'hrms:employee_salary_add' %}" class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm fw-bold">
+                    <i class="bi bi-plus-lg me-1"></i> Assign New Salary
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. SALARY LEDGER TABLE -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 salary-table">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Employee Details</th>
+                        <th>Annual CTC</th>
+                        <th>Monthly Breakdown</th>
+                        <th>Validity Period</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in salaries %}
+                    <tr class="salary-row">
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-init me-3">{{ s.employee.first_name|first }}{{ s.employee.last_name|first }}</div>
+                                <div>
+                                    <div class="fw-bold text-dark mb-0">{{ s.employee.full_name }}</div>
+                                    <small class="text-muted">{{ s.employee.designation.title|default:"Staff" }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="ctc-amount">₹ {{ s.ctc_annual }}</div>
+                            <small class="text-muted" style="font-size: 0.65rem;">PER ANNUM</small>
+                        </td>
+                        <td>
+                            <div class="breakdown-box">
+                                <div>Basic: <span class="fw-bold text-dark">₹{{ s.basic }}</span></div>
+                                <div>HRA: <span class="fw-bold text-dark">₹{{ s.hra }}</span></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="validity-badge">
+                                <i class="bi bi-calendar-event me-1"></i>
+                                {{ s.effective_from|date:"M Y" }} -
+                                {% if s.effective_to %}{{ s.effective_to|date:"M Y" }}{% else %}Present{% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            {% if s.is_active %}
+                            <span class="status-pill bg-success-subtle text-success border border-success-subtle">Active</span>
+                            {% else %}
+                            <span class="status-pill bg-light text-muted border">History</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="{% url 'hrms:employee_salary_edit' s.pk %}" class="btn btn-sm btn-light border rounded-circle" title="Modify Structure">
+                                <i class="bi bi-pencil-fill text-primary"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="bi bi-cash-stack display-4 text-muted opacity-25"></i>
+                            <p class="text-muted mt-3">No salary structures found. Payroll is currently disabled.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

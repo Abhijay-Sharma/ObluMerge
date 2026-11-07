@@ -1,0 +1,284 @@
+{% extends "hrms/base.html" %}
+{% block title %}Comp Off Management — HR{% endblock %}
+{% block page_title %}Comp Off Management{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --co-primary: #8b5cf6;
+    --co-primary-light: #ede9fe;
+  }
+
+  .co-filters-card {
+    background: white;
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    margin-bottom: 1.25rem;
+  }
+  .co-table-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  }
+  .co-table-card table thead th {
+    background: #f8fafc;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 800;
+    color: #64748b;
+    border: none;
+    padding: 12px 16px;
+  }
+  .co-table-card table tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-color: #f1f5f9;
+    font-size: 0.875rem;
+  }
+  .co-table-card table tbody tr:hover { background: #faf8ff; }
+
+  .badge-available { background: #dcfce7; color: #15803d; border-radius: 8px; padding: 3px 10px; font-size: 0.72rem; font-weight: 700; }
+  .badge-availed   { background: #e0e7ff; color: #4338ca; border-radius: 8px; padding: 3px 10px; font-size: 0.72rem; font-weight: 700; }
+  .badge-expired   { background: #f3f4f6; color: #6b7280; border-radius: 8px; padding: 3px 10px; font-size: 0.72rem; font-weight: 700; }
+
+  .emp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--co-primary-light);
+    color: var(--co-primary);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .empty-state { text-align: center; padding: 4rem 1rem; color: #9ca3af; }
+  .empty-state i { font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.4; }
+
+  .co-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 10px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- Page header -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="fw-bold mb-0" style="color:#1e293b;">
+        <i class="bi bi-calendar2-check me-2" style="color:var(--co-primary);"></i>
+        Comp Off Management
+      </h4>
+      <p class="text-muted small mt-1 mb-0">
+        View, filter, and audit all employee compensatory off credits
+      </p>
+    </div>
+    <a href="{% url 'hrms:leave_balance' %}" class="btn btn-outline-secondary btn-sm rounded-pill">
+      <i class="bi bi-arrow-left me-1"></i> Leave Balance
+    </a>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="p-3 rounded-3 d-flex align-items-center gap-3" style="background:#f0fdf4; border:1.5px solid #bbf7d0;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-plus-circle-fill" style="color:#16a34a;font-size:1.3rem;"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total Earned</div>
+          <div class="fw-bold" style="font-size:1.5rem;color:#15803d;line-height:1.2;">{{ total_earned|floatformat:1 }}</div>
+          <div style="font-size:.73rem;color:#6b7280;">days credited across all employees</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="p-3 rounded-3 d-flex align-items-center gap-3" style="background:#eff6ff; border:1.5px solid #bfdbfe;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-check2-circle" style="color:#2563eb;font-size:1.3rem;"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total Availed</div>
+          <div class="fw-bold" style="font-size:1.5rem;color:#1d4ed8;line-height:1.2;">{{ total_availed|floatformat:1 }}</div>
+          <div style="font-size:.73rem;color:#6b7280;">days redeemed as leave</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="p-3 rounded-3 d-flex align-items-center gap-3" style="background:#faf5ff; border:1.5px solid #d8b4fe;">
+        <div style="width:44px;height:44px;border-radius:12px;background:var(--co-primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-wallet2" style="color:var(--co-primary);font-size:1.3rem;"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Active Pool</div>
+          <div class="fw-bold" style="font-size:1.5rem;color:#7c3aed;line-height:1.2;">{{ total_available|floatformat:1 }}</div>
+          <div style="font-size:.73rem;color:#6b7280;">days still available to use</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="co-filters-card">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold text-muted">Employee</label>
+        <select name="employee" class="form-select form-select-sm" id="filter-employee">
+          <option value="">All Employees</option>
+          {% for emp in employees %}
+          <option value="{{ emp.pk }}" {% if selected_employee == emp.pk|stringformat:"s" %}selected{% endif %}>
+            {{ emp.full_name }} ({{ emp.employee_code }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold text-muted">Status</label>
+        <select name="status" class="form-select form-select-sm" id="filter-status">
+          <option value="">All Statuses</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm fw-semibold px-4 rounded-pill" style="background:var(--co-primary); color:white;">
+          <i class="bi bi-funnel me-1"></i> Filter
+        </button>
+        <a href="{% url 'hrms:comp_off_hr' %}" class="btn btn-sm btn-outline-secondary rounded-pill ms-1">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Table -->
+  <div class="co-table-card">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+      <h6 class="mb-0 fw-bold" style="color:#1e293b;">
+        All Comp Off Records
+      </h6>
+      <span class="co-stat-pill" style="background:#ede9fe; color:#6d28d9;">
+        <i class="bi bi-list-check"></i>
+        {{ page_obj.paginator.count }} total record{{ page_obj.paginator.count|pluralize }}
+      </span>
+    </div>
+
+    {% if comp_off_records %}
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employee</th>
+            <th>Comp-Off Earned Date &amp; Day</th>
+            <th>Occasion / Holiday</th>
+            <th>Credits</th>
+            <th>Status</th>
+            <th>Used Date &amp; Day</th>
+            <th>Leave Reason / Ref</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rec in comp_off_records %}
+          <tr>
+            <td class="text-muted small">{{ forloop.counter }}</td>
+            <td>
+              <span class="emp-chip">
+                <i class="bi bi-person-fill"></i>
+                {{ rec.employee.full_name }}
+              </span>
+              <div class="text-muted small">{{ rec.employee.employee_code }}</div>
+            </td>
+            <td>
+              <span class="fw-semibold">{{ rec.worked_date|date:"d M Y" }}</span>
+              <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i>{{ rec.worked_date|date:"l" }}</div>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border">{{ rec.holiday_name|default:"Sunday / Weekly Off" }}</span>
+              {% if rec.hours_worked and rec.hours_worked > 0 %}
+                <div class="text-muted small mt-1">{{ rec.hours_worked|floatformat:1 }} hrs logged</div>
+              {% endif %}
+            </td>
+            <td>
+              <span class="fw-bold" style="color:var(--co-primary); font-size:1.05rem;">+{{ rec.credits_earned|floatformat:1 }}</span>
+              <span class="small text-muted">day</span>
+            </td>
+            <td>
+              {% if rec.status == 'available' %}
+                <span class="badge-available">✓ Available</span>
+              {% elif rec.status == 'availed' %}
+                <span class="badge-availed">✓ Availed</span>
+              {% else %}
+                <span class="badge-expired">Expired</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if rec.status == 'availed' and rec.availed_on_date %}
+                <div>
+                  <span class="fw-semibold text-primary">{{ rec.availed_on_date|date:"d M Y" }}</span>
+                  <div class="text-muted small">{{ rec.availed_on_date|date:"l" }}</div>
+                </div>
+              {% else %}
+                <span class="text-muted small"><i class="bi bi-clock me-1"></i>Not used yet</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if rec.availed_leave_app %}
+                <div>
+                  <a href="{% url 'hrms:leave_detail' rec.availed_leave_app.pk %}" class="small fw-bold text-decoration-none" style="color:var(--co-primary);">
+                    #{{ rec.availed_leave_app.pk }} ({{ rec.availed_leave_app.get_day_type_display }})
+                  </a>
+                  {% if rec.availed_leave_app.reason %}
+                    <div class="text-secondary small text-truncate" style="max-width: 220px;" title="{{ rec.availed_leave_app.reason }}">
+                      {{ rec.availed_leave_app.reason }}
+                    </div>
+                  {% endif %}
+                </div>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="p-3 border-top d-flex justify-content-center">
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_employee %}employee={{ selected_employee }}&{% endif %}page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+          {% endif %}
+          <li class="page-item active"><a class="page-link" href="#">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</a></li>
+          {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_employee %}employee={{ selected_employee }}&{% endif %}page={{ page_obj.next_page_number }}">&raquo;</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-calendar2-x"></i>
+      <h5 class="fw-semibold" style="color:#4b5563;">No Comp Off Records Found</h5>
+      <p class="text-muted">Credits appear automatically when employees punch in on Sundays or Company Holidays.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

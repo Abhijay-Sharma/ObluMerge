@@ -1,0 +1,297 @@
+{% extends "hrms/base.html" %}
+{% block title %}Register Hardware Asset{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+  <div class="card border-0 shadow-sm rounded-4 mx-auto" style="max-width: 900px;">
+    <div class="card-header bg-primary text-white p-4 border-0 rounded-top-4">
+      <h4 class="fw-bold mb-1"><i class="bi bi-laptop me-2"></i>Hardware Asset Registration</h4>
+      <p class="text-white-50 small mb-0">Define hardware specifications, vendor details, and employee custody.</p>
+    </div>
+
+    <div class="card-body p-4 p-md-5">
+      <form method="post" id="assetForm" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger rounded-3 small mb-4">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <!-- STEP 1: Company & Category Selection -->
+        <div class="row g-3 mb-4 p-3 bg-light rounded-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Company <span class="text-danger">*</span></label>
+            {{ form.company }}
+            {% if form.company.errors %}<div class="text-danger small mt-1">{{ form.company.errors|striptags }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Asset Category <span class="text-danger">*</span></label>
+            <div class="input-group">
+              {{ form.category }}
+              <button type="button" class="btn btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#categoryModal" title="Create New Category">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </div>
+            {% if form.category.errors %}<div class="text-danger small mt-1">{{ form.category.errors|striptags }}</div>{% endif %}
+            <div class="form-text small">Select category to load belonging specification fields.</div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Belonging Specification Fields (Shown Dynamically) -->
+        <div id="dynamic-fields-container" style="display: none;">
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-cpu me-2 text-primary"></i>Hardware Specifications</h6>
+
+          <div class="row g-3 mb-4">
+            <!-- Asset Name (Always Base) -->
+            <div class="col-md-6 asset-field-wrapper" id="wrapper_name">
+              <label class="form-label small fw-bold" id="label_name">Asset Name <span class="text-danger">*</span></label>
+              {{ form.name }}
+              {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- Model Number -->
+            <div class="col-md-6 asset-field-wrapper" id="wrapper_model_number">
+              <label class="form-label small fw-bold" id="label_model_number">Model Number</label>
+              {{ form.model_number }}
+              {% if form.model_number.errors %}<div class="text-danger small mt-1">{{ form.model_number.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- Serial Number -->
+            <div class="col-md-6 asset-field-wrapper" id="wrapper_serial_number">
+              <label class="form-label small fw-bold" id="label_serial_number">Serial Number / Service Tag</label>
+              {{ form.serial_number }}
+              {% if form.serial_number.errors %}<div class="text-danger small mt-1">{{ form.serial_number.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- SIM Provider -->
+            <div class="col-md-6 asset-field-wrapper" id="wrapper_sim">
+              <label class="form-label small fw-bold" id="label_sim">SIM Details / Provider</label>
+              {{ form.sim }}
+              {% if form.sim.errors %}<div class="text-danger small mt-1">{{ form.sim.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- Phone Number -->
+            <div class="col-md-6 asset-field-wrapper" id="wrapper_phone_number">
+              <label class="form-label small fw-bold" id="label_phone_number">Assigned Mobile Number</label>
+              {{ form.phone_number }}
+              {% if form.phone_number.errors %}<div class="text-danger small mt-1">{{ form.phone_number.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- Device Password / Security -->
+            <div class="col-md-6 asset-field-wrapper" id="wrapper_device_password">
+              <label class="form-label small fw-bold" id="label_device_password">Security Credentials / PIN</label>
+              {{ form.device_password }}
+              {% if form.device_password.errors %}<div class="text-danger small mt-1">{{ form.device_password.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <!-- Additional Details / Hardware specs -->
+            <div class="col-12 asset-field-wrapper" id="wrapper_additional_details">
+              <label class="form-label small fw-bold" id="label_additional_details">System Specs / Accessories</label>
+              {{ form.additional_details }}
+              {% if form.additional_details.errors %}<div class="text-danger small mt-1">{{ form.additional_details.errors|striptags }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- STEP 3: Procurement, Vendor & Warranty -->
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-receipt me-2 text-primary"></i>Procurement & Warranty Details</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Vendor / Supplier Name</label>
+              {{ form.vendor_name }}
+              {% if form.vendor_name.errors %}<div class="text-danger small mt-1">{{ form.vendor_name.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Vendor Contact (Phone/Email)</label>
+              {{ form.vendor_contact }}
+              {% if form.vendor_contact.errors %}<div class="text-danger small mt-1">{{ form.vendor_contact.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Procurement Date</label>
+              {{ form.purchase_date }}
+              {% if form.purchase_date.errors %}<div class="text-danger small mt-1">{{ form.purchase_date.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Warranty Expiry Date</label>
+              {{ form.warranty_expiry }}
+              {% if form.warranty_expiry.errors %}<div class="text-danger small mt-1">{{ form.warranty_expiry.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-bold">Bill / Invoice Document</label>
+              {{ form.invoice_document }}
+              {% if form.invoice_document.errors %}<div class="text-danger small mt-1">{{ form.invoice_document.errors|striptags }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- STEP 4: Initial Custody & Issuance -->
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-person-check me-2 text-primary"></i>Custody & Issuance</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Assign to Employee</label>
+              {{ form.employee }}
+              {% if form.employee.errors %}<div class="text-danger small mt-1">{{ form.employee.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Status</label>
+              {{ form.status }}
+              {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Handover Date</label>
+              {{ form.assigned_on }}
+              {% if form.assigned_on.errors %}<div class="text-danger small mt-1">{{ form.assigned_on.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-bold">Condition Remarks</label>
+              {{ form.remarks }}
+              {% if form.remarks.errors %}<div class="text-danger small mt-1">{{ form.remarks.errors|striptags }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'hrms:asset_list' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
+              <i class="bi bi-check-lg me-1"></i>Save Asset
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Category Creation Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-tag-fill text-primary me-2"></i>Create Asset Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-3">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Category Name <span class="text-danger">*</span></label>
+          <input type="text" id="new_cat_name" class="form-control rounded-3" placeholder="e.g. Laptop, Mobile, Tablet, SIM Card">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Belonging Specific Fields (Comma Separated)</label>
+          <input type="text" id="new_cat_fields" class="form-control rounded-3" placeholder="serial_number, device_password, additional_details">
+          <div class="form-text small">Allowed field tokens: <code>model_number</code>, <code>serial_number</code>, <code>sim</code>, <code>phone_number</code>, <code>device_password</code>, <code>additional_details</code>.</div>
+        </div>
+        <div id="categoryModalError" class="alert alert-danger rounded-3 small py-2 d-none"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="saveCategoryBtn" class="btn btn-primary rounded-pill px-4 fw-bold">Save Category</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('id_category');
+    const dynamicContainer = document.getElementById('dynamic-fields-container');
+    const fieldWrappers = document.querySelectorAll('.asset-field-wrapper');
+    let configs = {{ category_configs_json|safe }};
+
+    function syncCategoryFields() {
+        const selectedId = categorySelect ? categorySelect.value : "";
+        const selectedText = categorySelect && categorySelect.selectedIndex >= 0
+            ? (categorySelect.options[categorySelect.selectedIndex].text || "").toLowerCase().trim()
+            : "";
+
+        if (!selectedId) {
+            dynamicContainer.style.display = 'none';
+            return;
+        }
+
+        dynamicContainer.style.display = 'block';
+        const requiredString = configs[selectedId] || "";
+        const requiredArray = requiredString.split(',').map(item => item.trim().toLowerCase());
+
+        fieldWrappers.forEach(wrapper => {
+            const fieldName = wrapper.id.replace('wrapper_', '');
+            const label = document.getElementById(`label_${fieldName}`);
+
+            // 1. Dynamic label switching for SIM Cards vs Laptops/Phones
+            if (selectedText.includes('sim')) {
+                if (fieldName === 'name' && label) label.innerHTML = 'SIM Card Label <span class="text-danger">*</span>';
+                if (fieldName === 'serial_number' && label) label.innerText = 'ICCID / SIM Serial Number';
+                if (fieldName === 'sim' && label) label.innerText = 'Network Carrier (Airtel/Jio/Vi)';
+                if (fieldName === 'phone_number' && label) label.innerText = 'Associated Mobile Number';
+            } else {
+                if (fieldName === 'name' && label) label.innerHTML = 'Asset Name <span class="text-danger">*</span>';
+                if (fieldName === 'serial_number' && label) label.innerText = 'Serial Number / Service Tag';
+                if (fieldName === 'sim' && label) label.innerText = 'SIM Details';
+                if (fieldName === 'phone_number' && label) label.innerText = 'Phone Number';
+            }
+
+            // 2. Base fields (name, model_number) are always visible; others check required_fields
+            if (['name', 'model_number'].includes(fieldName) || requiredArray.includes(fieldName.toLowerCase()) || requiredString === "") {
+                wrapper.style.display = 'block';
+            } else {
+                wrapper.style.display = 'none';
+            }
+        });
+    }
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', syncCategoryFields);
+        syncCategoryFields();
+    }
+
+    // AJAX Category Creation Handler
+    const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+    if (saveCategoryBtn) {
+        saveCategoryBtn.addEventListener('click', function() {
+            const nameInput = document.getElementById('new_cat_name');
+            const fieldsInput = document.getElementById('new_cat_fields');
+            const errorBox = document.getElementById('categoryModalError');
+
+            const name = nameInput.value.trim();
+            const fields = fieldsInput.value.trim();
+
+            if (!name) {
+                errorBox.innerText = "Category name is required.";
+                errorBox.classList.remove('d-none');
+                return;
+            }
+
+            fetch("{% url 'hrms:create_category_ajax' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ name: name, fields: fields })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Update dropdown and dynamic configs
+                    configs[data.id] = data.fields;
+                    const option = new Option(data.name, data.id, true, true);
+                    categorySelect.add(option);
+                    syncCategoryFields();
+
+                    // Close modal and reset form
+                    const modalEl = document.getElementById('categoryModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                    nameInput.value = '';
+                    fieldsInput.value = '';
+                    errorBox.classList.add('d-none');
+                } else {
+                    errorBox.innerText = data.error || "Failed to create category.";
+                    errorBox.classList.remove('d-none');
+                }
+            })
+            .catch(err => {
+                errorBox.innerText = "Network error while saving category.";
+                errorBox.classList.remove('d-none');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; background: #f8fafc; padding: 24px; }
+    .card { background: #ffffff; border-radius: 12px; padding: 28px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    .header { border-bottom: 2px solid #6366f1; padding-bottom: 12px; margin-bottom: 20px; }
+    .title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #eef2ff; color: #4338ca; }
+    .info-table { width: 100%; border-collapse: collapse; margin: 18px 0; }
+    .info-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    .info-table td.label { font-weight: 600; color: #64748b; width: 35%; }
+    .info-table td.value { color: #0f172a; }
+    .reason-box { background: #f8fafc; border-left: 4px solid #6366f1; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 14px; }
+    .footer { font-size: 12px; color: #94a3b8; margin-top: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="title">New Leave Application Submitted</div>
+      <span class="badge">{{ leave_type }} &middot; {{ total_days }} Days</span>
+    </div>
+    
+    <p style="font-size: 15px; line-height: 1.5;">
+      Dear HR,
+    </p>
+    <p style="font-size: 15px; line-height: 1.5;">
+      I am <strong>{{ employee_name }}</strong>, applying for leave from <strong>{{ start_date }}</strong> to <strong>{{ end_date }}</strong>.
+    </p>
+
+    <div class="reason-box">
+      <strong>Reason:</strong> {{ reason }}
+    </div>
+
+    <table class="info-table">
+      <tr>
+        <td class="label">Employee</td>
+        <td class="value"><strong>{{ employee_name }}</strong></td>
+      </tr>
+      <tr>
+        <td class="label">Leave Type</td>
+        <td class="value">{{ leave_type }} ({{ day_type }})</td>
+      </tr>
+      <tr>
+        <td class="label">Date Range</td>
+        <td class="value">{{ start_date }} &rarr; {{ end_date }}</td>
+      </tr>
+      <tr>
+        <td class="label">Duration</td>
+        <td class="value">{{ total_days }} Day(s)</td>
+      </tr>
+      <tr>
+        <td class="label">Current Status</td>
+        <td class="value">{{ application.get_status_display }}</td>
+      </tr>
+    </table>
+
+    <p style="font-size: 13px; color: #64748b;">
+      Please log in to the HRMS portal to review and take action on this leave request.
+    </p>
+
+    <div class="footer">
+      This is an automated notification from Oblu HRMS.
+    </div>
+  </div>
+</body>
+</html>

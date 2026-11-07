@@ -1,0 +1,153 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Policy Library — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="bi bi-file-earmark-text text-primary me-2"></i>Policy Library</h3>
+      <p class="text-muted small mb-0">Official company policies, compliance documents, and mandatory quizzes</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if is_hr %}
+        <a href="{% url 'hrms:policy_manage' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-speedometer2 me-1"></i>Compliance Dashboard
+        </a>
+        <a href="{% url 'hrms:policy_add' %}" class="btn btn-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-plus-circle me-1"></i>Upload Policy
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Search & Category Filters -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+      <form method="get" class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <!-- Category Badges -->
+        <div class="d-flex flex-wrap gap-1 nav-scroll-sm w-100 w-md-auto">
+          <a href="{% url 'hrms:policy_list' %}" class="btn btn-sm rounded-pill px-3 {% if not active_cat %}btn-primary{% else %}btn-light{% endif %}">
+            All Policies
+          </a>
+          {% for code, name in categories %}
+            <a href="{% url 'hrms:policy_list' %}?category={{ code }}" class="btn btn-sm rounded-pill px-3 {% if active_cat == code %}btn-primary{% else %}btn-light text-muted{% endif %}">
+              {{ name }}
+            </a>
+          {% endfor %}
+        </div>
+
+        <!-- Search Input -->
+        <div class="input-group input-group-sm rounded-pill overflow-hidden" style="max-width: 280px;">
+          <span class="input-group-text bg-light border-0 ps-3"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" name="q" value="{{ request.GET.q|default:'' }}" class="form-control bg-light border-0" placeholder="Search policies...">
+          <button type="submit" class="btn btn-primary px-3">Search</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Policy Cards Grid -->
+  <div class="row g-3 g-md-4">
+    {% for policy in policies %}
+      {% with ack=ack_map|default_if_none:None %}
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card border-0 shadow-sm rounded-4 h-100 policy-card position-relative overflow-hidden transition-all">
+            <!-- Mandatory Strip -->
+            {% if policy.is_mandatory %}
+              <div class="position-absolute top-0 end-0 bg-danger text-white px-3 py-1 fw-bold" style="font-size: 0.68rem; border-bottom-left-radius: 12px; letter-spacing: 0.5px;">
+                MANDATORY
+              </div>
+            {% endif %}
+
+            <div class="card-body p-3 p-md-4 d-flex flex-column">
+              <!-- Top Category & Date -->
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                  {{ policy.get_category_display }}
+                </span>
+                <span class="text-muted small" style="font-size: 0.75rem;">
+                  <i class="bi bi-calendar3 me-1"></i>{{ policy.effective_from|date:"d M Y" }}
+                </span>
+              </div>
+
+              <!-- Title & Description -->
+              <h5 class="fw-bold text-dark mb-2 text-truncate" title="{{ policy.title }}">{{ policy.title }}</h5>
+              <p class="text-muted small flex-grow-1 line-clamp-3 mb-4" style="min-height: 48px;">
+                {{ policy.description|default:"No description provided." }}
+              </p>
+
+              <!-- Footer Section -->
+              <div class="pt-3 border-top mt-auto">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <!-- File Format Info -->
+                  <div class="d-flex align-items-center gap-2">
+                    {% if policy.get_file_extension == 'pdf' %}
+                      <span class="badge bg-danger-subtle text-danger p-2 rounded-3"><i class="bi bi-file-earmark-pdf fs-5"></i></span>
+                    {% elif policy.get_file_extension == 'docx' or policy.get_file_extension == 'doc' %}
+                      <span class="badge bg-primary-subtle text-primary p-2 rounded-3"><i class="bi bi-file-earmark-word fs-5"></i></span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary p-2 rounded-3"><i class="bi bi-file-earmark-text fs-5"></i></span>
+                    {% endif %}
+                    <div>
+                      <div class="fw-semibold small text-dark">{{ policy.get_file_extension|upper|default:"DOCUMENT" }}</div>
+                      <div class="text-muted" style="font-size: 0.7rem;">
+                        {% if policy.has_quiz %}
+                          <span class="text-primary fw-semibold"><i class="bi bi-question-circle me-1"></i>{{ policy.quiz_question_count }} Quiz Qs</span>
+                        {% else %}
+                          <span>Direct Acknowledgment</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Acknowledgment Status Badge -->
+                  <div>
+                    <!-- Note: In Django template dict lookup with integer key -->
+                    <!-- We render dynamically via policy.id -->
+                    <span id="ack-badge-{{ policy.id }}">
+                      <!-- Action Button handles view -->
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="d-grid">
+                  <a href="{% url 'hrms:policy_detail' policy.id %}" class="btn btn-outline-primary rounded-pill py-2 fw-semibold">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>View &amp; Acknowledge
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endwith %}
+    {% empty %}
+      <div class="col-12 text-center py-5 text-muted">
+        <i class="bi bi-file-earmark-x fs-1 d-block mb-2 text-secondary"></i>
+        No company policies found.
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<style>
+  .policy-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .policy-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
+{% endblock %}

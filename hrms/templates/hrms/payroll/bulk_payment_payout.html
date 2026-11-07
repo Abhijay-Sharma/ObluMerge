@@ -1,0 +1,189 @@
+{% extends "hrms/base.html" %}
+{% block title %}Bulk Salary Bank Disbursement — {{ month_name }} {{ sel_year }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sheet-table th {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .sheet-table td {
+        font-size: 0.85rem;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .table-input {
+        background-color: #f8fafc;
+        border: 1px solid #cbd5e1;
+        font-size: 0.85rem;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: all 0.15s;
+    }
+    .table-input:focus {
+        background-color: #ffffff;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        outline: none;
+    }
+    .badge-unlinked {
+        background-color: #fef2f2;
+        color: #ef4444;
+        border: 1px solid #fecaca;
+        font-size: 0.7rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary px-3 py-1 fw-bold rounded-pill">Finance &amp; Banking</span>
+                <span class="badge bg-light text-dark border rounded-pill">{{ selected_company.name|default:"All Entities" }}</span>
+            </div>
+            <h3 class="fw-bold mb-0">Bank Bulk Salary Disbursement</h3>
+            <p class="text-muted small mb-0">Corporate CMS auto-formatted payout sheet (IMPS / NEFT format)</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <a href="?month={{ sel_month }}&year={{ sel_year }}&activation_date={{ activation_date }}&action=export_excel" class="btn btn-success rounded-pill px-4 shadow-sm fw-bold">
+                <i class="bi bi-file-earmark-excel-fill me-2"></i>Download Bank Excel (.xlsx)
+            </a>
+            <a href="{% url 'hrms:payrollrun_list' %}" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i>Back to Payroll
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                <span class="text-muted small fw-semibold text-uppercase">Total Employees</span>
+                <h3 class="fw-bold mb-0 text-dark">{{ total_employees }}</h3>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                <span class="text-muted small fw-semibold text-uppercase">Disbursement Period</span>
+                <h3 class="fw-bold mb-0 text-primary">{{ month_name }} {{ sel_year }}</h3>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-primary text-white">
+                <span class="text-white-50 small fw-semibold text-uppercase">Total Net Payout Liability</span>
+                <h2 class="fw-bold mb-0">₹{{ total_payout|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Payout Date Selector -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold text-muted">Salary Month</label>
+                    <select name="month" class="form-select form-select-sm rounded-3">
+                        {% for m_num, m_name in months_choices %}
+                            <option value="{{ m_num }}" {% if m_num == sel_month %}selected{% endif %}>{{ m_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold text-muted">Year</label>
+                    <select name="year" class="form-select form-select-sm rounded-3">
+                        {% for yr in year_choices %}
+                            <option value="{{ yr }}" {% if yr == sel_year %}selected{% endif %}>{{ yr }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-bold text-danger">Activation (Payout) Date*</label>
+                    <input type="date" name="activation_date" value="{{ activation_date }}" class="form-control form-control-sm rounded-3 fw-bold text-primary">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-dark btn-sm rounded-3 px-3">
+                        <i class="bi bi-arrow-repeat me-1"></i>Refresh Sheet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Excel-like Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive" style="max-height: 65vh;">
+            <table class="table table-hover align-middle mb-0 sheet-table">
+                <thead>
+                    <tr>
+                        <th class="ps-3 text-center">#</th>
+                        <th>CRN</th>
+                        <th>Employee Code</th>
+                        <th>Beneficiary Name (Account)</th>
+                        <th>Bank &amp; Account No</th>
+                        <th>IFSC Code</th>
+                        <th class="text-center" style="width: 70px;">Mode</th>
+                        <th class="text-end" style="width: 140px;">Net Amount (₹)</th>
+                        <th style="width: 130px;">Activation Date</th>
+                        <th>Debit Account</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="ps-3 text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td class="font-monospace fw-bold text-primary">{{ row.crn_no }}</td>
+                        <td class="fw-bold">{{ row.emp.employee_code }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ row.beneficiary_name }}</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">{{ row.emp.designation.title|default:"Staff" }}</div>
+                        </td>
+                        <td>
+                            {% if row.has_bank %}
+                                <div class="font-monospace fw-bold text-dark">{{ row.account_number }}</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">{{ row.bank_name }}</div>
+                            {% else %}
+                                <span class="badge badge-unlinked rounded-pill px-2 py-1">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Bank Not Linked
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="font-monospace fw-bold">{{ row.ifsc|default:"—" }}</td>
+                        <td>
+                            <input type="text" value="{{ row.payment_method }}" class="table-input text-center w-100 font-monospace fw-bold" style="max-width: 50px;">
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" value="{{ row.amount }}" class="table-input text-end w-100 fw-bold text-success font-monospace">
+                        </td>
+                        <td>
+                            <input type="date" value="{{ row.activation_date }}" class="table-input w-100 font-monospace">
+                        </td>
+                        <td>
+                            <input type="text" value="{{ row.debit_account }}" class="table-input w-100 font-monospace text-muted" style="max-width: 140px;">
+                        </td>
+                        <td>
+                            <input type="text" value="{{ row.remarks }}" class="table-input w-100">
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                            No active employees found for this period.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

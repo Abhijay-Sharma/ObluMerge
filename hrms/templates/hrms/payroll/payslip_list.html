@@ -1,0 +1,61 @@
+{% extends "hrms/base.html" %}
+{% load hrms_extras %}
+{% block title %}Payslips{% endblock %}
+{% block page_title %}{% if is_hr %}All Payslips{% else %}My Payslips{% endif %}{% endblock %}
+
+{% block content %}
+{% if is_hr %}
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+  <select name="employee" class="form-select form-select-sm flex-grow-1 flex-md-grow-0" style="max-width:240px; min-width:180px;">
+    <option value="">All employees</option>
+    {% for emp in employees %}
+      <option value="{{ emp.pk }}" {% if request.GET.employee == emp.pk|stringformat:"s" %}selected{% endif %}>{{ emp.full_name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-sm btn-outline-secondary" type="submit">Filter</button>
+</form>
+{% endif %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle table-stack-sm">
+      <thead class="table-light">
+        <tr>
+          {% if is_hr %}<th>Employee</th>{% endif %}
+          <th>Period</th><th class="text-end">Net Pay</th><th>Payment Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for slip in payslips %}
+        <tr>
+          {% if is_hr %}<td data-label="Employee"><span>{{ slip.employee.full_name }}</span></td>{% endif %}
+          <td class="stack-head"><span class="fw-semibold">{{ slip.payroll_run.month|month_name }} {{ slip.payroll_run.year }}</span></td>
+          <td class="text-end fw-semibold" data-label="Net Pay"><span>₹{{ slip.net_pay|floatformat:2 }}</span></td>
+          <td data-label="Status">
+            <span class="badge {% if slip.payment_status == 'paid' %}text-bg-success{% elif slip.payment_status == 'failed' %}text-bg-danger{% else %}text-bg-warning{% endif %}">
+              {{ slip.get_payment_status_display }}
+            </span>
+          </td>
+          <td data-label="Actions">
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'hrms:payslip_detail' slip.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
+              <a href="{% url 'hrms:payslip_pdf' slip.pk %}" class="btn btn-sm btn-outline-secondary">PDF</a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-4">No payslips yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3"><ul class="pagination pagination-sm">
+  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Prev</a></li>{% endif %}
+  <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

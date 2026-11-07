@@ -1,0 +1,591 @@
+{% extends "hrms/base.html" %}
+{% block title %}{{ application.candidate }} — {{ application.job_posting.title }}{% endblock %}
+{% block page_title %}{{ application.candidate }} → {{ application.job_posting.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Layout */
+  .detail-grid { display: grid; grid-template-columns: 300px 1fr 300px; gap: 1.25rem; }
+  @media (max-width: 1200px) { .detail-grid { grid-template-columns: 280px 1fr; } .detail-right { display: none; } }
+  @media (max-width: 900px)  { .detail-grid { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .panel { background:#fff; border:1.5px solid #e8eaf0; border-radius:14px; overflow:hidden; }
+  .panel-header { padding:.75rem 1rem; border-bottom:1.5px solid #f1f5f9; font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; background:#f8fafc; display:flex; justify-content:space-between; align-items:center; }
+  .panel-body { padding:1rem; }
+
+  /* Status / action strip */
+  .action-strip { background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:14px; padding:1rem 1.25rem; color:#fff; display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+  .status-pill { font-size:.8rem; font-weight:700; padding:.3rem .85rem; border-radius:99px; display:inline-flex; align-items:center; gap:.35rem; }
+  .sp-applied      { background:rgba(14,165,233,.25); color:#e0f2fe; }
+  .sp-shortlisted  { background:rgba(234,179,8,.25);  color:#fef9c3; }
+  .sp-interviewing { background:rgba(139,92,246,.35); color:#ddd6fe; }
+  .sp-offered      { background:rgba(16,185,129,.25); color:#d1fae5; }
+  .sp-hired        { background:rgba(34,197,94,.3);   color:#dcfce7; }
+  .sp-rejected     { background:rgba(239,68,68,.3);   color:#fee2e2; }
+
+  /* Pipeline progress */
+  .pipeline-track { display:flex; align-items:center; gap:0; overflow-x:auto; padding:.25rem 0; }
+  .pipe-step { display:flex; flex-direction:column; align-items:center; flex:1; min-width:60px; }
+  .pipe-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; border:2px solid #e8eaf0; background:#f8fafc; z-index:1; position:relative; }
+  .pipe-dot.done { background:#8b5cf6; border-color:#8b5cf6; color:#fff; }
+  .pipe-dot.curr { background:#fff; border-color:#8b5cf6; color:#8b5cf6; box-shadow:0 0 0 3px rgba(139,92,246,.25); }
+  .pipe-dot.pend { background:#f8fafc; border-color:#e8eaf0; color:#d1d5db; }
+  .pipe-label { font-size:.65rem; font-weight:600; color:#6b7280; text-align:center; margin-top:.3rem; max-width:70px; line-height:1.2; }
+  .pipe-connector { flex:1; height:2px; background:#e8eaf0; margin-top:-14px; min-width:12px; }
+  .pipe-connector.done { background:#8b5cf6; }
+
+  /* Resume iframe */
+  .resume-frame { width:100%; height:520px; border:none; border-radius:10px; background:#f8fafc; }
+
+  /* Interview table */
+  .iv-table th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; border:none; }
+  .iv-table td { font-size:.83rem; border-color:#f1f5f9; vertical-align:middle; }
+  .iv-mode-chip { font-size:.7rem; padding:.15rem .5rem; border-radius:6px; font-weight:600; }
+  .iv-mode-online    { background:#dbeafe; color:#1d4ed8; }
+  .iv-mode-in_person { background:#d1fae5; color:#065f46; }
+  .iv-mode-phone     { background:#fce7f3; color:#9d174d; }
+  .iv-status-chip { font-size:.7rem; padding:.18rem .55rem; border-radius:99px; font-weight:700; }
+  .iv-scheduled  { background:#e0f2fe; color:#0369a1; }
+  .iv-completed  { background:#dcfce7; color:#166534; }
+  .iv-cancelled  { background:#fee2e2; color:#991b1b; }
+  .iv-no_show    { background:#f1f5f9; color:#64748b; }
+
+  /* Scorecard feedback */
+  .feedback-card { background:#f8fafc; border:1.5px solid #e8eaf0; border-radius:10px; padding:.75rem; margin-bottom:.5rem; }
+  .fb-rec-hire   { background:#dcfce7; color:#166534; }
+  .fb-rec-maybe  { background:#fef3c7; color:#92400e; }
+  .fb-rec-reject { background:#fee2e2; color:#991b1b; }
+  .fb-rec-badge  { font-size:.68rem; font-weight:700; padding:.15rem .5rem; border-radius:99px; }
+  .criteria-score { font-size:.7rem; background:#ede9fe; color:#5b21b6; border-radius:99px; padding:.1rem .5rem; font-weight:700; }
+
+  /* Notes thread */
+  .note-item { border-left:3px solid #e0e7ff; padding:.5rem .75rem; border-radius:0 8px 8px 0; background:#f8fafc; }
+  .note-item.private { border-left-color:#fca5a5; background:#fff5f5; }
+  .note-author { font-size:.75rem; font-weight:700; color:#374151; }
+  .note-time   { font-size:.7rem; color:#9ca3af; }
+  .note-text   { font-size:.83rem; color:#374151; margin-top:.2rem; }
+  .note-form textarea { border-radius:9px; border:1.5px solid #e5e7eb; font-size:.85rem; resize:vertical; }
+  .note-form textarea:focus { border-color:#8b5cf6; box-shadow:0 0 0 3px rgba(139,92,246,.12); outline:none; }
+
+  /* Audit timeline */
+  .audit-item { position:relative; padding:.5rem 0 .5rem 1.5rem; }
+  .audit-item::before { content:""; position:absolute; left:4px; top:.95rem; width:8px; height:8px; border-radius:50%; background:#c4b5fd; }
+  .audit-item::after  { content:""; position:absolute; left:7px; top:1.5rem; width:2px; background:#e0e7ff; bottom:0; }
+  .audit-item:last-child::after { display:none; }
+  .audit-action { font-size:.8rem; font-weight:600; color:#1e1b4b; }
+  .audit-meta   { font-size:.72rem; color:#9ca3af; }
+
+  /* Offer card */
+  .offer-card { background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #bbf7d0; border-radius:12px; }
+  .offer-card.draft { background:linear-gradient(135deg,#f8fafc,#f1f5f9); border-color:#e2e8f0; }
+  .offer-card.sent  { background:linear-gradient(135deg,#eff6ff,#dbeafe); border-color:#bfdbfe; }
+  .offer-card.declined, .offer-card.expired { background:linear-gradient(135deg,#fff5f5,#fee2e2); border-color:#fca5a5; }
+
+  /* Email modal */
+  #emailTemplateBody { min-height: 120px; border-radius:9px; border:1.5px solid #e5e7eb; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Action strip -->
+<div class="action-strip">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'hrms:application_list' %}" class="btn btn-sm" style="background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:8px;">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="status-pill sp-{{ application.status }}">
+      <i class="bi {% if application.status == 'hired' %}bi-check2-circle{% elif application.status == 'rejected' %}bi-x-circle{% elif application.status == 'offered' %}bi-envelope-paper{% elif application.status == 'interviewing' %}bi-camera-video{% elif application.status == 'shortlisted' %}bi-star{% else %}bi-hourglass{% endif %}"></i>
+      {{ application.get_status_display }}
+    </span>
+    {% if application.is_locked %}
+    <span class="status-pill" style="background:rgba(0,0,0,.3); color:#e5e7eb;">
+      <i class="bi bi-lock-fill"></i> Locked{% if application.locked_by %} by {{ application.locked_by }}{% endif %}
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="d-flex gap-2 flex-wrap">
+    {% if not application.is_locked or request.user.is_superuser %}
+      {% if application.status == 'applied' %}
+      <form method="post" action="{% url 'hrms:application_status' application.pk %}" class="d-inline">
+        {% csrf_token %}<input type="hidden" name="status" value="shortlisted">
+        <button class="btn btn-sm btn-light fw-semibold" style="border-radius:8px;"><i class="bi bi-star-fill text-warning me-1"></i>Shortlist</button>
+      </form>
+      {% endif %}
+      {% if application.status in 'applied,shortlisted,interviewing' %}
+      <a href="{% url 'hrms:interview_add' application.pk %}" class="btn btn-sm btn-light fw-semibold" style="border-radius:8px;">
+        <i class="bi bi-calendar-plus me-1"></i>Schedule Interview
+      </a>
+      {% endif %}
+      {% if application.status in 'shortlisted,interviewing' and not offer %}
+      <a href="{% url 'hrms:offer_create' application.pk %}" class="btn btn-sm fw-semibold" style="background:#10b981; color:#fff; border-radius:8px;">
+        <i class="bi bi-envelope-paper me-1"></i>Generate Offer
+      </a>
+      {% endif %}
+      {% if application.status not in 'hired,rejected' %}
+      <button class="btn btn-sm fw-semibold" style="background:rgba(239,68,68,.25); color:#fca5a5; border-radius:8px;"
+              data-bs-toggle="modal" data-bs-target="#rejectModal">
+        <i class="bi bi-x-lg me-1"></i>Reject
+      </button>
+      {% endif %}
+      {% if application.is_locked and request.user.is_superuser %}
+      <form method="post" action="{% url 'hrms:application_unlock' application.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button class="btn btn-sm fw-semibold" style="background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:8px;">
+          <i class="bi bi-unlock me-1"></i>Unlock
+        </button>
+      </form>
+      {% endif %}
+    {% endif %}
+    <!-- Quick Email button -->
+    <button class="btn btn-sm fw-semibold" style="background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:8px;"
+            data-bs-toggle="modal" data-bs-target="#emailModal">
+      <i class="bi bi-envelope-plus me-1"></i>Email
+    </button>
+  </div>
+</div>
+
+<!-- Reject modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="post" action="{% url 'hrms:application_status' application.pk %}">
+        {% csrf_token %}<input type="hidden" name="status" value="rejected">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title fw-bold">Reject {{ application.candidate }}?</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label small fw-semibold">Reason <span class="text-muted">(optional, recorded in audit trail)</span></label>
+          <textarea name="reason" class="form-control" rows="3" placeholder="Salary mismatch, skill gap…"></textarea>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-danger px-4">Reject</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Email modal -->
+<div class="modal fade" id="emailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:16px 16px 0 0;">
+        <h6 class="modal-title fw-bold text-white"><i class="bi bi-envelope-plus me-2"></i>Quick Email to Candidate</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Template</label>
+          <select id="emailTemplateSelect" class="form-select" style="border-radius:9px; border:1.5px solid #e5e7eb;">
+            <option value="interview">Schedule Interview Confirmation</option>
+            <option value="assignment">Send Assignment / Task</option>
+            <option value="rejection">Rejection Notice</option>
+            <option value="offer">Offer Extended</option>
+          </select>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">To</label>
+            <input class="form-control" style="border-radius:9px;" value="{{ application.candidate.email }}" id="emailTo" readonly>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Subject</label>
+            <input class="form-control" style="border-radius:9px;" id="emailSubject">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Message Body</label>
+          <textarea class="form-control" id="emailTemplateBody" rows="6"></textarea>
+        </div>
+        <div id="emailSendStatus"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sm fw-semibold" style="background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; border-radius:8px; padding:.4rem 1.2rem;"
+                onclick="sendQuickEmail()">
+          <i class="bi bi-send me-1"></i>Send Email
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline progress -->
+{% with stages=application.job_posting.pipeline_stages.all %}
+{% if stages %}
+<div class="panel mb-3">
+  <div class="panel-header">Pipeline Progress</div>
+  <div class="panel-body py-3">
+    <div class="pipeline-track">
+      {% for ps in stages %}
+      <div class="pipe-step">
+        <div class="pipe-dot {% if application.current_stage_id == ps.stage_id %}curr{% elif ps.order < application.progress_percentage %}done{% else %}pend{% endif %}">
+          {% if application.current_stage_id == ps.stage_id %}
+            <i class="bi bi-circle-fill" style="font-size:.55rem;"></i>
+          {% else %}
+            {{ forloop.counter }}
+          {% endif %}
+        </div>
+        <div class="pipe-label">{{ ps.stage.name }}</div>
+      </div>
+      {% if not forloop.last %}<div class="pipe-connector {% if application.current_stage_id and ps.order < application.progress_percentage %}done{% endif %}"></div>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- 3-column grid -->
+<div class="detail-grid">
+
+  <!-- LEFT: Candidate info + Resume iframe -->
+  <div class="detail-left d-flex flex-column gap-3">
+
+    <!-- Candidate card -->
+    <div class="panel">
+      <div class="panel-header d-flex justify-content-between align-items-center">
+        <span>Candidate</span>
+        <a href="{% url 'hrms:candidate_edit' application.candidate.pk %}?next={{ request.path }}" class="btn btn-sm btn-outline-primary" style="font-size:.72rem; padding:.15rem .5rem; border-radius:6px;">
+          <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+      </div>
+      <div class="panel-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.1rem; flex-shrink:0;">
+            {{ application.candidate.first_name|slice:":1" }}{{ application.candidate.last_name|slice:":1" }}
+          </div>
+          <div>
+            <a href="{% url 'hrms:candidate_detail' application.candidate.pk %}" class="fw-bold d-block text-decoration-none" style="color:#1e1b4b;">
+              {{ application.candidate }}
+            </a>
+            <div class="text-muted" style="font-size:.76rem;">{{ application.candidate.email }}</div>
+          </div>
+        </div>
+        <div class="row g-1" style="font-size:.8rem;">
+          {% if application.candidate.phone %}
+          <div class="col-12"><i class="bi bi-telephone me-1 text-muted"></i>{{ application.candidate.phone }}</div>
+          {% endif %}
+          {% if application.candidate.city or application.candidate.state %}
+          <div class="col-12"><i class="bi bi-geo-alt me-1 text-muted"></i>{{ application.candidate.city }}{% if application.candidate.city and application.candidate.state %}, {% endif %}{{ application.candidate.state }}</div>
+          {% endif %}
+          {% if application.candidate.current_company %}
+          <div class="col-12"><i class="bi bi-building me-1 text-muted"></i>{{ application.candidate.current_company }}</div>
+          {% endif %}
+          {% if application.candidate.experience_years %}
+          <div class="col-12"><i class="bi bi-clock-history me-1 text-muted"></i>{{ application.candidate.experience_years }} yrs experience</div>
+          {% endif %}
+          {% if application.notice_period %}
+          <div class="col-12"><i class="bi bi-hourglass-split me-1 text-muted"></i>{{ application.notice_period }} days notice</div>
+          {% endif %}
+          {% if application.current_ctc %}
+          <div class="col-12"><i class="bi bi-currency-rupee me-1 text-muted"></i>Current: ₹{{ application.current_ctc }}</div>
+          {% endif %}
+          {% if application.expected_ctc %}
+          <div class="col-12"><i class="bi bi-currency-rupee me-1 text-success"></i>Expected: ₹{{ application.expected_ctc }}</div>
+          {% endif %}
+          {% if application.source %}
+          <div class="col-12 mt-1"><span class="small" style="background:#f1f5f9; color:#475569; border-radius:6px; padding:.15rem .5rem;">{{ application.get_source_display }}</span></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Job card -->
+    <div class="panel">
+      <div class="panel-header">Job Posting</div>
+      <div class="panel-body" style="font-size:.82rem;">
+        <div class="fw-bold mb-1">{{ application.job_posting.title }}</div>
+        {% if application.job_posting.department %}<div class="text-muted"><i class="bi bi-building me-1"></i>{{ application.job_posting.department }}</div>{% endif %}
+        <div class="text-muted"><i class="bi bi-briefcase me-1"></i>{{ application.job_posting.get_job_type_display }}</div>
+        {% if application.job_posting.location %}<div class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ application.job_posting.location }}</div>{% endif %}
+        <div class="mt-3 d-flex flex-column gap-2">
+          <a href="{% url 'hrms:job_kanban' application.job_posting.pk %}?application={{ application.pk }}" class="btn btn-sm w-100" style="background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; border-radius:8px; font-size:.79rem;">
+            <i class="bi bi-kanban me-1"></i>View Candidate Stage on Kanban
+          </a>
+          <a href="{% url 'hrms:job_kanban' application.job_posting.pk %}" class="btn btn-sm w-100 btn-light text-secondary" style="border:1px solid #e2e8f0; border-radius:8px; font-size:.75rem;">
+            <i class="bi bi-people me-1"></i>Job Pipeline (All Candidates)
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inline Resume Viewer -->
+    {% if application.candidate.resume %}
+    <div class="panel">
+      <div class="panel-header">
+        Résumé
+        <a href="{{ application.candidate.resume.url }}" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:.72rem; padding:.2rem .55rem; border-radius:7px;">
+          <i class="bi bi-box-arrow-up-right"></i>
+        </a>
+      </div>
+      <div class="panel-body p-2">
+        <iframe src="{{ application.candidate.resume.url }}" class="resume-frame"></iframe>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- CENTRE: Interviews + Scorecard Feedback + Notes -->
+  <div class="detail-centre d-flex flex-column gap-3">
+
+    <!-- Interviews + Feedback -->
+    <div class="panel">
+      <div class="panel-header">
+        Interviews & Scorecards
+        {% if application.status not in 'hired,rejected' %}
+        <a href="{% url 'hrms:interview_add' application.pk %}" class="btn btn-sm" style="background:#8b5cf6; color:#fff; border-radius:7px; font-size:.76rem; padding:.2rem .65rem;">
+          <i class="bi bi-plus-lg me-1"></i>Schedule
+        </a>
+        {% endif %}
+      </div>
+      <div class="table-responsive">
+        <table class="table iv-table mb-0">
+          <thead><tr><th>Round</th><th>Date</th><th>Panel</th><th>Mode</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for iv in interviews %}
+            <tr>
+              <td class="fw-semibold">{{ iv.interview_round|default:"Round" }}</td>
+              <td>{{ iv.scheduled_on|date:"d M Y, H:i" }}</td>
+              <td>
+                {% for member in iv.interviewer.all %}
+                <span class="badge text-bg-light border" style="font-size:.7rem;">{{ member.first_name }}</span>
+                {% empty %}—{% endfor %}
+              </td>
+              <td><span class="iv-mode-chip iv-mode-{{ iv.mode }}">{{ iv.get_mode_display }}</span></td>
+              <td><span class="iv-status-chip iv-{{ iv.status }}">{{ iv.get_status_display }}</span></td>
+              <td><a href="{% url 'hrms:interview_edit' iv.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:.73rem; padding:.2rem .55rem;">Edit</a></td>
+            </tr>
+            <!-- Scorecard row if filled -->
+            {% if iv.scorecard %}
+            <tr>
+              <td colspan="6" class="py-1 px-3" style="background:#f8fafc;">
+                <small class="text-muted fw-semibold">Scorecard: </small>
+                {% for k,v in iv.scorecard.items %}
+                <span class="badge text-bg-light border me-1" style="font-size:.7rem;">{{ k }}: {{ v }}</span>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endif %}
+            <!-- Individual feedbacks -->
+            {% for fb in iv.individual_feedbacks.all %}
+            <tr>
+              <td colspan="6" style="background:#fafafa; padding:.5rem 1rem;">
+                <div class="feedback-card">
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <span class="fw-semibold" style="font-size:.79rem;">{{ fb.interviewer }}</span>
+                    <span class="fb-rec-badge fb-rec-{{ fb.recommendation }}">{{ fb.get_recommendation_display }}</span>
+                  </div>
+                  {% if fb.scorecard_filled %}
+                  <div class="d-flex flex-wrap gap-1 mb-1">
+                    {% for k,v in fb.scorecard_filled.items %}
+                    <span class="criteria-score">{{ k }}: {{ v }}</span>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                  {% if fb.feedback_text %}
+                  <div class="text-muted" style="font-size:.77rem; font-style:italic;">"{{ fb.feedback_text }}"</div>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">No interviews scheduled yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Notes thread -->
+    <div class="panel">
+      <div class="panel-header">Internal Notes</div>
+      <div class="panel-body">
+        <div class="d-flex flex-column gap-2 mb-3" id="notesThread">
+          {% for note in notes %}
+          <div class="note-item {% if note.is_private %}private{% endif %}">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="note-author">{{ note.author.get_full_name|default:note.author.username }}</span>
+              <span class="note-time">{{ note.created_at|date:"d M, H:i" }} {% if note.is_private %}<i class="bi bi-eye-slash text-muted" title="Private"></i>{% endif %}</span>
+            </div>
+            <div class="note-text">{{ note.message }}</div>
+          </div>
+          {% empty %}
+          <p class="text-muted text-center py-2 mb-0" id="emptyNotes" style="font-size:.83rem;">No notes yet. Add one below.</p>
+          {% endfor %}
+        </div>
+
+        <form class="note-form"
+              hx-post="{% url 'hrms:application_note_add' application.pk %}"
+              hx-target="#notesThread"
+              hx-swap="beforeend"
+              hx-on::after-request="this.reset(); document.getElementById('emptyNotes')?.remove();">
+          {% csrf_token %}
+          <textarea name="message" rows="2" class="form-control mb-2" placeholder="Write a note…" required></textarea>
+          <div class="d-flex gap-2 align-items-center">
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" name="is_private" value="true" id="notePrivate">
+              <label class="form-check-label small" for="notePrivate">Private (HR only)</label>
+            </div>
+            <button type="submit" class="btn btn-sm ms-auto" style="background:#6366f1; color:#fff; border-radius:8px; font-size:.8rem; padding:.3rem .8rem;">
+              <i class="bi bi-send me-1"></i>Post Note
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Offer + Audit trail -->
+  <div class="detail-right d-flex flex-column gap-3">
+
+    <!-- Offer letter -->
+    <div class="panel">
+      <div class="panel-header">Offer Letter</div>
+      <div class="panel-body">
+        {% if offer %}
+        <div class="offer-card {{ offer.status }} p-3 rounded-3">
+          <div class="fw-bold mb-2" style="font-size:.9rem;">{{ offer.get_status_display }}</div>
+          <div style="font-size:.8rem;" class="d-flex flex-column gap-1">
+            <div><strong>CTC:</strong> ₹{{ offer.ctc_offered }}</div>
+            <div><strong>Offer Date:</strong> {{ offer.offer_date }}</div>
+            {% if offer.joining_date %}<div><strong>Joining:</strong> {{ offer.joining_date }}</div>{% endif %}
+            {% if offer.expiry_date %}<div class="text-danger"><strong>Expires:</strong> {{ offer.expiry_date }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="d-flex flex-column gap-2 mt-3">
+          {% if offer.status == 'draft' %}
+          <form method="post" action="{% url 'hrms:offer_action' offer.pk 'send' %}">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary w-100" style="border-radius:8px;"><i class="bi bi-send me-1"></i>Mark Sent</button>
+          </form>
+          {% endif %}
+          {% if offer.status in 'draft,sent' %}
+          <form method="post" action="{% url 'hrms:offer_action' offer.pk 'accept' %}">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-success w-100" style="border-radius:8px;"><i class="bi bi-check2 me-1"></i>Accept</button>
+          </form>
+          <form method="post" action="{% url 'hrms:offer_action' offer.pk 'decline' %}">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-danger w-100" style="border-radius:8px;"><i class="bi bi-x-lg me-1"></i>Decline</button>
+          </form>
+          {% endif %}
+          {% if offer.status == 'accepted' %}
+          <a href="{% url 'hrms:offer_convert' offer.pk %}" class="btn btn-sm w-100" style="background:linear-gradient(135deg,#059669,#10b981); color:#fff; border-radius:8px;">
+            <i class="bi bi-person-check me-1"></i>Convert to Employee
+          </a>
+          {% endif %}
+        </div>
+        {% elif application.status in 'shortlisted,interviewing' %}
+        <p class="text-muted mb-2" style="font-size:.82rem;">No offer letter yet.</p>
+        <a href="{% url 'hrms:offer_create' application.pk %}" class="btn btn-sm w-100" style="background:#8b5cf6; color:#fff; border-radius:8px; font-size:.8rem;">
+          <i class="bi bi-envelope-paper me-1"></i>Create Offer Letter
+        </a>
+        {% else %}
+        <p class="text-muted mb-0" style="font-size:.82rem;">No offer letter.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Audit trail -->
+    <div class="panel">
+      <div class="panel-header">Audit Trail</div>
+      <div class="panel-body" style="max-height:320px; overflow-y:auto;">
+        {% for log in audit_logs %}
+        <div class="audit-item">
+          <div class="audit-action">{{ log.action }}</div>
+          <div class="audit-meta">{{ log.created_at|date:"d M Y, H:i" }} · {{ log.performed_by|default:"system" }}</div>
+          {% if log.note %}<div class="text-muted fst-italic" style="font-size:.74rem;">"{{ log.note }}"</div>{% endif %}
+        </div>
+        {% empty %}
+        <p class="text-muted mb-0" style="font-size:.82rem;">No actions logged yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
+<script>
+// Quick email modal templates
+(function () {
+  var templates = {
+    interview: {
+      subject: 'Interview Scheduled — {{ application.job_posting.title }}',
+      body: 'Dear {{ application.candidate.first_name }},\n\nWe are pleased to invite you for an interview for the {{ application.job_posting.title }} position.\n\nWe will share the schedule details shortly. Please let us know your availability.\n\nBest regards,\nHR Team'
+    },
+    assignment: {
+      subject: 'Take-Home Assignment — {{ application.job_posting.title }}',
+      body: 'Dear {{ application.candidate.first_name }},\n\nThank you for your interest in the {{ application.job_posting.title }} role. As part of our process, we would like you to complete the enclosed assignment.\n\nPlease submit your response within 3 days.\n\nBest regards,\nHR Team'
+    },
+    rejection: {
+      subject: 'Application Update — {{ application.job_posting.title }}',
+      body: 'Dear {{ application.candidate.first_name }},\n\nThank you for taking the time to interview with us for the {{ application.job_posting.title }} position.\n\nAfter careful consideration, we have decided to move forward with other candidates. We appreciate your interest and wish you the best in your search.\n\nBest regards,\nHR Team'
+    },
+    offer: {
+      subject: 'Offer Letter — {{ application.job_posting.title }} at {{ application.job_posting.company }}',
+      body: 'Dear {{ application.candidate.first_name }},\n\nCongratulations! We are delighted to extend an offer for the {{ application.job_posting.title }} position at {{ application.job_posting.company }}.\n\nPlease find the formal offer letter attached. We look forward to having you on our team.\n\nBest regards,\nHR Team'
+    }
+  };
+
+  document.getElementById('emailTemplateSelect').addEventListener('change', function () {
+    var t = templates[this.value];
+    if (t) {
+      document.getElementById('emailSubject').value = t.subject;
+      document.getElementById('emailTemplateBody').value = t.body;
+    }
+  });
+
+  // Auto-fill on modal open
+  document.getElementById('emailModal').addEventListener('show.bs.modal', function () {
+    var sel = document.getElementById('emailTemplateSelect');
+    var t = templates[sel.value];
+    if (t) {
+      document.getElementById('emailSubject').value = t.subject;
+      document.getElementById('emailTemplateBody').value = t.body;
+    }
+  });
+
+  window.sendQuickEmail = function () {
+    var csrf = document.querySelector('meta[name="csrf-token"]').content;
+    var to = document.getElementById('emailTo').value;
+    var subject = document.getElementById('emailSubject').value;
+    var body = document.getElementById('emailTemplateBody').value;
+    var status = document.getElementById('emailSendStatus');
+
+    if (!subject || !body) { status.innerHTML = '<div class="alert alert-warning py-2 mb-0">Please fill in subject and body.</div>'; return; }
+
+    fetch('/hrms/api/applications/{{ application.pk }}/send-email/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ to: to, subject: subject, body: body })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.ok) {
+        status.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle me-1"></i>Email sent successfully!</div>';
+        setTimeout(function () {
+          bootstrap.Modal.getInstance(document.getElementById('emailModal')).hide();
+          status.innerHTML = '';
+        }, 1800);
+      } else {
+        status.innerHTML = '<div class="alert alert-danger py-2 mb-0">' + (data.error || 'Failed to send.') + '</div>';
+      }
+    })
+    .catch(function () {
+      status.innerHTML = '<div class="alert alert-danger py-2 mb-0">Network error.</div>';
+    });
+  };
+})();
+</script>
+{% endblock %}

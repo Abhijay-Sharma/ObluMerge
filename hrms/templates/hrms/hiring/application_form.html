@@ -1,0 +1,390 @@
+{% extends "hrms/base.html" %}
+{% block title %}{% if object %}Edit Application{% else %}New Job Application{% endif %} — Hiring{% endblock %}
+{% block page_title %}{% if object %}Edit{% else %}Create{% endif %} Application{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-hero-bar {
+    background: linear-gradient(135deg, #3b0764 0%, #6b21a8 50%, #7c3aed 100%);
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: 0 10px 25px -5px rgba(107, 33, 168, 0.25);
+  }
+  .form-hero-bar .title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .form-hero-bar .icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: #fff;
+  }
+  .form-hero-bar h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .form-hero-bar .sub {
+    font-size: 0.82rem;
+    color: #e9d5ff;
+    margin-top: 0.2rem;
+  }
+  .btn-back-soft {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 10px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+  }
+  .btn-back-soft:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    transform: translateX(-2px);
+  }
+
+  .hiring-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.2s ease;
+  }
+  .hiring-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+  }
+  .hiring-card-header {
+    background: #fbfbfe;
+    border-bottom: 1px solid #f1f3f8;
+    padding: 1rem 1.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #1f2937;
+  }
+  .hiring-card-header i {
+    color: #7c3aed;
+    font-size: 1.1rem;
+  }
+  .hiring-card-body {
+    padding: 1.4rem 1.5rem;
+  }
+
+  .field-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .field-label {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .field-label .req {
+    color: #ef4444;
+    font-weight: 700;
+  }
+  .hiring-card input[type="text"],
+  .hiring-card input[type="number"],
+  .hiring-card select,
+  .hiring-card textarea {
+    display: block;
+    width: 100%;
+    padding: 0.62rem 0.85rem;
+    font-size: 0.88rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #1f2937;
+    background-color: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  }
+  .hiring-card input:focus,
+  .hiring-card select:focus,
+  .hiring-card textarea:focus {
+    background-color: #ffffff;
+    border-color: #7c3aed;
+    outline: 0;
+    box-shadow: 0 0 0 3.5px rgba(124, 58, 237, 0.14);
+  }
+  .field-help {
+    font-size: 0.76rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+  .field-error {
+    font-size: 0.78rem;
+    color: #dc2626;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .form-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.85rem;
+    padding-top: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .btn-submit-gradient {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 11px;
+    padding: 0.65rem 1.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(109, 40, 217, 0.3);
+    transition: all 0.2s ease;
+  }
+  .btn-submit-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(109, 40, 217, 0.45);
+    color: #ffffff;
+  }
+  .btn-cancel-soft {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    border-radius: 11px;
+    padding: 0.65rem 1.35rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+  }
+  .btn-cancel-soft:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0" style="max-width: 960px;">
+
+  <!-- Hero Header -->
+  <div class="form-hero-bar">
+    <div class="title-group">
+      <div class="icon-box">
+        <i class="bi bi-file-earmark-person-fill"></i>
+      </div>
+      <div>
+        <h2>{% if object %}Edit Application Details{% else %}New Candidate Application{% endif %}</h2>
+        <div class="sub">Map candidate to active job opening, assign pipeline stage, and record CTC terms</div>
+      </div>
+    </div>
+    <a href="{% url 'hrms:application_list' %}" class="btn-back-soft">
+      <i class="bi bi-arrow-left"></i> Applications List
+    </a>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger rounded-4 shadow-sm border-0 mb-4 d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-octagon-fill fs-5 text-danger"></i>
+    <div>{{ form.non_field_errors|join:", " }}</div>
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <!-- Card 1: Role & Candidate Mapping -->
+    <div class="hiring-card">
+      <div class="hiring-card-header">
+        <i class="bi bi-bullseye"></i>
+        <span>Target Job & Candidate Mapping</span>
+      </div>
+      <div class="hiring-card-body">
+        <div class="row g-3">
+          {% if form.candidate %}
+          <div class="col-md-6 field-wrapper">
+            <label class="field-label" for="{{ form.candidate.id_for_label }}">
+              <i class="bi bi-person text-muted"></i> Candidate{% if form.candidate.field.required %}<span class="req">*</span>{% endif %}
+            </label>
+            {{ form.candidate }}
+            {% if form.candidate.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.candidate.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+
+          {% if form.job_posting %}
+          <div class="col-md-6 field-wrapper">
+            <label class="field-label" for="{{ form.job_posting.id_for_label }}">
+              <i class="bi bi-briefcase text-muted"></i> Job Posting{% if form.job_posting.field.required %}<span class="req">*</span>{% endif %}
+            </label>
+            {{ form.job_posting }}
+            {% if form.job_posting.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.job_posting.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+
+          {% if form.current_stage %}
+          <div class="col-md-6 field-wrapper">
+            <label class="field-label" for="{{ form.current_stage.id_for_label }}">
+              <i class="bi bi-kanban text-muted"></i> Pipeline Stage
+            </label>
+            {{ form.current_stage }}
+            <div class="field-help"><i class="bi bi-info-circle me-1"></i>Initial stage in the selected job's recruitment pipeline.</div>
+            {% if form.current_stage.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.current_stage.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+
+          {% if form.status %}
+          <div class="col-md-6 field-wrapper">
+            <label class="field-label" for="{{ form.status.id_for_label }}">
+              <i class="bi bi-flag text-muted"></i> Application Status{% if form.status.field.required %}<span class="req">*</span>{% endif %}
+            </label>
+            {{ form.status }}
+            {% if form.status.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.status.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Compensation & Availability -->
+    <div class="hiring-card">
+      <div class="hiring-card-header">
+        <i class="bi bi-currency-rupee"></i>
+        <span>Compensation & Notice Period</span>
+      </div>
+      <div class="hiring-card-body">
+        <div class="row g-3">
+          {% if form.current_ctc %}
+          <div class="col-md-4 field-wrapper">
+            <label class="field-label" for="{{ form.current_ctc.id_for_label }}">
+              Current CTC (₹ Annual)
+            </label>
+            {{ form.current_ctc }}
+            {% if form.current_ctc.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.current_ctc.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+
+          {% if form.expected_ctc %}
+          <div class="col-md-4 field-wrapper">
+            <label class="field-label" for="{{ form.expected_ctc.id_for_label }}">
+              Expected CTC (₹ Annual)
+            </label>
+            {{ form.expected_ctc }}
+            {% if form.expected_ctc.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.expected_ctc.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+
+          {% if form.notice_period %}
+          <div class="col-md-4 field-wrapper">
+            <label class="field-label" for="{{ form.notice_period.id_for_label }}">
+              Notice Period (Days)
+            </label>
+            {{ form.notice_period }}
+            {% if form.notice_period.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.notice_period.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Source & Notes -->
+    <div class="hiring-card">
+      <div class="hiring-card-header">
+        <i class="bi bi-card-text"></i>
+        <span>Source & Cover Letter</span>
+      </div>
+      <div class="hiring-card-body">
+        <div class="row g-3">
+          {% if form.source %}
+          <div class="col-12 field-wrapper">
+            <label class="field-label" for="{{ form.source.id_for_label }}">
+              Application Source
+            </label>
+            {{ form.source }}
+            <div class="field-help"><i class="bi bi-info-circle me-1"></i>E.g., LinkedIn, Career Portal, Employee Referral, Naukri</div>
+            {% if form.source.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.source.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+
+          {% if form.cover_letter %}
+          <div class="col-12 field-wrapper">
+            <label class="field-label" for="{{ form.cover_letter.id_for_label }}">
+              Cover Letter / Candidate Notes
+            </label>
+            {{ form.cover_letter }}
+            {% if form.cover_letter.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.cover_letter.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Fallback for any other custom fields -->
+    {% for field in form %}
+      {% if field.name not in "candidate,job_posting,current_stage,status,current_ctc,expected_ctc,notice_period,source,cover_letter" %}
+      <div class="hiring-card">
+        <div class="hiring-card-body">
+          <div class="field-wrapper">
+            <label class="field-label" for="{{ field.id_for_label }}">
+              {{ field.label }}{% if field.field.required %}<span class="req">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ field.errors|join:", " }}</div>{% endif %}
+            {% if field.help_text %}<div class="field-help">{{ field.help_text }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Actions -->
+    <div class="form-actions-bar">
+      <a href="{% url 'hrms:application_list' %}" class="btn-cancel-soft">
+        <i class="bi bi-x-circle"></i> Cancel
+      </a>
+      <button type="submit" class="btn-submit-gradient">
+        <i class="bi bi-check-circle-fill"></i> Save Application
+      </button>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

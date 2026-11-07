@@ -1,0 +1,164 @@
+{% extends "hrms/base.html" %}
+{% block title %}Leave Policies{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --accent-indigo: #6366f1;
+        --border-color: #f1f5f9;
+    }
+
+    /* Small Card Adjustments */
+    .policy-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        transition: all 0.2s ease;
+        height: 100%;
+    }
+    .policy-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 20px -5px rgba(0,0,0,0.05);
+        border-color: var(--accent-indigo);
+    }
+
+    /* Smaller Badge Styling */
+    .persona-badge {
+        font-size: 0.6rem;
+        font-weight: 800;
+        padding: 2px 8px;
+        border-radius: 6px;
+        text-transform: uppercase;
+    }
+    .badge-paid { background: #dcfce7; color: #15803d; }
+    .badge-unpaid { background: #fee2e2; color: #b91c1c; }
+    .badge-gender { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+    /* Rules - Tighter spacing */
+    .rule-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 2px;
+    }
+    .rule-item i { width: 14px; font-size: 0.8rem; }
+
+    .leave-code-pills {
+        font-family: 'Monaco', monospace;
+        background: #f8fafc;
+        color: #6366f1;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        border: 1px solid #eef2ff;
+    }
+
+    /* Compact Buttons */
+    .btn-xs {
+        padding: 2px 8px;
+        font-size: 0.7rem;
+        border-radius: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- 1. HEADER & FILTER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold text-dark mb-0">Leave Policies</h4>
+            <p class="text-muted small mb-0">Manage entitlements by Business Unit.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <form method="get">
+                <select name="company" class="form-select form-select-sm rounded-pill" style="min-width: 180px;" onchange="this.form.submit()">
+                    <option value="">All Companies</option>
+                    {% for comp in companies %}
+                    <option value="{{ comp.id }}" {% if selected_company == comp.id|stringformat:"s" %}selected{% endif %}>{{ comp.name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <a href="{% url 'hrms:leavetype_add' %}" class="btn btn-primary btn-sm rounded-pill px-3">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- 2. COMPACT GRID -->
+    <div class="row g-3">
+        {% for lt in leave_types %}
+        <!-- Grid: 6 cards on huge screens, 4 on laptop, 3 on tablet -->
+        <div class="col-xxl-2 col-xl-3 col-lg-4 col-md-6">
+            <div class="card policy-card shadow-sm">
+                <div class="card-body p-3">
+
+                    <!-- Top Row -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="leave-code-pills">{{ lt.code }}</span>
+                        {% if lt.is_paid %}
+                        <span class="persona-badge badge-paid">Paid</span>
+                        {% else %}
+                        <span class="persona-badge badge-unpaid">LWP</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Title -->
+                    <h6 class="fw-bold text-dark mb-0 text-truncate" title="{{ lt.name }}">{{ lt.name }}</h6>
+                    <div class="mb-3 text-truncate">
+                        <small class="text-muted" style="font-size: 0.65rem;">
+                            <i class="bi bi-building me-1"></i>{{ lt.company.name|truncatechars:15 }}
+                        </small>
+                    </div>
+
+                    <!-- Quota Box - Compact -->
+                    <div class="bg-light rounded-3 p-2 mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="h5 fw-bold mb-0 text-primary">{{ lt.days_per_year|floatformat:1 }}</div>
+                            <small class="text-muted fw-bold" style="font-size: 0.6rem;">Days / Yr</small>
+                        </div>
+                        <span class="persona-badge badge-gender">
+                            {{ lt.get_applicable_gender_display }}
+                        </span>
+                    </div>
+
+                    <!-- Rule Checklist - Small -->
+                    <div class="mb-3">
+                        <div class="rule-item {% if lt.requires_approval %}text-dark{% endif %}">
+                            <i class="bi {% if lt.requires_approval %}bi-check-circle-fill text-success{% else %}bi-dash-circle text-muted{% endif %}"></i>
+                            Approval Req.
+                        </div>
+                        <div class="rule-item {% if lt.requires_document %}text-dark{% endif %}">
+                            <i class="bi {% if lt.requires_document %}bi-file-earmark-medical text-warning{% else %}bi-dash-circle text-muted{% endif %}"></i>
+                            Cert. Required
+                        </div>
+                        <div class="rule-item {% if lt.is_carry_forward %}text-dark{% endif %}">
+                            <i class="bi {% if lt.is_carry_forward %}bi-arrow-repeat text-info{% else %}bi-dash-circle text-muted{% endif %}"></i>
+                            Carry Forward
+                        </div>
+                    </div>
+
+                    <!-- Actions Row -->
+                    <div class="d-flex gap-2 pt-2 border-top">
+                        <a href="{% url 'hrms:leavetype_edit' lt.pk %}" class="btn btn-outline-secondary btn-xs flex-grow-1">
+                            Edit
+                        </a>
+                        <a href="{% url 'hrms:leavetype_delete' lt.pk %}" class="btn btn-outline-danger btn-xs px-2">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <p class="text-muted">No policies found for this selection.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

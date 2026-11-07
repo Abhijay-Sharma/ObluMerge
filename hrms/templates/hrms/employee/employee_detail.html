@@ -1,0 +1,687 @@
+{% extends "hrms/base.html" %}
+{% block title %}{{ employee.full_name }} | Advanced Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-dark: #0f172a;
+        --accent-blue: #38bdf8;
+        --glass-bg: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Hero Section */
+    .profile-hero {
+        background: linear-gradient(135deg, var(--primary-dark) 0%, #1e293b 100%);
+        border-radius: 24px;
+        padding: 2.5rem;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .avatar-ui {
+        width: 110px; height: 110px;
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(12px);
+        border: 3px solid rgba(255,255,255,0.2);
+        border-radius: 28px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.5rem; font-weight: 800; color: var(--accent-blue);
+    }
+
+    /* Tab Styling */
+    .nav-enterprise {
+        background: #f1f5f9;
+        padding: 6px;
+        border-radius: 16px;
+        display: inline-flex;
+        margin-bottom: 2rem;
+    }
+    .nav-enterprise .nav-link {
+        border: none;
+        border-radius: 12px;
+        color: #64748b;
+        font-weight: 600;
+        padding: 10px 24px;
+        transition: 0.2s;
+    }
+    .nav-enterprise .nav-link.active {
+        background: white;
+        color: var(--primary-dark);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+
+    /* Cards */
+    .card-advanced {
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        background: white;
+        transition: 0.3s;
+    }
+    .card-advanced:hover { transform: translateY(-2px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.05); }
+
+    .info-label {
+        font-size: 0.7rem; font-weight: 700; color: #94a3b8;
+        text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;
+    }
+    .info-value { font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 1rem; }
+
+    /* Leave Grid */
+    .leave-box {
+        background: #f8fafc;
+        border-radius: 15px;
+        padding: 1.2rem;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+    }
+    .leave-val { font-size: 1.4rem; font-weight: 800; color: #0f172a; display: block; }
+    .leave-lbl { font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+
+    /* Action Buttons */
+    .btn-edit-action {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: white;
+        border-radius: 10px;
+        padding: 8px 16px;
+    }
+    .btn-edit-action:hover { background: white; color: var(--primary-dark); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- 1. HERO HEADER -->
+    <div class="profile-hero">
+        <div class="row align-items-center">
+            <div class="col-md-auto text-center mb-3 mb-md-0">
+                <div class="avatar-ui mx-auto">{{ employee.first_name|first }}{{ employee.last_name|first }}</div>
+            </div>
+            <div class="col-md">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <span class="badge bg-primary text-uppercase">{{ employee.employee_code }}</span>
+                    <span class="badge {% if employee.status == 'active' %}bg-success{% else %}bg-danger{% endif %}">{{ employee.get_status_display }}</span>
+                </div>
+                <h1 class="fw-bold mb-1">{{ employee.full_name }}</h1>
+                <p class="mb-0 opacity-75">
+                    <i class="bi bi-briefcase me-2"></i>{{ employee.designation|default:"Staff" }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-building me-2"></i>{{ employee.company.name }}
+                </p>
+            </div>
+            <div class="col-md-auto text-md-end mt-4 mt-md-0">
+                <a href="{% url 'hrms:employee_edit' employee.pk %}" class="btn btn-edit-action me-2">
+                    <i class="bi bi-pencil-square me-1"></i> Edit Profile
+                </a>
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-edit-action" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                        <li><a class="dropdown-item" href="{% url 'hrms:employee_notice_add' employee.pk %}"><i class="bi bi-megaphone me-2"></i> Issue Notice</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'hrms:employee_delete' employee.pk %}"><i class="bi bi-trash me-2"></i> Terminate</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. NAVIGATION -->
+    <ul class="nav nav-enterprise shadow-sm flex-wrap" id="pills-tab" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#overview">General Info</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#salary-finance">Finance &amp; Bank</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#leave-records">Leave Bank</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#assets-tab">Assets ({{ assigned_assets|length }})</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#attendance-summary">Attendance &amp; Penalties</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#performance-tab">Performance</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#document-vault">Documents</button></li>
+    </ul>
+
+    <!-- 3. TAB CONTENT -->
+    <div class="tab-content">
+
+        <!-- OVERVIEW TAB -->
+        <div class="tab-pane fade show active" id="overview">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card card-advanced p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="fw-bold mb-0">Personal & Family Details</h5>
+                            <a href="{% url 'hrms:employee_edit' employee.pk %}" class="text-primary text-decoration-none small fw-bold">Edit Info</a>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-label">Full Name</div>
+                                <div class="info-value">{{ employee.full_name }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Father's Name</div>
+                                <div class="info-value">{{ employee.father_name|default:"N/A" }}</div> <!-- Linked to model later -->
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Email ID</div>
+                                <div class="info-value">{{ employee.email }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Contact Number</div>
+                                <div class="info-value">{{ employee.phone|default:"N/A" }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Emergency Contact</div>
+                                <div class="info-value text-danger fw-bold">{{ employee.emergency_contact|linebreaksbr|default:"N/A" }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Gender / DOB</div>
+                                <div class="info-value">{{ employee.get_gender_display }} / {{ employee.date_of_birth|date:"d M Y"|default:"N/A" }}</div>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div class="info-label">Permanent Address</div>
+
+                                <div class="info-value">{{ employee.address|linebreaksbr|default:"N/A" }}</div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card card-advanced p-4 h-100 bg-light border-0">
+                        <h5 class="fw-bold mb-4">Company Status</h5>
+                        <div class="mb-4">
+                            <div class="info-label">Department</div>
+                            <div class="fw-bold text-dark">{{ employee.department.name|default:"Unassigned" }}</div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="info-label">Joining Date</div>
+                            <div class="fw-bold text-dark">{{ employee.date_of_joining|date:"d M, Y" }}</div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="info-label">Confirmation Date</div>
+                            <div class="fw-bold text-primary">{{ employee.date_of_confirmation|date:"d M, Y"|default:"Under Probation" }}</div>
+                        </div>
+                        <div class="mb-0">
+                            <div class="info-label">Managed By</div>
+                            <div class="d-flex align-items-center mt-2">
+                                <div class="bg-dark text-white rounded-circle p-2 me-2 small">HR</div>
+                                <div class="fw-bold small">HR Department</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FINANCE TAB -->
+        <div class="tab-pane fade" id="salary-finance">
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="card card-advanced p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="fw-bold mb-0">Salary Structure</h5>
+                            {% if current_salary %}
+                            <a href="{% url 'hrms:employee_salary_edit' current_salary.pk %}" class="btn btn-sm btn-outline-primary rounded-pill">Update Salary</a>
+                            {% else %}
+                            <a href="{% url 'hrms:employee_salary_add' %}" class="btn btn-sm btn-primary rounded-pill">Define Salary</a>
+                            {% endif %}
+                        </div>
+                        {% if current_salary %}
+                        <div class="bg-light p-3 rounded-4 mb-4 text-center">
+                            <div class="info-label">Annual CTC</div>
+                            <h2 class="fw-800 text-dark">₹{{ current_salary.ctc_annual }}</h2>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-6"><div class="p-3 border rounded-3"><div class="info-label">Basic</div><div class="fw-bold">₹{{ current_salary.basic }}</div></div></div>
+                            <div class="col-6"><div class="p-3 border rounded-3"><div class="info-label">HRA</div><div class="fw-bold">₹{{ current_salary.hra }}</div></div></div>
+                            <div class="col-6"><div class="p-3 border rounded-3"><div class="info-label">Deductions (PF)</div><div class="fw-bold text-danger">₹{{ current_salary.pf_employee }}</div></div></div>
+                            <div class="col-6"><div class="p-3 border rounded-3"><div class="info-label">Net Monthly (Approx)</div><div class="fw-bold text-success">₹{{ current_salary.basic|add:current_salary.hra }}</div></div></div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-cash-stack display-4 text-muted"></i>
+                            <p class="mt-2 text-muted">No salary breakdown found for this employee.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card card-advanced p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="fw-bold mb-0">Bank Account</h5>
+                            <a href="{% url 'hrms:employee_bankdetail' employee.pk %}" class="btn btn-sm btn-light border rounded-pill">Edit Bank</a>
+                        </div>
+                        {% with bd=employee.bank_detail %}
+                        {% if bd %}
+                        <div class="mb-3 p-3 bg-light rounded-4">
+                            <div class="info-label">Account Number</div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 font-monospace" id="acc-no" data-full="{{ bd.account_number }}">•••• •••• {{ bd.account_number|slice:"-4:" }}</h5>
+                                <button class="btn btn-sm" onclick="toggleAcc()"><i class="bi bi-eye" id="eye-icon"></i></button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3"><div class="info-label">Account Holder</div><div class="fw-bold">{{ bd.account_holder }}</div></div>
+                            <div class="col-6"><div class="info-label">IFSC</div><div class="fw-bold">{{ bd.ifsc_code }}</div></div>
+                            <div class="col-6"><div class="info-label">Bank</div><div class="fw-bold">{{ bd.bank_name }}</div></div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted small">No bank details linked yet.</p>
+                            <a href="{% url 'hrms:employee_bankdetail' employee.pk %}" class="btn btn-sm btn-primary">Add Bank Details</a>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEAVES TAB -->
+<!-- Locate the Leave Quota (Live) section in your template and replace the numbers -->
+
+<div class="tab-pane fade" id="leave-records">
+    <div class="card card-advanced p-4 shadow-sm border-0">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h5 class="fw-bold mb-0">Leave Quota (Live)</h5>
+                <small class="text-muted">Balance for Calendar Year {% now "Y" %}</small>
+            </div>
+            <a href="{% url 'hrms:leave_apply' %}" class="btn btn-dark btn-sm rounded-pill px-4">Apply Leave</a>
+        </div>
+
+        <div class="row g-4">
+            <!-- CASUAL LEAVE (CL) -->
+            <div class="col-md-2 col-6">
+                <div class="leave-box">
+                    <span class="leave-val text-primary">{{ leave_map.CL|default:"0.0" }}</span>
+                    <span class="leave-lbl">Casual (CL)</span>
+                </div>
+            </div>
+
+            <!-- SICK LEAVE (SL) -->
+            <div class="col-md-2 col-6">
+                <div class="leave-box">
+                    <span class="leave-val text-success">{{ leave_map.SL|default:"0.0" }}</span>
+                    <span class="leave-lbl">Sick (SL)</span>
+                </div>
+            </div>
+
+            <!-- EARNED LEAVE (EL) -->
+            <div class="col-md-2 col-6">
+                <div class="leave-box">
+                    <span class="leave-val text-warning">{{ leave_map.EL|default:"0.0" }}</span>
+                    <span class="leave-lbl">Earned (EL)</span>
+                </div>
+            </div>
+
+            <!-- MENSTRUAL LEAVE (ML) -->
+            <div class="col-md-2 col-6">
+                <div class="leave-box">
+                    <span class="leave-val text-danger">{{ leave_map.ML|default:"0.0" }}</span>
+                    <span class="leave-lbl">Menstrual (ML)</span>
+                </div>
+            </div>
+
+            <!-- COMP-OFF -->
+            <div class="col-md-2 col-6">
+                <div class="leave-box">
+                    <span class="leave-val text-info">{{ leave_map.COMP_OFF|default:"0.0" }}</span>
+                    <span class="leave-lbl">Comp-Off</span>
+                </div>
+            </div>
+
+            <!-- BEREAVEMENT / OTHER (BL) -->
+            <div class="col-md-2 col-6">
+                <div class="leave-box">
+                    <span class="leave-val text-secondary">{{ leave_map.BL|default:"0.0" }}</span>
+                    <span class="leave-lbl">Other (BL)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- ASSETS TAB -->
+        <div class="tab-pane fade" id="assets-tab">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card card-advanced p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-laptop me-2 text-primary"></i>Currently Assigned Assets</h5>
+                            <span class="badge bg-primary rounded-pill px-3">{{ assigned_assets|length }} Active</span>
+                        </div>
+                        <div class="d-flex flex-column gap-3">
+                            {% for asset in assigned_assets %}
+                                <div class="p-3 bg-light rounded-4 border d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ asset.name }}</div>
+                                        <div class="small text-muted">
+                                            SN: {{ asset.serial_number|default:"—" }} • {{ asset.category.name|default:"General" }}
+                                        </div>
+                                        <div class="small text-primary">Issued: {{ asset.assigned_on|date:"d M Y"|default:"—" }}</div>
+                                    </div>
+                                    <a href="{% url 'hrms:asset_detail' asset.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                        View Specs
+                                    </a>
+                                </div>
+                            {% empty %}
+                                <div class="text-center py-4 text-muted small">No assets currently assigned.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card card-advanced p-4 h-100">
+                        <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-clock-history me-2 text-muted"></i>Asset Custody History</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0" style="font-size: 0.82rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Issued</th>
+                                        <th>Returned</th>
+                                        <th>Condition</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for hist in asset_history %}
+                                        <tr>
+                                            <td class="fw-semibold">{{ hist.asset.name }}</td>
+                                            <td>{{ hist.assigned_date|date:"d M Y" }}</td>
+                                            <td>{{ hist.returned_date|date:"d M Y"|default:"Active" }}</td>
+                                            <td>
+                                                {% if hist.is_still_using %}
+                                                    <span class="badge bg-primary">In Use</span>
+                                                {% elif hist.returned_in_good_condition == True %}
+                                                    <span class="badge bg-success">Good</span>
+                                                {% elif hist.returned_in_good_condition == False %}
+                                                    <span class="badge bg-danger" data-bs-toggle="tooltip" title="{{ hist.return_remarks }}">Damaged</span>
+                                                {% else %}
+                                                    —
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="text-center py-3 text-muted">No past custody records.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ATTENDANCE & PENALTIES SUMMARY TAB -->
+        <div class="tab-pane fade" id="attendance-summary">
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="card card-advanced p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clock me-2 text-primary"></i>Recent Attendance Punches</h5>
+                            <a href="{% url 'hrms:attendance_matrix' %}?employee={{ employee.id }}" class="text-primary small fw-bold text-decoration-none">
+                                View Matrix <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.82rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Check-In</th>
+                                        <th>Check-Out</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for att in recent_attendance %}
+                                        <tr>
+                                            <td class="fw-semibold">{{ att.attendance_date|date:"d M Y (D)" }}</td>
+                                            <td>{{ att.check_in|date:"H:i"|default:"—" }}</td>
+                                            <td>{{ att.check_out|date:"H:i"|default:"—" }}</td>
+                                            <td>
+                                                <span class="badge {% if att.status == 'present' %}bg-success-subtle text-success border border-success-subtle{% elif att.status == 'half_day' %}bg-warning-subtle text-warning border border-warning-subtle{% else %}bg-danger-subtle text-danger border border-danger-subtle{% endif %}">
+                                                    {{ att.get_status_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="text-center py-3 text-muted">No attendance logs available.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <!-- Grace & Penalty Tracker Card -->
+                    <div class="card card-advanced p-4 mb-4">
+                        <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-speedometer2 text-warning me-2"></i>Grace &amp; Penalty Tracker</h6>
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small text-muted">Grace Used This Month:</span>
+                                <span class="fw-bold text-dark fs-6">{{ grace_usage.usage_count|default:"0" }} / 3 Allowed</span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-muted">Total Active Penalties:</span>
+                            <span class="badge bg-danger rounded-pill px-3">{{ recent_penalties|length }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Recent Penalties -->
+                    <div class="card card-advanced p-4">
+                        <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Penalty History</h6>
+                        <div class="d-flex flex-column gap-2">
+                            {% for pen in recent_penalties %}
+                                <div class="p-2 rounded-3 bg-light border small">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-bold text-danger">{{ pen.deduction_days }} Day Deduction</span>
+                                        <span class="text-muted">{{ pen.penalty_date|date:"d M Y" }}</span>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">{{ pen.reason }}</div>
+                                </div>
+                            {% empty %}
+                                <div class="text-center py-3 text-muted small">No penalties recorded.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERFORMANCE REVIEWS TAB -->
+        <div class="tab-pane fade" id="performance-tab">
+            <div class="card card-advanced p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Performance Evaluations</h5>
+                    {% if is_hr %}
+                        <a href="{% url 'hrms:performance_add' %}" class="btn btn-primary btn-sm rounded-pill px-3">
+                            <i class="bi bi-plus-circle me-1"></i>New Review
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="d-flex flex-column gap-3">
+                    {% for rev in performance_reviews %}
+                        <div class="p-3 bg-light rounded-4 border">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold">
+                                        Period: {{ rev.review_period_from|date:"M Y" }} - {{ rev.review_period_to|date:"M Y" }}
+                                    </span>
+                                    <span class="badge bg-light text-dark border ms-2">Rating: {{ rev.rating }}/5</span>
+                                </div>
+                                <span class="badge {% if rev.status == 'acknowledged' %}bg-success{% else %}bg-warning text-dark{% endif %} rounded-pill px-3">
+                                    {{ rev.get_status_display }}
+                                </span>
+                            </div>
+                            <p class="text-muted small mb-2">{{ rev.comments|truncatewords:30 }}</p>
+                            <a href="{% url 'hrms:performance_detail' rev.id %}" class="small text-primary fw-semibold text-decoration-none">
+                                View Full Review <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4 text-muted small">No performance evaluations found for this employee.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- DOCUMENTS TAB -->
+        <div class="tab-pane fade" id="document-vault">
+            <div class="card card-advanced">
+                <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+                    <div>
+                        <h5 class="fw-bold mb-0">Digital Dossier &amp; KYC Verification</h5>
+                        <p class="text-muted small mb-0">Official identity, educational, and employment credentials</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'hrms:employee_document_bulk_upload' employee.pk %}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+                            <i class="bi bi-file-earmark-arrow-up-fill me-1"></i>Multi-Document Upload
+                        </a>
+                        <a href="{% url 'hrms:employee_document_add' employee.pk %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                            <i class="bi bi-plus-lg me-1"></i>Single Upload
+                        </a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0" style="font-size: 0.88rem;">
+                        <thead class="bg-light">
+                            <tr class="small text-muted">
+                                <th class="ps-4">Document Type</th>
+                                <th>Description / ID</th>
+                                <th>Expiry Date</th>
+                                <th>Verification Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in employee.documents.all %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-file-earmark-check fs-4 text-primary me-3"></i>
+                                        <div>
+                                            <div class="fw-bold">{{ doc.get_document_type_display }}</div>
+                                            <div class="text-muted small" style="font-size: 0.72rem;">Uploaded: {{ doc.created_at|date:"d M Y" }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ doc.description|default:"--" }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ doc.expiry_on|default:"Permanent" }}</span>
+                                </td>
+                                <td>
+                                    {% if doc.verification_status == 'verified' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
+                                            <i class="bi bi-patch-check-fill me-1"></i>Verified
+                                        </span>
+                                        {% if doc.verified_by %}
+                                            <div class="text-muted" style="font-size: 0.7rem;">By {{ doc.verified_by.username }} on {{ doc.verified_on|date:"d M" }}</div>
+                                        {% endif %}
+                                    {% elif doc.verification_status == 'rejected' %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1" data-bs-toggle="tooltip" title="{{ doc.rejection_remarks }}">
+                                            <i class="bi bi-x-circle-fill me-1"></i>Rejected
+                                        </span>
+                                        {% if doc.rejection_remarks %}
+                                            <div class="text-danger small fst-italic mt-1" style="font-size: 0.72rem;">"{{ doc.rejection_remarks|truncatewords:6 }}"</div>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1">
+                                            <i class="bi bi-hourglass-split me-1"></i>Pending Verification
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-light border rounded-circle" title="Download / Preview">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+
+                                        {% if is_hr and doc.verification_status != 'verified' %}
+                                            <form method="post" action="{% url 'hrms:employee_document_verify' doc.pk %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="status" value="verified">
+                                                <button type="submit" class="btn btn-sm btn-outline-success rounded-circle" title="Approve & Verify">
+                                                    <i class="bi bi-check-lg"></i>
+                                                </button>
+                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-circle" onclick="openDocRejectModal('{{ doc.pk }}', '{{ doc.get_document_type_display }}')" title="Reject Document">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        {% endif %}
+
+                                        <a href="{% url 'hrms:employee_document_delete' doc.pk %}" class="btn btn-sm btn-outline-secondary rounded-circle" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center py-5 text-muted">No documents uploaded. Click "Multi-Document Upload" to stage credentials.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Rejection Modal -->
+        <div class="modal fade" id="docRejectModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow">
+                    <form method="post" id="docRejectForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="rejected">
+                        <div class="modal-header border-0 pb-0">
+                            <h5 class="modal-title fw-bold text-danger">
+                                <i class="bi bi-x-circle text-danger me-2"></i>Reject Document
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body py-3">
+                            <p class="text-muted small mb-3">Rejecting <strong id="modalDocName">—</strong>. Please specify the mandatory issue (e.g. illegible scan, expired ID, name mismatch).</p>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-danger">Mandatory Reason for Rejection*</label>
+                                <textarea name="rejection_remarks" class="form-control rounded-3" rows="3" placeholder="Provide clear reason why this document is rejected..." required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger rounded-pill px-4">Confirm Rejection</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function openDocRejectModal(docId, docName) {
+                document.getElementById('docRejectForm').action = `/hrms/employees/documents/${docId}/verify/`;
+                document.getElementById('modalDocName').innerText = docName;
+                new bootstrap.Modal(document.getElementById('docRejectModal')).show();
+            }
+        </script>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleAcc() {
+        const el = document.getElementById('acc-no');
+        const icon = document.getElementById('eye-icon');
+        const full = el.getAttribute('data-full');
+        const masked = "•••• •••• " + full.slice(-4);
+
+        if (el.innerText.includes('•')) {
+            el.innerText = full;
+            icon.classList.replace('bi-eye', 'bi-eye-slash');
+        } else {
+            el.innerText = masked;
+            icon.classList.replace('bi-eye-slash', 'bi-eye');
+        }
+    }
+</script>
+{% endblock %}

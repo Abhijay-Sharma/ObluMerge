@@ -1,0 +1,1085 @@
+{% extends "hrms/base.html" %}
+{% block title %}Applications{% endblock %}
+{% block page_title %}Applications{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* 90% presentation scaling so 100% full screen looks like 90% screen */
+  .applications-page-wrap {
+    zoom: 0.90;
+  }
+  @supports not (zoom: 0.90) {
+    .applications-page-wrap {
+      transform: scale(0.90);
+      transform-origin: top left;
+      width: 111.11%;
+    }
+  }
+
+  .filter-card {
+    background:#f8fafc;
+    border:1.5px solid #e8eaf0;
+    border-radius:12px;
+    padding:0.75rem 1.15rem;
+    margin-bottom: 0.85rem;
+  }
+  .filter-card select, .filter-card input {
+    border-radius:8px;
+    border:1.5px solid #e5e7eb;
+    font-size:.82rem;
+  }
+  .filter-card select:focus, .filter-card input:focus {
+    border-color:#8b5cf6;
+    box-shadow:0 0 0 3px rgba(139,92,246,.13);
+  }
+  .app-table {
+    border-radius:12px;
+    overflow:hidden;
+    border:1.5px solid #e8eaf0;
+  }
+  .app-table th {
+    background:#f8fafc;
+    font-size:.74rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    color:#64748b;
+    border:none;
+    padding: 0.65rem 0.65rem;
+    white-space: nowrap;
+  }
+  .app-table td {
+    vertical-align:middle;
+    border-color:#f1f5f9;
+    font-size:.83rem;
+    padding: 0.55rem 0.65rem;
+  }
+  .app-table tbody tr { transition:background .12s; }
+  .app-table tbody tr:hover { background:#faf5ff; }
+
+  .status-badge { font-size:.72rem; font-weight:700; padding:.22rem .65rem; border-radius:99px; white-space: nowrap; }
+  .sb-applied      { background:#e0f2fe; color:#0369a1; }
+  .sb-shortlisted  { background:#fef9c3; color:#92400e; }
+  .sb-interviewing { background:#ede9fe; color:#5b21b6; }
+  .sb-offered      { background:#d1fae5; color:#065f46; }
+  .sb-hired        { background:#dcfce7; color:#166534; }
+  .sb-rejected     { background:#fee2e2; color:#991b1b; }
+  .candidate-avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.78rem; flex-shrink:0; }
+  .source-chip { font-size:.7rem; background:#f1f5f9; color:#475569; border-radius:6px; padding:.15rem .45rem; white-space: nowrap; }
+  .ats-topbar { background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:12px; padding:1rem 1.25rem; color:#fff; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap; }
+  .btn-export { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:8px; font-size:.8rem; }
+  .btn-export:hover { background:rgba(255,255,255,.22); color:#fff; }
+  .next-iv-badge { font-size:.7rem; background:#ede9fe; color:#5b21b6; border-radius:6px; padding:.1rem .45rem; white-space: nowrap; }
+  .lock-icon { color:#9ca3af; }
+
+  /* Navigation pill buttons (matching Attendance Daily Punch Monitor) */
+  .tab-pills-custom {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 4px !important;
+  }
+  .tab-pills-custom::-webkit-scrollbar {
+    display: none;
+  }
+  .tab-pills-custom .nav-link {
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    border: 1px solid transparent;
+    background: transparent;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    gap: 4px;
+  }
+  .tab-pills-custom .nav-link:hover {
+    color: #1e293b;
+    background: #f1f5f9;
+  }
+  .tab-pills-custom .nav-link.active {
+    background-color: #2563eb;
+    color: #ffffff !important;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.22);
+  }
+  .tab-pills-custom .nav-link.active .badge {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border-color: transparent !important;
+  }
+  .tab-pills-custom .nav-link .badge {
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+  }
+
+  /* Stage / Round Badge */
+  .stage-pill {
+    font-size: .73rem;
+    font-weight: 600;
+    padding: .22rem .55rem;
+    border-radius: 7px;
+    background: #eef2ff;
+    color: #4338ca;
+    border: 1px solid #c7d2fe;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  /* Inline Status Select */
+  .status-select {
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .2rem 1.4rem .2rem .6rem;
+    border-radius: 99px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    width: auto;
+    min-width: 105px;
+    display: inline-block;
+    white-space: nowrap;
+    transition: all .15s ease;
+  }
+  .status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, .25);
+  }
+  .status-select.sb-applied { background-color: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+  .status-select.sb-shortlisted { background-color: #fef9c3; color: #92400e; border-color: #fef08a; }
+  .status-select.sb-interviewing { background-color: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+  .status-select.sb-offered { background-color: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+  .status-select.sb-hired { background-color: #dcfce7; color: #166534; border-color: #bbf7d0; }
+  .status-select.sb-rejected { background-color: #fee2e2; color: #991b1b; border-color: #fecaca; }
+  .status-select option {
+    background-color: #ffffff;
+    color: #1e293b;
+    font-weight: 600;
+  }
+
+  .col-nowrap {
+    white-space: nowrap;
+  }
+
+  /* Modal Dropzone */
+  .modal-dropzone {
+    border: 2.5px dashed #c4b5fd;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .modal-dropzone:hover, .modal-dropzone.drag-over {
+    border-color: #7c3aed;
+    background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
+    transform: scale(1.008);
+  }
+  .modal-dropzone .dz-icon {
+    font-size: 2.6rem;
+    color: #8b5cf6;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  .modal-dropzone:hover .dz-icon {
+    transform: translateY(-3px);
+  }
+  .file-chip {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .file-chip .remove-file {
+    color: #ef4444;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0 4px;
+    font-size: 0.9rem;
+  }
+  .file-chip .remove-file:hover {
+    color: #b91c1c;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="applications-page-wrap">
+  <div class="ats-topbar">
+    <div>
+      <div class="fw-bold" style="font-size:1.15rem;"><i class="bi bi-kanban me-2"></i>Applications Pipeline</div>
+      <div class="opacity-75" style="font-size:.82rem;">
+        {{ applications|length }} result{{ applications|length|pluralize }} shown
+        {% if current_job_id %} for Job #{{ current_job_id }}{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'hrms:application_add' %}" class="btn btn-sm btn-light fw-semibold" style="border-radius:9px;">
+        <i class="bi bi-plus-lg me-1"></i>Add Application
+      </a>
+      <button type="button" class="btn btn-sm fw-semibold shadow-sm text-dark bg-white" data-bs-toggle="modal" data-bs-target="#bulkUploadModal" style="border-radius:9px; border: 1.5px solid #c4b5fd;">
+        <i class="bi bi-cloud-arrow-up-fill me-1 text-primary"></i>Bulk Resume Upload
+      </button>
+      <button type="button" id="bulkDownloadBtn" class="btn btn-sm btn-export" disabled title="Select applications first">
+        <i class="bi bi-download me-1"></i>Bulk Résumés
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card mb-3">
+    <form method="get" id="filterForm" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Job</label>
+        <select name="job" id="filterJobSelect" class="form-select form-select-sm">
+          <option value="">All Jobs</option>
+          {% for job in jobs %}
+          <option value="{{ job.id }}" {% if current_job_id == job.id|stringformat:"i" %}selected{% endif %}>{{ job.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Round / Stage</label>
+        <select name="stage" id="filterStageSelect" class="form-select form-select-sm">
+          <option value="">All Stages / Rounds</option>
+          {% for stage in available_stages %}
+          <option value="{{ stage.id }}" {% if current_stage_id == stage.id|stringformat:"i" %}selected{% endif %}>{{ stage.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if current_status %}
+      <input type="hidden" name="status" value="{{ current_status }}">
+      {% endif %}
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold mb-1">Search Candidate</label>
+        <input type="text" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="Name or email…">
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-sm w-100" style="background:#6366f1; color:#fff; border-radius:9px;">
+          <i class="bi bi-funnel-fill me-1"></i>Filter
+        </button>
+        <a href="{% url 'hrms:application_list' %}" class="btn btn-sm btn-outline-secondary" style="border-radius:9px;">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Main Applications Container with Status Tab-Pills Toolbar -->
+  <div class="card app-table shadow-sm border-0 overflow-hidden mb-3">
+    <!-- Status Tab Pills (matching All Records in Attendance Daily Monitor) -->
+    <div class="card-header bg-white py-2 px-3 px-md-3 border-bottom">
+      <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-2">
+        <!-- Tab Pills -->
+        <ul class="nav tab-pills-custom flex-nowrap" role="tablist">
+          <li class="nav-item">
+            <a href="?{% if current_job_id %}job={{ current_job_id }}&{% endif %}{% if current_stage_id %}stage={{ current_stage_id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}"
+               class="nav-link {% if not current_status %}active{% endif %}">
+              All Applications <span class="badge rounded-pill ms-1 border {% if not current_status %}bg-white text-dark{% else %}bg-light text-secondary{% endif %}">{{ status_counts.total|default:0 }}</span>
+            </a>
+          </li>
+          {% for val, label in statuses %}
+          <li class="nav-item">
+            <a href="?status={{ val }}{% if current_job_id %}&job={{ current_job_id }}{% endif %}{% if current_stage_id %}&stage={{ current_stage_id }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="nav-link {% if current_status == val %}active{% endif %}">
+              {{ label }} <span class="badge rounded-pill ms-1 border {% if current_status == val %}bg-white text-dark{% else %}bg-light text-secondary{% endif %}">
+                {% if val == 'applied' %}{{ status_counts.applied|default:0 }}
+                {% elif val == 'shortlisted' %}{{ status_counts.shortlisted|default:0 }}
+                {% elif val == 'interviewing' %}{{ status_counts.interviewing|default:0 }}
+                {% elif val == 'offered' %}{{ status_counts.offered|default:0 }}
+                {% elif val == 'hired' %}{{ status_counts.hired|default:0 }}
+                {% elif val == 'rejected' %}{{ status_counts.rejected|default:0 }}
+                {% else %}0{% endif %}
+              </span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <!-- Instant Real-Time Search (matching punchTableSearch in Daily Monitor) -->
+        <div class="position-relative" style="min-width: 220px; max-width: 260px;">
+          <i class="bi bi-search position-absolute text-muted" style="top: 8px; left: 14px; font-size: 0.8rem;"></i>
+          <input type="text" id="liveCandidateSearch" value="{{ search_query }}"
+                 class="form-control form-control-sm rounded-pill ps-5 pe-3 bg-light border"
+                 style="font-size: 0.8rem;"
+                 placeholder="Instant filter candidates...">
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table mb-0" id="appsTable">
+        <thead>
+          <tr>
+            <th style="width:30px;"><input type="checkbox" id="selectAll" title="Select all"></th>
+            <th>Candidate</th>
+            <th>Job</th>
+            <th>Stage / Round</th>
+            <th>Status</th>
+            <th>Applied</th>
+            <th>Source</th>
+            <th>Next Interview</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in applications %}
+          <tr class="app-row-item"
+              data-name="{{ app.candidate.first_name|lower }} {{ app.candidate.last_name|lower }}"
+              data-email="{{ app.candidate.email|lower }}"
+              data-job="{{ app.job_posting.title|lower }}"
+              data-stage="{{ app.stage_round_display|default:''|lower }}"
+              data-status="{{ app.status|lower }}">
+            <td><input type="checkbox" name="app_ids" value="{{ app.pk }}" class="app-check"></td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="candidate-avatar">{{ app.candidate.first_name|slice:":1" }}{{ app.candidate.last_name|slice:":1" }}</div>
+                <div>
+                  <a href="{% url 'hrms:application_detail' app.pk %}" class="fw-semibold text-decoration-none text-nowrap" style="color:#1e1b4b;">
+                    {{ app.candidate.first_name }} {{ app.candidate.last_name }}
+                  </a>
+                  <div class="text-muted" style="font-size:.73rem;">{{ app.candidate.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <a href="{% url 'hrms:application_list' %}?job={{ app.job_posting.pk }}" class="text-decoration-none text-dark fw-semibold" style="font-size:.82rem;">
+                {{ app.job_posting.title }}
+              </a>
+              {% if app.job_posting.department %}
+              <div class="text-muted text-nowrap" style="font-size:.72rem;">{{ app.job_posting.department }}</div>
+              {% endif %}
+            </td>
+            <td class="col-nowrap">
+              {% if app.current_stage %}
+              <span class="stage-pill">
+                <i class="bi bi-diagram-3-fill me-1 text-primary"></i>{{ app.stage_round_display }}
+              </span>
+              {% else %}
+              <span class="text-muted" style="font-size:.78rem;">—</span>
+              {% endif %}
+            </td>
+            <td class="col-nowrap">
+              {% if app.is_locked and not request.user.is_superuser %}
+              <span class="status-badge sb-{{ app.status }}" title="Application locked once outcome confirmed. Only Super Admin can modify.">
+                <i class="bi bi-lock-fill lock-icon me-1"></i>{{ app.get_status_display }}
+              </span>
+              {% else %}
+              <form method="post" action="{% url 'hrms:application_status' app.pk %}" class="d-inline status-form m-0 p-0">
+                {% csrf_token %}
+                <select name="status" class="form-select form-select-sm status-select sb-{{ app.status }}"
+                        data-prev-value="{{ app.status }}"
+                        data-candidate-name="{{ app.candidate.first_name }} {{ app.candidate.last_name }}"
+                        data-old-label="{{ app.get_status_display }}"
+                        onchange="promptStatusChange(this)"
+                        title="Click to change status">
+                  {% for val, label in statuses %}
+                  <option value="{{ val }}" {% if app.status == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+              {% endif %}
+            </td>
+            <td class="col-nowrap" style="font-size:.8rem; color:#6b7280;">{{ app.applied_on|date:"d M Y" }}</td>
+            <td class="col-nowrap">
+              {% if app.source %}
+              <span class="source-chip">{{ app.get_source_display }}</span>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="col-nowrap">
+              {% with nxt=app.interviews.last %}
+              {% if nxt %}<span class="next-iv-badge"><i class="bi bi-calendar-event me-1"></i>{{ nxt.scheduled_on|date:"d M H:i" }}</span>
+              {% else %}<span class="text-muted" style="font-size:.75rem;">—</span>{% endif %}
+              {% endwith %}
+            </td>
+            <td class="text-end col-nowrap">
+              <div class="d-flex gap-1 justify-content-end">
+                <a href="{% url 'hrms:application_detail' app.pk %}" class="btn btn-sm btn-outline-primary py-1 px-2" title="View"><i class="bi bi-eye"></i></a>
+                {% if app.status not in 'hired,rejected' %}
+                <a href="{% url 'hrms:interview_add' app.pk %}" class="btn btn-sm btn-outline-secondary py-1 px-2" title="Schedule Interview"><i class="bi bi-calendar-plus"></i></a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox" style="font-size:2rem; display:block; margin-bottom:.5rem;"></i>
+              No applications match your filters.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+  <nav class="mt-3">
+    <ul class="pagination pagination-sm justify-content-end">
+      {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_job_id %}&job={{ current_job_id }}{% endif %}{% if current_stage_id %}&stage={{ current_stage_id }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">‹ Prev</a></li>
+      {% endif %}
+      <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_job_id %}&job={{ current_job_id }}{% endif %}{% if current_stage_id %}&stage={{ current_stage_id }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">Next ›</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+
+<!-- Bulk Resume Upload Modal -->
+<div class="modal fade" id="bulkUploadModal" tabindex="-1" aria-labelledby="bulkUploadModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 18px; overflow: hidden;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header border-0 px-4 pt-4 pb-2" style="background: linear-gradient(135deg, #1e1b4b, #312e81); color: #fff;">
+        <div>
+          <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="bulkUploadModalLabel">
+            <i class="bi bi-cloud-arrow-up-fill text-warning"></i> Bulk Resume Upload
+          </h5>
+          <p class="mb-0 text-white-50" style="font-size: 0.82rem;">
+            Upload multiple candidate resumes (PDFs or a ZIP archive) directly to parse and create pipeline applications.
+          </p>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body px-4 py-3">
+        
+        <!-- Target Job Posting -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label fw-bold small text-dark mb-0">
+              <i class="bi bi-briefcase me-1 text-primary"></i> Target Job Posting <span class="text-danger">*</span>
+            </label>
+            <span id="fullStudioLinkWrap" style="font-size: 0.75rem;">
+              <a href="#" id="modalStudioLink" target="_blank" class="text-primary text-decoration-none fw-semibold">
+                Open Full Screen Studio <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            </span>
+          </div>
+          <select id="modalJobSelect" class="form-select form-select-sm" style="border-radius: 9px; border: 1.5px solid #cbd5e1;">
+            <option value="">-- Choose Job Role --</option>
+            {% for job in jobs %}
+            <option value="{{ job.id }}" {% if current_job_id == job.id|stringformat:"i" %}selected{% endif %}>
+              {{ job.title }} {% if job.department %}· {{ job.department }}{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text text-muted" style="font-size: 0.75rem;">
+            Parsed candidates will automatically receive an active application for this role.
+          </div>
+        </div>
+
+        <!-- Dropzone Area -->
+        <div class="modal-dropzone" id="modalDropzone">
+          <i class="bi bi-cloud-arrow-up dz-icon"></i>
+          <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem;">Drag & drop resume files here, or click to browse</div>
+          <div class="text-muted small mb-2">Supports multiple <code>.pdf</code> resumes or a single <code>.zip</code> file (up to 50MB)</div>
+          <button type="button" class="btn btn-sm btn-outline-primary fw-semibold px-3" style="border-radius: 8px;">
+            <i class="bi bi-folder2-open me-1"></i> Browse Files
+          </button>
+          <input type="file" id="modalFileInput" multiple accept=".pdf,.zip" class="d-none">
+        </div>
+
+        <!-- Staged Files Tray -->
+        <div id="modalFileTray" class="mt-3" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small fw-bold text-dark"><i class="bi bi-files me-1 text-primary"></i>Staged Files (<span id="modalFileCount">0</span>)</span>
+            <button type="button" class="btn btn-link btn-sm text-danger text-decoration-none p-0" id="modalClearFilesBtn" style="font-size: 0.75rem;">
+              <i class="bi bi-trash3 me-1"></i>Clear all
+            </button>
+          </div>
+          <div id="modalFileList" style="max-height: 140px; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
+
+        <!-- Upload Progress Indicator -->
+        <div id="modalUploadProgress" class="mt-3" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small fw-bold text-primary"><i class="bi bi-arrow-repeat me-1 spinner-border spinner-border-sm"></i> Uploading & Parsing Resumes...</span>
+            <span class="small text-muted" id="modalUploadProgressText">Please wait</span>
+          </div>
+          <div class="progress" style="height: 8px; border-radius: 6px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 100%"></div>
+          </div>
+          <div class="form-text text-muted mt-1" style="font-size: 0.72rem;">Extracting candidate contact details, skills, and work experience...</div>
+        </div>
+
+        <!-- Results Breakdown Box -->
+        <div id="modalResultsBox" class="mt-3" style="display: none;">
+          <div class="p-3 bg-light rounded-3 border">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="fw-bold mb-0 text-success"><i class="bi bi-check-circle-fill me-1"></i> Upload Complete</h6>
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2" id="modalTotalProcessed"></span>
+            </div>
+            
+            <div class="row g-2 text-center my-2">
+              <div class="col-3">
+                <div class="p-2 bg-white rounded-2 border">
+                  <div class="fw-bold text-success" style="font-size: 1.1rem;" id="resCountCreated">0</div>
+                  <div class="text-muted" style="font-size: 0.68rem; text-transform: uppercase;">New Created</div>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="p-2 bg-white rounded-2 border">
+                  <div class="fw-bold text-warning" style="font-size: 1.1rem;" id="resCountLinked">0</div>
+                  <div class="text-muted" style="font-size: 0.68rem; text-transform: uppercase;">Existing Linked</div>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="p-2 bg-white rounded-2 border">
+                  <div class="fw-bold text-secondary" style="font-size: 1.1rem;" id="resCountSkipped">0</div>
+                  <div class="text-muted" style="font-size: 0.68rem; text-transform: uppercase;">Duplicates</div>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="p-2 bg-white rounded-2 border">
+                  <div class="fw-bold text-danger" style="font-size: 1.1rem;" id="resCountErrors">0</div>
+                  <div class="text-muted" style="font-size: 0.68rem; text-transform: uppercase;">Errors</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Error list if any -->
+            <div id="modalErrorsList" class="mt-2" style="display: none;">
+              <div class="alert alert-danger py-2 px-3 small mb-2" style="font-size: 0.78rem;">
+                <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Some files could not be parsed:</div>
+                <ul class="mb-0 ps-3" id="modalErrorsUl"></ul>
+              </div>
+            </div>
+
+            <!-- Parsed Candidates List preview -->
+            <div id="modalCandidatesList" class="mt-2" style="max-height: 130px; overflow-y: auto;"></div>
+
+            <button type="button" class="btn btn-success btn-sm w-100 fw-bold mt-2 py-2" onclick="window.location.reload();" style="border-radius: 9px;">
+              <i class="bi bi-arrow-clockwise me-1"></i> Refresh Applications List
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer border-0 px-4 pb-4 pt-2 d-flex justify-content-between">
+        <button type="button" class="btn btn-sm btn-light border text-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-sm btn-primary fw-semibold px-3" id="modalStartUploadBtn" disabled style="background: linear-gradient(135deg, #8b5cf6, #6366f1); border: none; border-radius: 8px;">
+          <i class="bi bi-cloud-arrow-up-fill me-1"></i> Upload & Parse Resumes
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- CANDIDATE STATUS CHANGE CONFIRMATION MODAL -->
+<div class="modal fade" id="statusConfirmModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="statusConfirmTitle">
+          <i class="bi bi-question-circle-fill text-primary me-2"></i>Confirm Status Change
+        </h5>
+        <button type="button" class="btn-close" onclick="cancelStatusChange()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-3">
+        <p class="fs-6 mb-3 text-dark">
+          Are you sure you want to change the status of candidate <strong id="statusCandidateName" class="text-primary">Candidate</strong>?
+        </p>
+        <div class="p-3 rounded-3 bg-light border d-flex align-items-center justify-content-center gap-3 mb-3">
+          <span class="status-badge" id="statusOldBadge">Applied</span>
+          <i class="bi bi-arrow-right fs-5 text-muted"></i>
+          <span class="status-badge" id="statusNewBadge">Rejected</span>
+        </div>
+        <div id="statusWarningAlert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill px-4" onclick="cancelStatusChange()">Cancel</button>
+        <button type="button" class="btn btn-primary rounded-pill px-4" id="confirmStatusBtn" onclick="applyStatusChange()">
+          <i class="bi bi-check-lg me-1"></i>Confirm &amp; Update
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let pendingStatusChange = null;
+let statusModalInstance = null;
+
+function promptStatusChange(selectEl) {
+  const oldVal = selectEl.getAttribute('data-prev-value');
+  const newVal = selectEl.value;
+  if (oldVal === newVal) return;
+
+  const candidateName = selectEl.getAttribute('data-candidate-name') || 'Candidate';
+  const oldLabel = selectEl.getAttribute('data-old-label') || oldVal;
+  const newLabel = selectEl.options[selectEl.selectedIndex].text;
+
+  pendingStatusChange = {
+    selectEl: selectEl,
+    form: selectEl.form,
+    oldVal: oldVal,
+    newVal: newVal
+  };
+
+  document.getElementById('statusCandidateName').textContent = candidateName;
+  const oldBadge = document.getElementById('statusOldBadge');
+  oldBadge.textContent = oldLabel;
+  oldBadge.className = 'status-badge sb-' + oldVal;
+
+  const newBadge = document.getElementById('statusNewBadge');
+  newBadge.textContent = newLabel;
+  newBadge.className = 'status-badge sb-' + newVal;
+
+  const confirmBtn = document.getElementById('confirmStatusBtn');
+  const warningAlert = document.getElementById('statusWarningAlert');
+
+  if (newVal === 'rejected') {
+    confirmBtn.className = 'btn btn-danger rounded-pill px-4';
+    confirmBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Confirm Rejecting';
+    warningAlert.style.display = 'block';
+    warningAlert.className = 'alert alert-danger py-2 px-3 small rounded-3';
+    warningAlert.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Warning:</strong> Are you sure you want to reject <strong>' + candidateName + '</strong>?';
+  } else if (newVal === 'hired') {
+    confirmBtn.className = 'btn btn-success rounded-pill px-4';
+    confirmBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Confirm Hiring Candidate';
+    warningAlert.style.display = 'block';
+    warningAlert.className = 'alert alert-success py-2 px-3 small rounded-3';
+    warningAlert.innerHTML = '<i class="bi bi-check2-circle me-2"></i><strong>Confirm Hiring:</strong> Confirm marking <strong>' + candidateName + '</strong> as officially hired?';
+  } else {
+    confirmBtn.className = 'btn btn-primary rounded-pill px-4';
+    confirmBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirm & Update';
+    warningAlert.style.display = 'none';
+  }
+
+  if (!statusModalInstance) {
+    statusModalInstance = new bootstrap.Modal(document.getElementById('statusConfirmModal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+  }
+  statusModalInstance.show();
+}
+
+function cancelStatusChange() {
+  if (pendingStatusChange && pendingStatusChange.selectEl) {
+    pendingStatusChange.selectEl.value = pendingStatusChange.oldVal;
+  }
+  if (statusModalInstance) {
+    statusModalInstance.hide();
+  }
+  pendingStatusChange = null;
+}
+
+function applyStatusChange() {
+  if (pendingStatusChange && pendingStatusChange.form) {
+    const btn = document.getElementById('confirmStatusBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Updating...';
+    pendingStatusChange.form.submit();
+  }
+}
+
+window.promptStatusChange = promptStatusChange;
+window.cancelStatusChange = cancelStatusChange;
+window.applyStatusChange = applyStatusChange;
+
+(function() {
+  /* -------------------------------------------------------------
+     1. Bulk Download Checkbox Selection Handler
+     ------------------------------------------------------------- */
+  const selectAll = document.getElementById('selectAll');
+  const bulkBtn = document.getElementById('bulkDownloadBtn');
+
+  function updateBulkBtn() {
+    const checked = document.querySelectorAll('.app-check:checked');
+    if (bulkBtn) {
+      bulkBtn.disabled = checked.length === 0;
+      bulkBtn.title = checked.length ? `Download ${checked.length} résumé(s)` : 'Select applications first';
+    }
+  }
+
+  selectAll?.addEventListener('change', function() {
+    document.querySelectorAll('.app-check').forEach(cb => cb.checked = this.checked);
+    updateBulkBtn();
+  });
+
+  document.querySelectorAll('.app-check').forEach(cb => cb.addEventListener('change', updateBulkBtn));
+
+  bulkBtn?.addEventListener('click', function() {
+    const ids = Array.from(document.querySelectorAll('.app-check:checked')).map(cb => cb.value);
+    if (!ids.length) { alert('Please select at least one application.'); return; }
+
+    // Build a hidden form and POST it
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "hrms:bulk_download_resumes" %}';
+    form.style.display = 'none';
+
+    // CSRF token
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = '{{ csrf_token }}';
+    form.appendChild(csrf);
+
+    ids.forEach(id => {
+      const inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'application_ids';
+      inp.value = id;
+      form.appendChild(inp);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  });
+
+  /* -------------------------------------------------------------
+     2. Bulk Resume Upload Modal Handler
+     ------------------------------------------------------------- */
+  const dropzone = document.getElementById('modalDropzone');
+  const fileInput = document.getElementById('modalFileInput');
+  const fileTray = document.getElementById('modalFileTray');
+  const fileList = document.getElementById('modalFileList');
+  const fileCount = document.getElementById('modalFileCount');
+  const clearFilesBtn = document.getElementById('modalClearFilesBtn');
+  const jobSelect = document.getElementById('modalJobSelect');
+  const studioLink = document.getElementById('modalStudioLink');
+  const uploadProgress = document.getElementById('modalUploadProgress');
+  const resultsBox = document.getElementById('modalResultsBox');
+  const startUploadBtn = document.getElementById('modalStartUploadBtn');
+
+  let stagedFiles = [];
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function updateStudioLink() {
+    const jobId = jobSelect ? jobSelect.value : '';
+    if (studioLink) {
+      if (jobId) {
+        studioLink.href = `/hrms/hiring/jobs/${jobId}/bulk-upload/`;
+        studioLink.style.display = 'inline-block';
+      } else {
+        studioLink.style.display = 'none';
+      }
+    }
+  }
+
+  jobSelect?.addEventListener('change', function() {
+    updateStudioLink();
+    checkUploadButtonState();
+  });
+  updateStudioLink();
+
+  function checkUploadButtonState() {
+    const hasJob = jobSelect && jobSelect.value;
+    const hasFiles = stagedFiles.length > 0;
+    if (startUploadBtn) {
+      startUploadBtn.disabled = !(hasJob && hasFiles);
+    }
+  }
+
+  function renderStagedFiles() {
+    if (!fileList || !fileTray || !fileCount) return;
+    fileList.innerHTML = '';
+    fileCount.textContent = stagedFiles.length;
+
+    if (stagedFiles.length === 0) {
+      fileTray.style.display = 'none';
+      checkUploadButtonState();
+      return;
+    }
+
+    fileTray.style.display = 'block';
+
+    stagedFiles.forEach((file, idx) => {
+      const isZip = file.name.toLowerCase().endsWith('.zip');
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `
+        <div class="d-flex align-items-center gap-2 text-truncate">
+          <i class="bi ${isZip ? 'bi-file-earmark-zip text-warning' : 'bi-file-earmark-pdf text-danger'}"></i>
+          <span class="fw-semibold text-dark text-truncate" title="${file.name}">${file.name}</span>
+          <span class="badge bg-light text-muted border" style="font-size: 0.68rem;">${formatBytes(file.size)}</span>
+        </div>
+        <button type="button" class="remove-file" title="Remove file" data-idx="${idx}">
+          <i class="bi bi-x-circle-fill"></i>
+        </button>
+      `;
+      fileList.appendChild(chip);
+    });
+
+    fileList.querySelectorAll('.remove-file').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const removeIdx = parseInt(this.getAttribute('data-idx'), 10);
+        stagedFiles.splice(removeIdx, 1);
+        renderStagedFiles();
+      });
+    });
+
+    checkUploadButtonState();
+  }
+
+  function addFiles(filesList) {
+    Array.from(filesList).forEach(file => {
+      const name = file.name.toLowerCase();
+      if (!name.endsWith('.pdf') && !name.endsWith('.zip')) {
+        alert(`"${file.name}" is not a valid resume file. Only .PDF and .ZIP files are accepted.`);
+        return;
+      }
+      // Check if file already staged
+      const exists = stagedFiles.some(f => f.name === file.name && f.size === file.size);
+      if (!exists) {
+        stagedFiles.push(file);
+      }
+    });
+    renderStagedFiles();
+  }
+
+  dropzone?.addEventListener('click', function() {
+    fileInput?.click();
+  });
+
+  fileInput?.addEventListener('change', function() {
+    if (this.files && this.files.length) {
+      addFiles(this.files);
+      this.value = '';
+    }
+  });
+
+  dropzone?.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    dropzone.classList.add('drag-over');
+  });
+
+  dropzone?.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+  });
+
+  dropzone?.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (e.dataTransfer && e.dataTransfer.files) {
+      addFiles(e.dataTransfer.files);
+    }
+  });
+
+  clearFilesBtn?.addEventListener('click', function() {
+    stagedFiles = [];
+    renderStagedFiles();
+  });
+
+  // Start Upload
+  startUploadBtn?.addEventListener('click', async function() {
+    const jobId = jobSelect ? jobSelect.value : '';
+    if (!jobId) {
+      alert('Please select a target job posting.');
+      jobSelect?.focus();
+      return;
+    }
+    if (!stagedFiles.length) {
+      alert('Please select at least one resume PDF or ZIP file.');
+      return;
+    }
+
+    // UI state: uploading
+    startUploadBtn.disabled = true;
+    startUploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Uploading...';
+    if (jobSelect) jobSelect.disabled = true;
+    if (dropzone) dropzone.style.display = 'none';
+    if (fileTray) fileTray.style.display = 'none';
+    if (uploadProgress) uploadProgress.style.display = 'block';
+    if (resultsBox) resultsBox.style.display = 'none';
+
+    const formData = new FormData();
+    stagedFiles.forEach(file => {
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        formData.append('zip_file', file);
+      } else {
+        formData.append('files', file);
+      }
+    });
+
+    try {
+      const csrfToken = '{{ csrf_token }}';
+      const response = await fetch(`/hrms/api/jobs/${jobId}/bulk-upload-resumes/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (uploadProgress) uploadProgress.style.display = 'none';
+
+      if (!response.ok) {
+        alert(data.detail || data.error || 'Bulk upload failed. Please try again.');
+        if (dropzone) dropzone.style.display = 'block';
+        if (fileTray) fileTray.style.display = 'block';
+        if (jobSelect) jobSelect.disabled = false;
+        checkUploadButtonState();
+        startUploadBtn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Upload & Parse Resumes';
+        return;
+      }
+
+      // Success Display
+      if (resultsBox) {
+        resultsBox.style.display = 'block';
+        const createdCandidates = data.created_candidates || [];
+        const errors = data.errors || [];
+        const skipped = data.skipped || [];
+
+        let countCreated = 0;
+        let countLinked = 0;
+        let countSkipped = skipped.length;
+
+        createdCandidates.forEach(item => {
+          if (item.status === 'created') countCreated++;
+          else if (item.status === 'duplicate_linked') countLinked++;
+          else if (item.status === 'duplicate_skipped') countSkipped++;
+        });
+
+        document.getElementById('resCountCreated').textContent = countCreated;
+        document.getElementById('resCountLinked').textContent = countLinked;
+        document.getElementById('resCountSkipped').textContent = countSkipped;
+        document.getElementById('resCountErrors').textContent = errors.length;
+        document.getElementById('modalTotalProcessed').textContent = `${data.processed_count || createdCandidates.length} Resumes Processed`;
+
+        // Render Candidates List
+        const candList = document.getElementById('modalCandidatesList');
+        if (candList) {
+          candList.innerHTML = '';
+          createdCandidates.forEach(cand => {
+            const row = document.createElement('div');
+            row.className = 'd-flex align-items-center justify-content-between p-2 bg-white rounded-2 border mb-1';
+            row.style.fontSize = '0.78rem';
+            row.innerHTML = `
+              <div class="d-flex align-items-center gap-2 text-truncate">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width:24px; height:24px; font-size:0.7rem;">
+                  ${cand.candidate_name ? cand.candidate_name.charAt(0).toUpperCase() : 'C'}
+                </div>
+                <div class="text-truncate">
+                  <span class="fw-bold text-dark">${cand.candidate_name || 'Candidate'}</span>
+                  <span class="text-muted ms-1">(${cand.email || 'No email'})</span>
+                </div>
+              </div>
+              <span class="badge ${cand.status === 'created' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} rounded-pill">
+                ${cand.status === 'created' ? 'Created' : 'Linked'}
+              </span>
+            `;
+            candList.appendChild(row);
+          });
+        }
+
+        // Render Errors if any
+        const errorsList = document.getElementById('modalErrorsList');
+        const errorsUl = document.getElementById('modalErrorsUl');
+        if (errorsList && errorsUl) {
+          if (errors.length > 0) {
+            errorsUl.innerHTML = '';
+            errors.forEach(err => {
+              const li = document.createElement('li');
+              li.textContent = `${err.filename}: ${err.error}`;
+              errorsUl.appendChild(li);
+            });
+            errorsList.style.display = 'block';
+          } else {
+            errorsList.style.display = 'none';
+          }
+        }
+
+        startUploadBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Completed';
+        startUploadBtn.disabled = true;
+      }
+
+    } catch (err) {
+      if (uploadProgress) uploadProgress.style.display = 'none';
+      if (dropzone) dropzone.style.display = 'block';
+      if (fileTray) fileTray.style.display = 'block';
+      if (jobSelect) jobSelect.disabled = false;
+      checkUploadButtonState();
+      startUploadBtn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Upload & Parse Resumes';
+      alert('Network error occurred during resume upload: ' + err.message);
+    }
+  });
+
+  /* -------------------------------------------------------------
+     3. Dynamic Round / Stage Dropdown Handler & Live Filter
+     ------------------------------------------------------------- */
+  const filterJobSelect = document.getElementById('filterJobSelect');
+  const filterStageSelect = document.getElementById('filterStageSelect');
+  const jobStages = {{ job_stages_json|safe }};
+  const currentStageId = "{{ current_stage_id }}";
+
+  if (filterJobSelect && filterStageSelect && jobStages) {
+    filterJobSelect.addEventListener('change', function() {
+      const selectedJob = this.value;
+      const stages = selectedJob && jobStages[selectedJob] ? jobStages[selectedJob] : (jobStages['all'] || []);
+
+      filterStageSelect.innerHTML = '<option value="">All Stages / Rounds</option>';
+      stages.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st.id;
+        opt.textContent = st.display_name;
+        if (st.id.toString() === currentStageId) {
+          opt.selected = true;
+        }
+        filterStageSelect.appendChild(opt);
+      });
+    });
+  }
+
+  // Real-time Candidate Search across current page items (matching Daily Monitor)
+  const liveSearch = document.getElementById('liveCandidateSearch');
+  if (liveSearch) {
+    liveSearch.addEventListener('input', function() {
+      const q = this.value.trim().toLowerCase();
+      const rows = document.querySelectorAll('.app-row-item');
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        const email = row.getAttribute('data-email') || '';
+        const job = row.getAttribute('data-job') || '';
+        const stage = row.getAttribute('data-stage') || '';
+        const status = row.getAttribute('data-status') || '';
+        if (!q || name.includes(q) || email.includes(q) || job.includes(q) || stage.includes(q) || status.includes(q)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  }
+
+})();
+</script>
+{% endblock %}

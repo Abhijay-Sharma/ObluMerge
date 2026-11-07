@@ -1,0 +1,70 @@
+{% extends "hrms/base.html" %}
+
+{% block title %}{% if object %}Edit Notice{% else %}Post Notice{% endif %} — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-primary text-white p-4 border-0">
+          <h4 class="fw-bold mb-1">
+            <i class="bi bi-megaphone me-2"></i>{% if object %}Edit Company Notice{% else %}Post Company Notice{% endif %}
+          </h4>
+          <p class="text-white-50 small mb-0">Broadcast circulars, events, and policy updates to all active employees.</p>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Company*</label>
+                {{ form.company }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Category*</label>
+                {{ form.category }}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Notice Title*</label>
+                {{ form.title }}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Message Body*</label>
+                {{ form.message }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Notice Date*</label>
+                {{ form.notice_date }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Expiry Date (Optional)</label>
+                {{ form.expiry_date }}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Attachment File (PDF, DOCX, Image)</label>
+                {{ form.document }}
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch mt-2">
+                  {{ form.is_active }}
+                  <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">
+                    Notice is Active &amp; Visible to Employees
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+              <a href="{% url 'hrms:notice_list' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+              <button type="submit" class="btn btn-primary rounded-pill px-5 fw-semibold">
+                <i class="bi bi-send me-1"></i>Publish Notice
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

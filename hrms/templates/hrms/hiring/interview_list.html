@@ -1,0 +1,117 @@
+{% extends "hrms/base.html" %}
+{% block title %}Interviews{% endblock %}
+{% block page_title %}All Interviews{% endblock %}
+
+{% block extra_css %}
+<style>
+  .iv-topbar { background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:14px; padding:1.25rem 1.5rem; color:#fff; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+  .iv-table { border-radius:14px; overflow:hidden; border:1.5px solid #e8eaf0; }
+  .iv-table th { background:#f3f4f6; font-size:.77rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; border:none; }
+  .iv-table td { vertical-align:middle; border-color:#f1f5f9; font-size:.85rem; }
+  .iv-table tbody tr:hover { background:#faf5ff; }
+
+  .cand-mini { display:flex; align-items:center; gap:.6rem; }
+  .mini-avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; flex-shrink:0; }
+
+  .mode-chip { font-size:.7rem; font-weight:600; padding:.2rem .55rem; border-radius:6px; }
+  .mode-online    { background:#dbeafe; color:#1d4ed8; }
+  .mode-in_person { background:#d1fae5; color:#065f46; }
+  .mode-phone     { background:#fce7f3; color:#9d174d; }
+
+  .status-chip { font-size:.7rem; font-weight:700; padding:.22rem .6rem; border-radius:99px; }
+  .status-scheduled  { background:#e0f2fe; color:#0369a1; }
+  .status-completed  { background:#dcfce7; color:#166534; }
+  .status-cancelled  { background:#fee2e2; color:#991b1b; }
+  .status-no_show    { background:#f1f5f9; color:#64748b; }
+
+  .panel-member { font-size:.7rem; background:#e0e7ff; color:#3730a3; border-radius:6px; padding:.12rem .45rem; font-weight:600; display:inline-block; }
+  .job-pill { font-size:.73rem; color:#6b7280; }
+  .score-pill { font-size:.7rem; background:#f3f4f6; color:#374151; border-radius:6px; padding:.15rem .4rem; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="iv-topbar">
+  <div>
+    <div class="fw-bold" style="font-size:1.1rem;"><i class="bi bi-calendar-week me-2"></i>All Interviews</div>
+    <div class="opacity-75" style="font-size:.82rem;">{{ interviews|length }} interview{{ interviews|length|pluralize }} across the pipeline</div>
+  </div>
+</div>
+
+<div class="card iv-table shadow-sm">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Job</th>
+          <th>Round</th>
+          <th>Scheduled</th>
+          <th>Panel</th>
+          <th>Mode</th>
+          <th>Status</th>
+          <th>Score</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for iv in interviews %}
+        <tr>
+          <td>
+            <div class="cand-mini">
+              <div class="mini-avatar">
+                {{ iv.application.candidate.first_name|slice:":1" }}{{ iv.application.candidate.last_name|slice:":1" }}
+              </div>
+              <div>
+                <a href="{% url 'hrms:application_detail' iv.application.pk %}" class="fw-semibold text-decoration-none" style="color:#1e1b4b; font-size:.85rem;">
+                  {{ iv.application.candidate.first_name }} {{ iv.application.candidate.last_name }}
+                </a>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="fw-semibold" style="font-size:.82rem;">{{ iv.application.job_posting.title }}</div>
+            {% if iv.application.job_posting.department %}
+            <div class="job-pill">{{ iv.application.job_posting.department }}</div>
+            {% endif %}
+          </td>
+          <td class="fw-semibold" style="color:#4f46e5;">{{ iv.interview_round|default:"—" }}</td>
+          <td>
+            <div style="font-size:.82rem; font-weight:600;">{{ iv.scheduled_on|date:"d M Y" }}</div>
+            <div class="text-muted" style="font-size:.72rem;">{{ iv.scheduled_on|date:"H:i" }}</div>
+          </td>
+          <td>
+            {% for member in iv.interviewer.all %}
+            <span class="panel-member">{{ member.first_name }} {{ member.last_name|slice:":1" }}.</span>
+            {% empty %}<span class="text-muted">—</span>{% endfor %}
+          </td>
+          <td><span class="mode-chip mode-{{ iv.mode }}">
+            <i class="bi {% if iv.mode == 'online' %}bi-camera-video{% elif iv.mode == 'in_person' %}bi-building{% else %}bi-telephone{% endif %} me-1"></i>
+            {{ iv.get_mode_display }}
+          </span></td>
+          <td><span class="status-chip status-{{ iv.status }}">{{ iv.get_status_display }}</span></td>
+          <td>
+            {% if iv.average_score %}
+            <span class="score-pill"><i class="bi bi-star-fill text-warning me-1"></i>{{ iv.average_score }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'hrms:application_detail' iv.application.pk %}" class="btn btn-sm btn-outline-primary" title="View Application"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'hrms:interview_edit' iv.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="text-center py-5 text-muted">
+            <i class="bi bi-calendar-x" style="font-size:2rem; display:block; margin-bottom:.5rem;"></i>
+            No interviews scheduled yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

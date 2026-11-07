@@ -1,0 +1,709 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Attendance Matrix — HRMS{% endblock %}
+
+{% block content %}
+
+<style>
+  .table-responsive { max-height: 75vh; overflow: auto; position: relative; }
+  .matrix-table { border-collapse: separate !important; border-spacing: 0 !important; }
+  .matrix-table thead th {
+    position: sticky !important; top: 0; z-index: 10;
+    background-color: #212529 !important; color: white !important;
+  }
+  .sticky-col { position: sticky !important; background-color: white !important; z-index: 5; outline: 0.1px solid #dee2e6; }
+  .sticky-col-0 { left: 0px !important;   width: 42px;  min-width: 42px;  text-align: center; }
+  .sticky-col-1 { left: 42px !important;  width: 90px;  min-width: 90px; }
+  .sticky-col-2 { left: 132px !important; width: 160px; min-width: 160px; }
+  .sticky-col-3 { left: 292px !important; width: 130px; min-width: 130px; box-shadow: 5px 0 5px -3px rgba(0,0,0,.2); }
+  thead th.sticky-col { z-index: 20 !important; top: 0 !important; background-color: #212529 !important; }
+  .table-hover tbody tr:hover td.sticky-col { background-color: #f8f9fa !important; }
+  #qaPanel {
+    position: fixed; top: 0; right: -420px; width: 400px; height: 100vh;
+    background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,.18);
+    z-index: 9999; transition: right .3s ease; overflow-y: auto; padding: 0;
+  }
+  #qaPanel.open { right: 0; }
+  #qaOverlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 9998;
+  }
+  #qaOverlay.open { display: block; }
+  .penalty-chip {
+    position: absolute; top: 0; right: 0;
+    font-size: .55rem; background: #dc3545; color: white;
+    border-radius: 0 3px 0 4px; padding: 1px 3px; line-height: 1;
+  }
+  .auto-dot {
+    position: absolute; bottom: 0; left: 0; width: 6px; height: 6px;
+    border-radius: 50%; background: #ffc107;
+  }
+</style>
+
+<div class="container-fluid px-4 py-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="bi bi-grid-3x3-gap text-primary me-2"></i>Attendance Matrix</h3>
+      <p class="text-muted small mb-0">Monthly attendance grid — click any cell to open Quick Actions</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm fw-bold" onclick="submitBulkLeaveApproval()">
+        <i class="bi bi-check-all me-1"></i>Auto-Approve Leaves
+      </button>
+      <a href="{% url 'hrms:attendance_records' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-list-ul me-1"></i>List View
+      </a>
+      <a href="{% url 'hrms:regularization_list' %}" class="btn btn-outline-warning btn-sm rounded-pill px-3">
+        <i class="bi bi-clock-history me-1"></i>Regularizations
+      </a>
+      <a href="{% url 'hrms:attendance_record_add' %}" class="btn btn-primary btn-sm rounded-pill px-3">
+        <i class="bi bi-plus-circle me-1"></i>Add Record
+      </a>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+      <form method="get" class="row g-2 align-items-center">
+        <div class="col-auto"><label class="form-label small text-muted mb-0 fw-bold">Month:</label></div>
+        <div class="col-auto">
+          <select name="month" class="form-select form-select-sm rounded-3">
+            {% for m_num, m_name in months_choices %}
+              <option value="{{ m_num }}" {% if m_num == sel_month %}selected{% endif %}>{{ m_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto"><label class="form-label small text-muted mb-0 fw-bold">Year:</label></div>
+        <div class="col-auto">
+          <select name="year" class="form-select form-select-sm rounded-3">
+            {% for yr in year_choices %}
+              <option value="{{ yr }}" {% if yr == sel_year %}selected{% endif %}>{{ yr }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <select name="department" class="form-select form-select-sm rounded-3">
+            <option value="">All Departments</option>
+            {% for d in departments %}
+              <option value="{{ d.id }}" {% if filters.department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <select name="employee" class="form-select form-select-sm rounded-3">
+            <option value="">All Employees</option>
+            {% for emp in employees_list %}
+              <option value="{{ emp.id }}" {% if filters.employee == emp.id|stringformat:"s" %}selected{% endif %}>{{ emp.full_name }} ({{ emp.employee_code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm rounded-3 px-3"><i class="bi bi-filter me-1"></i>Filter</button>
+          <a href="{% url 'hrms:attendance_matrix' %}" class="btn btn-outline-secondary btn-sm rounded-3 ms-1">Reset</a>
+        </div>
+        <div class="col-12 mt-2 pt-2 border-top d-flex flex-wrap gap-3 align-items-center small text-muted">
+          <span class="fw-bold">Legend:</span>
+          <span><span class="badge bg-success-subtle text-success border border-success-subtle px-2">P</span> Present</span>
+          <span><span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2">G1</span> Grace</span>
+          <span><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2">HD</span> Half Day</span>
+          <span><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2">CL</span> Leave</span>
+          <span><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2">H</span> Holiday</span>
+          <span><span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2">A</span> Absent</span>
+          <span><span class="badge bg-danger text-white px-1" style="font-size:.6rem;">Rs.</span> Penalty</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffc107;"></span> Auto-Leave</span>
+          <span><i class="bi bi-pencil-fill text-warning"></i> Edited</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <form id="bulkAutoLeaveForm" method="POST" action="{% url 'hrms:auto_approve_absent_leaves' %}">
+    {% csrf_token %}
+    <input type="hidden" name="month" value="{{ sel_month }}">
+    <input type="hidden" name="year" value="{{ sel_year }}">
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+      <div class="table-responsive" style="max-height: 70vh;">
+        <table class="table table-bordered table-hover align-middle mb-0 matrix-table" style="font-size: 0.82rem;">
+          <thead class="table-dark sticky-top" style="z-index: 5;">
+            <tr>
+              <th class="sticky-col sticky-col-0 bg-dark text-white text-center">
+                <input type="checkbox" id="selectAllEmployees" class="form-check-input" title="Select All">
+              </th>
+              <th class="sticky-col sticky-col-1 bg-dark text-white text-center">Code</th>
+              <th class="sticky-col sticky-col-2 bg-dark text-white">Employee</th>
+              <th class="sticky-col sticky-col-3 bg-dark text-white">Designation</th>
+              {% for d in date_list %}
+                <th class="text-center {% if d.weekday == 6 %}bg-secondary text-white-50{% endif %}" style="min-width:52px;width:52px;">
+                  <div class="fw-bold">{{ d|date:"d" }}</div>
+                  <div style="font-size:.68rem;" class="opacity-75">{{ d|date:"D"|slice:":2" }}</div>
+                </th>
+              {% endfor %}
+              <th class="text-center bg-dark text-white" style="width:55px;">P</th>
+              <th class="text-center bg-dark text-white" style="width:55px;">HD</th>
+              <th class="text-center bg-dark text-white" style="width:55px;">LV</th>
+              <th class="text-center bg-dark text-white" style="width:55px;">AB</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in matrix_rows %}
+              <tr>
+                <td class="sticky-col sticky-col-0 bg-white text-center">
+                  <input type="checkbox" name="selected_employees" value="{{ row.employee.id }}" class="form-check-input emp-checkbox">
+                </td>
+                <td class="sticky-col sticky-col-1 bg-white fw-bold text-center text-primary">{{ row.employee.employee_code }}</td>
+                <td class="sticky-col sticky-col-2 bg-white">
+                  <a href="{% url 'hrms:employee_punch_report' emp_id=row.employee.id month=sel_month year=sel_year %}"
+                     class="fw-semibold text-dark link-primary text-decoration-none text-truncate d-block"
+                     style="max-width:150px;" title="View Full Report">
+                    {{ row.employee.full_name }}
+                  </a>
+                </td>
+                <td class="sticky-col sticky-col-3 bg-white text-muted text-truncate" style="max-width:120px;">
+                  {{ row.employee.designation.title|default:"--" }}
+                </td>
+                {% for cell in row.cells %}
+                  <td class="text-center p-1 position-relative cell-punch {% if cell.date.weekday == 6 %}bg-light{% endif %}"
+                      data-bs-toggle="tooltip" data-bs-html="true"
+                      title="<b>{{ row.employee.full_name }}</b><br>{{ cell.date|date:'d M Y' }}<br><b>{{ cell.label }}</b>{% if cell.in_str %}<br>In: {{ cell.in_str }} Out: {{ cell.out_str|default:'--' }}{% endif %}{% if cell.penalty_amount %}<br>Penalty: Rs.{{ cell.penalty_amount }}{% endif %}{% if cell.edit_reason %}<br><b>Remarks:</b> {{ cell.edit_reason|truncatechars:80|linebreaksbr }}{% endif %}"
+                      onclick="openQuickActions('{{ row.employee.id }}','{{ row.employee.full_name|escapejs }}','{{ cell.date|date:'Y-m-d' }}','{{ cell.status }}','{{ cell.in_str }}','{{ cell.out_str }}','{{ cell.record_id|default:'' }}','{{ cell.edit_reason|default:''|escapejs }}','{{ cell.edited_by_name|default:''|escapejs }}','{{ cell.edited_on_str|default:''|escapejs }}')"
+                      style="cursor:pointer;">
+                    <span class="badge {{ cell.badge_class }} py-1 px-1 d-block" style="font-size:.72rem;">
+                      {{ cell.badge }}
+                    </span>
+                    {% if cell.penalty_amount %}<span class="penalty-chip">Rs</span>{% endif %}
+                    {% if cell.is_auto_leave %}<span class="auto-dot"></span>{% endif %}
+                    {% if cell.is_edited %}
+                      <span class="position-absolute top-0 end-0 p-1">
+                        <i class="bi bi-pencil-fill text-warning" style="font-size:.6rem;"></i>
+                      </span>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+                <td class="text-center fw-bold text-success bg-light">{{ row.stats.present }}</td>
+                <td class="text-center fw-bold text-info bg-light">{{ row.stats.half_day }}</td>
+                <td class="text-center fw-bold text-primary bg-light">{{ row.stats.on_leave }}</td>
+                <td class="text-center fw-bold text-danger bg-light">{{ row.stats.absent }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="{{ date_list|length|add:8 }}" class="text-center py-5 text-muted">
+                  <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                  No active employees found matching criteria.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div id="qaOverlay" onclick="closeQuickActions()"></div>
+<div id="qaPanel">
+  <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom bg-dark text-white">
+    <div>
+      <div class="fw-bold fs-6"><i class="bi bi-lightning-fill text-warning me-2"></i>Quick Actions</div>
+      <div class="small opacity-75" id="qaPanelSubtitle">--</div>
+    </div>
+    <button class="btn btn-sm btn-outline-light rounded-circle" onclick="closeQuickActions()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+  <div class="px-4 py-3">
+    <div class="mb-3">
+      <span class="text-muted small">Current Status:</span>
+      <span id="qaCurrentStatus" class="badge ms-2 px-3 py-2">--</span>
+    </div>
+    <div class="card border rounded-3 mb-3">
+      <div class="card-header bg-light py-2 fw-semibold small">
+        <i class="bi bi-person-check me-1 text-success"></i> Attendance Override
+      </div>
+      <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input qa-att" type="checkbox" id="qaFD" value="present">
+            <label class="form-check-label small fw-semibold text-success" for="qaFD">Full Day</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input qa-att" type="checkbox" id="qaHD" value="half_day">
+            <label class="form-check-label small fw-semibold text-info" for="qaHD">Half Day</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input qa-att" type="checkbox" id="qaABS" value="absent">
+            <label class="form-check-label small fw-semibold text-danger" for="qaABS">Absent</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input qa-att" type="checkbox" id="qaWO" value="week_off">
+            <label class="form-check-label small fw-semibold text-secondary" for="qaWO">Week Off</label>
+          </div>
+        </div>
+        <div class="text-muted mt-1" style="font-size:.72rem;">Only one can be selected at a time.</div>
+      </div>
+    </div>
+    <div class="card border rounded-3 mb-3">
+      <div class="card-header bg-light py-2">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="qaUseLeave" onchange="toggleLeaveSection()">
+          <label class="form-check-label fw-semibold small" for="qaUseLeave">
+            <i class="bi bi-calendar-event me-1 text-primary"></i> Use Leave
+          </label>
+        </div>
+      </div>
+      <div class="card-body py-2" id="qaLeaveSection" style="display:none;">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="qaLeaveHalf">
+          <label class="form-check-label small" for="qaLeaveHalf">Half-day leave (deducts 0.5 day)</label>
+        </div>
+        <label class="form-label small fw-semibold mb-1">Select Leave Type</label>
+        <div id="qaLeaveOptions" class="d-flex flex-column gap-1">
+        </div>
+      </div>
+    </div>
+    <div class="card border rounded-3 mb-3">
+      <div class="card-header bg-light py-2">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="qaAddPenalty" onchange="togglePenaltySection()">
+          <label class="form-check-label fw-semibold small" for="qaAddPenalty">
+            <i class="bi bi-currency-rupee me-1 text-danger"></i> Add Penalty
+          </label>
+        </div>
+      </div>
+      <div class="card-body py-2" id="qaPenaltySection" style="display:none;">
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">Amount (Rs.)</label>
+          <input type="number" id="qaPenaltyAmount" class="form-control form-control-sm rounded-3" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div>
+          <label class="form-label small fw-semibold mb-1">Reason</label>
+          <input type="text" id="qaPenaltyReason" class="form-control form-control-sm rounded-3" placeholder="e.g. Late arrival penalty">
+        </div>
+      </div>
+    </div>
+    <div id="qaPrevRemarksSection" class="mb-3" style="display:none;">
+      <label class="form-label small fw-bold text-secondary mb-1">
+        <i class="bi bi-clock-history text-primary me-1"></i>Previous Remarks &amp; Audit Trail:
+      </label>
+      <div id="qaPrevRemarksContent" class="p-2 rounded-3 bg-light border small" style="max-height: 110px; overflow-y: auto;"></div>
+    </div>
+
+    <!-- LOGS BUTTON IN QUICK ACTIONS -->
+    <div class="mb-3">
+      <button type="button" class="btn btn-outline-dark btn-sm w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-between px-3 shadow-xs" onclick="openAuditLogModal()">
+        <span><i class="bi bi-journal-text me-2 text-primary"></i>View Change Logs &amp; Remarks</span>
+        <span class="badge bg-secondary-subtle text-dark border" id="qaLogsBtnBadge">0 Logs</span>
+      </button>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label small fw-semibold text-danger">Audit Note (Mandatory)*</label>
+      <textarea id="qaReason" class="form-control form-control-sm rounded-3" rows="2" placeholder="Reason for this change..." required></textarea>
+    </div>
+    <button type="button" class="btn btn-primary w-100 rounded-pill py-2 fw-bold" id="qaSubmitBtn" onclick="submitQuickAction()">
+      <i class="bi bi-check-lg me-1"></i>Apply Actions
+    </button>
+    <div class="text-center mt-3">
+      <button class="btn btn-link btn-sm text-muted p-0" onclick="openPunchEditFromPanel()">
+        <i class="bi bi-pencil-square me-1"></i>Edit Punch Times Instead
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="quickEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Punch Times</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-3">
+        <input type="hidden" id="editRecordId">
+        <input type="hidden" id="editEmpId">
+        <input type="hidden" id="editDate">
+        <div class="alert alert-light border mb-3 py-2 small">
+          <div>Employee: <strong id="modalEmpName">--</strong></div>
+          <div>Date: <strong id="modalDateDisplay">--</strong></div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Check-In Time</label>
+            <input type="time" id="editCheckIn" class="form-control rounded-3">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Check-Out Time</label>
+            <input type="time" id="editCheckOut" class="form-control rounded-3">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Status Override</label>
+          <select id="editStatusSelect" class="form-select rounded-3">
+            <option value="present">Present</option>
+            <option value="half_day">Half Day</option>
+            <option value="on_leave">On Leave</option>
+            <option value="absent">Absent</option>
+            <option value="holiday">Holiday</option>
+            <option value="week_off">Week Off</option>
+          </select>
+        </div>
+
+        <!-- PREVIOUS REMARKS / AUDIT TRAIL -->
+        <div id="prevRemarksSection" class="mb-3" style="display: none;">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <label class="form-label small fw-bold text-secondary mb-0">
+              <i class="bi bi-clock-history text-primary me-1"></i>Previous Remarks &amp; Audit Trail
+            </label>
+            <span class="badge bg-light text-muted border" id="prevRemarkCountBadge">1 entry</span>
+          </div>
+          <div id="prevRemarksContent" class="p-2 rounded-3 bg-light border small" style="max-height: 140px; overflow-y: auto;">
+            <!-- Populated dynamically via openEditModal -->
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-danger">Reason (Mandatory)*</label>
+          <textarea id="editAuditReason" class="form-control rounded-3" rows="3" placeholder="Explain why this punch is being manually modified..." required></textarea>
+          <div class="form-text text-muted" style="font-size:0.75rem;">
+            <i class="bi bi-shield-check text-success me-1"></i>Remark is mandatory. Your user &amp; timestamp will be added to the audit history.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary rounded-pill px-4" id="savePunchBtn" onclick="savePunchEdit()">
+          <i class="bi bi-check-lg me-1"></i>Save &amp; Audit
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DEDICATED AUDIT LOG MODAL -->
+<div class="modal fade" id="attendanceAuditLogModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h5 class="modal-title fw-bold mb-0">
+            <i class="bi bi-clock-history text-primary me-2"></i>Attendance Change Logs &amp; Remarks History
+          </h5>
+          <small class="text-muted" id="auditModalSubtitle">Detailed record of manual punch overrides and reasons</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-3">
+        <!-- Summary Strip -->
+        <div class="p-3 rounded-3 bg-light border mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <div class="small text-muted fw-bold" style="font-size:0.72rem;">EMPLOYEE &amp; DATE</div>
+            <div class="fw-bold text-dark fs-6" id="auditModalEmpAndDate">--</div>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div>
+              <div class="small text-muted fw-bold" style="font-size:0.72rem;">RECORDED PUNCHES</div>
+              <div class="fw-semibold text-dark small" id="auditModalPunches">In: -- &middot; Out: --</div>
+            </div>
+            <div>
+              <div class="small text-muted fw-bold" style="font-size:0.72rem;">CURRENT STATUS</div>
+              <span class="badge px-3 py-2" id="auditModalStatusBadge">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fw-bold small text-secondary mb-2 d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-list-check me-1 text-primary"></i>Audit Trail &amp; Reason Logs</span>
+          <span class="badge bg-light text-muted border" id="auditModalLogsTotal">0 Total Logs</span>
+        </div>
+        <div id="auditModalLogsContainer" class="d-flex flex-column gap-2" style="max-height: 360px; overflow-y: auto;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0 justify-content-between">
+        <button type="button" class="btn btn-outline-primary rounded-pill px-3 btn-sm" onclick="openPunchEditFromLogs()">
+          <i class="bi bi-pencil-square me-1"></i>Edit Punches / Add Remark
+        </button>
+        <button type="button" class="btn btn-dark rounded-pill px-4 btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const LEAVE_WALLET = {
+  {% for row in matrix_rows %}
+  "{{ row.employee.id }}": [
+    {% for lo in row.leave_options %}
+    { id: {{ lo.id }}, code: "{{ lo.code }}", name: "{{ lo.name|escapejs }}", balance: {% if lo.balance is not None %}{{ lo.balance }}{% else %}null{% endif %}, tracked: {{ lo.tracked|yesno:"true,false" }}, is_paid: {{ lo.is_paid|yesno:"true,false" }} }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+const QUICK_ACTION_URL = "{% url 'hrms:attendance_quick_action' %}";
+const PUNCH_EDIT_URL   = "{% url 'hrms:manual_punch_edit_ajax' %}";
+const CSRF_TOKEN       = "{{ csrf_token }}";
+
+let qaState = {};
+let selectedLeaveTypeId = null;
+let editModalInstance = null;
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function renderAuditHistory(container, countBadge, editReason, editedBy, editedOn) {
+  if (!container) return false;
+  container.innerHTML = '';
+  const trimmed = (editReason || '').trim();
+  if (!trimmed) {
+    if (countBadge) countBadge.textContent = 'None';
+    return false;
+  }
+
+  // Edit history entries are separated by \n---\n
+  const entries = trimmed.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
+  if (countBadge) countBadge.textContent = `${entries.length} log${entries.length > 1 ? 's' : ''}`;
+
+  entries.forEach((entry, idx) => {
+    const item = document.createElement('div');
+    item.className = 'p-2 mb-2 bg-white rounded-3 border shadow-xs';
+    
+    // Check if entry format is "[Date Time by Username]: Reason"
+    const match = entry.match(/^\[(.*?)\]:\s*([\s\S]*)$/);
+    if (match) {
+      item.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between text-muted pb-1 mb-1 border-bottom" style="font-size:0.73rem;">
+          <span class="fw-bold text-dark"><i class="bi bi-clock-history text-primary me-1"></i>${escapeHtml(match[1])}</span>
+          <span class="badge bg-light text-secondary border">#${entries.length - idx}</span>
+        </div>
+        <div class="text-dark fw-normal text-break" style="font-size:0.83rem; white-space:pre-wrap;">${escapeHtml(match[2])}</div>
+      `;
+    } else {
+      const authorText = (editedBy ? `<i class="bi bi-person-fill text-primary me-1"></i>${escapeHtml(editedBy)}` : '') +
+                         (editedOn ? ` &bull; ${escapeHtml(editedOn)}` : '');
+      item.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between text-muted pb-1 mb-1 border-bottom" style="font-size:0.73rem;">
+          <span>${authorText || 'Previous Remark'}</span>
+          <span class="badge bg-light text-secondary border">#${entries.length - idx}</span>
+        </div>
+        <div class="text-dark fw-normal text-break" style="font-size:0.83rem; white-space:pre-wrap;">${escapeHtml(entry)}</div>
+      `;
+    }
+    container.appendChild(item);
+  });
+  return true;
+}
+
+function openQuickActions(empId, empName, dateStr, status, checkIn, checkOut, recordId, editReason = '', editedBy = '', editedOn = '') {
+  qaState = { empId, empName, date: dateStr, status, checkIn, checkOut, recordId, editReason, editedBy, editedOn };
+  selectedLeaveTypeId = null;
+  document.getElementById('qaPanelSubtitle').textContent = empName + ' - ' + dateStr;
+  const chipColors = { present:'bg-success text-white', grace:'bg-warning text-dark', half_day:'bg-info text-dark', on_leave:'bg-primary text-white', absent:'bg-danger text-white', holiday:'bg-secondary text-white', week_off:'bg-light text-muted border', future:'bg-light text-muted' };
+  const chip = document.getElementById('qaCurrentStatus');
+  chip.textContent = status.replace('_',' ').toUpperCase();
+  chip.className = 'badge ms-2 px-3 py-2 ' + (chipColors[status] || 'bg-secondary text-white');
+  document.querySelectorAll('.qa-att, #qaUseLeave, #qaLeaveHalf, #qaAddPenalty').forEach(el => el.checked = false);
+  document.getElementById('qaLeaveSection').style.display = 'none';
+  document.getElementById('qaPenaltySection').style.display = 'none';
+  document.getElementById('qaReason').value = '';
+  document.getElementById('qaPenaltyAmount').value = '';
+  document.getElementById('qaPenaltyReason').value = '';
+
+  // Update badge on logs button
+  const trimmedLog = (editReason || '').trim();
+  const entriesCount = trimmedLog ? trimmedLog.split(/\n---\n/).map(s => s.trim()).filter(Boolean).length : 0;
+  const logsBtnBadge = document.getElementById('qaLogsBtnBadge');
+  if (logsBtnBadge) {
+    logsBtnBadge.textContent = entriesCount + ' Log' + (entriesCount === 1 ? '' : 's');
+    logsBtnBadge.className = 'badge ' + (entriesCount > 0 ? 'bg-primary text-white' : 'bg-secondary-subtle text-dark border');
+  }
+
+  // Render previous remarks in panel if exist
+  const qaPrevSection = document.getElementById('qaPrevRemarksSection');
+  const qaPrevContent = document.getElementById('qaPrevRemarksContent');
+  const hasHistory = renderAuditHistory(qaPrevContent, null, editReason, editedBy, editedOn);
+  if (qaPrevSection) qaPrevSection.style.display = hasHistory ? 'block' : 'none';
+
+  buildLeaveOptions(empId);
+  document.querySelectorAll('.qa-att').forEach(cb => {
+    cb.onchange = function() { if (this.checked) document.querySelectorAll('.qa-att').forEach(o => { if (o !== this) o.checked = false; }); };
+  });
+  document.getElementById('qaOverlay').classList.add('open');
+  document.getElementById('qaPanel').classList.add('open');
+}
+function closeQuickActions() {
+  document.getElementById('qaOverlay').classList.remove('open');
+  document.getElementById('qaPanel').classList.remove('open');
+}
+
+let auditModalInstance = null;
+function openAuditLogModal() {
+  document.getElementById('auditModalEmpAndDate').textContent = (qaState.empName || '--') + ' (' + (qaState.date || '--') + ')';
+  document.getElementById('auditModalSubtitle').textContent = 'Audit history for ' + (qaState.empName || 'Employee') + ' on ' + (qaState.date || '');
+  document.getElementById('auditModalPunches').innerHTML = 'In: ' + (qaState.checkIn || '<span class="text-muted">None</span>') + ' &middot; Out: ' + (qaState.checkOut || '<span class="text-muted">None</span>');
+  
+  const chipColors = { present:'bg-success text-white', grace:'bg-warning text-dark', half_day:'bg-info text-dark', on_leave:'bg-primary text-white', absent:'bg-danger text-white', holiday:'bg-secondary text-white', week_off:'bg-light text-muted border', future:'bg-light text-muted' };
+  const badge = document.getElementById('auditModalStatusBadge');
+  badge.textContent = (qaState.status || '').replace('_', ' ').toUpperCase();
+  badge.className = 'badge px-3 py-2 ' + (chipColors[qaState.status] || 'bg-secondary text-white');
+
+  const container = document.getElementById('auditModalLogsContainer');
+  const countBadge = document.getElementById('auditModalLogsTotal');
+  const hasHistory = renderAuditHistory(container, countBadge, qaState.editReason, qaState.editedBy, qaState.editedOn);
+
+  if (!hasHistory) {
+    container.innerHTML = `
+      <div class="text-center py-4 text-muted bg-light rounded-3 border">
+        <i class="bi bi-shield-check display-6 d-block mb-2 text-success"></i>
+        <strong>No manual punch edits or changes recorded.</strong>
+        <div class="small mt-1">This record reflects standard biometric punches or initial system attendance.</div>
+      </div>
+    `;
+    if (countBadge) countBadge.textContent = '0 Total Logs';
+  }
+
+  if (!auditModalInstance) auditModalInstance = new bootstrap.Modal(document.getElementById('attendanceAuditLogModal'));
+  auditModalInstance.show();
+}
+
+function openPunchEditFromLogs() {
+  if (auditModalInstance) auditModalInstance.hide();
+  setTimeout(() => openEditModal(qaState.recordId, qaState.empId, qaState.empName, qaState.date, qaState.checkIn, qaState.checkOut, qaState.status, qaState.editReason, qaState.editedBy, qaState.editedOn), 300);
+}
+function toggleLeaveSection() {
+  document.getElementById('qaLeaveSection').style.display = document.getElementById('qaUseLeave').checked ? 'block' : 'none';
+}
+function togglePenaltySection() {
+  document.getElementById('qaPenaltySection').style.display = document.getElementById('qaAddPenalty').checked ? 'block' : 'none';
+}
+function buildLeaveOptions(empId) {
+  const container = document.getElementById('qaLeaveOptions');
+  container.innerHTML = '';
+  const options = LEAVE_WALLET[empId] || [];
+  if (!options.length) { container.innerHTML = '<div class="text-muted small">No leave types configured.</div>'; return; }
+  options.forEach(lt => {
+    const balText = lt.tracked ? '<span class="fw-bold ' + (lt.balance <= 0 ? 'text-danger' : 'text-success') + '">' + lt.balance + ' days left</span>' : '<span class="text-muted">Untracked</span>';
+    const paidBadge = lt.is_paid ? '<span class="badge bg-success-subtle text-success ms-1" style="font-size:.65rem;">Paid</span>' : '<span class="badge bg-danger-subtle text-danger ms-1" style="font-size:.65rem;">Unpaid</span>';
+    const div = document.createElement('div');
+    div.className = 'form-check border rounded-3 p-2 mb-1';
+    div.innerHTML = '<input class="form-check-input" type="radio" name="qaLeaveType" id="lt_' + lt.id + '" value="' + lt.id + '" onchange="selectedLeaveTypeId=' + lt.id + '"><label class="form-check-label w-100" for="lt_' + lt.id + '" style="cursor:pointer;"><span class="fw-semibold">' + lt.code + '</span> <span class="text-muted small">' + lt.name + '</span>' + paidBadge + '<span class="float-end small">' + balText + '</span></label>';
+    container.appendChild(div);
+  });
+}
+async function submitQuickAction() {
+  const reason = document.getElementById('qaReason').value.trim();
+  if (!reason) { alert('Audit Note / Remark is mandatory whenever applying actions.'); document.getElementById('qaReason').focus(); return; }
+  const useLeave = document.getElementById('qaUseLeave').checked;
+  if (useLeave && !selectedLeaveTypeId) { alert('Please select a leave type.'); return; }
+  const addPenalty = document.getElementById('qaAddPenalty').checked;
+  const penaltyAmount = parseFloat(document.getElementById('qaPenaltyAmount').value || 0);
+  if (addPenalty && penaltyAmount <= 0) { alert('Please enter a valid penalty amount.'); return; }
+  const attCb = document.querySelector('.qa-att:checked');
+  const payload = {
+    employee_id: qaState.empId, date: qaState.date, edit_reason: reason,
+    attendance_status: attCb ? attCb.value : null,
+    use_leave: useLeave, leave_type_id: useLeave ? selectedLeaveTypeId : null,
+    leave_half: document.getElementById('qaLeaveHalf').checked,
+    add_penalty: addPenalty, penalty_amount: addPenalty ? penaltyAmount : null,
+    penalty_reason: document.getElementById('qaPenaltyReason').value.trim(),
+  };
+  const btn = document.getElementById('qaSubmitBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Applying...';
+  try {
+    const resp = await fetch(QUICK_ACTION_URL, { method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF_TOKEN}, body: JSON.stringify(payload) });
+    const data = await resp.json();
+    if (data.success) {
+      closeQuickActions();
+      showToast((data.messages||['Done!']).join(' | '), 'success');
+      setTimeout(() => window.location.reload(), 1200);
+    } else { alert('Error: ' + (data.error||'Unknown')); }
+  } catch(e) { alert('Network error: ' + e); }
+  finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Apply Actions'; }
+}
+function openPunchEditFromPanel() {
+  closeQuickActions();
+  setTimeout(() => openEditModal(qaState.recordId, qaState.empId, qaState.empName, qaState.date, qaState.checkIn, qaState.checkOut, qaState.status, qaState.editReason, qaState.editedBy, qaState.editedOn), 300);
+}
+function openEditModal(recordId, empId, empName, dateStr, checkIn, checkOut, status, editReason = '', editedBy = '', editedOn = '') {
+  document.getElementById('editRecordId').value = recordId || '';
+  document.getElementById('editEmpId').value = empId;
+  document.getElementById('editDate').value = dateStr;
+  document.getElementById('modalEmpName').innerText = empName;
+  document.getElementById('modalDateDisplay').innerText = dateStr;
+  document.getElementById('editCheckIn').value = checkIn || '';
+  document.getElementById('editCheckOut').value = checkOut || '';
+  if (status) document.getElementById('editStatusSelect').value = status;
+  document.getElementById('editAuditReason').value = '';
+
+  // Display previous remarks and audit trail
+  const prevSection = document.getElementById('prevRemarksSection');
+  const prevContent = document.getElementById('prevRemarksContent');
+  const prevBadge   = document.getElementById('prevRemarkCountBadge');
+  const hasHistory = renderAuditHistory(prevContent, prevBadge, editReason, editedBy, editedOn);
+  if (prevSection) prevSection.style.display = hasHistory ? 'block' : 'none';
+
+  if (!editModalInstance) editModalInstance = new bootstrap.Modal(document.getElementById('quickEditModal'));
+  editModalInstance.show();
+}
+function savePunchEdit() {
+  const reason = document.getElementById('editAuditReason').value.trim();
+  if (!reason) {
+    alert('Remark / Reason is strictly mandatory whenever modifying punch records.');
+    document.getElementById('editAuditReason').focus();
+    return;
+  }
+  const payload = {
+    record_id: document.getElementById('editRecordId').value || null,
+    employee_id: document.getElementById('editEmpId').value,
+    date: document.getElementById('editDate').value,
+    check_in: document.getElementById('editCheckIn').value,
+    check_out: document.getElementById('editCheckOut').value,
+    status: document.getElementById('editStatusSelect').value,
+    edit_reason: reason
+  };
+  const btn = document.getElementById('savePunchBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+  fetch(PUNCH_EDIT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json()).then(data => {
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save &amp; Audit';
+    if (data.success) {
+      editModalInstance.hide();
+      showToast('Punch and audit trail updated successfully!', 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    }
+    else alert(data.error || 'Failed to update punch.');
+  }).catch(err => {
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save &amp; Audit';
+    alert('Network error: ' + err);
+  });
+}
+function submitBulkLeaveApproval() {
+  const checked = document.querySelectorAll('.emp-checkbox:checked');
+  if (!checked.length) { alert('Select at least one employee.'); return; }
+  if (confirm('Convert absents into CL/EL (or LWP if balance is 0) for '+checked.length+' employee(s)?'))
+    document.getElementById('bulkAutoLeaveForm').submit();
+}
+document.getElementById('selectAllEmployees')?.addEventListener('change', function() {
+  document.querySelectorAll('.emp-checkbox').forEach(cb => cb.checked = this.checked);
+});
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;min-width:260px;';
+  t.innerHTML = '<div class="alert alert-'+(type==='success'?'success':'danger')+' shadow rounded-3 mb-0"><i class="bi bi-'+(type==='success'?'check-circle-fill':'exclamation-triangle-fill')+' me-2"></i>'+msg+'</div>';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.body.addEventListener('mouseover', function(e) {
+    const target = e.target.closest('[data-bs-toggle="tooltip"]');
+    if (target && !bootstrap.Tooltip.getInstance(target)) new bootstrap.Tooltip(target, {html:true}).show();
+  });
+});
+</script>
+{% endblock %}

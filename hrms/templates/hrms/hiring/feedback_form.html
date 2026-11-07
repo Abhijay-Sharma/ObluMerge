@@ -1,0 +1,325 @@
+{% extends "hrms/base.html" %}
+{% block title %}Submit Interview Scorecard — Hiring{% endblock %}
+{% block page_title %}Interview Evaluation Scorecard{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-hero-bar {
+    background: linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4f46e5 100%);
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.25);
+  }
+  .form-hero-bar .title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .form-hero-bar .icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: #fff;
+  }
+  .form-hero-bar h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .form-hero-bar .sub {
+    font-size: 0.82rem;
+    color: #e0e7ff;
+    margin-top: 0.2rem;
+  }
+  .btn-back-soft {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 10px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+  }
+  .btn-back-soft:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    transform: translateX(-2px);
+  }
+
+  .hiring-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.2s ease;
+  }
+  .hiring-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+  }
+  .hiring-card-header {
+    background: #fbfbfe;
+    border-bottom: 1px solid #f1f3f8;
+    padding: 1rem 1.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #1f2937;
+  }
+  .hiring-card-header i {
+    color: #4f46e5;
+    font-size: 1.1rem;
+  }
+  .hiring-card-body {
+    padding: 1.4rem 1.5rem;
+  }
+
+  .field-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .field-label {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .field-label .req {
+    color: #ef4444;
+    font-weight: 700;
+  }
+  .hiring-card select,
+  .hiring-card textarea,
+  .hiring-card input[type="text"] {
+    display: block;
+    width: 100%;
+    padding: 0.62rem 0.85rem;
+    font-size: 0.88rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #1f2937;
+    background-color: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  }
+  .hiring-card select:focus,
+  .hiring-card textarea:focus {
+    background-color: #ffffff;
+    border-color: #4f46e5;
+    outline: 0;
+    box-shadow: 0 0 0 3.5px rgba(79, 70, 229, 0.14);
+  }
+  .field-help {
+    font-size: 0.76rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+  .field-error {
+    font-size: 0.78rem;
+    color: #dc2626;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .privacy-banner {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.84rem;
+    color: #1e40af;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .form-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.85rem;
+    padding-top: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .btn-submit-gradient {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 11px;
+    padding: 0.65rem 1.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+    transition: all 0.2s ease;
+  }
+  .btn-submit-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+    color: #ffffff;
+  }
+  .btn-cancel-soft {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    border-radius: 11px;
+    padding: 0.65rem 1.35rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+  }
+  .btn-cancel-soft:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0" style="max-width: 860px;">
+
+  <!-- Hero Header -->
+  <div class="form-hero-bar">
+    <div class="title-group">
+      <div class="icon-box">
+        <i class="bi bi-clipboard2-check-fill"></i>
+      </div>
+      <div>
+        <h2>Submit Interview Feedback & Ratings</h2>
+        <div class="sub">Record your individual scorecard evaluations and hiring recommendation</div>
+      </div>
+    </div>
+    <a href="{% url 'hrms:my_interviews' %}" class="btn-back-soft">
+      <i class="bi bi-arrow-left"></i> My Interviews
+    </a>
+  </div>
+
+  <div class="privacy-banner">
+    <i class="bi bi-shield-lock-fill fs-5"></i>
+    <div>
+      <strong>Confidential Evaluation:</strong> Your scorecard ratings and qualitative remarks are saved securely to your panelist profile and consolidated for hiring decision meetings.
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger rounded-4 shadow-sm border-0 mb-4 d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-octagon-fill fs-5 text-danger"></i>
+    <div>{{ form.non_field_errors|join:", " }}</div>
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="hiring-card">
+      <div class="hiring-card-header">
+        <i class="bi bi-check-circle"></i>
+        <span>Hiring Recommendation & Decision</span>
+      </div>
+      <div class="hiring-card-body">
+        <div class="row g-3">
+          {% if form.recommendation %}
+          <div class="col-md-6 field-wrapper">
+            <label class="field-label" for="{{ form.recommendation.id_for_label }}">
+              Overall Recommendation <span class="req">*</span>
+            </label>
+            {{ form.recommendation }}
+            <div class="field-help"><i class="bi bi-info-circle me-1"></i>Select Hire (Strong recommendation), Maybe (Neutral / Needs follow-up), or Reject.</div>
+            {% if form.recommendation.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.recommendation.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="hiring-card">
+      <div class="hiring-card-header">
+        <i class="bi bi-pencil-square"></i>
+        <span>Detailed Feedback & Observations</span>
+      </div>
+      <div class="hiring-card-body">
+        <div class="row g-3">
+          {% if form.feedback_text %}
+          <div class="col-12 field-wrapper">
+            <label class="field-label" for="{{ form.feedback_text.id_for_label }}">
+              Qualitative Feedback & Notes
+            </label>
+            {{ form.feedback_text }}
+            <div class="field-help"><i class="bi bi-info-circle me-1"></i>Detail key strengths demonstrated, technical problem-solving ability, and any potential red flags.</div>
+            {% if form.feedback_text.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ form.feedback_text.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Fallback for any other custom fields (e.g., scorecard_filled) -->
+    {% for field in form %}
+      {% if field.name not in "recommendation,feedback_text" %}
+      <div class="hiring-card">
+        <div class="hiring-card-body">
+          <div class="field-wrapper">
+            <label class="field-label" for="{{ field.id_for_label }}">
+              {{ field.label }}{% if field.field.required %}<span class="req">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.errors %}<div class="field-error"><i class="bi bi-exclamation-circle"></i>{{ field.errors|join:", " }}</div>{% endif %}
+            {% if field.help_text %}<div class="field-help">{{ field.help_text }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Actions -->
+    <div class="form-actions-bar">
+      <a href="{% url 'hrms:my_interviews' %}" class="btn-cancel-soft">
+        <i class="bi bi-x-circle"></i> Cancel
+      </a>
+      <button type="submit" class="btn-submit-gradient">
+        <i class="bi bi-check2-circle"></i> Record My Feedback
+      </button>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

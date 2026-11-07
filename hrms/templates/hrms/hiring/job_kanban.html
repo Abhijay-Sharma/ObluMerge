@@ -1,0 +1,773 @@
+{% extends "hrms/base.html" %}
+{% block title %}{{ job.title }} — Kanban Pipeline{% endblock %}
+{% block page_title %}Kanban: {{ job.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --primary-indigo: #4338ca;
+    --accent-purple: #7c3aed;
+  }
+
+  /* Top Bar */
+  .kanban-header-card {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 10px 25px -5px rgba(49, 46, 129, 0.25);
+  }
+  .kanban-header-card h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .kanban-header-card .meta-text {
+    font-size: 0.82rem;
+    color: #c7d2fe;
+    margin-top: 0.2rem;
+  }
+
+  /* Filter / Search Bar */
+  .kanban-toolbar {
+    background: #ffffff;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 12px;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+  .kanban-search-box {
+    max-width: 320px;
+    position: relative;
+    flex: 1;
+  }
+  .kanban-search-box input {
+    border-radius: 9px;
+    border: 1.5px solid #e2e8f0;
+    font-size: 0.83rem;
+    padding: 0.45rem 0.85rem 0.45rem 2.2rem;
+    width: 100%;
+    background: #f8fafc;
+  }
+  .kanban-search-box input:focus {
+    background: #fff;
+    border-color: #7c3aed;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+  .kanban-search-box i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+
+  /* Single Candidate Stage Spotlight Card */
+  .candidate-stage-card {
+    background: #ffffff;
+    border: 1.5px solid #c7d2fe;
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 18px rgba(99, 102, 241, 0.08);
+  }
+  .csc-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.25);
+  }
+  .csc-stepper-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+  }
+  .stage-stepper-track {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    padding: 0.25rem 0;
+    gap: 0;
+  }
+  .stage-step-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 140px;
+  }
+  .step-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    color: #64748b;
+    flex-shrink: 0;
+  }
+  .stage-step-item.active .step-badge {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2);
+  }
+  .stage-step-item.passed .step-badge {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+  }
+  .step-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.2;
+  }
+  .step-state {
+    font-size: 0.7rem;
+    margin-top: 0.15rem;
+  }
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: #e2e8f0;
+    margin: 0 0.5rem;
+    min-width: 20px;
+  }
+  .step-line.passed {
+    background: #10b981;
+  }
+
+  /* Kanban Columns - COMPACT & NATURAL HEIGHT */
+  .kanban-wrap {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    padding-bottom: 1.5rem;
+    align-items: flex-start; /* CRITICAL: natural height, NOT stretching to viewport bottom! */
+    scroll-snap-type: x mandatory;
+  }
+  .kanban-col {
+    flex: 0 0 310px;
+    width: 310px;
+    background: #f8fafc;
+    border-radius: 14px;
+    border: 1.5px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    scroll-snap-align: start;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .kanban-col:hover {
+    border-color: #cbd5e1;
+  }
+  .kanban-col-header {
+    padding: 0.85rem 1.1rem;
+    background: #ffffff;
+    border-bottom: 1.5px solid #e2e8f0;
+    border-radius: 13px 13px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .stage-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .stage-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #7c3aed;
+  }
+  .stage-name {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #1e1b4b;
+  }
+  .stage-count {
+    background: #f1f5f9;
+    color: #475569;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* Kanban Drop Cards Container */
+  .kanban-cards {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    min-height: 85px; /* Compact dropzone, not 800px! */
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+  }
+
+  /* Candidate Card */
+  .app-card {
+    background: #ffffff;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 11px;
+    padding: 0.85rem;
+    cursor: grab;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    position: relative;
+  }
+  .app-card:hover {
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.14);
+    border-color: #a5b4fc;
+  }
+  .app-card.dragging {
+    opacity: 0.5;
+    transform: rotate(1.5deg) scale(1.02);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.25);
+  }
+  .app-card.locked-card {
+    opacity: 0.7;
+    cursor: not-allowed;
+    border-style: dashed;
+    background: #fafafa;
+  }
+
+  .ac-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.35rem;
+  }
+  .ac-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #ede9fe;
+    color: #7c3aed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+  .ac-name {
+    font-weight: 700;
+    font-size: 0.86rem;
+    color: #1e1b4b;
+    line-height: 1.2;
+  }
+  .ac-email {
+    font-size: 0.73rem;
+    color: #64748b;
+    margin-bottom: 0.4rem;
+  }
+
+  .ac-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+  }
+  .ac-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+  }
+  .badge-applied      { background: #e0f2fe; color: #0369a1; }
+  .badge-shortlisted  { background: #fef9c3; color: #92400e; }
+  .badge-interviewing { background: #ede9fe; color: #5b21b6; }
+  .badge-offered      { background: #d1fae5; color: #065f46; }
+  .badge-hired        { background: #dcfce7; color: #166534; }
+  .badge-rejected     { background: #fee2e2; color: #991b1b; }
+
+  /* Compact Empty Drop Target */
+  .kanban-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px dashed #cbd5e1;
+    background: rgba(241, 245, 249, 0.6);
+    border-radius: 10px;
+    padding: 1.2rem 0.75rem;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.76rem;
+    gap: 0.25rem;
+    min-height: 85px;
+    pointer-events: none;
+    user-select: none;
+  }
+  .sortable-zone:has(.app-card) .kanban-empty {
+    display: none !important;
+  }
+
+  /* Card Quick Action Bar */
+  .card-actions {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.65rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid #f1f5f9;
+  }
+  .card-act-btn {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.55rem;
+    border-radius: 7px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .card-act-btn:hover {
+    border-color: #7c3aed;
+    color: #7c3aed;
+    background: #ede9fe;
+  }
+
+  /* Toast Notification */
+  .kanban-toast {
+    position: fixed;
+    bottom: 1.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1b4b;
+    color: #fff;
+    padding: 0.65rem 1.5rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 9999;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .kanban-toast.show { opacity: 1; }
+  .kanban-toast.success { background: #059669; }
+  .kanban-toast.error { background: #dc2626; }
+
+  .resume-modal-frame {
+    width: 100%;
+    height: 75vh;
+    border: none;
+    border-radius: 10px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Header Card -->
+<div class="kanban-header-card">
+  <div class="d-flex align-items-center gap-3">
+    <a href="{% url 'hrms:jobposting_list' %}" class="btn btn-sm btn-light" style="border-radius:9px; padding:.45rem .75rem;">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4><i class="bi bi-kanban-fill me-2"></i>{{ job.title }}</h4>
+      <div class="meta-text">
+        {% if job.department %}{{ job.department }} · {% endif %}
+        {{ job.get_job_type_display }}
+        {% if job.location %} · {{ job.location }}{% endif %}
+        <span class="badge bg-light text-dark ms-2">{{ pipeline|length }} Stages</span>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'hrms:application_list' %}?job={{ job.pk }}" class="btn btn-sm btn-light" style="border-radius:9px;">
+      <i class="bi bi-list-ul me-1"></i>Table View
+    </a>
+    <a href="{% url 'hrms:bulk_upload' job.pk %}" class="btn btn-sm btn-light" style="border-radius:9px;">
+      <i class="bi bi-cloud-upload me-1"></i>Bulk Upload
+    </a>
+    <a href="{% url 'hrms:jobpipeline_manage' job.pk %}" class="btn btn-sm btn-light" style="border-radius:9px;">
+      <i class="bi bi-gear me-1"></i>Configure Stages
+    </a>
+  </div>
+</div>
+
+{% if not pipeline %}
+<div class="text-center py-5" style="background:#faf5ff; border-radius:16px; border:2px dashed #c4b5fd;">
+  <i class="bi bi-diagram-3" style="font-size:2.5rem; color:#8b5cf6; display:block; margin-bottom:.75rem;"></i>
+  <h5 class="fw-semibold" style="color:#5b21b6;">No pipeline stages configured</h5>
+  <p class="text-muted mb-3">Define the hiring stages for this job to use the Kanban board.</p>
+  <a href="{% url 'hrms:jobpipeline_manage' job.pk %}" class="btn btn-primary px-4" style="border-radius:9px;">
+    <i class="bi bi-plus-lg me-1"></i>Set Up Pipeline
+  </a>
+</div>
+{% else %}
+
+<!-- Single Candidate Spotlight (When filtered by candidate/application) -->
+{% if filtered_app %}
+<div class="candidate-stage-card">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="csc-avatar">
+        {{ filtered_app.candidate.first_name|slice:":1" }}{{ filtered_app.candidate.last_name|slice:":1" }}
+      </div>
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h5 class="fw-bold mb-0 text-dark">
+            {{ filtered_app.candidate.first_name }} {{ filtered_app.candidate.last_name }}
+          </h5>
+          <span class="ac-badge badge-{{ filtered_app.status }}">
+            {{ filtered_app.get_status_display }}
+          </span>
+          {% if filtered_app.current_stage %}
+          <span class="badge" style="background:#ede9fe; color:#6d28d9; font-size:.75rem; padding:.25rem .6rem;">
+            Current Stage: <strong>{{ filtered_app.current_stage.name }}</strong>
+          </span>
+          {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-1 text-muted small flex-wrap">
+          <span><i class="bi bi-envelope me-1"></i>{{ filtered_app.candidate.email }}</span>
+          {% if filtered_app.candidate.phone %}
+          <span><i class="bi bi-telephone me-1"></i>{{ filtered_app.candidate.phone }}</span>
+          {% endif %}
+          {% if filtered_app.candidate.city or filtered_app.candidate.state %}
+          <span><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ filtered_app.candidate.city }}{% if filtered_app.candidate.city and filtered_app.candidate.state %}, {% endif %}{{ filtered_app.candidate.state }}</span>
+          {% endif %}
+          {% if filtered_app.candidate.experience_years %}
+          <span><i class="bi bi-clock-history me-1"></i>{{ filtered_app.candidate.experience_years }} yrs exp</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions for Candidate -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="{% url 'hrms:application_detail' filtered_app.pk %}" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
+        <i class="bi bi-arrow-left me-1"></i>Candidate Profile
+      </a>
+      {% if filtered_app.candidate.resume %}
+      <button class="btn btn-sm btn-outline-danger" style="border-radius:8px;"
+              onclick="openResume('{{ filtered_app.candidate.resume.url }}', '{{ filtered_app.candidate.first_name }} {{ filtered_app.candidate.last_name }}')">
+        <i class="bi bi-file-earmark-pdf me-1"></i>View Resume
+      </button>
+      {% endif %}
+      <a href="{% url 'hrms:job_kanban' job.pk %}" class="btn btn-sm" style="background:#4338ca; color:#fff; border-radius:8px;">
+        <i class="bi bi-people-fill me-1"></i>View All Candidates Kanban
+      </a>
+    </div>
+  </div>
+
+  <!-- Interactive Pipeline Stepper -->
+  <div class="csc-stepper-box">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="small fw-bold text-uppercase text-muted" style="letter-spacing:.04em;">
+        <i class="bi bi-signpost-split me-1 text-primary"></i>Hiring Workflow Stepper
+      </div>
+      <div class="small text-muted">
+        <i class="bi bi-info-circle me-1"></i>Drag the card below to advance to another stage
+      </div>
+    </div>
+    <div class="stage-stepper-track">
+      {% for col in pipeline %}
+      <div class="stage-step-item {% if filtered_app.current_stage_id == col.stage.pk %}active{% endif %}">
+        <div class="step-badge">
+          {% if filtered_app.current_stage_id == col.stage.pk %}
+            <i class="bi bi-check-circle-fill"></i>
+          {% else %}
+            {{ forloop.counter }}
+          {% endif %}
+        </div>
+        <div>
+          <div class="step-title">{{ col.stage.name }}</div>
+          <div class="step-state {% if filtered_app.current_stage_id == col.stage.pk %}text-primary fw-bold{% else %}text-muted{% endif %}">
+            {% if filtered_app.current_stage_id == col.stage.pk %}Active Stage{% else %}Stage {{ forloop.counter }}{% endif %}
+          </div>
+        </div>
+      </div>
+      {% if not forloop.last %}<div class="step-line"></div>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% else %}
+
+<!-- Toolbar with quick card search and guidance -->
+<div class="kanban-toolbar">
+  <div class="kanban-search-box">
+    <i class="bi bi-search"></i>
+    <input type="text" id="kanbanSearchInput" placeholder="Filter candidates on board..." onkeyup="filterKanbanCards()">
+  </div>
+  <div class="d-flex align-items-center gap-3 text-muted small">
+    <span><i class="bi bi-info-circle text-primary me-1"></i>Drag candidate cards to transition between stages</span>
+    <span><i class="bi bi-lock-fill text-secondary me-1"></i>Locked once Hired/Rejected</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- Kanban Horizontal Stages Container (Compact, Natural Height) -->
+<div class="kanban-wrap" id="kanbanWrap">
+  {% for col in pipeline %}
+  <div class="kanban-col" id="col-{{ col.stage.pk }}">
+    <!-- Column Header -->
+    <div class="kanban-col-header">
+      <div class="stage-info">
+        <div class="stage-dot"></div>
+        <span class="stage-name">{{ col.stage.name }}</span>
+      </div>
+      <span class="stage-count" id="count-{{ col.stage.pk }}">{{ col.apps|length }}</span>
+    </div>
+
+    <!-- Drop Zone for Cards -->
+    <div class="kanban-cards sortable-zone"
+         id="zone-{{ col.stage.pk }}"
+         data-stage-id="{{ col.stage.pk }}">
+      {% for app in col.apps %}
+      <div class="app-card {% if app.is_locked %}locked-card{% endif %}"
+           id="app-{{ app.pk }}"
+           data-app-id="{{ app.pk }}"
+           data-name="{{ app.candidate.first_name }} {{ app.candidate.last_name }} {{ app.candidate.email }}"
+           data-locked="{{ app.is_locked|yesno:'true,false' }}">
+
+        <!-- Card Header with Avatar & Name -->
+        <div class="ac-header">
+          <div class="ac-avatar">
+            {{ app.candidate.first_name|slice:":1" }}{{ app.candidate.last_name|slice:":1" }}
+          </div>
+          <div class="flex-grow-1 overflow-hidden">
+            <div class="ac-name text-truncate">
+              {{ app.candidate.first_name }} {{ app.candidate.last_name }}
+              {% if app.is_locked %}<i class="bi bi-lock-fill text-muted ms-1 small"></i>{% endif %}
+            </div>
+            <div class="ac-email text-truncate">{{ app.candidate.email }}</div>
+          </div>
+        </div>
+
+        <!-- Meta Tags (Status, Exp, Location) -->
+        <div class="ac-meta">
+          <span class="ac-badge badge-{{ app.status }}">{{ app.get_status_display }}</span>
+          {% if app.candidate.experience_years %}
+          <span class="ac-badge" style="background:#f1f5f9; color:#334155;">
+            <i class="bi bi-clock-history me-1"></i>{{ app.candidate.experience_years }}y
+          </span>
+          {% endif %}
+          {% if app.candidate.city or app.candidate.state %}
+          <span class="ac-badge" style="background:#fdf2f8; color:#be185d;">
+            <i class="bi bi-geo-alt-fill me-1"></i>{{ app.candidate.city|default:app.candidate.state }}
+          </span>
+          {% endif %}
+          {% if app.expected_ctc %}
+          <span class="ac-badge" style="background:#f0fdf4; color:#065f46;">
+            ₹{{ app.expected_ctc|floatformat:0 }}
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-2 text-muted" style="font-size:.7rem;">
+          <span>Applied: {{ app.applied_on|date:"d M Y" }}</span>
+          {% if app.notice_period %}
+          <span class="text-orange" style="color:#ea580c;">{{ app.notice_period }}d notice</span>
+          {% endif %}
+        </div>
+
+        <!-- Card Quick Action Buttons -->
+        <div class="card-actions">
+          <a href="{% url 'hrms:application_detail' app.pk %}" class="card-act-btn" title="View Application 360° Profile">
+            <i class="bi bi-person-lines-fill"></i> Profile
+          </a>
+          {% if app.candidate.resume %}
+          <button class="card-act-btn" title="Quick View Resume"
+                  onclick="openResume('{{ app.candidate.resume.url }}', '{{ app.candidate.first_name }} {{ app.candidate.last_name }}')">
+            <i class="bi bi-file-earmark-pdf"></i> Resume
+          </button>
+          {% endif %}
+          {% if not app.is_locked %}
+          <a href="{% url 'hrms:interview_add' app.pk %}" class="card-act-btn" title="Schedule Interview">
+            <i class="bi bi-calendar-plus"></i> Interview
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Compact Drop Target (visible when no cards in column) -->
+      <div class="kanban-empty">
+        <i class="bi bi-arrow-down-circle" style="font-size:1.15rem;"></i>
+        <span>Drop candidate here</span>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Toast Notification -->
+<div class="kanban-toast" id="kanbanToast"></div>
+
+<!-- Resume Viewer Modal -->
+<div class="modal fade" id="resumeModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-0" style="background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:16px 16px 0 0;">
+        <h6 class="modal-title text-white fw-bold" id="resumeModalTitle"><i class="bi bi-file-earmark-person me-2"></i>Resume</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <iframe id="resumeFrame" class="resume-modal-frame" src="about:blank"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+(function() {
+  var csrf = document.querySelector('meta[name="csrf-token"]').content;
+
+  // Initialize drag & drop for each stage column
+  document.querySelectorAll('.sortable-zone').forEach(function(zone) {
+    new Sortable(zone, {
+      group: 'kanban',
+      animation: 180,
+      ghostClass: 'sortable-ghost',
+      dragClass: 'dragging',
+      filter: '.locked-card, .kanban-empty',
+      onEnd: function(evt) {
+        var appId   = evt.item.dataset.appId;
+        var stageId = evt.to.dataset.stageId;
+        var isLocked = evt.item.dataset.locked === 'true';
+        if (isLocked) return;
+
+        fetch('/hrms/api/applications/' + appId + '/move-stage/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+          body: JSON.stringify({ target_stage_id: parseInt(stageId) })
+        })
+        .then(function(r) {
+          if (!r.ok) {
+            r.json().then(function(data) {
+              showToast('Move failed: ' + (data.detail || 'Unknown error'), 'error');
+            });
+            evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex] || null);
+          } else {
+            r.json().then(function(data) {
+              updateCounts();
+              showToast('✓ Moved to ' + evt.to.closest('.kanban-col').querySelector('.stage-name').textContent, 'success');
+              if (data.to_status) {
+                var badge = evt.item.querySelector('.ac-badge');
+                if (badge) {
+                  badge.className = 'ac-badge badge-' + data.to_status;
+                  var statusLabels = {applied:'Applied', shortlisted:'Shortlisted', interviewing:'Interviewing', offered:'Offered', hired:'Hired', rejected:'Rejected'};
+                  badge.textContent = statusLabels[data.to_status] || data.to_status;
+                }
+                if (data.is_locked) {
+                  evt.item.classList.add('locked-card');
+                  evt.item.dataset.locked = 'true';
+                }
+              }
+            });
+          }
+        })
+        .catch(function(err) {
+          console.error('Stage move error:', err);
+          showToast('Network error — move reverted', 'error');
+          evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex] || null);
+        });
+      }
+    });
+  });
+
+  function updateCounts() {
+    document.querySelectorAll('.kanban-col').forEach(function(col) {
+      var zone  = col.querySelector('.sortable-zone');
+      var badge = col.querySelector('.stage-count');
+      if (zone && badge) {
+        var cardCount = zone.querySelectorAll('.app-card').length;
+        badge.textContent = cardCount;
+        var emptyNotice = zone.querySelector('.kanban-empty');
+        if (emptyNotice) {
+          emptyNotice.style.display = (cardCount === 0) ? 'flex' : 'none';
+        }
+      }
+    });
+  }
+
+  // Initial check on load for empty state display
+  updateCounts();
+
+  // Search / filter cards dynamically on the board
+  window.filterKanbanCards = function() {
+    var query = (document.getElementById('kanbanSearchInput').value || '').toLowerCase().trim();
+    document.querySelectorAll('.kanban-col').forEach(function(col) {
+      var cards = col.querySelectorAll('.app-card');
+      var visibleCount = 0;
+      cards.forEach(function(card) {
+        var cardData = (card.dataset.name || '').toLowerCase();
+        if (!query || cardData.indexOf(query) !== -1) {
+          card.style.display = 'block';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      var badge = col.querySelector('.stage-count');
+      if (badge) badge.textContent = visibleCount;
+      var emptyNotice = col.querySelector('.kanban-empty');
+      if (emptyNotice) {
+        emptyNotice.style.display = (visibleCount === 0) ? 'flex' : 'none';
+      }
+    });
+  };
+
+  var _toastTimer = null;
+  function showToast(msg, type) {
+    var t = document.getElementById('kanbanToast');
+    t.textContent = msg;
+    t.className = 'kanban-toast show ' + (type || '');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3500);
+  }
+
+  window.openResume = function(url, name) {
+    document.getElementById('resumeModalTitle').innerHTML = '<i class="bi bi-file-earmark-person me-2"></i>' + name + ' — Résumé';
+    document.getElementById('resumeFrame').src = url;
+    new bootstrap.Modal(document.getElementById('resumeModal')).show();
+  };
+})();
+</script>
+{% endblock %}

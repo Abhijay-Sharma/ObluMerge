@@ -1,0 +1,26 @@
+{% extends "hrms/base.html" %}
+{% block title %}{% if object %}Edit{% else %}Assign{% endif %} Employee Salary{% endblock %}
+{% block page_title %}{% if object %}Edit{% else %}Assign{% endif %} Employee Salary{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:760px;">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        {% for field in form %}
+          <div class="col-md-4">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn text-white" style="background:var(--accent);">Save</button>
+        <a href="{% url 'hrms:employee_salary_list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

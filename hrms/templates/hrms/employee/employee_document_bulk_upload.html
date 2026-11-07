@@ -1,0 +1,162 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Upload Documents — {{ employee.full_name }} — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      {% if is_hr %}
+        <li class="breadcrumb-item"><a href="{% url 'hrms:employee_list' %}" class="text-decoration-none">Employees</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'hrms:employee_detail' employee.id %}" class="text-decoration-none">{{ employee.full_name }}</a></li>
+      {% else %}
+        <li class="breadcrumb-item"><a href="{% url 'hrms:my_profile' %}" class="text-decoration-none">My Profile</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'hrms:my_documents' %}" class="text-decoration-none">My Documents</a></li>
+      {% endif %}
+      <li class="breadcrumb-item active" aria-current="page">Multi-Document Upload</li>
+    </ol>
+  </nav>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-11">
+
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-primary text-white p-4 border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div>
+            <h4 class="fw-bold mb-1"><i class="bi bi-file-earmark-arrow-up me-2"></i>Multi-Document Upload Dossier</h4>
+            <p class="text-white-50 small mb-0">Upload Aadhaar, PAN, Offer Letter, Marksheets, and Certificates for <strong>{{ employee.full_name }} ({{ employee.employee_code }})</strong>.</p>
+          </div>
+          <button type="button" class="btn btn-light rounded-pill px-3 fw-semibold shadow-sm" onclick="addDocumentRow()">
+            <i class="bi bi-plus-circle-fill text-primary me-1"></i>Add Another Document
+          </button>
+        </div>
+
+        <div class="card-body p-4">
+          <form method="post" enctype="multipart/form-data" id="bulkDocForm">
+            {% csrf_token %}
+
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle" id="docTable" style="font-size: 0.88rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 25%;">Document Type*</th>
+                    <th style="width: 30%;">File (.pdf, .jpg, .png, .docx)*</th>
+                    <th style="width: 25%;">Description / Identifier Notes</th>
+                    <th style="width: 15%;">Expiry Date (Optional)</th>
+                    <th style="width: 5%;" class="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="docTableBody">
+                  <!-- Row 0 (Default Initial Row) -->
+                  <tr id="doc_row_0">
+                    <td>
+                      <select name="doc_type_0" class="form-select form-select-sm rounded-3" required>
+                        <option value="">Select Document Type</option>
+                        {% for code, name in doc_types %}
+                          <option value="{{ code }}" {% if forloop.first %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <input type="file" name="doc_file_0" class="form-control form-control-sm rounded-3" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
+                    </td>
+                    <td>
+                      <input type="text" name="doc_desc_0" class="form-control form-control-sm rounded-3" placeholder="e.g., Aadhaar No: XXXX-XXXX or Marks">
+                    </td>
+                    <td>
+                      <input type="date" name="doc_expiry_0" class="form-control form-control-sm rounded-3">
+                    </td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-outline-danger btn-sm rounded-circle" onclick="removeRow('doc_row_0')" title="Remove">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+              <button type="button" class="btn btn-outline-secondary rounded-pill px-4" onclick="addDocumentRow()">
+                <i class="bi bi-plus-lg me-1"></i>+ Add Another Document
+              </button>
+              <div class="d-flex gap-2">
+                {% if is_hr %}
+                  <a href="{% url 'hrms:employee_detail' employee.id %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+                {% else %}
+                  <a href="{% url 'hrms:my_documents' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+                {% endif %}
+                <button type="submit" class="btn btn-primary rounded-pill px-5 fw-semibold shadow-sm">
+                  <i class="bi bi-cloud-arrow-up-fill me-1"></i>Submit All Documents
+                </button>
+              </div>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let rowCount = 1;
+  const docTypes = [
+    {% for code, name in doc_types %}
+      { code: "{{ code }}", name: "{{ name }}" },
+    {% endfor %}
+  ];
+
+  function addDocumentRow() {
+    const tbody = document.getElementById('docTableBody');
+    const tr = document.createElement('tr');
+    const rowId = `doc_row_${rowCount}`;
+    tr.id = rowId;
+
+    let optionsHtml = '<option value="">Select Document Type</option>';
+    docTypes.forEach((dt, idx) => {
+      optionsHtml += `<option value="${dt.code}" ${idx === (rowCount % docTypes.length) ? 'selected' : ''}>${dt.name}</option>`;
+    });
+
+    tr.innerHTML = `
+      <td>
+        <select name="doc_type_${rowCount}" class="form-select form-select-sm rounded-3" required>
+          ${optionsHtml}
+        </select>
+      </td>
+      <td>
+        <input type="file" name="doc_file_${rowCount}" class="form-control form-control-sm rounded-3" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
+      </td>
+      <td>
+        <input type="text" name="doc_desc_${rowCount}" class="form-control form-control-sm rounded-3" placeholder="Description or Document identifier">
+      </td>
+      <td>
+        <input type="date" name="doc_expiry_${rowCount}" class="form-control form-control-sm rounded-3">
+      </td>
+      <td class="text-center">
+        <button type="button" class="btn btn-outline-danger btn-sm rounded-circle" onclick="removeRow('${rowId}')" title="Remove">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+    rowCount++;
+  }
+
+  function removeRow(rowId) {
+    const tbody = document.getElementById('docTableBody');
+    if (tbody.children.length > 1) {
+      const row = document.getElementById(rowId);
+      if (row) row.remove();
+    } else {
+      alert('At least one document row is required.');
+    }
+  }
+</script>
+{% endblock %}

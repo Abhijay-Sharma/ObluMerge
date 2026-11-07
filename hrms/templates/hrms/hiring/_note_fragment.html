@@ -1,0 +1,11 @@
+{% comment %}
+HTMX fragment — returned by ApplicationNoteCreateView for inline swap.
+{% endcomment %}
+<div class="note-item {% if note.is_private %}private{% endif %}" style="animation: fadeIn .25s ease;">
+  <div class="d-flex justify-content-between align-items-center">
+    <span class="note-author">{{ note.author.get_full_name|default:note.author.username }}</span>
+    <span class="note-time">{{ note.created_at|date:"d M, H:i" }} {% if note.is_private %}<i class="bi bi-eye-slash text-muted" title="Private"></i>{% endif %}</span>
+  </div>
+  <div class="note-text">{{ note.message }}</div>
+</div>
+<style>@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}</style>

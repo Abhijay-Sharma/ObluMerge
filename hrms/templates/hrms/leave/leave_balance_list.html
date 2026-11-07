@@ -1,0 +1,159 @@
+{% extends "hrms/base.html" %}
+{% block title %}Leave Ledger{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ledger-card { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+    /* Sticky Column for Mobile */
+    .table-responsive { position: relative; }
+    .sticky-col {
+        position: sticky;
+        left: 0;
+        background: #fff !important;
+        z-index: 2;
+        border-right: 2px solid #eef2f6 !important;
+        min-width: 160px;
+    }
+    thead th.sticky-col { z-index: 3; background: #f8fafc !important; }
+
+    /* Leave Type Columns */
+    .leave-val {
+        font-weight: 700;
+        font-family: 'Monaco', monospace;
+        color: #1e293b;
+        text-align: center;
+    }
+    .leave-header {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748b;
+        text-align: center;
+        background: #f8fafc;
+    }
+
+    /* Mobile optimization */
+    @media (max-width: 768px) {
+        .page-header { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+        .filter-box { width: 100% !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4 page-header">
+        <div>
+            <h2 class="fw-bold mb-0">Leave Ledger</h2>
+            <p class="text-muted small mb-0">Available balances for the current calendar year.</p>
+        </div>
+<!--         hrms_is_hr -->
+<!--        <a href="{% url 'hrms:leave_balance_add' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">-->
+<!--            <i class="bi bi-shield-plus me-1"></i> Allocate Leave-->
+<!--        </a>-->
+<!--         endif -->
+    </div>
+
+    <!-- HR Filter Bar -->
+    {% if hrms_is_hr %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2">
+                <div class="col-12 col-md-5">
+                    <select name="employee" class="form-select border-0 bg-light rounded-pill px-3 filter-box">
+                        <option value="">Search Employee...</option>
+                        {% for emp in employees %}
+                        <option value="{{ emp.pk }}" {% if request.GET.employee == emp.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ emp.full_name }} ({{ emp.employee_code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <button type="submit" class="btn btn-dark w-100 rounded-pill">Filter</button>
+                </div>
+                <div class="col-6 col-md-2">
+                    <a href="{% url 'hrms:leave_balance' %}" class="btn btn-outline-secondary w-100 rounded-pill">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pivoted Table -->
+    <div class="card ledger-card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="sticky-col ps-4">Employee</th>
+                        <th class="text-center text-muted small">Year</th>
+                        <th class="leave-header">CL</th>
+                        <th class="leave-header">SL</th>
+                        <th class="leave-header">EL</th>
+                        <th class="leave-header">ML</th>
+                        <th class="leave-header">BL</th>
+                        <th class="leave-header">Comp Off</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in pivoted_balances %}
+                    <tr>
+                        <td class="sticky-col ps-4">
+                            <!-- Link to the history page -->
+                            <a href="{% url 'hrms:employee_leave_history' row.details.pk %}" class="text-decoration-none">
+                                <div class="fw-bold text-primary">{{ row.details.full_name }}</div>
+                            </a>
+                            <div class="text-muted" style="font-size: 0.7rem;">{{ row.details.employee_code }}</div>
+                        </td>
+                        <td class="text-center text-muted small">{{ row.year }}</td>
+
+                        <!-- Leave Types Columns -->
+                        <td class="leave-val">{{ row.types.CL|default:"0" }}</td>
+                        <td class="leave-val">{{ row.types.SL|default:"0" }}</td>
+                        <td class="leave-val">{{ row.types.EL|default:"0" }}</td>
+                        <td class="leave-val">{{ row.types.ML|default:"0" }}</td>
+                        <td class="leave-val">{{ row.types.BL|default:"0" }}</td>
+                        <td class="leave-val text-primary">{{ row.types.CO|default:"0" }}</td>
+
+                        <td class="text-end pe-4">
+                            {% if hrms_is_hr %}
+                            <div class="dropdown">
+                                <button class="btn btn-light btn-sm rounded-circle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                    <li><a class="dropdown-item small" href="{% url 'hrms:employee_detail' row.details.pk %}"><i class="bi bi-eye me-2"></i> View Profile</a></li>
+<!-- Replace 'row.id' with whatever variable name you used in the view for the balance record ID -->
+<li>
+    <a class="dropdown-item small" href="{% url 'hrms:leave_balance_edit' row.details.pk %}">
+        <i class="bi bi-pencil me-2"></i> Adjust Balance
+    </a>
+</li>                            </div>
+                            {% else %}
+                            <span class="text-muted small">--</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox h2 d-block"></i>
+                            No leave data found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-3 text-muted" style="font-size: 0.75rem;">
+        <strong>Legend:</strong> CL: Casual Leave | SL: Sick Leave | EL: Earned Leave | ML: Menstrual Leave | BL: Bereavement | CO: Comp Off
+    </div>
+</div>
+{% endblock %}

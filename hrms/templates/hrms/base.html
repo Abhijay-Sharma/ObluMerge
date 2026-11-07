@@ -1,0 +1,626 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}HRMS{% endblock %} · Oblu HRMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'hrms/css/style.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+  <!-- ================= CONTEXT-AWARE ORB PAGE LOADER ================= -->
+  <div class="hrms-page-loader" id="hrmsPageLoader">
+    <div class="loader-orb-wrap" id="loaderOrbWrap">
+      <div class="loader-orb-ring" id="loaderOrbRing"></div>
+      <div class="loader-orb-body">
+        <i class="bi bi-grid-1x2-fill" id="loaderIcon"></i>
+      </div>
+    </div>
+    <div class="loader-title" id="loaderTitle">Oblu HRMS</div>
+    <div class="loader-subtitle" id="loaderSubtitle">Loading workspace…</div>
+  </div>
+
+  <div class="d-flex hrms-shell">
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="hrms-sidebar d-flex flex-column" id="hrmsSidebar">
+      <div
+        class="hrms-brand d-flex align-items-center justify-content-between px-3 py-3 border-bottom border-secondary-subtle">
+        <div class="d-flex align-items-center gap-2 overflow-hidden">
+          <div class="mark flex-shrink-0">HR</div>
+          <div class="brand-text">
+            <div class="name">Oblu HRMS</div>
+            <div class="role-pill">
+              {% if role_display_name %}{{ role_display_name }}
+              {% elif request.user.is_superuser %}Super Admin
+              {% elif is_hr_user or hrms_role == 'hr' %}HR Team
+              {% elif is_manager_user or request.user.employee_profile.is_manager or request.user.employee.is_manager %}Manager
+              {% elif is_finance_user or request.user.is_finance or request.user.is_accountant %}Finance
+              {% else %}Employee{% endif %}
+            </div>
+          </div>
+        </div>
+        <button class="sidebar-toggle-btn d-none d-md-inline-flex" id="sidebarCollapseBtn"
+          title="Toggle Sidebar (Ctrl+B)" type="button">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <button class="sidebar-toggle-btn d-md-none p-1" id="sidebarMobileCloseBtn" title="Close Navigation"
+          aria-label="Close Navigation" type="button">
+          <i class="bi bi-x-lg fs-5"></i>
+        </button>
+      </div>
+
+      <nav class="hrms-nav flex-grow-1 px-2 py-2">
+        <ul class="nav flex-column">
+
+          <li class="nav-item">
+            <a class="nav-link hrms-toplink {% if active_group == 'dashboard' %}active{% endif %}"
+              href="{% url 'hrms:dashboard' %}" data-section="dashboard" data-tooltip="Dashboard"
+              data-loader-icon="bi-grid-1x2-fill" data-loader-title="HR Operations Dashboard" data-loader-from="#6366f1"
+              data-loader-to="#06b6d4">
+              <span class="nav-icon-box"><i class="bi bi-grid-1x2-fill"></i></span>
+              <span class="nav-text">Dashboard</span>
+            </a>
+          </li>
+
+          <!-- Manager Team Dashboard (For Managers, HR, and Superadmin) -->
+          {% if 'manager.dashboard' in permissions or is_manager_user or hrms_is_hr or request.user.employee_profile.is_manager or request.user.employee.is_manager or request.user.is_superuser %}
+          <li class="nav-item">
+            <a class="nav-link hrms-toplink {% if active_group == 'manager' %}active{% endif %}"
+              href="{% url 'hrms:manager_dashboard' %}" data-section="manager" data-tooltip="Manager Dashboard"
+              data-loader-icon="bi-people-fill" data-loader-title="Manager Dashboard" data-loader-from="#10b981"
+              data-loader-to="#0ea5e9">
+              <span class="nav-icon-box"><i class="bi bi-people-fill"></i></span>
+              <span class="nav-text">Manager Dashboard</span>
+            </a>
+          </li>
+          {% endif %}
+
+          <!-- Organisation Settings (HR & Superadmin Only) -->
+          {% if 'org.manage' in permissions or hrms_is_hr or request.user.is_superuser %}
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'organisation' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navOrganisation" role="button"
+              aria-expanded="{% if active_group == 'organisation' %}true{% else %}false{% endif %}"
+              data-section="organisation" data-tooltip="Organisation" data-loader-icon="bi-buildings-fill"
+              data-loader-title="Organisation" data-loader-from="#10b981" data-loader-to="#14b8a6">
+              <span class="nav-icon-box"><i class="bi bi-buildings-fill"></i></span>
+              <span class="nav-text">Organisation</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'organisation' %}show{% endif %}" id="navOrganisation">
+              <ul class="nav flex-column hrms-sublist">
+                <li><a href="{% url 'hrms:company_list' %}"
+                    class="{% if active_item == 'company' %}current{% endif %}">Company Profile</a></li>
+                <li><a href="{% url 'hrms:department_list' %}"
+                    class="{% if active_item == 'department' %}current{% endif %}">Departments</a></li>
+                <li><a href="{% url 'hrms:designation_list' %}"
+                    class="{% if active_item == 'designation' %}current{% endif %}">Designations</a></li>
+              </ul>
+            </div>
+          </li>
+          {% endif %}
+
+          <!-- Employee Directory / Profile -->
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'employee' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navEmployee" role="button"
+              aria-expanded="{% if active_group == 'employee' %}true{% else %}false{% endif %}" data-section="employee"
+              data-tooltip="Employee" data-loader-icon="bi-person-badge-fill" data-loader-title="Employee Directory"
+              data-loader-from="#3b82f6" data-loader-to="#6366f1">
+              <span class="nav-icon-box"><i class="bi bi-person-badge-fill"></i></span>
+              <span class="nav-text">Employee</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'employee' %}show{% endif %}" id="navEmployee">
+              <ul class="nav flex-column hrms-sublist">
+                {% if 'employee.manage' in permissions or hrms_is_hr or request.user.is_superuser %}
+                <li><a href="{% url 'hrms:employee_list' %}"
+                    class="{% if active_item == 'employee_list' %}current{% endif %}">Directory</a></li>
+                <li><a href="{% url 'hrms:employee_add' %}"
+                    class="{% if active_item == 'employee_add' %}current{% endif %}">Add Employee</a></li>
+                <li><a href="{% url 'hrms:enroll_face' %}"
+                    class="{% if active_item == 'enroll_face' %}current{% endif %}"><i
+                      class="bi bi-camera-fill me-1 text-primary"></i> Enroll Face Biometric</a></li>
+                {% else %}
+                <li><a href="{% url 'hrms:my_profile' %}"
+                    class="{% if active_item == 'my_profile' %}current{% endif %}">My Profile</a></li>
+                <li><a href="{% url 'hrms:my_documents' %}"
+                    class="{% if active_item == 'my_documents' %}current{% endif %}">My Documents</a></li>
+                {% endif %}
+              </ul>
+            </div>
+          </li>
+
+          <!-- Hiring Pipeline -->
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'hiring' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navHiring" role="button"
+              aria-expanded="{% if active_group == 'hiring' %}true{% else %}false{% endif %}" data-section="hiring"
+              data-tooltip="Hiring" data-loader-icon="bi-briefcase-fill" data-loader-title="Recruitment &amp; ATS"
+              data-loader-from="#8b5cf6" data-loader-to="#d946ef">
+              <span class="nav-icon-box"><i class="bi bi-briefcase-fill"></i></span>
+              <span class="nav-text">Hiring</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'hiring' %}show{% endif %}" id="navHiring">
+              <ul class="nav flex-column hrms-sublist">
+                {% if 'hiring.manage' in permissions or hrms_is_hr or request.user.is_superuser %}
+                <li><a href="{% url 'hrms:jobposting_list' %}"
+                    class="{% if active_item == 'jobposting' %}current{% endif %}"><i
+                      class="bi bi-briefcase me-1 text-purple-400"></i>Job Postings</a></li>
+                               <li><a href="{% url 'hrms:application_list' %}" class="{% if active_item == 'application' %}current{% endif %}"><i class="bi bi-kanban me-1"></i>Applications</a></li>
+                <li><a href="{% url 'hrms:candidate_list' %}"
+                    class="{% if active_item == 'candidate' %}current{% endif %}"><i
+                      class="bi bi-person-lines-fill me-1"></i>Candidates</a></li>
+                <!--              <li><a href="{% url 'hrms:talent_pool' %}" class="{% if active_item == 'talent_pool' %}current{% endif %}"><i class="bi bi-people me-1"></i>Talent Pool</a></li>-->
+                <li><a href="{% url 'hrms:interview_list' %}"
+                    class="{% if active_item == 'interview' %}current{% endif %}"><i
+                      class="bi bi-calendar-week me-1"></i>All Interviews</a></li>
+                <!--              <li><a href="{% url 'hrms:recruitmentstage_list' %}" class="{% if active_item == 'recruitmentstage' %}current{% endif %}"><i class="bi bi-diagram-3 me-1"></i>Pipeline Stages</a></li>-->
+                {% else %}
+                <li><a href="{% url 'hrms:my_interviews' %}"
+                    class="{% if active_item == 'my_interviews' %}current{% endif %}"><i
+                      class="bi bi-camera-video me-1"></i>My Interviews</a></li>
+                {% endif %}
+              </ul>
+            </div>
+          </li>
+
+          <!-- Attendance Management -->
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'attendance' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navAttendance" role="button"
+              aria-expanded="{% if active_group == 'attendance' %}true{% else %}false{% endif %}"
+              data-section="attendance" data-tooltip="Attendance" data-loader-icon="bi-fingerprint"
+              data-loader-title="Attendance &amp; Kiosk" data-loader-from="#06b6d4" data-loader-to="#38bdf8">
+              <span class="nav-icon-box"><i class="bi bi-fingerprint"></i></span>
+              <span class="nav-text">Attendance</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'attendance' %}show{% endif %}" id="navAttendance">
+              <ul class="nav flex-column hrms-sublist">
+                <!-- Smart Punch Options -->
+                <li>
+                  <a href="{% url 'hrms:punch_in_page' %}"
+                    class="{% if active_item == 'punch_in' %}current{% endif %} text-primary fw-bold">
+                    <i class="bi bi-camera me-1"></i> Face / GPS Punch In
+                  </a>
+                </li>
+                {% if 'attendance.manage' in permissions or hrms_is_hr or request.user.is_superuser %}
+                <li>
+                  <a href="{% url 'hrms:kiosk_page' %}"
+                    class="{% if active_item == 'kiosk' %}current{% endif %} text-dark fw-bold">
+                    <i class="bi bi-tablet me-1"></i> Office Kiosk Mode
+                  </a>
+                </li>
+                <li>
+                  <a href="{% url 'hrms:live_tracking_dashboard' %}"
+                    class="{% if active_item == 'live_tracking' %}current{% endif %} text-success fw-bold">
+                    <i class="bi bi-geo-alt-fill me-1"></i> Live Field Tracking
+                  </a>
+                </li>
+                <li>
+                  <hr class="dropdown-divider my-1">
+                </li>
+                <li><a href="{% url 'hrms:attendance_matrix' %}"
+                    class="{% if active_item == 'attendance_matrix' %}current{% endif %}">Attendance Matrix</a></li>
+                <li><a href="{% url 'hrms:attendance_records' %}"
+                    class="{% if active_item == 'attendance_records' %}current{% endif %}">All Records</a></li>
+                <li><a href="{% url 'hrms:attendance_policy' %}"
+                    class="{% if active_item == 'attendance_policy' %}current{% endif %}">Policy Settings</a></li>
+                {% else %}
+                <li><a href="{% url 'hrms:my_attendance' %}"
+                    class="{% if active_item == 'my_attendance' %}current{% endif %}">My Attendance</a></li>
+                {% endif %}
+                <li><a href="{% url 'hrms:regularization_list' %}"
+                    class="{% if active_item == 'regularization' %}current{% endif %}">Regularization</a></li>
+                <li><a href="{% url 'hrms:attendance_penalties' %}"
+                    class="{% if active_item == 'penalties' %}current{% endif %}">Penalties</a></li>
+                <li><a href="{% url 'hrms:holiday_list' %}"
+                    class="{% if active_item == 'holiday' %}current{% endif %}">Holiday Calendar</a></li>
+              </ul>
+            </div>
+          </li>
+
+          <!-- Leave Portal -->
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'leave' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navLeave" role="button"
+              aria-expanded="{% if active_group == 'leave' %}true{% else %}false{% endif %}" data-section="leave"
+              data-tooltip="Leave" data-loader-icon="bi-calendar-check-fill" data-loader-title="Leave &amp; Time Off"
+              data-loader-from="#f59e0b" data-loader-to="#f97316">
+              <span class="nav-icon-box"><i class="bi bi-calendar-check-fill"></i></span>
+              <span class="nav-text">Leave</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'leave' %}show{% endif %}" id="navLeave">
+              <ul class="nav flex-column hrms-sublist">
+                <li><a href="{% url 'hrms:my_leave' %}" class="{% if active_item == 'my_leave' %}current{% endif %}">{% if 'leave.manage' in permissions or hrms_is_hr or request.user.is_superuser %}Leave Applications{% else %}Apply / My Leave{% endif %}</a></li>
+                <li><a href="{% url 'hrms:leave_balance' %}"
+                    class="{% if active_item == 'leave_balance' %}current{% endif %}">Leave Balance</a></li>
+                {% if 'leave.manage' in permissions or hrms_is_hr or request.user.is_superuser %}
+                <li><a href="{% url 'hrms:leavetype_list' %}"
+                    class="{% if active_item == 'leavetype' %}current{% endif %}">Leave Types</a></li>
+                <li><a href="{% url 'hrms:comp_off_hr' %}"
+                    class="{% if active_item == 'comp_off_hr' %}current{% endif %}"><i class="bi bi-calendar-check me-1"
+                      style="color:#8b5cf6;"></i>Comp-Off Management (HR)</a></li>
+                {% endif %}
+                <li>
+                  <a href="{% url 'hrms:comp_off_history' %}"
+                    class="{% if active_item == 'comp_off_history' %}current{% endif %}">
+                    <i class="bi bi-clock-history me-1 text-primary"></i>My Comp-Off History
+                  </a>
+                </li>
+                <li><a href="{% url 'hrms:leave-bank' %}"
+                    class="{% if active_item == 'leave_bank' %}current{% endif %}">Leave Bank</a></li>
+                <!--              <li><a href="{% url 'hrms:comp_off_hr' %}?filter=comp_off" class="{% if active_item == 'comp_off' %}current{% endif %}"><i class="bi bi-calendar2-plus me-1" style="color:#8b5cf6;"></i>Comp-Off Records</a></li>-->
+              </ul>
+            </div>
+          </li>
+
+          <!-- Payroll Portal -->
+          {% if request.user.is_superuser or hrms_is_hr or is_finance_user or 'payroll.view' in permissions or 'payroll.run' in permissions or 'payroll.manage' in permissions or 'payroll.view_payslip' in permissions %}
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'payroll' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navPayroll" role="button"
+              aria-expanded="{% if active_group == 'payroll' %}true{% else %}false{% endif %}" data-section="payroll"
+              data-tooltip="Payroll" data-loader-icon="bi-cash-stack" data-loader-title="Payroll &amp; Disbursement"
+              data-loader-from="#059669" data-loader-to="#84cc16">
+              <span class="nav-icon-box"><i class="bi bi-cash-stack"></i></span>
+              <span class="nav-text">Payroll</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'payroll' %}show{% endif %}" id="navPayroll">
+              <ul class="nav flex-column hrms-sublist">
+                {% if hrms_is_hr or request.user.is_superuser or is_finance_user or 'payroll.run' in permissions or 'payroll.manage' in permissions %}
+                <!--                <li><a href="{% url 'hrms:salarystructure_list' %}" class="{% if active_item == 'salarystructure' %}current{% endif %}">Salary Structures</a></li>-->
+                <li><a href="{% url 'hrms:employee_salary_list' %}"
+                    class="{% if active_item == 'employee_salary' %}current{% endif %}">Employee Salaries</a></li>
+                <li><a href="{% url 'hrms:loan_list' %}" class="{% if active_item == 'loan' %}current{% endif %}">Loans
+                    &amp; Advances</a></li>
+                <li><a href="{% url 'hrms:extra_list' %}"
+                    class="{% if active_item == 'extra' %}current{% endif %}">Incentives / Extras</a></li>
+                <li><a href="{% url 'hrms:payrollrun_list' %}"
+                    class="{% if active_item == 'payrollrun' %}current{% endif %}">Payroll Runs</a></li>
+                {% endif %}
+                <li><a href="{% url 'hrms:my_payslips' %}" class="{% if active_item == 'my_payslips' %}current{% endif %}">{% if hrms_is_hr or request.user.is_superuser or is_finance_user or 'payroll.view' in permissions %}All Payslips{% else %}My Payslips{% endif %}</a></li>
+                {% if user.is_superuser or user.employee_profile.is_finance or 'payroll.payout' in permissions %}
+                <li class="nav-item">
+                  <a class="nav-link {% if active_item == 'bulk_payout' %}active{% endif %}"
+                    href="{% url 'hrms:bulk_payment_payout' %}">
+                    <i class="bi bi-bank me-2 text-warning"></i> Bank Bulk Payout
+                  </a>
+                </li>
+                {% endif %}
+              </ul>
+            </div>
+          </li>
+          {% endif %}
+
+          <!-- Policies & Notices -->
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'policy' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navPolicy" role="button"
+              aria-expanded="{% if active_group == 'policy' %}true{% else %}false{% endif %}" data-section="policy"
+              data-tooltip="Policies &amp; Notices" data-loader-icon="bi-shield-check"
+              data-loader-title="Policies &amp; Notices" data-loader-from="#475569" data-loader-to="#6366f1">
+              <span class="nav-icon-box"><i class="bi bi-shield-check"></i></span>
+              <span class="nav-text">Policies &amp; Notices</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'policy' %}show{% endif %}" id="navPolicy">
+              <ul class="nav flex-column hrms-sublist">
+                <li><a href="{% url 'hrms:policy_list' %}"
+                    class="{% if active_item == 'policy' %}current{% endif %}">Policy Library</a></li>
+                {% if 'policy.manage' in permissions or hrms_is_hr or request.user.is_superuser %}
+                <li><a href="{% url 'hrms:policy_manage' %}"
+                    class="{% if active_item == 'policy_manage' %}current{% endif %}">Policy Compliance (HR)</a></li>
+                {% endif %}
+                <li><a href="{% url 'hrms:notice_list' %}"
+                    class="{% if active_item == 'notice' %}current{% endif %}">Company Notices</a></li>
+              </ul>
+            </div>
+
+          </li>
+
+          <!-- Assets -->
+          <li class="nav-item">
+            <a class="nav-link hrms-group-toggle {% if active_group == 'asset' %}active{% endif %}"
+              data-bs-toggle="collapse" href="#navAsset" role="button"
+              aria-expanded="{% if active_group == 'asset' %}true{% else %}false{% endif %}" data-section="asset"
+              data-tooltip="Assets" data-loader-icon="bi-laptop" data-loader-title="Asset Command Center"
+              data-loader-from="#f43f5e" data-loader-to="#fbbf24">
+              <span class="nav-icon-box"><i class="bi bi-laptop"></i></span>
+              <span class="nav-text">Assets</span> <i class="bi bi-chevron-right ms-auto chev"></i>
+            </a>
+            <div class="collapse {% if active_group == 'asset' %}show{% endif %}" id="navAsset">
+              <ul class="nav flex-column hrms-sublist">
+                <li><a href="{% url 'hrms:asset_list' %}" class="{% if active_item == 'asset' %}current{% endif %}">{% if 'asset.manage' in permissions or hrms_is_hr or request.user.is_superuser %}All Assets{% else %}My Assets{% endif %}</a></li>
+              </ul>
+            </div>
+          </li>
+
+        </ul>
+      </nav>
+
+      <div class="hrms-sidebar-footer px-3 py-3 border-top border-secondary-subtle">
+        <a href="{% url 'logout' %}" title="Log out"><i class="bi bi-box-arrow-right me-1"></i> <span class="footer-text">Log out</span></a>
+      </div>
+    </aside>
+
+    <!-- Mobile Drawer Backdrop -->
+    <div class="hrms-backdrop" id="hrmsBackdrop"></div>
+
+    <!-- ================= MAIN ================= -->
+    <div class="hrms-main flex-grow-1 d-flex flex-column">
+      <div class="oblu-top-progress-accent"></div>
+      <div class="hrms-topbar d-flex align-items-center justify-content-between px-3 px-md-4">
+        <div class="d-flex align-items-center gap-2 overflow-hidden">
+          <button class="sidebar-toggle-btn d-none d-md-inline-flex me-1" id="desktopSidebarToggle"
+            title="Toggle Sidebar (Ctrl+B)" type="button">
+            <i class="bi bi-layout-sidebar-inset fs-5"></i>
+          </button>
+          <button class="sidebar-toggle-btn d-md-none me-1 flex-shrink-0" id="mobileSidebarToggle"
+            title="Open Navigation" type="button">
+            <i class="bi bi-list fs-4"></i>
+          </button>
+          <span class="page-title text-truncate">{% block page_title %}Dashboard{% endblock %}</span>
+        </div>
+
+        <!-- Company Selection Navbar -->
+        <div class="d-none d-sm-flex align-items-center">
+          {% if can_switch_company %}
+          <div class="dropdown">
+            <button
+              class="btn btn-sm btn-light border bg-white rounded-pill px-3 py-1 dropdown-toggle fw-semibold shadow-sm d-flex align-items-center gap-2"
+              type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.82rem;">
+              <i class="bi bi-building-fill text-primary"></i>
+              <span>
+                {% if active_company %}
+                {{ active_company.name }}
+                {% else %}
+                All Global Units
+                {% endif %}
+              </span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-1 py-2"
+              style="min-width: 220px; font-size: 0.84rem;">
+              <li>
+                <h6 class="dropdown-header text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Switch
+                  Active Company</h6>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if not active_company_id or active_company_id == 'all' %}active fw-bold{% endif %}"
+                  href="{% url 'hrms:set_active_company' %}?company_id=all">
+                  <span><i class="bi bi-globe2 me-2 text-muted"></i>All Global Units</span>
+                  {% if not active_company_id or active_company_id == 'all' %}
+                  <i class="bi bi-check-lg"></i>
+                  {% endif %}
+                </a>
+              </li>
+              <li>
+                <hr class="dropdown-divider my-1">
+              </li>
+              {% for comp in available_companies %}
+              <li>
+                <a class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if active_company_id == comp.id|stringformat:'s' %}active fw-bold{% endif %}"
+                  href="{% url 'hrms:set_active_company' %}?company_id={{ comp.id }}">
+                  <span><i class="bi bi-building me-2 text-muted"></i>{{ comp.name }}</span>
+                  {% if active_company_id == comp.id|stringformat:'s' %}
+                  <i class="bi bi-check-lg"></i>
+                  {% endif %}
+                </a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% elif active_company %}
+          <div
+            class="badge bg-light text-dark border rounded-pill px-3 py-2 fw-semibold d-flex align-items-center gap-2"
+            style="font-size: 0.8rem;">
+            <i class="bi bi-building text-primary"></i>
+            <span>{{ active_company.name }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="user-chip d-flex align-items-center gap-2">
+          <div class="avatar">{{ request.user.username|slice:":2"|upper }}</div>
+          <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+        </div>
+      </div>
+
+      <div class="hrms-content p-4">
+        {% if messages %}
+        {% for message in messages %}
+        <div
+          class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-{{ message.tags|default:'success' }}{% endif %} alert-dismissible fade show"
+          role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════
+     BIOMETRIC PAGE GUARD — runs synchronously BEFORE premium-ui.js
+     Immediately hides the loader on camera pages so the stream
+     is never occluded. Runs in <head> order, not deferred.
+     ═══════════════════════════════════════════════════════════ -->
+  <script>
+    (function () {
+      var CAMERA_PATHS = ['/attendance/enroll-face/', '/attendance/kiosk/', '/attendance/punch-in/'];
+      var pathname = window.location.pathname;
+      var isCameraPage = CAMERA_PATHS.some(function (p) { return pathname.indexOf(p) !== -1; });
+      if (isCameraPage) {
+        /* Immediately hide — do not wait for DOMContentLoaded */
+        var ldr = document.getElementById('hrmsPageLoader');
+        if (ldr) {
+          ldr.classList.add('hidden');
+          ldr.style.display = 'none';
+        }
+        /* Also re-hide on every DOM ready event in case browser caches state */
+        document.addEventListener('DOMContentLoaded', function () {
+          var l = document.getElementById('hrmsPageLoader');
+          if (l) { l.classList.add('hidden'); l.style.display = 'none'; }
+        });
+        window.addEventListener('pageshow', function () {
+          var l = document.getElementById('hrmsPageLoader');
+          if (l) { l.classList.add('hidden'); l.style.display = 'none'; }
+        });
+      }
+    })();
+  </script>
+
+  <script src="{% static 'hrms/js/premium-ui.js' %}"></script>
+
+  <!-- ═══ HTMX — HTML-native AJAX ═══ -->
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <!-- ═══ Alpine.js — lightweight reactivity ═══ -->
+  <script defer src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js"></script>
+  <!-- ═══ SortableJS — drag-and-drop ═══ -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+
+  <!-- Context-Aware Loader: update orb colour & icon on nav click -->
+  <script>
+    (function () {
+      /* Section meta map — matches data-section attributes */
+      var SECTION_META = {
+        dashboard: { icon: 'bi-grid-1x2-fill', title: 'HR Operations Dashboard', from: '#6366f1', to: '#06b6d4' },
+        manager: { icon: 'bi-people-fill', title: 'Manager Dashboard', from: '#10b981', to: '#0ea5e9' },
+        organisation: { icon: 'bi-buildings-fill', title: 'Organisation', from: '#10b981', to: '#14b8a6' },
+        employee: { icon: 'bi-person-badge-fill', title: 'Employee Directory', from: '#3b82f6', to: '#6366f1' },
+        hiring: { icon: 'bi-briefcase-fill', title: 'Recruitment & ATS', from: '#8b5cf6', to: '#d946ef' },
+        attendance: { icon: 'bi-fingerprint', title: 'Attendance & Kiosk', from: '#06b6d4', to: '#38bdf8' },
+        leave: { icon: 'bi-calendar-check-fill', title: 'Leave & Time Off', from: '#f59e0b', to: '#f97316' },
+        payroll: { icon: 'bi-cash-stack', title: 'Payroll & Disbursement', from: '#059669', to: '#84cc16' },
+        policy: { icon: 'bi-shield-check', title: 'Policies & Notices', from: '#475569', to: '#6366f1' },
+        asset: { icon: 'bi-laptop', title: 'Asset Command Center', from: '#f43f5e', to: '#fbbf24' },
+        performance: { icon: 'bi-trophy-fill', title: 'Performance & Reviews', from: '#d97706', to: '#fde047' }
+      };
+
+      var loaderIcon = document.getElementById('loaderIcon');
+      var loaderTitle = document.getElementById('loaderTitle');
+      var loaderRing = document.getElementById('loaderOrbRing');
+
+      function applySection(section) {
+        var meta = SECTION_META[section] || SECTION_META['dashboard'];
+        /* Swap icon */
+        if (loaderIcon) {
+          loaderIcon.className = 'bi ' + meta.icon;
+        }
+        /* Swap title */
+        if (loaderTitle) {
+          loaderTitle.textContent = meta.title;
+        }
+        /* Swap ring gradient via CSS custom properties */
+        if (loaderRing) {
+          loaderRing.style.setProperty('--ldr-from', meta.from);
+          loaderRing.style.setProperty('--ldr-to', meta.to);
+          loaderRing.style.borderTopColor = meta.from;
+          loaderRing.style.borderRightColor = meta.to;
+        }
+      }
+
+      /* Pre-apply the active section on page load */
+      var activeLink = document.querySelector('.hrms-nav .nav-link.active[data-section]');
+      if (activeLink) {
+        applySection(activeLink.getAttribute('data-section'));
+      }
+
+      /* Update on every nav-link click before navigation */
+      document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[data-section]');
+        if (link) {
+          applySection(link.getAttribute('data-section'));
+        }
+      }, true); /* capture phase so it fires before premium-ui.js showLoader */
+    })();
+  </script>
+
+  <!-- ═══ Professional Sidebar Controller ═══ -->
+  <script>
+    (function () {
+      const shell = document.querySelector('.hrms-shell');
+      const sidebar = document.getElementById('hrmsSidebar');
+      const backdrop = document.getElementById('hrmsBackdrop');
+      const desktopToggle = document.getElementById('desktopSidebarToggle');
+      const collapseBtn = document.getElementById('sidebarCollapseBtn');
+      const mobileToggle = document.getElementById('mobileSidebarToggle');
+      const mobileCloseBtn = document.getElementById('sidebarMobileCloseBtn');
+
+      function toggleDesktopSidebar() {
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        if (shell) shell.classList.toggle('collapsed', isCollapsed);
+        try {
+          localStorage.setItem('hrms_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+        } catch (e) { }
+      }
+
+      function toggleMobileSidebar() {
+        const isOpen = sidebar.classList.toggle('open');
+        if (backdrop) backdrop.classList.toggle('active', isOpen);
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+      }
+
+      function closeMobileSidebar() {
+        sidebar.classList.remove('open');
+        if (backdrop) backdrop.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      if (desktopToggle) desktopToggle.addEventListener('click', toggleDesktopSidebar);
+      if (collapseBtn) collapseBtn.addEventListener('click', toggleDesktopSidebar);
+      if (mobileToggle) mobileToggle.addEventListener('click', toggleMobileSidebar);
+      if (mobileCloseBtn) mobileCloseBtn.addEventListener('click', closeMobileSidebar);
+      if (backdrop) backdrop.addEventListener('click', closeMobileSidebar);
+
+      // Auto-close mobile drawer when navigation links are clicked
+      document.querySelectorAll('.hrms-nav a:not([data-bs-toggle])').forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (window.innerWidth <= 880) {
+            closeMobileSidebar();
+          }
+        });
+      });
+
+      // Restore desktop state from localStorage on load
+      try {
+        if (localStorage.getItem('hrms_sidebar_collapsed') === 'true' && window.innerWidth > 880) {
+          sidebar.classList.add('collapsed');
+          if (shell) shell.classList.add('collapsed');
+        }
+      } catch (e) { }
+
+      // Keyboard shortcut: Ctrl + B or Cmd + B
+      document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          if (window.innerWidth > 880) {
+            toggleDesktopSidebar();
+          } else {
+            toggleMobileSidebar();
+          }
+        } else if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+          closeMobileSidebar();
+        }
+      });
+    })();
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+
+</html>

@@ -1,0 +1,545 @@
+{% extends "hrms/base.html" %}
+{% block title %}Candidates Talent Pool{% endblock %}
+{% block page_title %}Candidates Talent Pool{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --primary-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+    --accent-purple: #7c3aed;
+    --accent-indigo: #4f46e5;
+  }
+  .cand-hero {
+    background: var(--primary-gradient);
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 10px 25px -5px rgba(49, 46, 129, 0.25);
+  }
+  .cand-hero h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .cand-hero p {
+    font-size: 0.83rem;
+    color: #c7d2fe;
+    margin: 0.2rem 0 0;
+  }
+
+  /* Filter Panel */
+  .filter-panel {
+    background: #ffffff;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 14px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  }
+  .filter-group label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .filter-panel .form-control,
+  .filter-panel .form-select {
+    border-radius: 9px;
+    border: 1.5px solid #e2e8f0;
+    font-size: 0.84rem;
+    padding: 0.48rem 0.75rem;
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+  }
+  .filter-panel .form-control:focus,
+  .filter-panel .form-select:focus {
+    background-color: #ffffff;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+
+  .btn-filter-apply {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+  }
+  .btn-filter-apply:hover {
+    background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(109, 40, 217, 0.35);
+  }
+
+  .active-filter-chip {
+    font-size: 0.74rem;
+    background: #ede9fe;
+    color: #5b21b6;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+  }
+
+  /* Candidate Table */
+  .cand-card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1.5px solid #e8eaf0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+  }
+  .cand-table {
+    margin-bottom: 0;
+  }
+  .cand-table thead th {
+    background: #f8fafc;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    border-bottom: 1.5px solid #e8eaf0;
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .cand-table tbody td {
+    vertical-align: middle;
+    border-color: #f1f5f9;
+    font-size: 0.85rem;
+    padding: 0.85rem 1rem;
+  }
+  .cand-table tbody tr {
+    transition: background 0.15s ease;
+  }
+  .cand-table tbody tr:hover {
+    background: #faf5ff;
+  }
+
+  .cand-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.88rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+  }
+
+  .exp-bar {
+    height: 4px;
+    border-radius: 99px;
+    background: #e2e8f0;
+    overflow: hidden;
+    width: 75px;
+    margin-top: 3px;
+  }
+  .exp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #6366f1);
+    border-radius: 99px;
+  }
+
+  /* Status Badges */
+  .status-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.25rem 0.7rem;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .sb-applied      { background: #e0f2fe; color: #0369a1; }
+  .sb-shortlisted  { background: #fef9c3; color: #92400e; }
+  .sb-interviewing { background: #ede9fe; color: #5b21b6; }
+  .sb-offered      { background: #d1fae5; color: #065f46; }
+  .sb-hired        { background: #dcfce7; color: #166534; }
+  .sb-rejected     { background: #fee2e2; color: #991b1b; }
+
+  /* Action Buttons with Icon + Text */
+  .action-btn-view {
+    background: #eef2ff;
+    color: #4338ca;
+    border: 1px solid #c7d2fe;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.3rem 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .action-btn-view:hover {
+    background: #4338ca;
+    color: #ffffff;
+    border-color: #4338ca;
+  }
+
+  .action-btn-resume {
+    background: #fff1f2;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.3rem 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .action-btn-resume:hover {
+    background: #e11d48;
+    color: #ffffff;
+    border-color: #e11d48;
+  }
+
+  .action-btn-edit {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.3rem 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .action-btn-edit:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    border-color: #94a3b8;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Header -->
+<div class="cand-hero">
+  <div>
+    <h4><i class="bi bi-person-lines-fill me-2"></i>Candidates Talent Pool</h4>
+    <p>Directory of registered candidates, application pipelines, and hiring records</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'hrms:candidate_add' %}" class="btn btn-light fw-semibold" style="border-radius:10px; font-size:.86rem; padding:.5rem 1rem;">
+      <i class="bi bi-person-plus-fill me-1 text-primary"></i>Add Candidate
+    </a>
+  </div>
+</div>
+
+<!-- Search and Comprehensive Filter Panel -->
+<div class="filter-panel">
+  <form method="get" id="candidateFilterForm">
+    <!-- Row 1: Search + Date Filters + Buttons -->
+    <div class="row g-2 align-items-end mb-3">
+      <!-- Search Input -->
+      <div class="col-lg-4 col-md-6 filter-group">
+        <label><i class="bi bi-search"></i> Candidate Search</label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0" style="border-radius:9px 0 0 9px; border-color:#e2e8f0;">
+            <i class="bi bi-search text-muted"></i>
+          </span>
+          <input type="text" name="q" value="{{ q }}" class="form-control border-start-0" placeholder="Search name, email, phone, company..." style="border-radius:0 9px 9px 0;">
+        </div>
+      </div>
+
+      <!-- Date From -->
+      <div class="col-lg-2 col-md-3 filter-group">
+        <label><i class="bi bi-calendar-event"></i> Applied / Created From</label>
+        <input type="date" name="from_date" value="{{ from_date }}" class="form-control">
+      </div>
+
+      <!-- Date To -->
+      <div class="col-lg-2 col-md-3 filter-group">
+        <label><i class="bi bi-calendar-event"></i> Applied / Created To</label>
+        <input type="date" name="to_date" value="{{ to_date }}" class="form-control">
+      </div>
+
+      <!-- Filter / Reset Actions -->
+      <div class="col-lg-4 col-md-12 d-flex gap-2 justify-content-lg-end">
+        <button type="submit" class="btn-filter-apply">
+          <i class="bi bi-funnel-fill"></i> Apply Filters
+        </button>
+        {% if active_filters_count > 0 %}
+        <a href="{% url 'hrms:candidate_list' %}" class="btn btn-outline-secondary" style="border-radius:9px; font-size:.84rem; padding:.5rem .9rem;">
+          <i class="bi bi-x-circle me-1"></i>Reset ({{ active_filters_count }})
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Row 2: Secondary Filters (Status, Experience, Location, Job, Company) -->
+    <div class="row g-2 pt-2 border-top">
+      <!-- Status Filter -->
+      <div class="col-lg-2 col-md-4 col-sm-6 filter-group">
+        <label><i class="bi bi-flag"></i> Status</label>
+        <select name="status" class="form-select" onchange="document.getElementById('candidateFilterForm').submit();">
+          <option value="">All Statuses</option>
+          {% for st_val, st_lbl in status_choices %}
+          <option value="{{ st_val }}" {% if status == st_val %}selected{% endif %}>{{ st_lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Experience Filter -->
+      <div class="col-lg-2 col-md-4 col-sm-6 filter-group">
+        <label><i class="bi bi-briefcase"></i> Experience</label>
+        <select name="exp" class="form-select" onchange="document.getElementById('candidateFilterForm').submit();">
+          <option value="">All Experience</option>
+          <option value="0-1" {% if exp == '0-1' %}selected{% endif %}>0 - 1 Years (Fresher)</option>
+          <option value="1-3" {% if exp == '1-3' %}selected{% endif %}>1 - 3 Years (Junior)</option>
+          <option value="3-5" {% if exp == '3-5' %}selected{% endif %}>3 - 5 Years (Mid-level)</option>
+          <option value="5-10" {% if exp == '5-10' %}selected{% endif %}>5 - 10 Years (Senior)</option>
+          <option value="10+" {% if exp == '10+' %}selected{% endif %}>10+ Years (Lead / Expert)</option>
+        </select>
+      </div>
+
+      <!-- Location Filter -->
+      <div class="col-lg-3 col-md-4 col-sm-6 filter-group">
+        <label><i class="bi bi-geo-alt"></i> Location (City / State)</label>
+        <input type="text" name="location" value="{{ location }}" class="form-control" placeholder="e.g. Mumbai, Delhi, Gujarat">
+      </div>
+
+      <!-- Current Company Filter -->
+      <div class="col-lg-2 col-md-6 col-sm-6 filter-group">
+        <label><i class="bi bi-building"></i> Current Company</label>
+        <input type="text" name="company" value="{{ company }}" class="form-control" placeholder="e.g. Infosys, TCS">
+      </div>
+
+      <!-- Job Posting Filter -->
+      <div class="col-lg-3 col-md-6 col-sm-12 filter-group">
+        <label><i class="bi bi-collection"></i> Job Posting</label>
+        <select name="job" class="form-select" onchange="document.getElementById('candidateFilterForm').submit();">
+          <option value="">All Job Postings</option>
+          {% for jp in jobs_list %}
+          <option value="{{ jp.pk }}" {% if job_id == jp.pk|stringformat:"s" %}selected{% endif %}>{{ jp.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Active Filters Row -->
+    {% if active_filters_count > 0 %}
+    <div class="d-flex align-items-center gap-2 flex-wrap mt-3 pt-2 border-top">
+      <span class="small fw-semibold text-muted">Active Filters:</span>
+      {% if q %}<span class="active-filter-chip">Search: "{{ q }}"</span>{% endif %}
+      {% if status %}<span class="active-filter-chip">Status: {{ status|title }}</span>{% endif %}
+      {% if exp %}<span class="active-filter-chip">Exp: {{ exp }} yrs</span>{% endif %}
+      {% if location %}<span class="active-filter-chip">Location: {{ location }}</span>{% endif %}
+      {% if company %}<span class="active-filter-chip">Company: {{ company }}</span>{% endif %}
+      {% if from_date %}<span class="active-filter-chip">From: {{ from_date }}</span>{% endif %}
+      {% if to_date %}<span class="active-filter-chip">To: {{ to_date }}</span>{% endif %}
+      <a href="{% url 'hrms:candidate_list' %}" class="small text-danger text-decoration-none ms-2">Clear all</a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Candidates Table Card -->
+<div class="cand-card">
+  <div class="table-responsive">
+    <table class="table cand-table">
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Latest Application</th>
+          <th>Experience</th>
+          <th>Current Company</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Applied Date</th>
+          <th class="text-end" style="min-width: 280px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for candidate in candidates %}
+        {% with latest_app=candidate.applications.first %}
+        <tr>
+          <!-- Candidate Column (clicking opens candidate's application detail if exists, or candidate detail) -->
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="cand-avatar">
+                {{ candidate.first_name|slice:":1" }}{{ candidate.last_name|slice:":1" }}
+              </div>
+              <div>
+                <a href="{% if latest_app %}{% url 'hrms:application_detail' latest_app.pk %}{% else %}{% url 'hrms:candidate_detail' candidate.pk %}{% endif %}" 
+                   class="fw-bold text-decoration-none" 
+                   style="color:#1e1b4b;"
+                   title="Click to view candidate application">
+                  {{ candidate.first_name }} {{ candidate.last_name }}
+                  {% if not candidate.first_name and not candidate.last_name %}{{ candidate.email }}{% endif %}
+                </a>
+                <div class="text-muted" style="font-size:.74rem;">
+                  <i class="bi bi-envelope me-1"></i>{{ candidate.email }}
+                </div>
+                {% if candidate.phone %}
+                <div class="text-muted" style="font-size:.72rem;">
+                  <i class="bi bi-telephone me-1"></i>{{ candidate.phone }}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+
+          <!-- Latest Application -->
+          <td>
+            {% if latest_app %}
+            <a href="{% url 'hrms:application_detail' latest_app.pk %}" class="text-decoration-none fw-semibold" style="color:#4f46e5; font-size:.84rem;">
+              {{ latest_app.job_posting.title }}
+            </a>
+            {% if latest_app.job_posting.department %}
+            <div class="text-muted" style="font-size:.72rem;">{{ latest_app.job_posting.department }}</div>
+            {% endif %}
+            {% else %}
+            <span class="text-muted fst-italic" style="font-size:.78rem;">No application</span>
+            {% endif %}
+          </td>
+
+          <!-- Experience -->
+          <td>
+            {% if candidate.experience_years %}
+            <div style="font-size:.82rem; font-weight:700; color:#334155;">{{ candidate.experience_years }} yrs</div>
+            <div class="exp-bar" title="{{ candidate.experience_years }} years">
+              <div class="exp-fill" style="width:{% widthratio candidate.experience_years 20 100 %}%;"></div>
+            </div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Current Company -->
+          <td style="font-size:.82rem; color:#334155;">
+            {{ candidate.current_company|default:"—" }}
+          </td>
+
+          <!-- Location (City, State) -->
+          <td style="font-size:.82rem; color:#334155;">
+            {% if candidate.city or candidate.state %}
+              <div class="d-inline-flex align-items-center gap-1">
+                <i class="bi bi-geo-alt-fill text-danger" style="font-size:.75rem;"></i>
+                <span>{{ candidate.city }}{% if candidate.city and candidate.state %}, {% endif %}{{ candidate.state }}</span>
+              </div>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Status -->
+          <td>
+            {% if latest_app %}
+            <span class="status-badge sb-{{ latest_app.status }}">
+              {{ latest_app.get_status_display }}
+            </span>
+            {% else %}
+            <span class="text-muted" style="font-size:.74rem;">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Applied Date -->
+          <td style="font-size:.78rem; color:#64748b; white-space:nowrap;">
+            {{ latest_app.applied_on|date:"d M Y"|default:candidate.created_at|date:"d M Y" }}
+          </td>
+
+          <!-- Actions: View Candidate + Open Resume + Edit (Icon + Text) -->
+          <td class="text-end">
+            <div class="d-inline-flex gap-1 align-items-center justify-content-end flex-wrap">
+              <!-- View Candidate (Eye icon + text) -->
+              <a href="{% if latest_app %}{% url 'hrms:application_detail' latest_app.pk %}{% else %}{% url 'hrms:candidate_detail' candidate.pk %}{% endif %}" 
+                 class="action-btn-view"
+                 title="View Candidate Application">
+                <i class="bi bi-eye"></i> <span>View Candidate</span>
+              </a>
+
+              <!-- Open Resume (PDF icon + text) -->
+              {% if candidate.resume %}
+              <a href="{{ candidate.resume.url }}" target="_blank" class="action-btn-resume" title="Open Candidate Resume">
+                <i class="bi bi-file-earmark-pdf"></i> <span>Open Resume</span>
+              </a>
+              {% endif %}
+
+              <!-- Edit Candidate (Pencil icon + text) -->
+              <a href="{% url 'hrms:candidate_edit' candidate.pk %}?next={{ request.get_full_path|urlencode }}" class="action-btn-edit" title="Edit Candidate Details">
+                <i class="bi bi-pencil"></i> <span>Edit</span>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center py-5">
+            <div class="py-4">
+              <i class="bi bi-people text-muted" style="font-size:2.6rem; display:block; margin-bottom:.5rem;"></i>
+              <h6 class="text-muted fw-bold">No candidates match your filters</h6>
+              <p class="small text-muted mb-3">Try adjusting your keyword search or clear some filters.</p>
+              {% if active_filters_count > 0 %}
+              <a href="{% url 'hrms:candidate_list' %}" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset All Filters
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pagination (Preserving all filter parameters) -->
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm justify-content-end">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if exp %}&exp={{ exp }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if company %}&company={{ company }}{% endif %}{% if job_id %}&job={{ job_id }}{% endif %}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}">‹ Prev</a>
+    </li>
+    {% endif %}
+    <li class="page-item disabled">
+      <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ paginator.count }} candidates)</span>
+    </li>
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if exp %}&exp={{ exp }}{% endif %}{% if location %}&location={{ location }}{% endif %}{% if company %}&company={{ company }}{% endif %}{% if job_id %}&job={{ job_id }}{% endif %}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}">Next ›</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

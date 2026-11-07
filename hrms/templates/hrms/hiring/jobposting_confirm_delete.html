@@ -1,0 +1,131 @@
+{% extends "hrms/base.html" %}
+{% block title %}Delete Job Posting — Hiring{% endblock %}
+{% block page_title %}Delete Job Posting{% endblock %}
+
+{% block extra_css %}
+<style>
+  .delete-confirm-card {
+    background: #ffffff;
+    border: 1px solid #fee2e2;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.08);
+    overflow: hidden;
+    max-width: 540px;
+    margin: 2rem auto;
+  }
+  .delete-header {
+    background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
+    padding: 1.5rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .delete-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+  .delete-body {
+    padding: 1.75rem;
+  }
+  .impact-list {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+    font-size: 0.84rem;
+    color: #991b1b;
+  }
+  .impact-list ul {
+    margin-bottom: 0;
+    padding-left: 1.25rem;
+  }
+  .impact-list li {
+    margin-bottom: 0.35rem;
+  }
+  .btn-delete-gradient {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1.4rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+  }
+  .btn-delete-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.4);
+    color: #fff;
+  }
+  .btn-cancel-soft {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+  }
+  .btn-cancel-soft:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="delete-confirm-card">
+  <div class="delete-header">
+    <div class="delete-icon">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+    </div>
+    <div>
+      <h5 class="mb-0 fw-bold">Delete Job Posting</h5>
+      <div class="small opacity-90">Irreversible deletion confirmation</div>
+    </div>
+  </div>
+
+  <div class="delete-body">
+    <p class="mb-2 text-dark">
+      Are you sure you want to permanently delete the job opening:
+      <br>
+      <strong class="fs-6 text-danger">"{{ object.title }}"</strong>?
+    </p>
+
+    <div class="impact-list">
+      <div class="fw-bold mb-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>Cascading Deletion Impact:</div>
+      <ul>
+        <li>All candidate applications attached exclusively to this posting will be deleted.</li>
+        <li>Scheduled interviews and feedback scorecards will be removed.</li>
+        <li>Configured pipeline stage links for this job will be purged.</li>
+      </ul>
+    </div>
+
+    <form method="post" class="d-flex align-items-center justify-content-end gap-2 mt-4">
+      {% csrf_token %}
+      <a href="{% url 'hrms:jobposting_list' %}" class="btn-cancel-soft">
+        <i class="bi bi-x-circle"></i> Cancel
+      </a>
+      <button type="submit" class="btn-delete-gradient">
+        <i class="bi bi-trash3-fill"></i> Yes, Delete Job Posting
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

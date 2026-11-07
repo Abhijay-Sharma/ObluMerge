@@ -1,0 +1,29 @@
+{% extends "hrms/base.html" %}
+{% block title %}Run Payroll{% endblock %}
+{% block page_title %}Run Payroll{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <div class="card-body">
+    <p class="text-muted small">
+      Processing loops through every <strong>active</strong> employee in the selected company for the
+      selected month, computes attendance-based paid days, applies the grace/comp-off/leave logic,
+      deducts loans and applies queued incentives, then creates or updates each employee's payslip.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn text-white" style="background:var(--accent);">
+        <i class="bi bi-play-fill"></i> Process Payroll
+      </button>
+      <a href="{% url 'hrms:payrollrun_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

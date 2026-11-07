@@ -1,0 +1,118 @@
+{% extends "hrms/base.html" %}
+{% block title %}{% if object %}Edit{% else %}Allocate{% endif %} Leave Balance{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 0.6rem 0.75rem;
+    }
+    .form-control:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+    }
+    .field-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 0.4rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-6">
+
+            <!-- Breadcrumb/Back link -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <a href="{% url 'hrms:leave_balance' %}" class="text-decoration-none text-muted small">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Ledger
+                </a>
+            </nav>
+
+            <div class="card form-card">
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <h3 class="fw-bold mb-1">{% if object %}Adjust Balance{% else %}Allocate Leaves{% endif %}</h3>
+                        {% if object %}
+                            <p class="text-muted">
+                                Updating record for <span class="text-primary fw-bold">{{ object.employee.full_name }}</span>
+                                <code class="ms-1">({{ object.employee.employee_code }})</code>
+                            </p>
+                        {% else %}
+                            <p class="text-muted">Set initial leave balances for an employee.</p>
+                        {% endif %}
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            {% for field in form %}
+                                {# Make Employee and Year take full width, others half width #}
+                                <div class="{% if field.name == 'employee' or field.name == 'year' %}col-12{% else %}col-md-6{% endif %}">
+                                    <label class="field-label" for="{{ field.id_for_label }}">
+                                        {{ field.label }}
+                                    </label>
+
+                                    {# Adding Bootstrap classes manually to the field widget #}
+                                    {% if field.field.widget.input_type == "select" %}
+                                        <div class="select-wrapper">
+                                            {{ field }}
+                                        </div>
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
+
+                                    {% if field.help_text %}
+                                        <div class="form-text small text-muted">{{ field.help_text }}</div>
+                                    {% endif %}
+
+                                    {% if field.errors %}
+                                        {% for error in field.errors %}
+                                            <div class="text-danger mt-1" style="font-size: 0.75rem;">
+                                                <i class="bi bi-exclamation-circle me-1"></i>{{ error }}
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-5 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm" style="background:var(--accent); border:none;">
+                                <i class="bi bi-check2-circle me-1"></i> Save Changes
+                            </button>
+                            <a href="{% url 'hrms:leave_balance' %}" class="btn btn-light rounded-pill px-4">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Hint for HR -->
+            <div class="mt-4 p-3 bg-light rounded-3 small text-muted border">
+                <i class="bi bi-info-circle me-2"></i>
+                Adjusting these values will directly change the current available balance for the year <strong>2026</strong>.
+                Values should be entered in days (e.g., 1.5 for a day and a half).
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Automatically add form-control class to all inputs
+    document.querySelectorAll('input, select, textarea').forEach(function(el) {
+        if (el.type === 'checkbox' || el.type === 'radio') {
+            el.classList.add('form-check-input');
+        } else {
+            el.classList.add('form-control');
+        }
+    });
+</script>
+{% endblock %}

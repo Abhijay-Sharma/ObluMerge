@@ -1,0 +1,413 @@
+{% extends "hrms/base.html" %}
+{% block title %}Pipeline — {{ job.title }}{% endblock %}
+{% block page_title %}Hiring Pipeline: {{ job.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .pipeline-hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .pipeline-hero .job-meta { font-size: .82rem; color: #c4b5fd; }
+  .stage-list { display: flex; flex-direction: column; gap: .75rem; min-height: 80px; }
+  .stage-card {
+    background: #fff;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 12px;
+    padding: .9rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    cursor: grab;
+    transition: box-shadow .15s, border-color .15s, transform .1s;
+    position: relative;
+  }
+  .stage-card:hover { box-shadow: 0 4px 20px rgba(99,102,241,.15); border-color: #a5b4fc; }
+  .stage-card.sortable-chosen { opacity: .6; transform: scale(1.02); box-shadow: 0 8px 32px rgba(99,102,241,.3); }
+  .stage-card.sortable-ghost { background: #ede9fe; border: 2px dashed #8b5cf6; opacity: .5; }
+  .drag-handle {
+    color: #d1d5db;
+    font-size: 1rem;
+    cursor: grab;
+    flex-shrink: 0;
+    transition: color .15s;
+  }
+  .stage-card:hover .drag-handle { color: #8b5cf6; }
+  .stage-order-badge {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .75rem; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .stage-info { flex: 1; min-width: 0; }
+  .stage-name { font-weight: 700; font-size: .9rem; color: #1e1b4b; }
+  .stage-desc { font-size: .76rem; color: #6b7280; margin-top: .1rem; }
+  .eval-badges { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .45rem; }
+  .eval-badge {
+    font-size: .66rem; font-weight: 600; padding: .15rem .55rem;
+    border-radius: 99px; background: #ede9fe; color: #5b21b6;
+    display: flex; align-items: center; gap: .25rem;
+  }
+  .eval-badge .score-pill {
+    background: #8b5cf6; color: #fff; border-radius: 99px;
+    padding: 0 .35rem; font-size: .6rem;
+  }
+  .stage-actions { display: flex; gap: .4rem; opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+  .stage-card:hover .stage-actions { opacity: 1; }
+  .btn-icon {
+    width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid #e8eaf0;
+    background: #fff; color: #6b7280; display: flex; align-items: center;
+    justify-content: center; font-size: .8rem; cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-icon:hover { border-color: #ef4444; color: #ef4444; background: #fff5f5; }
+  .stage-empty-state {
+    text-align: center; padding: 2.5rem; background: #faf5ff;
+    border: 2px dashed #c4b5fd; border-radius: 14px; color: #7c3aed;
+  }
+  .add-stage-fab {
+    position: fixed; bottom: 2rem; right: 2rem;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #fff; border: none; box-shadow: 0 4px 20px rgba(99,102,241,.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; cursor: pointer; transition: transform .15s, box-shadow .15s;
+    z-index: 1040;
+  }
+  .add-stage-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 8px 32px rgba(99,102,241,.5); }
+  .criteria-row { display: flex; gap: .5rem; align-items: center; }
+  .criteria-row input { border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: .83rem; padding: .35rem .6rem; }
+  .criteria-row input:focus { border-color: #8b5cf6; outline: none; box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
+  .criteria-key { flex: 1.5; }
+  .criteria-max { flex: 1; }
+  .criteria-del { width: 32px; height: 32px; border: none; background: #fee2e2; color: #dc2626; border-radius: 8px; cursor: pointer; flex-shrink: 0; font-size: .85rem; }
+  #criteriaRows { display: flex; flex-direction: column; gap: .4rem; }
+  .saving-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:1060; align-items:center; justify-content:center; }
+  .saving-overlay.show { display:flex; }
+  .save-spinner { background:#fff; border-radius:14px; padding:1.5rem 2rem; display:flex; align-items:center; gap:.85rem; font-weight:600; color:#1e1b4b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero bar -->
+<div class="pipeline-hero">
+  <div>
+    <div class="fw-bold fs-5">{{ job.title }}</div>
+    <div class="job-meta">
+      {% if job.department %}{{ job.department }} · {% endif %}
+      {{ job.get_job_type_display }}
+      {% if job.location %} · {{ job.location }}{% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'hrms:job_kanban' job.pk %}" class="btn btn-sm" style="background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3); border-radius:8px;">
+      <i class="bi bi-kanban me-1"></i>Kanban Board
+    </a>
+    <a href="{% url 'hrms:jobposting_list' %}" class="btn btn-sm" style="background:rgba(255,255,255,.1); color:#c4b5fd; border:1px solid rgba(255,255,255,.2); border-radius:8px;">
+      <i class="bi bi-arrow-left me-1"></i>All Jobs
+    </a>
+  </div>
+</div>
+
+<!-- Instructions -->
+<div class="d-flex align-items-center gap-2 mb-3 text-muted" style="font-size:.83rem;">
+  <i class="bi bi-info-circle text-purple-400"></i>
+  <span>Drag stages to reorder them. Changes are saved automatically. Click the <strong>+</strong> button to add a new stage.</span>
+</div>
+
+<!-- Stage list (SortableJS target) -->
+<div id="stageList" class="stage-list">
+  {% for ps in pipeline_stages %}
+  <div class="stage-card" id="stage-item-{{ ps.pk }}" data-pipeline-pk="{{ ps.pk }}">
+    <i class="bi bi-grip-vertical drag-handle"></i>
+    <div class="stage-order-badge order-num">{{ forloop.counter }}</div>
+    <div class="stage-info">
+      <div class="stage-name">{{ ps.stage.name }}</div>
+      {% if ps.stage.description %}
+      <div class="stage-desc">{{ ps.stage.description }}</div>
+      {% endif %}
+      {% if ps.stage.evaluation_criteria %}
+      <div class="eval-badges">
+        {% for key, val in ps.stage.evaluation_criteria.items %}
+        <span class="eval-badge">
+          {{ key }} <span class="score-pill">/{{ val }}</span>
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="stage-actions">
+      <button class="btn-icon" title="Remove from pipeline"
+              onclick="removeStage({{ ps.pk }}, '{{ ps.stage.name }}')">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  </div>
+  {% empty %}
+  <div class="stage-empty-state" id="emptyState">
+    <i class="bi bi-diagram-3" style="font-size:2.5rem; display:block; margin-bottom:.5rem;"></i>
+    <div class="fw-semibold mb-1">No stages configured yet</div>
+    <div style="font-size:.83rem; color:#7c3aed;">Click the <strong>+</strong> button below to add your first hiring stage.</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- FAB button -->
+<button class="add-stage-fab" data-bs-toggle="modal" data-bs-target="#addStageModal" title="Add stage">
+  <i class="bi bi-plus-lg"></i>
+</button>
+
+<!-- ───── Add Stage Modal ───── -->
+<div class="modal fade" id="addStageModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:16px 16px 0 0;">
+        <h6 class="modal-title fw-bold text-white"><i class="bi bi-plus-circle me-2"></i>Add Stage to Pipeline</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Tabs: Pick existing vs. create new -->
+        <ul class="nav nav-tabs mb-3" id="stageModalTabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pickExisting" type="button">
+              <i class="bi bi-collection me-1"></i>Use Existing Stage
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#createNew" type="button">
+              <i class="bi bi-plus-circle me-1"></i>Create New Stage
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content">
+
+          <!-- Tab 1: Pick existing -->
+          <div class="tab-pane fade show active" id="pickExisting">
+            <label class="form-label fw-semibold">Select a Stage</label>
+            <select id="existingStageSelect" class="form-select" style="border-radius:9px; border:1.5px solid #e5e7eb;">
+              <option value="">— choose a stage —</option>
+              {% for stage in all_stages %}
+              {% if stage.pk not in used_stage_ids %}
+              <option value="{{ stage.pk }}">{{ stage.name }}{% if stage.description %} — {{ stage.description|truncatechars:50 }}{% endif %}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            <div class="text-muted mt-2" style="font-size:.78rem;">
+              <i class="bi bi-info-circle me-1"></i>Only stages not already in this pipeline are shown.
+            </div>
+          </div>
+
+          <!-- Tab 2: Create new -->
+          <div class="tab-pane fade" id="createNew">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Stage Name <span class="text-danger">*</span></label>
+              <input type="text" id="newStageName" class="form-control" placeholder="e.g. Technical Round, Culture Fit…" style="border-radius:9px; border:1.5px solid #e5e7eb;">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea id="newStageDesc" class="form-control" rows="2" placeholder="What this round evaluates…" style="border-radius:9px; border:1.5px solid #e5e7eb;"></textarea>
+            </div>
+            <div class="mb-1">
+              <label class="form-label fw-semibold">Evaluation Criteria</label>
+              <div class="text-muted mb-2" style="font-size:.77rem;">Define what to grade and max score for each criteria.</div>
+              <div id="criteriaRows"></div>
+              <button type="button" class="btn btn-sm btn-outline-secondary mt-2" style="border-radius:8px; font-size:.8rem;" onclick="addCriteriaRow()">
+                <i class="bi bi-plus me-1"></i>Add Criteria
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm" onclick="submitAddStage()"
+                style="background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; border-radius:8px; padding:.4rem 1.2rem;">
+          <i class="bi bi-check2 me-1"></i>Add to Pipeline
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Remove confirm modal -->
+<div class="modal fade" id="removeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-body p-4 text-center">
+        <i class="bi bi-exclamation-triangle text-warning" style="font-size:2.5rem; display:block; margin-bottom:.75rem;"></i>
+        <h6 class="fw-bold mb-1">Remove "<span id="removeStageNameText"></span>" from pipeline?</h6>
+        <p class="text-muted mb-0" style="font-size:.83rem;">This only removes it from this job's pipeline — the global stage definition is not deleted.</p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sm btn-danger" id="confirmRemoveBtn" style="border-radius:8px;">Remove</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Saving overlay -->
+<div class="saving-overlay" id="savingOverlay">
+  <div class="save-spinner">
+    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+    Saving pipeline…
+  </div>
+</div>
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+(function () {
+  const csrf = document.querySelector('meta[name="csrf-token"]').content;
+  const baseUrl = '/hrms/api/jobs/{{ job.pk }}/pipeline/reorder/';
+  let removePipelinePk = null;
+
+  // ── SortableJS ────────────────────────────────────────────────────────────
+  const stageList = document.getElementById('stageList');
+  if (stageList) {
+    Sortable.create(stageList, {
+      animation: 180,
+      handle: '.drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onEnd: function () {
+        // Re-number the order badges visually
+        document.querySelectorAll('#stageList .stage-card').forEach(function (card, idx) {
+          const badge = card.querySelector('.order-num');
+          if (badge) badge.textContent = idx + 1;
+        });
+        saveOrder();
+      }
+    });
+  }
+
+  function saveOrder() {
+    const overlay = document.getElementById('savingOverlay');
+    overlay.classList.add('show');
+
+    const ordered = [];
+    document.querySelectorAll('#stageList .stage-card').forEach(function (card, idx) {
+      ordered.push({ pipeline_pk: card.dataset.pipelinePk, order: idx + 1 });
+    });
+
+    fetch(baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ stages: ordered })
+    })
+    .then(function (r) {
+      overlay.classList.remove('show');
+      if (!r.ok) { showToast('Failed to save order', 'danger'); }
+    })
+    .catch(function () {
+      overlay.classList.remove('show');
+      showToast('Network error while saving', 'danger');
+    });
+  }
+
+  // ── Criteria builder ─────────────────────────────────────────────────────
+  window.addCriteriaRow = function () {
+    const row = document.createElement('div');
+    row.className = 'criteria-row';
+    row.innerHTML = `
+      <input type="text" class="criteria-key" placeholder="Criteria name (e.g. Python)" />
+      <input type="number" class="criteria-max" placeholder="Max (e.g. 5)" min="1" max="10" />
+      <button type="button" class="criteria-del" onclick="this.closest('.criteria-row').remove()">
+        <i class="bi bi-x"></i>
+      </button>`;
+    document.getElementById('criteriaRows').appendChild(row);
+  };
+
+  // ── Active tab detection ─────────────────────────────────────────────────
+  function getActiveTab() {
+    const activePane = document.querySelector('#stageModalTabs .nav-link.active');
+    return activePane ? activePane.dataset.bsTarget : '#pickExisting';
+  }
+
+  // ── Add stage ────────────────────────────────────────────────────────────
+  window.submitAddStage = function () {
+    const activeTab = document.querySelector('.tab-pane.show.active').id;
+    let payload = {};
+
+    if (activeTab === 'pickExisting') {
+      const sel = document.getElementById('existingStageSelect').value;
+      if (!sel) { showToast('Please select a stage', 'warning'); return; }
+      payload = { existing_stage_id: parseInt(sel) };
+    } else {
+      const name = document.getElementById('newStageName').value.trim();
+      if (!name) { showToast('Stage name is required', 'warning'); return; }
+      const criteria = {};
+      document.querySelectorAll('#criteriaRows .criteria-row').forEach(function (row) {
+        const key = row.querySelector('.criteria-key').value.trim();
+        const val = parseInt(row.querySelector('.criteria-max').value) || 5;
+        if (key) criteria[key] = val;
+      });
+      payload = {
+        new_stage_name: name,
+        new_stage_description: document.getElementById('newStageDesc').value.trim(),
+        evaluation_criteria: criteria
+      };
+    }
+
+    fetch('/hrms/api/jobs/{{ job.pk }}/pipeline/add-stage/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(payload)
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.error) { showToast(data.error, 'danger'); return; }
+      // Reload page to reflect new stage
+      location.reload();
+    })
+    .catch(function () { showToast('Network error', 'danger'); });
+  };
+
+  // ── Remove stage ─────────────────────────────────────────────────────────
+  window.removeStage = function (pipelinePk, stageName) {
+    removePipelinePk = pipelinePk;
+    document.getElementById('removeStageNameText').textContent = stageName;
+    const modal = new bootstrap.Modal(document.getElementById('removeModal'));
+    modal.show();
+  };
+
+  document.getElementById('confirmRemoveBtn').addEventListener('click', function () {
+    if (!removePipelinePk) return;
+    fetch('/hrms/api/pipeline-stages/' + removePipelinePk + '/remove/', {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': csrf }
+    })
+    .then(function (r) {
+      if (r.ok) { location.reload(); }
+      else { showToast('Failed to remove stage', 'danger'); }
+    });
+  });
+
+  // ── Toast helper ─────────────────────────────────────────────────────────
+  function showToast(msg, type) {
+    type = type || 'info';
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e1b4b;color:#fff;padding:.6rem 1.2rem;border-radius:10px;font-size:.83rem;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);';
+    if (type === 'danger') toast.style.background = '#dc2626';
+    if (type === 'warning') toast.style.background = '#d97706';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.remove(); }, 3000);
+  }
+})();
+</script>
+{% endblock %}

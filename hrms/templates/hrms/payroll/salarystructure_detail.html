@@ -1,0 +1,43 @@
+{% extends "hrms/base.html" %}
+{% block title %}{{ structure.name }}{% endblock %}
+{% block page_title %}{{ structure.name }}{% endblock %}
+
+{% block content %}
+<p class="text-muted">{{ structure.company }} {% if structure.description %}· {{ structure.description }}{% endif %}</p>
+
+<div class="card">
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+    Components
+    <a href="{% url 'hrms:salarycomponent_add' structure.pk %}" class="btn btn-sm text-white" style="background:var(--accent);">
+      <i class="bi bi-plus-lg"></i> Add Component
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light"><tr><th>Name</th><th>Type</th><th>Taxable</th><th>Order</th><th></th></tr></thead>
+      <tbody>
+        {% for c in structure.components.all %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>
+            {% if c.is_earning %}<span class="badge text-bg-success">Earning</span>{% endif %}
+            {% if c.is_deduction %}<span class="badge text-bg-danger">Deduction</span>{% endif %}
+          </td>
+          <td>{% if c.is_taxable %}Yes{% else %}No{% endif %}</td>
+          <td>{{ c.display_order }}</td>
+          <td><a href="{% url 'hrms:salarycomponent_delete' c.pk %}" class="btn btn-sm btn-outline-danger">Delete</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-4">No components defined yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p class="text-muted small mt-3">
+  Note: components here are the reference template for this structure. Actual per-employee amounts
+  (Basic, HRA, PF, etc.) are set on the <a href="{% url 'hrms:employee_salary_list' %}">Employee Salaries</a> page —
+  that's what payroll processing reads from.
+</p>
+{% endblock %}

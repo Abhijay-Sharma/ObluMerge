@@ -1,0 +1,353 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Employee Workspace — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3">
+
+  {% if not employee %}
+    <div class="alert alert-warning border-0 rounded-4 shadow-sm p-4 text-center">
+      <i class="bi bi-person-exclamation fs-1 d-block mb-2 text-warning"></i>
+      <h5 class="fw-bold">No Employee Profile Linked</h5>
+      <p class="text-muted small mb-0">Your login account ({{ request.user.username }}) is not yet linked to an active Employee master profile. Please contact HR.</p>
+    </div>
+  {% else %}
+
+    <!-- 1. Real-Time Punch Widget & Hero Banner (Mobile Responsive) -->
+    <div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white;">
+      <div class="card-body p-3 p-sm-4 p-md-5">
+        <div class="row align-items-center g-4">
+          <div class="col-lg-7">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+              <span class="badge bg-primary rounded-pill px-3 py-1">{{ employee.employee_code }}</span>
+              <span class="badge bg-success rounded-pill px-3 py-1">{{ employee.get_status_display }}</span>
+              <span class="text-white-50 small d-block d-sm-inline">{{ employee.department.name|default:"General" }} • {{ employee.designation.title|default:"Staff" }}</span>
+            </div>
+            <h2 class="fw-bold mb-1 emp-hero-title">
+              <span id="greetingText">Hello</span>, {{ employee.first_name }}! 👋
+            </h2>
+            <p class="text-white-50 mb-0 small">Welcome back to your employee portal. Today is <strong>{% now "l, d F Y" %}</strong>.</p>
+          </div>
+
+          <!-- Live Punch Card -->
+          <div class="col-lg-5 text-lg-end">
+            <div class="bg-white bg-opacity-10 border border-white border-opacity-25 rounded-4 p-3 p-md-4 d-inline-block text-start w-100 shadow-sm emp-punch-card" style="max-width: 400px;">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-white-50 small text-uppercase fw-bold"><i class="bi bi-clock-history me-1"></i>Shift Punch</span>
+                <span class="badge {% if today_record.check_in and not today_record.check_out %}bg-success{% elif today_record.check_out %}bg-secondary{% else %}bg-warning text-dark{% endif %} rounded-pill px-3">
+                  {% if today_record.check_in and not today_record.check_out %}Checked In{% elif today_record.check_out %}Checked Out{% else %}Not Punched{% endif %}
+                </span>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <div class="text-white-50 small" style="font-size: 0.75rem;">CHECK-IN</div>
+                  <div class="fw-bold fs-5 text-white">{{ today_record.check_in|date:"H:i"|default:"--:--" }}</div>
+                </div>
+                <div class="col-6 text-end">
+                  <div class="text-white-50 small" style="font-size: 0.75rem;">CHECK-OUT</div>
+                  <div class="fw-bold fs-5 text-white">{{ today_record.check_out|date:"H:i"|default:"--:--" }}</div>
+                </div>
+              </div>
+
+              {% if today_record.check_in and not today_record.check_out %}
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top border-white border-opacity-25 mb-3">
+                  <span class="small text-white-50">Active Session:</span>
+                  <span class="fw-bold text-success font-monospace fs-6" id="liveSessionTimer">--:--:--</span>
+                </div>
+              {% endif %}
+
+<!--              <div class="d-flex gap-2">-->
+<!--                {% if not today_record or not today_record.check_in %}-->
+<!--                  <form method="post" action="{% url 'hrms:attendance_check_in' %}" class="w-100">-->
+<!--                    {% csrf_token %}-->
+<!--                    <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-semibold">Check In Now</button>-->
+<!--                  </form>-->
+<!--                {% elif not today_record.check_out %}-->
+<!--                  <form method="post" action="{% url 'hrms:attendance_check_out' %}" class="w-100">-->
+<!--                    {% csrf_token %}-->
+<!--                    <button type="submit" class="btn btn-danger w-100 rounded-pill py-2 fw-semibold">Check Out</button>-->
+<!--                  </form>-->
+<!--                {% else %}-->
+<!--                  <button class="btn btn-secondary w-100 rounded-pill py-2 disabled" disabled>Day Completed</button>-->
+<!--                {% endif %}-->
+<!--              </div>-->
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Stat KPIs Cards (Mobile Responsive - 3 Cards Only) -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 border-start border-primary border-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small fw-bold text-muted text-uppercase">Monthly Attendance</span>
+            <i class="bi bi-calendar-check-fill fs-4 text-primary"></i>
+          </div>
+          <h3 class="fw-bold mb-1 text-dark">{{ monthly_attendance_pct }}%</h3>
+          <div class="progress rounded-pill mb-2" style="height: 6px;">
+            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ monthly_attendance_pct }}%;"></div>
+          </div>
+          <span class="small text-muted">{{ present_days }} Present • {{ absent_days }} Absent</span>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <a href="{% url 'hrms:my_leave' %}" class="text-decoration-none h-100">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 border-start border-warning border-4 hover-shadow">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-bold text-muted text-uppercase">Pending Applications</span>
+                    <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+                </div>
+                <h3 class="fw-bold mb-1 text-dark">{{ pending_leaves_count }} Leave(s)</h3>
+                <span class="small text-muted">{{ pending_regularizations_count }} Regularization Request(s)</span>
+                <div class="mt-2 text-primary small fw-bold">View History <i class="bi bi-arrow-right"></i></div>
+            </div>
+        </a>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 border-start border-info border-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small fw-bold text-muted text-uppercase">Quick Actions</span>
+            <i class="bi bi-lightning-charge-fill fs-4 text-info"></i>
+          </div>
+          <div class="d-flex flex-column gap-2 mt-1">
+            <a href="{% url 'hrms:leave_apply' %}" class="btn btn-sm btn-primary rounded-pill text-start px-3 py-1">
+              <i class="bi bi-plus-circle me-1"></i>Apply for Leave
+            </a>
+            <a href="{% url 'hrms:my_documents_bulk_upload' %}" class="btn btn-sm btn-outline-secondary rounded-pill text-start px-3 py-1 bg-light">
+              <i class="bi bi-upload me-1"></i>Upload Documents
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Improved Calendar & Sidebars -->
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-xl-8">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+          <div class="card-header bg-white p-3 p-md-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+              <h5 class="fw-bold mb-0">Attendance Calendar — {{ current_month_name }} {{ current_year }}</h5>
+              <p class="text-muted small mb-0">Click on any past date to apply for regularization.</p>
+            </div>
+            <a href="{% url 'hrms:regularization_list' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">History</a>
+          </div>
+
+          <div class="card-body p-2 p-md-4">
+            <!-- Calendar Days Header (Mon-Sun) -->
+            <div class="calendar-grid-7 text-center mb-2 fw-bold small text-muted">
+                <div class="py-2 bg-light rounded-start-3">Mon</div>
+                <div class="py-2 bg-light">Tue</div>
+                <div class="py-2 bg-light">Wed</div>
+                <div class="py-2 bg-light">Thu</div>
+                <div class="py-2 bg-light">Fri</div>
+                <div class="py-2 bg-light">Sat</div>
+                <div class="py-2 bg-light rounded-end-3 text-danger">Sun</div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="calendar-grid-7 text-center">
+              {% for _ in leading_empty_range %}
+                <div class="calendar-empty-cell"></div>
+              {% endfor %}
+
+              {% for cell in calendar_cells %}
+                <div class="p-1 p-md-2 rounded-3 border h-100 d-flex flex-column justify-content-between calendar-day-box
+                      {% if cell.status == 'present' %}bg-success-subtle border-success-subtle
+                      {% elif cell.status == 'half_day' %}bg-warning-subtle border-warning-subtle
+                      {% elif cell.status == 'leave' %}bg-primary-subtle border-primary-subtle
+                      {% elif cell.status == 'holiday' %}bg-info-subtle border-info-subtle
+                      {% elif cell.status == 'week_off' %}bg-light text-muted
+                      {% elif cell.status == 'future' %}bg-transparent opacity-25
+                      {% else %}bg-danger-subtle border-danger-subtle{% endif %}"
+                     style="min-height: 65px; cursor: {% if cell.is_past %}pointer{% else %}default{% endif %};"
+                     {% if cell.is_past %}onclick="openRegularizeModal('{{ cell.date|date:'Y-m-d' }}', '{{ cell.date|date:'D, d M Y' }}')"{% endif %}>
+
+                  <div class="fw-bold small">{{ cell.date|date:"j" }}</div>
+                  <div class="d-none d-md-block">
+                      <span class="badge bg-{{ cell.badge_color }} rounded-pill text-truncate d-inline-block mw-100" style="font-size: 0.65rem;">{{ cell.label|truncatechars:10 }}</span>
+                  </div>
+                  <!-- Mobile Dot Indicator -->
+                  <div class="d-md-none">
+                      <div class="rounded-circle bg-{{ cell.badge_color }} mx-auto" style="width: 6px; height: 6px;"></div>
+                  </div>
+                </div>
+              {% endfor %}
+
+              {% for _ in trailing_empty_range %}
+                <div class="calendar-empty-cell"></div>
+              {% endfor %}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 gap-md-3 align-items-center small text-muted mt-4 pt-3 border-top justify-content-center">
+              <span class="fw-bold">Legend:</span>
+              <span><span class="badge bg-success">P</span> Present</span>
+              <span><span class="badge bg-warning text-dark">HD</span> Half Day</span>
+              <span><span class="badge bg-primary">L</span> Leave</span>
+              <span><span class="badge bg-info text-dark">H</span> Holiday</span>
+              <span><span class="badge bg-danger">A</span> Absent</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Holidays & Notices -->
+      <div class="col-12 col-xl-4">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-white p-3 border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0">Upcoming Holidays</h6>
+            <a href="{% url 'hrms:holiday_list' %}" class="small text-decoration-none">View All</a>
+          </div>
+          <div class="card-body p-3">
+            <div class="d-flex flex-column gap-2">
+              {% for h in upcoming_holidays %}
+                <div class="p-2 rounded-3 bg-light border d-flex justify-content-between align-items-center small">
+                  <div class="fw-semibold text-dark">{{ h.name }}</div>
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">{{ h.date|date:"d M" }}</span>
+                </div>
+              {% empty %}
+                <div class="text-center py-2 text-muted small">No upcoming holidays.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-header bg-white p-3 border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0 text-dark">Company Notices</h6>
+            <a href="{% url 'hrms:notice_list' %}" class="small text-decoration-none">View Board</a>
+          </div>
+          <div class="card-body p-3">
+            <div class="d-flex flex-column gap-3">
+              {% for n in recent_notices %}
+                <div class="p-2 rounded-3 bg-light border">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2" style="font-size: 0.68rem;">{{ n.get_category_display }}</span>
+                    <span class="text-muted" style="font-size: 0.7rem;">{{ n.notice_date|date:"d M" }}</span>
+                  </div>
+                  <a href="{% url 'hrms:notice_detail' n.id %}" class="fw-bold text-dark text-decoration-none small d-block">{{ n.title }}</a>
+                </div>
+              {% empty %}
+                <div class="text-center py-2 text-muted small">No active notices.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Modal: Quick Regularization -->
+<div class="modal fade" id="quickRegularizeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow">
+        <form method="post" action="{% url 'hrms:regularization_apply' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="hidden" name="attendance_date" id="modalRegDateInput">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title fw-bold">Request Regularization</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-3">
+            <div class="alert alert-light border mb-3 py-2 small">Date: <strong id="modalRegDateDisplay">—</strong></div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Check-In</label>
+                <input type="time" name="requested_check_in" class="form-control rounded-3" value="09:00" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Check-Out</label>
+                <input type="time" name="requested_check_out" class="form-control rounded-3" value="18:00" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Reason*</label>
+              <textarea name="reason" class="form-control rounded-3" rows="3" required></textarea>
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold">Submit Request</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<style>
+  .calendar-grid-7 {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+  }
+  @media (min-width: 768px) {
+    .calendar-grid-7 {
+      gap: 8px;
+    }
+  }
+  .calendar-empty-cell {
+    visibility: hidden;
+    min-height: 65px;
+    pointer-events: none;
+  }
+  .calendar-day-box {
+    min-width: 0;
+    transition: all 0.2s ease;
+  }
+  .calendar-day-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  }
+  .hover-shadow:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+  }
+  @media (max-width: 991.98px) {
+    .emp-punch-card { max-width: 100% !important; }
+  }
+  @media (max-width: 575.98px) {
+    .emp-hero-title { font-size: 1.35rem; }
+    .calendar-day-box:hover { transform: none; box-shadow: none; }
+  }
+</style>
+
+<script>
+  // Greeting Logic
+  const hrs = new Date().getHours();
+  let greet = "Good Morning";
+  if (hrs >= 12 && hrs < 17) greet = "Good Afternoon";
+  else if (hrs >= 17) greet = "Good Evening";
+  document.getElementById('greetingText').innerText = greet;
+
+  function openRegularizeModal(dateVal, dateDisplay) {
+    document.getElementById('modalRegDateInput').value = dateVal;
+    document.getElementById('modalRegDateDisplay').innerText = dateDisplay;
+    new bootstrap.Modal(document.getElementById('quickRegularizeModal')).show();
+  }
+
+  {% if today_record.check_in and not today_record.check_out %}
+    const checkInTimestamp = new Date("{{ today_record.check_in|date:'c' }}").getTime();
+    function updateLiveTimer() {
+      const now = new Date().getTime();
+      const diffMs = Math.max(0, now - checkInTimestamp);
+      const totalSec = Math.floor(diffMs / 1000);
+      const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      const s = String(totalSec % 60).padStart(2, '0');
+      const timerEl = document.getElementById('liveSessionTimer');
+      if (timerEl) timerEl.innerText = `${h}:${m}:${s}`;
+    }
+    setInterval(updateLiveTimer, 1000);
+    updateLiveTimer();
+  {% endif %}
+</script>
+{% endblock %}

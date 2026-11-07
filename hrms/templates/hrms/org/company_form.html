@@ -1,0 +1,71 @@
+{% extends "hrms/base.html" %}
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Company{% endblock %}
+{% block page_title %}{% if object %}Edit{% else %}Add{% endif %} Company{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px;">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">{{ form.name.label }}</label>
+          {{ form.name }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.logo.label }}</label>
+          {{ form.logo }}
+        </div>
+        <div class="col-12">
+          <label class="form-label">{{ form.address.label }}</label>
+          {{ form.address }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.cin.label }}</label>
+          {{ form.cin }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.pan.label }}</label>
+          {{ form.pan }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.gstin.label }}</label>
+          {{ form.gstin }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.website.label }}</label>
+          {{ form.website }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.email.label }}</label>
+          {{ form.email }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.phone.label }}</label>
+          {{ form.phone }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.office_start_time.label }}</label>
+          {{ form.office_start_time }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.office_end_time.label }}</label>
+          {{ form.office_end_time }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.grace_minutes.label }}</label>
+          {{ form.grace_minutes }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.grace_allowed_count.label }}</label>
+          {{ form.grace_allowed_count }}
+        </div>
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn text-white" style="background:var(--accent);">Save</button>
+        <a href="{% url 'hrms:company_list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

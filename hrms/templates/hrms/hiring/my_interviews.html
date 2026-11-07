@@ -1,0 +1,38 @@
+{% extends "hrms/base.html" %}
+{% block title %}My Interviews{% endblock %}
+{% block page_title %}My Interviews (as Interviewer){% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light"><tr><th>Candidate</th><th>Job</th><th>Round</th><th>Scheduled</th><th>Mode</th><th>Status</th><th style="width:340px;">Feedback</th></tr></thead>
+      <tbody>
+        {% for iv in interviews %}
+        <tr>
+          <td>{{ iv.application.candidate }}</td>
+          <td>{{ iv.application.job_posting.title }}</td>
+          <td>{{ iv.interview_round }}</td>
+          <td>{{ iv.scheduled_on }}</td>
+          <td>{{ iv.get_mode_display }}</td>
+          <td><span class="badge text-bg-light border">{{ iv.get_status_display }}</span></td>
+          <td>
+            {% if iv.status == 'completed' %}
+              <span class="text-muted small">{{ iv.feedback|default:"No feedback recorded."|truncatechars:80 }}</span>
+            {% else %}
+              <form method="post" action="{% url 'hrms:interview_feedback' iv.pk %}" class="d-flex gap-2">
+                {% csrf_token %}
+                <textarea name="feedback" class="form-control form-control-sm" rows="1" placeholder="Feedback...">{{ iv.feedback }}</textarea>
+                <button class="btn btn-sm btn-outline-secondary">Submit</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-muted text-center py-4">You haven't been assigned any interviews.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

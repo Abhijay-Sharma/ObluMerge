@@ -1,0 +1,62 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Request Punch Regularization — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-warning-subtle text-dark p-4 border-0">
+          <h4 class="fw-bold mb-1"><i class="bi bi-clock-history text-warning me-2"></i>Punch Regularization Request</h4>
+          <p class="text-muted small mb-0">Submit a correction request for a missed biometric punch or time discrepancy.</p>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Attendance Date*</label>
+              {{ form.attendance_date }}
+              {% if form.attendance_date.errors %}<div class="text-danger small">{{ form.attendance_date.errors }}</div>{% endif %}
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold">Correct Check-In Time*</label>
+                {{ form.requested_check_in }}
+                {% if form.requested_check_in.errors %}<div class="text-danger small">{{ form.requested_check_in.errors }}</div>{% endif %}
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold">Correct Check-Out Time</label>
+                {{ form.requested_check_out }}
+                {% if form.requested_check_out.errors %}<div class="text-danger small">{{ form.requested_check_out.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Reason for Missed Punch*</label>
+              {{ form.reason }}
+              {% if form.reason.errors %}<div class="text-danger small">{{ form.reason.errors }}</div>{% endif %}
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Proof / Supporting Document (Optional)</label>
+              {{ form.proof_document }}
+              <div class="form-text small">Attach an email thread, gate pass, or ticket reference if available.</div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{% url 'hrms:regularization_list' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+              <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold text-dark">
+                <i class="bi bi-send me-1"></i>Submit for Review
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

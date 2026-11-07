@@ -1,0 +1,474 @@
+{% extends "hrms/base.html" %}
+{% load hrms_extras %}
+{% load humanize %}
+
+{% block title %}Payroll Register — {{ run.company.name }} ({{ run.month|month_name }} {{ run.year }}){% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Google Font ── */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f1f5f9; }
+
+  /* ── Breadcrumb ── */
+  .breadcrumb-area { font-size: 12.5px; color: #64748b; margin-bottom: 12px; }
+
+  /* ── Hero Header Card ── */
+  .run-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #1e3a5f 100%);
+    border-radius: 16px; padding: 22px 28px;
+    color: #fff; margin-bottom: 20px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;
+  }
+  .run-hero h3 { font-size: 1.5rem; font-weight: 800; margin: 0; }
+  .run-hero .meta { font-size: .78rem; opacity: .65; margin-top: 4px; }
+  .run-badge { font-size: .72rem; font-weight: 700; padding: 4px 12px; border-radius: 99px; letter-spacing: .03em; }
+  .badge-month { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.25); }
+  .badge-status { background: #22c55e20; color: #4ade80; border: 1px solid #4ade8040; }
+  .badge-status-pending { background: #f59e0b20; color: #fbbf24; border: 1px solid #fbbf2440; }
+
+  /* ── Stat Cards ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 768px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px;
+    padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+    transition: box-shadow .2s, transform .2s;
+  }
+  .stat-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,.07); transform: translateY(-2px); }
+  .stat-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+  .stat-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; font-weight: 700; }
+  .stat-value { font-size: 1.35rem; font-weight: 800; color: #0f172a; line-height: 1.2; margin-top: 2px; }
+
+  /* ── Filter Bar ── */
+  .filter-bar { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; }
+  .filter-bar .form-control, .filter-bar .form-select { border-radius: 9px; font-size: .84rem; border: 1.5px solid #e5e7eb; }
+  .filter-bar .form-control:focus, .filter-bar .form-select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+  /* ── Table Wrapper ── */
+  .pay-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.04); }
+  .table-scroll { overflow-x: auto; overflow-y: auto; max-height: 72vh; position: relative; -webkit-overflow-scrolling: touch; }
+
+  /* ── Table Core ── */
+  .pay-table { border-collapse: separate !important; border-spacing: 0 !important; width: max-content !important; margin: 0; }
+
+  /* Header */
+  .pay-table thead th {
+    position: sticky; top: 0; z-index: 10;
+    background: #0f172a; color: #cbd5e1;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    padding: 13px 12px; white-space: nowrap;
+    border-bottom: 2px solid #1e293b;
+  }
+  /* Sub-row for zone labels */
+  .pay-table thead tr.zone-row th {
+    padding: 5px 12px 4px; font-size: 9px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; opacity: .55; border-bottom: 1px solid #1e293b;
+  }
+
+  /* Body */
+  .pay-table tbody td {
+    padding: 11px 12px; font-size: 12px; white-space: nowrap; vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f8fafc;
+    background: #fff;
+  }
+  .pay-table tbody tr:nth-of-type(even) td { background: #f8fafc; }
+  .pay-table tbody tr:hover td { background: #eef2ff !important; }
+
+  /* ── Frozen Column 1: EMP ID ── */
+  .f1 { position: sticky !important; left: 0 !important; z-index: 15 !important; min-width: 110px; width: 110px; }
+  thead th.f1 { z-index: 40 !important; background: #0f172a !important; }
+  tbody td.f1 { background: inherit !important; border-right: 1px solid #e2e8f0 !important; }
+  .pay-table tbody tr:nth-of-type(even) td.f1 { background: #f8fafc !important; }
+  .pay-table tbody tr:hover td.f1 { background: #eef2ff !important; }
+
+  /* ── Frozen Column 2: NAME ── */
+  .f2 { position: sticky !important; left: 110px !important; z-index: 15 !important; min-width: 210px; width: 210px; box-shadow: 4px 0 10px -2px rgba(0,0,0,.08); }
+  thead th.f2 { z-index: 40 !important; background: #0f172a !important; border-right: 3px solid #334155 !important; }
+  tbody td.f2 { background: inherit !important; border-right: 3px solid #e2e8f0 !important; }
+  .pay-table tbody tr:nth-of-type(even) td.f2 { background: #f8fafc !important; }
+  .pay-table tbody tr:hover td.f2 { background: #eef2ff !important; }
+
+  /* ── Zone Colors (header tint) ── */
+  .z-att { background: #1e293b !important; color: #94a3b8 !important; }
+  .z-earn { background: #052e16 !important; color: #86efac !important; }
+  .z-ded  { background: #450a0a !important; color: #fca5a5 !important; }
+  .z-net  { background: #172554 !important; color: #93c5fd !important; }
+  .z-bank { background: #1e1b4b !important; color: #c4b5fd !important; }
+  .z-grace { background: #422006 !important; color: #fcd34d !important; }
+
+  /* Grace audit column body tint */
+  .grace-cell { background: #fefce8 !important; color: #854d0e; font-weight: 700; text-align: center; }
+  .pay-table tbody tr:hover td.grace-cell { background: #fef9c3 !important; }
+  .pay-table tbody tr:nth-of-type(even) td.grace-cell { background: #fef9c3 !important; }
+
+  /* ── Typography helpers ── */
+  .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace; font-size: 11.5px; }
+  .emp-name { font-weight: 700; color: #0f172a; font-size: 12.5px; }
+  .emp-desig { font-size: 10.5px; color: #64748b; display: block; margin-top: 1px; }
+
+  /* ── Payment Status Pill ── */
+  .pill-paid   { background: #dcfce7; color: #15803d; border-radius: 99px; padding: 2px 10px; font-size: 10px; font-weight: 700; }
+  .pill-pending { background: #fef9c3; color: #92400e; border-radius: 99px; padding: 2px 10px; font-size: 10px; font-weight: 700; }
+  .pill-failed  { background: #fee2e2; color: #991b1b; border-radius: 99px; padding: 2px 10px; font-size: 10px; font-weight: 700; }
+
+  /* ── LWP / Absent highlight ── */
+  .lwp-val { color: #dc2626; font-weight: 700; }
+  .zero-muted { color: #d1d5db; }
+
+  /* Section spacer in header */
+  .th-sep { border-left: 3px solid #334155 !important; }
+  .td-sep { border-left: 2px solid #e2e8f0 !important; }
+
+  /* ── Footer note ── */
+  .reg-footer { font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; padding: 10px 4px 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb-area">
+    <a href="{% url 'hrms:dashboard' %}" class="text-decoration-none text-muted">Dashboard</a> &nbsp;/&nbsp;
+    <a href="{% url 'hrms:payrollrun_list' %}" class="text-decoration-none text-muted">Payroll Runs</a> &nbsp;/&nbsp;
+    <span class="text-dark fw-bold">{{ run.company.name }} ({{ run.month|month_name }} {{ run.year }})</span>
+  </div>
+
+  <!-- Hero Header -->
+  <div class="run-hero">
+    <div>
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+        <h3><i class="bi bi-receipt-cutoff me-2 opacity-75"></i>{{ run.company.name }}</h3>
+        <span class="run-badge badge-month">{{ run.month|month_name }} {{ run.year }}</span>
+        {% if run.status == 'completed' %}
+          <span class="run-badge badge-status"><i class="bi bi-check-circle-fill me-1"></i>{{ run.get_status_display }}</span>
+        {% else %}
+          <span class="run-badge badge-status-pending"><i class="bi bi-clock-fill me-1"></i>{{ run.get_status_display }}</span>
+        {% endif %}
+      </div>
+      <div class="meta"><i class="bi bi-table me-1"></i>Master Salary, Attendance Reconciliation &amp; Disbursement Register</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'hrms:payroll_export_csv' pk=run.pk %}?department={{ selected_dept|default:'' }}&q={{ search_query|default:'' }}"
+         class="btn btn-sm fw-semibold rounded-pill px-3" style="background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3);">
+        <i class="bi bi-file-earmark-excel me-1"></i> Export CSV
+      </a>
+      <button onclick="window.print()" class="btn btn-sm fw-semibold rounded-pill px-3" style="background:rgba(255,255,255,.1); color:#fff; border:1px solid rgba(255,255,255,.2);">
+        <i class="bi bi-printer me-1"></i> Print
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#eff6ff;"><i class="bi bi-people-fill" style="color:#2563eb;"></i></div>
+      <div>
+        <div class="stat-label">Total Employees</div>
+        <div class="stat-value">{{ total_employees_count }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#f0fdf4;"><i class="bi bi-cash-coin" style="color:#16a34a;"></i></div>
+      <div>
+        <div class="stat-label">Total Net Payout</div>
+        <div class="stat-value" style="color:#16a34a;">₹{{ total_net|intcomma }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#fef2f2;"><i class="bi bi-shield-slash-fill" style="color:#dc2626;"></i></div>
+      <div>
+        <div class="stat-label">Total Penalties</div>
+        <div class="stat-value" style="color:#dc2626;">₹{{ total_penalties|floatformat:1|intcomma }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#f5f3ff;"><i class="bi bi-calendar2-check-fill" style="color:#7c3aed;"></i></div>
+      <div>
+        <div class="stat-label">Total Paid Days</div>
+        <div class="stat-value">{{ total_paid_days|floatformat:1 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <form method="GET" class="row g-2 align-items-center">
+      <div class="col-12 col-md-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-light border-end-0 rounded-start-3"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" name="q" value="{{ search_query }}" class="form-control bg-light border-start-0 rounded-end-3" placeholder="Search Employee Code or Name…">
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <select name="department" class="form-select form-select-sm bg-light">
+          <option value="">All Departments ({{ run.company.name }})</option>
+          {% for dept in departments %}
+            <option value="{{ dept.id }}" {% if selected_dept == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-sm fw-semibold rounded-pill px-4" style="background:#6366f1; color:#fff;">
+          <i class="bi bi-filter me-1"></i> Filter
+        </button>
+        {% if search_query or selected_dept %}
+        <a href="{% url 'hrms:payrollrun_detail' pk=run.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Reset</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!--          MASTER PAYROLL REGISTER TABLE                -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="pay-card mb-4">
+    <div class="table-scroll">
+      <table class="pay-table table align-middle">
+        <thead>
+          <!-- Zone label row -->
+          <tr class="zone-row">
+            <th class="f1 z-att" style="z-index:45;"></th>
+            <th class="f2 z-att" style="z-index:45;"></th>
+            <th colspan="8" class="z-att text-center th-sep"><i class="bi bi-calendar3 me-1"></i>ATTENDANCE</th>
+            <th colspan="5" class="z-earn text-center th-sep"><i class="bi bi-bar-chart-fill me-1"></i>EARNINGS</th>
+            <th colspan="5" class="z-ded text-center th-sep"><i class="bi bi-dash-circle-fill me-1"></i>DEDUCTIONS</th>
+            <th colspan="2" class="z-net text-center th-sep"><i class="bi bi-wallet2 me-1"></i>PAYOUT</th>
+            <th colspan="3" class="z-bank text-center th-sep"><i class="bi bi-bank me-1"></i>BANK DETAILS</th>
+          </tr>
+          <!-- Column header row -->
+          <tr>
+            <!-- Frozen -->
+            <th class="f1 z-att text-center">EMP ID</th>
+            <th class="f2 z-att">EMPLOYEE &amp; DESIGNATION</th>
+            <!-- Attendance -->
+            <th class="z-att text-center th-sep" title="Full Days Present">
+              <i class="bi bi-sun-fill me-1" style="color:#fbbf24;"></i>FULL DAYS
+            </th>
+            <th class="z-att text-center" title="Standard Half Days">
+              <i class="bi bi-circle-half me-1"></i>HALF DAYS
+            </th>
+            <th class="z-grace text-center" title="Half Days triggered after Grace Strikes Exhausted — Audit Column" style="background:#422006!important;">
+              <i class="bi bi-exclamation-triangle-fill me-1" style="color:#fbbf24;"></i>HD AFTER GRACE
+            </th>
+            <th class="z-att text-center" title="Weekly-Offs &amp; Company Holidays"><i class="bi bi-moon-stars me-1"></i>OFF / HOL</th>
+            <th class="z-att text-center" title="Paid Leave Days"><i class="bi bi-journal-check me-1"></i>PAID LEAVES</th>
+            <th class="z-att text-center" title="Extra Working Days via Comp-Off"><i class="bi bi-plus-circle-fill me-1" style="color:#a78bfa;"></i>COMP OFF</th>
+            <th class="z-att text-center fw-bold" title="Total Paid Days"><i class="bi bi-check2-all me-1"></i>PAID DAYS</th>
+            <th class="z-att text-center" title="Unpaid / LWP Days" style="color:#fca5a5;"><i class="bi bi-x-circle-fill me-1"></i>UNPAID (LWP)</th>
+            <!-- Earnings -->
+            <th class="z-earn text-end th-sep" title="Fixed Monthly CTC">
+              <i class="bi bi-building me-1"></i>MONTHLY CTC
+            </th>
+            <th class="z-earn text-end" title="Daily Wage = CTC / Working Days"><i class="bi bi-currency-rupee me-1"></i>DAILY WAGE</th>
+            <th class="z-earn text-end" title="Earned Base = Daily Wage × (Full Days + Half Days×0.5)"><i class="bi bi-calculator me-1"></i>EARNED BASE</th>
+            <th class="z-earn text-end" title="Extras &amp; Incentives">
+              <i class="bi bi-gift-fill me-1"></i>EXTRAS / INCENT.
+            </th>
+            <th class="z-earn text-end fw-bold" title="Gross = Earned Base + Leave/Off Pay + Extras"><i class="bi bi-cash-stack me-1"></i>GROSS EARNED</th>
+            <!-- Deductions -->
+            <th class="z-ded text-end th-sep"><i class="bi bi-shield-fill me-1"></i>PF</th>
+            <th class="z-ded text-end"><i class="bi bi-receipt me-1"></i>TDS</th>
+            <th class="z-ded text-end"><i class="bi bi-credit-card-fill me-1"></i>LOAN / EMI</th>
+            <th class="z-ded text-end" style="color:#fca5a5;"><i class="bi bi-slash-circle-fill me-1"></i>PENALTY DED.</th>
+            <th class="z-ded text-end fw-bold" style="color:#fca5a5;"><i class="bi bi-dash-square-fill me-1"></i>TOTAL DED.</th>
+            <!-- Net -->
+            <th class="z-net text-end th-sep fw-bold"><i class="bi bi-wallet-fill me-1"></i>NET TAKE-HOME</th>
+            <th class="z-net text-center">STATUS</th>
+            <!-- Bank -->
+            <th class="z-bank th-sep"><i class="bi bi-bank me-1"></i>BANK NAME</th>
+            <th class="z-bank mono"><i class="bi bi-credit-card me-1"></i>ACCOUNT NO.</th>
+            <th class="z-bank mono"><i class="bi bi-upc me-1"></i>IFSC CODE</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for slip in payslips %}
+          {% with sal=slip.employee.salaries.first bank=slip.employee.bank_detail %}
+          {% comment %}
+            Computed values for display (template arithmetic):
+              earned_base   = daily_wage × (full_days + half_days×0.5)
+              leave_off_pay = daily_wage × (paid_leave_days + off_days + comp_off_days)
+              gross_earned  = total_earnings (already computed by payroll engine)
+              pf            = sal.pf_employee
+              tds           = sal.tds
+          {% endcomment %}
+          <tr>
+            <!-- Frozen 1: EMP ID -->
+            <td class="f1 mono text-center">
+              <a href="{% url 'hrms:employee_punch_report' emp_id=slip.employee.id month=slip.payroll_run.month year=slip.payroll_run.year %}"
+                 class="fw-bold text-decoration-none" style="color:#6366f1;" title="View Punch Records">
+                {{ slip.employee.employee_code }}
+              </a>
+            </td>
+
+            <!-- Frozen 2: Name + Designation -->
+            <td class="f2">
+              <a href="{% url 'hrms:employee_detail' pk=slip.employee.pk %}" class="emp-name text-decoration-none">
+                {{ slip.employee.full_name }}
+              </a>
+              <span class="emp-desig">{{ slip.employee.designation.title|default:"Staff" }}</span>
+            </td>
+
+            <!-- ── ATTENDANCE ZONE ── -->
+            <!-- Full Days -->
+            <td class="text-center td-sep {% if slip.full_days == 0 %}zero-muted{% endif %}">
+              {{ slip.full_days|floatformat:1 }}
+            </td>
+
+            <!-- Half Days (standard) -->
+            <td class="text-center {% if slip.half_days == 0 %}zero-muted{% endif %}">
+              {{ slip.half_days|floatformat:1 }}
+            </td>
+
+            <!-- Half Days After Grace (audit column) -->
+            <td class="grace-cell">
+              {% with grace_hd=slip.grace_halfday_count|default:0 %}
+                {% if grace_hd > 0 %}
+                  <span title="{{ grace_hd }} half-day(s) triggered after grace strikes exhausted">
+                    ⚠ {{ grace_hd }}
+                  </span>
+                {% else %}
+                  <span class="text-muted fw-normal" style="opacity:.4;">—</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+
+            <!-- Off / Holiday -->
+            <td class="text-center {% if slip.off_days == 0 %}zero-muted{% endif %}">
+              {{ slip.off_days|floatformat:1 }}
+            </td>
+
+            <!-- Paid Leaves -->
+            <td class="text-center {% if slip.paid_leave_days == 0 %}zero-muted{% endif %}">
+              {{ slip.paid_leave_days|floatformat:1 }}
+            </td>
+
+            <!-- Comp Off -->
+            <td class="text-center {% if slip.comp_off_days == 0 and slip.comp_off_earned == 0 %}zero-muted{% endif %}">
+              {% if slip.comp_off_earned > 0 or slip.comp_off_days > 0 or slip.comp_off_remaining > 0 %}
+                <div class="d-inline-block text-start p-1 rounded bg-light border" style="font-size:10px; line-height:1.2;"
+                     title="Earned: {{ slip.comp_off_earned|default:slip.comp_off_days }} | Used: {{ slip.comp_off_used }} | Encashed: {{ slip.comp_off_remaining }}">
+                  <div><span class="text-muted">Earn:</span> <strong class="text-dark">{{ slip.comp_off_earned|default:slip.comp_off_days|floatformat:1 }}</strong></div>
+                  <div><span class="text-muted">Used:</span> <strong class="text-dark">{{ slip.comp_off_used|floatformat:1 }}</strong></div>
+                  <div><span class="text-muted">Rem:</span> <strong class="text-primary">{{ slip.comp_off_remaining|floatformat:1 }}</strong></div>
+                  {% if slip.comp_off_encashment > 0 %}
+                    <div class="text-success fw-bold border-top mt-1 pt-1" style="font-size:9.5px;">+₹{{ slip.comp_off_encashment }}</div>
+                  {% endif %}
+                </div>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <!-- Paid Days -->
+            <td class="text-center fw-bold" style="color:#0f172a;">
+              {{ slip.paid_days|floatformat:1 }}
+              <small class="fw-normal" style="color:#94a3b8; font-size:10px;">/ {{ slip.total_days_in_month }}</small>
+            </td>
+
+            <!-- Unpaid / LWP -->
+            <td class="text-center">
+              {% if slip.absent_days > 0 %}
+                <span class="lwp-val">{{ slip.absent_days|floatformat:1 }}</span>
+              {% else %}
+                <span class="zero-muted">0.0</span>
+              {% endif %}
+            </td>
+
+            <!-- ── EARNINGS ZONE ── -->
+            <!-- Monthly CTC -->
+            <td class="text-end mono td-sep" style="color:#94a3b8;">
+              ₹{{ slip.monthly_ctc|intcomma }}
+            </td>
+
+            <!-- Daily Wage -->
+            <td class="text-end mono">
+              ₹{{ slip.daily_wage|floatformat:2|intcomma }}
+            </td>
+
+            <!-- EARNED BASE = daily_wage × (full_days + half_days × 0.5) -->
+            <td class="text-end mono" style="color:#166534; font-weight:600;">
+              ₹{{ slip.earned_base|floatformat:2|intcomma }}
+            </td>
+
+            <!-- Extras / Incentives -->
+            <td class="text-end mono" style="color:#0369a1;">
+              {% if slip.extra_earning > 0 %}+₹{{ slip.extra_earning|floatformat:2|intcomma }}{% else %}<span class="zero-muted">—</span>{% endif %}
+            </td>
+
+            <!-- GROSS EARNED -->
+            <td class="text-end mono fw-bold" style="color:#166534; font-size:13px;">
+              ₹{{ slip.total_earnings|floatformat:2|intcomma }}
+            </td>
+
+            <!-- ── DEDUCTIONS ZONE ── -->
+            <!-- PF Employee -->
+            <td class="text-end mono td-sep" style="color:#475569;">
+              {% if slip.sal_snap and slip.sal_snap.pf_employee > 0 %}₹{{ slip.sal_snap.pf_employee|intcomma }}{% else %}<span class="zero-muted">—</span>{% endif %}
+            </td>
+
+            <!-- TDS -->
+            <td class="text-end mono" style="color:#475569;">
+              {% if slip.sal_snap and slip.sal_snap.tds > 0 %}₹{{ slip.sal_snap.tds|intcomma }}{% else %}<span class="zero-muted">—</span>{% endif %}
+            </td>
+
+            <!-- Loan / EMI -->
+            <td class="text-end mono" style="color:#7c3aed;">
+              {% if slip.loan_deduction > 0 %}₹{{ slip.loan_deduction|floatformat:2|intcomma }}{% else %}<span class="zero-muted">—</span>{% endif %}
+            </td>
+
+            <!-- Penalty Deduction -->
+            <td class="text-end mono" style="color:#dc2626;">
+              {% if slip.penalty_deduction > 0 %}₹{{ slip.penalty_deduction|floatformat:2|intcomma }}{% else %}<span class="zero-muted">—</span>{% endif %}
+            </td>
+
+            <!-- Total Deductions -->
+            <td class="text-end mono fw-bold" style="color:#dc2626;">
+              {% if slip.total_deductions > 0 %}₹{{ slip.total_deductions|floatformat:2|intcomma }}{% else %}<span class="zero-muted">₹0</span>{% endif %}
+            </td>
+
+            <!-- ── PAYOUT ZONE ── -->
+            <!-- Net Take-Home -->
+            <td class="text-end mono td-sep" style="font-size:13px; font-weight:800; color:#1d4ed8;">
+              ₹{{ slip.net_pay|floatformat:2|intcomma }}
+            </td>
+
+            <!-- Payment Status -->
+            <td class="text-center">
+              {% if slip.payment_status == 'paid' %}
+                <span class="pill-paid"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
+              {% elif slip.payment_status == 'failed' %}
+                <span class="pill-failed"><i class="bi bi-x-circle-fill me-1"></i>Failed</span>
+              {% else %}
+                <span class="pill-pending"><i class="bi bi-clock-fill me-1"></i>Pending</span>
+              {% endif %}
+            </td>
+
+            <!-- ── BANK ZONE ── -->
+            <td class="td-sep" style="color:#374151; font-size:12px;">{{ bank.bank_name|default:"—" }}</td>
+            <td class="mono" style="color:#374151; letter-spacing:.03em;">{{ bank.account_number|default:"—" }}</td>
+            <td class="mono" style="color:#374151; letter-spacing:.06em; font-weight:600;">{{ bank.ifsc_code|default:"—" }}</td>
+          </tr>
+          {% endwith %}
+          {% empty %}
+          <tr>
+            <td colspan="26" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox" style="font-size:2.5rem; display:block; margin-bottom:.5rem; opacity:.35;"></i>
+              No employee payslips found matching the filter criteria for this run.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer note -->
+  <div class="reg-footer">
+    <span><i class="bi bi-pin-angle me-1"></i>EMP ID &amp; Name columns are frozen — scroll right to view deductions and bank details.</span>
+    <span>Generated by HRMS Automated Engine &bull; Oblu Group</span>
+  </div>
+
+</div>
+{% endblock %}

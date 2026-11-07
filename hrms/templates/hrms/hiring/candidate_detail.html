@@ -1,0 +1,384 @@
+{% extends "hrms/base.html" %}
+{% block title %}{{ candidate.first_name }} {{ candidate.last_name }} — Candidate Profile{% endblock %}
+{% block page_title %}{{ candidate.first_name }} {{ candidate.last_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .candidate-hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+    border-radius: 16px;
+    padding: 1.75rem 2rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 25px -5px rgba(49, 46, 129, 0.25);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+  }
+  .cand-avatar-lg {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+  }
+  .cand-meta-pill {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.78rem;
+    color: #e0e7ff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .panel-card {
+    background: #ffffff;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .panel-card-header {
+    padding: 0.85rem 1.25rem;
+    background: #f8fafc;
+    border-bottom: 1.5px solid #f1f5f9;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-card-body {
+    padding: 1.25rem;
+  }
+  .info-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.2rem;
+  }
+  .info-value {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: #1e293b;
+  }
+  .status-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.3rem 0.85rem;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .sb-applied      { background: #e0f2fe; color: #0369a1; }
+  .sb-shortlisted  { background: #fef9c3; color: #92400e; }
+  .sb-interviewing { background: #ede9fe; color: #5b21b6; }
+  .sb-offered      { background: #d1fae5; color: #065f46; }
+  .sb-hired        { background: #dcfce7; color: #166534; }
+  .sb-rejected     { background: #fee2e2; color: #991b1b; }
+
+  /* Pipeline track */
+  .pipe-track {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+  }
+  .pipe-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 65px;
+  }
+  .pipe-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 2px solid #e2e8f0;
+    background: #f8fafc;
+    color: #94a3b8;
+  }
+  .pipe-circle.active {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2);
+  }
+  .pipe-line {
+    flex: 1;
+    height: 2px;
+    background: #e2e8f0;
+    margin-top: -14px;
+    min-width: 15px;
+  }
+
+  .audit-item {
+    position: relative;
+    padding: 0.5rem 0 0.5rem 1.5rem;
+  }
+  .audit-item::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 0.95rem;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #a855f7;
+  }
+  .audit-item::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 1.5rem;
+    width: 2px;
+    background: #e9d5ff;
+    bottom: 0;
+  }
+  .audit-item:last-child::after { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Hero Header -->
+<div class="candidate-hero">
+  <div class="d-flex align-items-center gap-3">
+    <div class="cand-avatar-lg">
+      {{ candidate.first_name|slice:":1" }}{{ candidate.last_name|slice:":1" }}
+    </div>
+    <div>
+      <h3 class="fw-bold mb-1" style="font-size:1.45rem;">
+        {{ candidate.first_name }} {{ candidate.last_name }}
+        {% if not candidate.first_name and not candidate.last_name %}{{ candidate.email }}{% endif %}
+      </h3>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <span class="cand-meta-pill"><i class="bi bi-envelope"></i> {{ candidate.email }}</span>
+        {% if candidate.phone %}
+        <span class="cand-meta-pill"><i class="bi bi-telephone"></i> {{ candidate.phone }}</span>
+        {% endif %}
+        {% if candidate.city or candidate.state %}
+        <span class="cand-meta-pill"><i class="bi bi-geo-alt-fill"></i> {{ candidate.city }}{% if candidate.city and candidate.state %}, {% endif %}{{ candidate.state }}</span>
+        {% endif %}
+        {% if candidate.experience_years %}
+        <span class="cand-meta-pill"><i class="bi bi-clock-history"></i> {{ candidate.experience_years }} yrs experience</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'hrms:candidate_list' %}" class="btn btn-sm btn-light" style="border-radius:9px;">
+      <i class="bi bi-arrow-left me-1"></i>Candidates List
+    </a>
+    <a href="{% url 'hrms:candidate_edit' candidate.pk %}" class="btn btn-sm" style="background:#7c3aed; color:#fff; border-radius:9px;">
+      <i class="bi bi-pencil me-1"></i>Edit Candidate
+    </a>
+    {% if candidate.resume %}
+    <a href="{{ candidate.resume.url }}" target="_blank" class="btn btn-sm btn-outline-light" style="border-radius:9px;">
+      <i class="bi bi-file-earmark-pdf me-1"></i>Open Resume
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Left Column: Profile Card -->
+  <div class="col-lg-4">
+    <div class="panel-card">
+      <div class="panel-card-header">
+        <span>Candidate Information</span>
+        <a href="{% url 'hrms:candidate_edit' candidate.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:.72rem; padding:.15rem .55rem; border-radius:6px;">
+          <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+      </div>
+      <div class="panel-card-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="info-label">Full Name</div>
+            <div class="info-value">{{ candidate.first_name }} {{ candidate.last_name }}</div>
+          </div>
+          <div class="col-12">
+            <div class="info-label">Email Address</div>
+            <div class="info-value">
+              <a href="mailto:{{ candidate.email }}" class="text-decoration-none" style="color:#6366f1;">
+                {{ candidate.email }}
+              </a>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="info-label">Phone Number</div>
+            <div class="info-value">{{ candidate.phone|default:"—" }}</div>
+          </div>
+          <div class="col-12">
+            <div class="info-label">Location (City & State)</div>
+            <div class="info-value">
+              {% if candidate.city or candidate.state %}
+                <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                {{ candidate.city }}{% if candidate.city and candidate.state %}, {% endif %}{{ candidate.state }}
+              {% else %}
+                <span class="text-muted">Not specified</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="info-label">Current Company</div>
+            <div class="info-value">{{ candidate.current_company|default:"—" }}</div>
+          </div>
+          <div class="col-12">
+            <div class="info-label">Total Experience</div>
+            <div class="info-value">
+              {% if candidate.experience_years %}
+                {{ candidate.experience_years }} Years
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="info-label">Profile Created</div>
+            <div class="info-value text-muted" style="font-size:.82rem;">{{ candidate.created_at|date:"d M Y, H:i" }}</div>
+          </div>
+          {% if candidate.resume %}
+          <div class="col-12 pt-2 border-top">
+            <div class="info-label mb-2">Resume / CV</div>
+            <a href="{{ candidate.resume.url }}" target="_blank" class="btn btn-sm w-100" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; color:#334155; font-weight:600;">
+              <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>Download Resume
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Applications & Stage Progress -->
+  <div class="col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold mb-0" style="color:#1e1b4b;">
+        <i class="bi bi-briefcase me-2 text-primary"></i>Application History ({{ candidate.applications.count }})
+      </h5>
+    </div>
+
+    {% for application in candidate.applications.all %}
+    <div class="panel-card mb-3">
+      <div class="panel-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fw-bold text-dark" style="font-size:.95rem;">{{ application.job_posting.title }}</span>
+          {% if application.job_posting.department %}
+          <span class="badge bg-light text-secondary border">{{ application.job_posting.department }}</span>
+          {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="status-badge sb-{{ application.status }}">
+            {{ application.get_status_display }}
+          </span>
+          <a href="{% url 'hrms:application_detail' application.pk %}" class="btn btn-sm btn-primary" style="font-size:.78rem; border-radius:8px;">
+            <i class="bi bi-arrow-right-circle me-1"></i>View Application Details
+          </a>
+        </div>
+      </div>
+
+      <div class="panel-card-body">
+        <!-- Application Meta Strip -->
+        <div class="row g-2 mb-3 small text-muted">
+          <div class="col-md-4">
+            <i class="bi bi-calendar3 me-1"></i>Applied: <strong>{{ application.applied_on|date:"d M Y" }}</strong>
+          </div>
+          {% if application.current_stage %}
+          <div class="col-md-4">
+            <i class="bi bi-signpost-split me-1 text-primary"></i>Current Stage: <strong class="text-primary">{{ application.current_stage.name }}</strong>
+          </div>
+          {% endif %}
+          {% if application.source %}
+          <div class="col-md-4">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Source: <strong>{{ application.get_source_display }}</strong>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Pipeline stages for this job -->
+        {% with stages=application.job_posting.pipeline_stages.all %}
+        {% if stages %}
+        <div class="p-3 mb-3" style="background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="small fw-bold text-uppercase text-muted" style="letter-spacing:.04em;">Candidate Hiring Stage</div>
+            <a href="{% url 'hrms:job_kanban' application.job_posting.pk %}?application={{ application.pk }}" class="small text-decoration-none fw-semibold" style="color:#7c3aed;">
+              <i class="bi bi-kanban me-1"></i>View in Stage Kanban &rarr;
+            </a>
+          </div>
+          <div class="pipe-track">
+            {% for ps in stages %}
+            <div class="pipe-node">
+              <div class="pipe-circle {% if application.current_stage_id == ps.stage_id %}active{% endif %}">
+                {% if application.current_stage_id == ps.stage_id %}
+                  <i class="bi bi-check-lg"></i>
+                {% else %}
+                  {{ forloop.counter }}
+                {% endif %}
+              </div>
+              <div class="text-center mt-1" style="font-size:.68rem; font-weight:600; color:{% if application.current_stage_id == ps.stage_id %}#7c3aed{% else %}#64748b{% endif %}; max-width:70px; line-height:1.2;">
+                {{ ps.stage.name }}
+              </div>
+            </div>
+            {% if not forloop.last %}<div class="pipe-line"></div>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Timeline / Audit Logs -->
+        {% if application.audit_logs.all %}
+        <div class="border-top pt-2 mt-2">
+          <div class="info-label mb-2"><i class="bi bi-clock-history me-1"></i>Status Transition Audit</div>
+          {% for log in application.audit_logs.all %}
+          <div class="audit-item">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small" style="color:#1e1b4b;">Status changed to {{ log.to_status|title }}</span>
+              <span class="text-muted" style="font-size:.72rem;">{{ log.created_at|date:"d M Y, H:i" }}</span>
+            </div>
+            {% if log.note %}
+            <div class="text-muted small fst-italic mt-1">{{ log.note }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="panel-card text-center py-5">
+      <i class="bi bi-inbox text-muted" style="font-size:2.5rem; display:block; margin-bottom:.5rem;"></i>
+      <h6 class="text-muted">No applications found for this candidate.</h6>
+      <p class="small text-muted mb-0">This candidate was added without an active job application.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

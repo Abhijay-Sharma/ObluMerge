@@ -1,0 +1,79 @@
+{% extends "hrms/base.html" %}
+
+{% block title %}{{ notice.title }} — Notice Detail — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'hrms:notice_list' %}" class="text-decoration-none">Notice Board</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ notice.title }}</li>
+    </ol>
+  </nav>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-9">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white p-4 border-bottom">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 mb-2 d-inline-block">
+                {{ notice.get_category_display }}
+              </span>
+              <h3 class="fw-bold text-dark mb-1">{{ notice.title }}</h3>
+              <div class="text-muted small">
+                <i class="bi bi-calendar3 me-1"></i>Posted on {{ notice.notice_date|date:"D, d M Y" }}
+                {% if notice.expiry_date %} • Active until: {{ notice.expiry_date|date:"d M Y" }}{% endif %}
+              </div>
+            </div>
+            {% if is_hr %}
+              <div class="badge bg-light text-dark border p-2">
+                <i class="bi bi-eye me-1"></i>{{ read_count }} Read(s)
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+          <div class="fs-6 lh-lg text-dark mb-4" style="white-space: pre-line;">
+            {{ notice.message }}
+          </div>
+
+          {% if notice.document %}
+            <div class="p-3 bg-light rounded-4 border d-flex align-items-center justify-content-between mt-4">
+              <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-file-earmark-arrow-down fs-2 text-primary"></i>
+                <div>
+                  <div class="fw-bold small">{{ notice.document.name|slice:"8:" }}</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Official Notice Attachment</div>
+                </div>
+              </div>
+              <a href="{{ notice.document.url }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                <i class="bi bi-download me-1"></i>Download Attachment
+              </a>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="card-footer bg-light p-3 border-top d-flex justify-content-between align-items-center">
+          <a href="{% url 'hrms:notice_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i>Back to Notices
+          </a>
+          {% if is_hr %}
+            <div class="d-flex gap-2">
+              <a href="{% url 'hrms:notice_edit' notice.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                <i class="bi bi-pencil me-1"></i>Edit
+              </a>
+              <a href="{% url 'hrms:notice_delete' notice.id %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                <i class="bi bi-trash me-1"></i>Delete
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

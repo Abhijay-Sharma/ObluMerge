@@ -1,0 +1,16 @@
+{% extends "hrms/base.html" %}
+{% block title %}Delete Holiday{% endblock %}
+{% block page_title %}Delete Holiday{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <div class="card-body">
+    <p>Delete holiday <strong>{{ object.name }}</strong> ({{ object.date }})?</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete</button>
+      <a href="{% url 'hrms:holiday_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

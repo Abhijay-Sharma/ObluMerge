@@ -1,0 +1,26 @@
+{% extends "hrms/base.html" %}
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Leave Type{% endblock %}
+{% block page_title %}{% if object %}Edit{% else %}Add{% endif %} Leave Type{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px;">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        {% for field in form %}
+          <div class="col-md-6">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn text-white" style="background:var(--accent);">Save</button>
+        <a href="{% url 'hrms:leavetype_list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

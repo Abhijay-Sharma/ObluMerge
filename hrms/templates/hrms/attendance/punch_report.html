@@ -1,0 +1,238 @@
+{% extends "hrms/base.html" %}
+{% block content %}
+<style>
+    /* Soft Pastel Palette */
+    .mark-fd { color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .mark-hd { color: #b45309; background: #fffbeb; border: 1px solid #fef3c7; }
+    .mark-abs { color: #be123c; background: #fff1f2; border: 1px solid #ffe4e6; }
+    .mark-leave { color: #4338ca; background: #eef2ff; border: 1px solid #e0e7ff; }
+    .mark-sun { color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; }
+
+    .status-badge {
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 3px 10px;
+        border-radius: 50px;
+        text-transform: uppercase;
+        display: inline-block;
+        white-space: nowrap;
+    }
+    .grace-text { font-size: 9px; color: #94a3b8; font-weight: 600; display: block; margin-top: 2px; line-height: 1.1; }
+
+    /* Summary Grid for Mobile */
+    .stat-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 8px;
+        background: white;
+        text-align: center;
+        height: 100%;
+    }
+    .stat-val { font-size: 1.2rem; font-weight: 800; display: block; line-height: 1; margin-bottom: 5px; }
+    .stat-lbl { font-size: 0.6rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; }
+
+    /* Table Responsiveness */
+    .table-container {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .table thead th {
+        background: #f8fafc;
+        white-space: nowrap;
+        font-size: 0.65rem;
+        padding: 12px 10px;
+    }
+
+    .table tbody td {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+        .container-fluid { padding: 10px !important; }
+        .stat-val { font-size: 1.1rem; }
+        .punch-time { font-size: 0.75rem !important; }
+        .header-section { flex-direction: column; text-align: center !important; }
+        .header-section .text-end { text-align: center !important; margin-top: 15px; }
+    }
+
+    .punch-time { font-family: 'Courier New', monospace; font-weight: 700; }
+
+    /* Geo location badge link */
+    .geo-link {
+        font-size: 0.68rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        color: #2563eb;
+        background: #eff6ff;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid #dbeafe;
+        margin-top: 2px;
+        transition: all 0.15s ease;
+    }
+    .geo-link:hover {
+        background: #2563eb;
+        color: #ffffff;
+    }
+    .kiosk-badge {
+        font-size: 0.68rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        color: #475569;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+        margin-top: 2px;
+    }
+</style>
+
+<div class="container-fluid p-2 p-md-4">
+    <!-- Header -->
+    <div class="card border-0 shadow-sm mb-3 mb-md-4 rounded-4">
+        <div class="card-body p-3 p-md-4">
+            <div class="d-flex header-section justify-content-between align-items-center">
+                <div class="mb-2 mb-md-0">
+                    <span class="badge bg-primary-subtle text-primary mb-2 px-3">Monthly Punch Analysis</span>
+                    <h4 class="fw-bold mb-1 text-dark">{{ target_employee.full_name }}</h4>
+                    <p class="text-muted small mb-0 fw-semibold">{{ target_employee.employee_code }} • {{ target_employee.designation.title }}</p>
+                </div>
+                <div class="text-end">
+                    <h5 class="fw-bold text-dark mb-0">{{ month_name }} {{ year }}</h5>
+                    <button class="btn btn-sm btn-light border mt-2 d-none d-md-inline-block" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Print Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-2 g-md-3 mb-4">
+        <div class="col-6 col-md">
+            <div class="stat-card">
+                <span class="stat-val text-success">{{ stats.FD }}</span>
+                <span class="stat-lbl">Full Days</span>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="stat-card">
+                <span class="stat-val text-warning">{{ stats.HD }}</span>
+                <span class="stat-lbl">Half Days</span>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="stat-card">
+                <span class="stat-val text-danger">{{ stats.ABS }}</span>
+                <span class="stat-lbl">Absents</span>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="stat-card">
+                <span class="stat-val text-primary">{{ stats.Leave }}</span>
+                <span class="stat-lbl">Leaves</span>
+            </div>
+        </div>
+        <div class="col-12 col-md">
+            <div class="stat-card" style="background: #fffbeb;">
+                <span class="stat-val text-warning">{{ stats.Grace }}</span>
+                <span class="stat-lbl">Grace Strike Used</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm rounded-4 table-container">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="text-uppercase">
+                        <th class="ps-3 ps-md-4">Date</th>
+                        <th>First Punch (In)</th>
+                        <th>Last Punch (Out)</th>
+                        <th class="text-center">Hrs</th>
+                        <th class="text-center">Status & Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in report %}
+                    <tr class="{% if day.status == 'SUN' or day.status == 'HOL' %}bg-light opacity-75{% endif %}">
+                        <td class="ps-3 ps-md-4">
+                            <div class="fw-bold text-dark">{{ day.date|date:"d M" }}</div>
+                            <div class="text-muted" style="font-size: 0.65rem;">{{ day.date|date:"D" }}</div>
+                        </td>
+
+                        <!-- Punch In Details & GPS Location -->
+                        <td>
+                            {% if day.in %}
+                                <div class="punch-time text-dark">{{ day.in|time:"H:i" }}</div>
+                                {% if day.in_lat and day.in_lng %}
+                                    <a href="https://maps.google.com/?q={{ day.in_lat }},{{ day.in_lng }}"
+                                       target="_blank"
+                                       class="geo-link"
+                                       title="View Punch-In Location ({{ day.in_lat }}, {{ day.in_lng }})">
+                                        <i class="bi bi-geo-alt-fill text-danger"></i> {{ day.in_lat|floatformat:4 }}, {{ day.in_lng|floatformat:4 }}
+                                    </a>
+                                {% elif day.punch_source == 'kiosk' %}
+                                    <span class="kiosk-badge"><i class="bi bi-tablet"></i> Office Kiosk</span>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.65rem;">No GPS Tag</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted opacity-25 small">--</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Punch Out Details & GPS Location -->
+                        <td>
+                            {% if day.out %}
+                                <div class="punch-time text-dark">{{ day.out|time:"H:i" }}</div>
+                                {% if day.out_lat and day.out_lng %}
+                                    <a href="https://maps.google.com/?q={{ day.out_lat }},{{ day.out_lng }}"
+                                       target="_blank"
+                                       class="geo-link"
+                                       title="View Punch-Out Location ({{ day.out_lat }}, {{ day.out_lng }})">
+                                        <i class="bi bi-geo-alt-fill text-danger"></i> {{ day.out_lat|floatformat:4 }}, {{ day.out_lng|floatformat:4 }}
+                                    </a>
+                                {% elif day.punch_source == 'kiosk' %}
+                                    <span class="kiosk-badge"><i class="bi bi-tablet"></i> Office Kiosk</span>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.65rem;">No GPS Tag</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted opacity-25 small">--</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-center fw-bold text-dark">
+                            {% if day.hours > 0 %}{{ day.hours }}<span class="small fw-normal text-muted ms-1">h</span>{% else %}--{% endif %}
+                        </td>
+
+<td class="text-center" style="min-width: 140px;">
+    <span class="status-badge {{ day.css }}">{{ day.status }}</span>
+
+    {% if day.is_auto_leave %}
+        <!-- Distinctive Auto-Approved Indicator Badge -->
+        <span class="badge bg-warning-subtle text-dark border border-warning-subtle d-inline-flex align-items-center gap-1 mt-1 px-2 py-0" style="font-size: 0.65rem;">
+            <i class="bi bi-robot text-warning"></i> Auto-Approved
+        </span>
+    {% endif %}
+
+    {% if day.label %}
+        <span class="grace-text">{{ day.label }}</span>
+    {% endif %}
+</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

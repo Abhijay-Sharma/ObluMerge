@@ -1,0 +1,176 @@
+{% extends 'hrms/base.html' %}
+{% load static %}
+
+{% block title %}Biometric Enrollment Status{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-3 px-md-4">
+    
+    <!-- Top Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h4 class="mb-0 fw-bold text-dark">Face Biometrics Directory</h4>
+            <p class="text-muted small mb-0 mt-1">Track registered face profiles and pending enrollments</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'hrms:enroll_face' %}" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold">
+                <i class="bi bi-camera-fill me-1"></i> Enroll New Face
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Counters -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card attendo-card border-0 shadow-sm p-3">
+                <span class="text-muted text-uppercase small fw-bold">Total Staff</span>
+                <h3 class="fw-bold mb-0 text-dark mt-1">{{ total_count }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card attendo-card border-0 shadow-sm p-3 border-start border-success border-4">
+                <span class="text-success text-uppercase small fw-bold">Enrolled (Active Face ID)</span>
+                <h3 class="fw-bold mb-0 text-success mt-1">{{ enrolled_count }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card attendo-card border-0 shadow-sm p-3 border-start border-danger border-4">
+                <span class="text-danger text-uppercase small fw-bold">Pending Setup</span>
+                <h3 class="fw-bold mb-0 text-danger mt-1">{{ pending_count }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Directory Tabs -->
+    <div class="card attendo-card border-0 shadow-sm overflow-hidden">
+        <div class="card-header bg-white py-3 px-4 border-bottom">
+            <ul class="nav nav-pills gap-2" id="bioTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active rounded-pill px-3 py-1 fw-semibold small" data-bs-toggle="tab" data-bs-target="#tab-enrolled" type="button">
+                        Enrolled Staff <span class="badge bg-success ms-1">{{ enrolled_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link rounded-pill px-3 py-1 fw-semibold small" data-bs-toggle="tab" data-bs-target="#tab-pending" type="button">
+                        Pending Staff <span class="badge bg-danger ms-1">{{ pending_count }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="tab-content" id="bioTabContent">
+                
+                <!-- TAB 1: ENROLLED EMPLOYEES -->
+                <div class="tab-pane fade show active" id="tab-enrolled" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table attendance-table table-hover mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Employee</th>
+                                    <th>Department</th>
+                                    <th>Registered Face</th>
+                                    <th>Registered On</th>
+                                    <th class="pe-4 text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in enrolled_employees %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="emp-avatar bg-success-subtle text-success">{{ emp.first_name|first|upper }}</div>
+                                            <div>
+                                                <a href="{% url 'hrms:employee_detail' emp.pk %}" class="fw-bold text-dark text-decoration-none small">{{ emp.full_name }}</a>
+                                                <div class="text-muted" style="font-size: 0.72rem;">{{ emp.employee_code }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-medium text-dark">{{ emp.department.name|default:"--" }}</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">{{ emp.designation.title|default:"--" }}</div>
+                                    </td>
+                                    <td>
+                                        {% if emp.biometric.registered_photo %}
+                                            <img src="{{ emp.biometric.registered_photo.url }}" class="rounded border" style="width: 42px; height: 42px; object-fit: cover;">
+                                        {% else %}
+                                            <span class="badge bg-secondary">Vector Saved</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small text-muted">
+                                        {{ emp.biometric.created_at|date:"d M Y, h:i A" }}
+                                    </td>
+                                    <td class="pe-4 text-end">
+                                        <a href="{% url 'hrms:enroll_face' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3" style="font-size: 0.75rem;">
+                                            Update Face
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">No employees have enrolled biometrics yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 2: PENDING EMPLOYEES -->
+                <div class="tab-pane fade" id="tab-pending" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table attendance-table table-hover mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Employee</th>
+                                    <th>Department</th>
+                                    <th>Designation</th>
+                                    <th>Status</th>
+                                    <th class="pe-4 text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in pending_employees %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="emp-avatar bg-danger-subtle text-danger">{{ emp.first_name|first|upper }}</div>
+                                            <div>
+                                                <a href="{% url 'hrms:employee_detail' emp.pk %}" class="fw-bold text-dark text-decoration-none small">{{ emp.full_name }}</a>
+                                                <div class="text-muted" style="font-size: 0.72rem;">{{ emp.employee_code }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="small fw-medium text-dark">{{ emp.department.name|default:"--" }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="small text-muted">{{ emp.designation.title|default:"--" }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                            <i class="bi bi-x-circle-fill me-1"></i>Biometric Missing
+                                        </span>
+                                    </td>
+                                    <td class="pe-4 text-end">
+                                        <a href="{% url 'hrms:enroll_face' %}" class="btn btn-sm btn-primary rounded-pill px-3" style="font-size: 0.75rem;">
+                                            <i class="bi bi-camera me-1"></i> Enroll Now
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">All active employees have face profiles enrolled!</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

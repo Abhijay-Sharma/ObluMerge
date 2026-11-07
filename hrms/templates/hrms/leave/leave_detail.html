@@ -1,0 +1,333 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}Leave Application #{{ application.id }} — HRMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'hrms:my_leave' %}" class="text-decoration-none">Leave Applications</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Application #{{ application.id }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <!-- Left Column: Application Details & Timeline -->
+    <div class="col-12 col-lg-8">
+
+      <!-- Main Application Card -->
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white p-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold">
+                {{ application.leave_type.name }} ({{ application.leave_type.code }})
+              </span>
+              <span class="badge bg-light text-dark border rounded-pill px-3 py-1">
+                {{ application.get_day_type_display }}
+              </span>
+              {% if application.parent_application %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2">
+                  Re-application for #{{ application.parent_application.id }}
+                </span>
+              {% endif %}
+            </div>
+            <h4 class="fw-bold text-dark mb-0">{{ application.employee.full_name }}</h4>
+            <div class="text-muted small">{{ application.employee.employee_code }} • {{ application.employee.department.name|default:"—" }}</div>
+          </div>
+
+          <!-- Status Badge -->
+          <div>
+            {% if application.status == 'approved' %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-4 py-2 fs-6">
+                <i class="bi bi-check-circle-fill me-1"></i>Approved
+              </span>
+            {% elif application.status == 'pending_manager' %}
+              <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-4 py-2 fs-6">
+                <i class="bi bi-hourglass-split me-1"></i>Pending Manager
+              </span>
+            {% elif application.status == 'pending_hr' or application.status == 'pending' %}
+              <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-4 py-2 fs-6">
+                <i class="bi bi-hourglass-split me-1"></i>Pending HR
+              </span>
+            {% elif application.status == 'rejected' %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-4 py-2 fs-6">
+                <i class="bi bi-x-circle-fill me-1"></i>Rejected
+              </span>
+            {% elif application.status == 'cancelled' %}
+              <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-4 py-2 fs-6">
+                <i class="bi bi-slash-circle me-1"></i>Cancelled
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <!-- Key Info Grid -->
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light rounded-3 border">
+                <div class="text-muted small">Start Date</div>
+                <div class="fw-bold text-dark fs-6">{{ application.start_date|date:"D, d M Y" }}</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light rounded-3 border">
+                <div class="text-muted small">End Date</div>
+                <div class="fw-bold text-dark fs-6">{{ application.end_date|date:"D, d M Y" }}</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light rounded-3 border">
+                <div class="text-muted small">Duration</div>
+                <div class="fw-bold text-primary fs-5">{{ application.total_days }} Day(s)</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light rounded-3 border">
+                <div class="text-muted small">Applied On</div>
+                <div class="fw-bold text-dark fs-6">{{ application.applied_on|date:"d M Y" }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reason & Specialized Fields -->
+          <div class="mb-4">
+            <h6 class="fw-bold text-dark mb-2">Reason for Leave:</h6>
+            <div class="p-3 bg-light rounded-3 border text-dark lh-base">
+              {{ application.reason|default:"No reason provided." }}
+            </div>
+          </div>
+
+          {% if application.relationship %}
+            <div class="mb-3">
+              <span class="fw-bold small text-muted">Relationship (Bereavement):</span>
+              <span class="badge bg-light text-dark border ms-2">{{ application.get_relationship_display }}</span>
+            </div>
+          {% endif %}
+
+          {% if application.leave_stage %}
+            <div class="mb-3">
+              <span class="fw-bold small text-muted">Leave Stage:</span>
+              <span class="badge bg-light text-dark border ms-2">{{ application.get_leave_stage_display }}</span>
+            </div>
+          {% endif %}
+
+          {% if application.supporting_document %}
+            <div class="p-3 bg-light rounded-3 border d-flex align-items-center justify-content-between mb-4">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-paperclip fs-4 text-primary"></i>
+                <div>
+                  <div class="fw-semibold small">Supporting Document</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Medical certificate / proof attached</div>
+                </div>
+              </div>
+              <a href="{{ application.supporting_document.url }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                <i class="bi bi-eye me-1"></i>View Document
+              </a>
+            </div>
+          {% endif %}
+
+          {% if application.rejection_reason %}
+            <div class="alert alert-danger border-0 rounded-3 p-3 mb-0">
+              <div class="fw-bold mb-1"><i class="bi bi-x-octagon me-1"></i>Rejection Remarks:</div>
+              <div>{{ application.rejection_reason }}</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Visual Approval Timeline Stepper -->
+      <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white p-4 border-bottom">
+          <h5 class="fw-bold mb-0"><i class="bi bi-diagram-3 text-primary me-2"></i>Multi-Tier Approval Stepper</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-4 position-relative">
+            <!-- Step 1: Submission -->
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 44px; height: 44px;">
+                <i class="bi bi-check-lg fs-5"></i>
+              </div>
+              <div>
+                <div class="fw-bold small">1. Applied</div>
+                <div class="text-muted" style="font-size: 0.75rem;">{{ application.applied_on|date:"d M H:i" }}</div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.68rem;">Submitted</span>
+              </div>
+            </div>
+
+            <i class="bi bi-arrow-right d-none d-md-block text-muted fs-4"></i>
+
+            <!-- Step 2: Manager Review -->
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-sm {% if application.manager_approved_by %}bg-success text-white{% elif application.status == 'pending_manager' %}bg-warning text-dark{% elif application.status == 'rejected' and not application.approved_by %}bg-danger text-white{% else %}bg-secondary text-white-50{% endif %} rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 44px; height: 44px;">
+                {% if application.manager_approved_by %}<i class="bi bi-check-lg fs-5"></i>{% else %}2{% endif %}
+              </div>
+              <div>
+                <div class="fw-bold small">2. Manager Review</div>
+                <div class="text-muted" style="font-size: 0.75rem;">
+                  {% if application.manager_approved_by %}
+                    {{ application.manager_approved_by.username }} ({{ application.manager_approved_on|date:"d M H:i" }})
+                  {% elif application.status == 'pending_manager' %}
+                    Pending Reporting Manager
+                  {% else %}
+                    Direct / Bypass
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <i class="bi bi-arrow-right d-none d-md-block text-muted fs-4"></i>
+
+            <!-- Step 3: HR Final Approval -->
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-sm {% if application.status == 'approved' %}bg-success text-white{% elif application.status == 'pending_hr' or application.status == 'pending' %}bg-warning text-dark{% elif application.status == 'rejected' %}bg-danger text-white{% else %}bg-secondary text-white-50{% endif %} rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 44px; height: 44px;">
+                {% if application.status == 'approved' %}<i class="bi bi-check-lg fs-5"></i>{% elif application.status == 'rejected' %}<i class="bi bi-x-lg fs-5"></i>{% else %}3{% endif %}
+              </div>
+              <div>
+                <div class="fw-bold small">3. HR Approval</div>
+                <div class="text-muted" style="font-size: 0.75rem;">
+                  {% if application.status == 'approved' %}
+                    Approved ({{ application.approved_on|date:"d M H:i" }})
+                  {% elif application.status == 'rejected' %}
+                    Rejected
+                  {% else %}
+                    Pending HR Final
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Audit Trail & Actions -->
+    <div class="col-12 col-lg-4">
+
+      <!-- Action Panel -->
+      <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white p-3 border-bottom">
+          <h6 class="fw-bold mb-0">Application Actions</h6>
+        </div>
+        <div class="card-body p-3 d-flex flex-column gap-2">
+          <!-- If Pending Manager and user is Manager/HR -->
+          {% if application.status == 'pending_manager' and is_manager or is_hr %}
+            <form method="post" action="{% url 'hrms:manager_leave_approve' application.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-semibold">
+                <i class="bi bi-check-circle me-1"></i>Manager Approve
+              </button>
+            </form>
+          {% endif %}
+
+          <!-- If Pending HR and user is HR -->
+          {% if application.status == 'pending_hr' or application.status == 'pending' and is_hr %}
+            <form method="post" action="{% url 'hrms:leave_approve' application.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-semibold">
+                <i class="bi bi-check-all me-1"></i>HR Final Approve
+              </button>
+            </form>
+          {% endif %}
+
+          <!-- Reject button if pending -->
+          {% if application.status == 'pending_manager' or application.status == 'pending_hr' or application.status == 'pending' %}
+            {% if is_hr or is_manager %}
+              <button class="btn btn-outline-danger w-100 rounded-pill py-2" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                <i class="bi bi-x-circle me-1"></i>Reject Leave
+              </button>
+            {% endif %}
+          {% endif %}
+
+          <!-- If Rejected: Re-Apply Button for Employee -->
+          {% if application.status == 'rejected' %}
+            <a href="{% url 'hrms:leave_reapply' application.id %}" class="btn btn-primary w-100 rounded-pill py-2 fw-semibold">
+              <i class="bi bi-arrow-repeat me-1"></i>Re-apply with Updated Reason
+            </a>
+          {% endif %}
+
+          <!-- Cancel Leave -->
+          {% if application.status == 'pending' or application.status == 'pending_manager' or application.status == 'pending_hr' or application.status == 'approved' %}
+            <form method="post" action="{% url 'hrms:leave_cancel' application.id %}" onsubmit="return confirm('Are you sure you want to cancel this leave application? Leaves will be refunded.')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-secondary w-100 rounded-pill py-2 mt-1">
+                <i class="bi bi-slash-circle me-1"></i>Cancel Application
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Audit Trail Chat Thread -->
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white p-3 border-bottom">
+          <h6 class="fw-bold mb-0"><i class="bi bi-clock-history text-muted me-2"></i>Audit Trail Log</h6>
+        </div>
+        <div class="card-body p-3">
+          <div class="timeline-thread d-flex flex-column gap-3">
+            {% for log in approval_logs %}
+              <div class="d-flex align-items-start gap-2">
+                <div class="avatar-xs bg-light border text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold mt-1" style="width: 28px; height: 28px; font-size: 0.72rem;">
+                  <i class="bi bi-record-circle"></i>
+                </div>
+                <div class="flex-grow-1 p-2 bg-light rounded-3 border small">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-dark">{{ log.get_action_display }}</span>
+                    <span class="text-muted" style="font-size: 0.7rem;">{{ log.timestamp|date:"d M H:i" }}</span>
+                  </div>
+                  <div class="text-muted" style="font-size: 0.78rem;">
+                    By: <strong>{{ log.performed_by.username|default:"System" }}</strong>
+                  </div>
+                  {% if log.remarks %}
+                    <div class="mt-1 pt-1 border-top text-dark fst-italic" style="font-size: 0.75rem;">
+                      "{{ log.remarks }}"
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% empty %}
+              <div class="text-center text-muted small py-3">No audit log entries recorded.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Rejection with Mandatory Remarks -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="post" action="{% if application.status == 'pending_manager' %}{% url 'hrms:manager_leave_reject' application.id %}{% else %}{% url 'hrms:leave_reject' application.id %}{% endif %}">
+        {% csrf_token %}
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold text-danger">
+            <i class="bi bi-x-circle text-danger me-2"></i>Reject Leave Request
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3">
+          <p class="text-muted small mb-3">Please provide a mandatory reason for rejecting this leave application.</p>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-danger">Rejection Reason / Remarks*</label>
+            {{ reject_form.rejection_reason }}
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger rounded-pill px-4">
+            <i class="bi bi-x-lg me-1"></i>Confirm Rejection
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

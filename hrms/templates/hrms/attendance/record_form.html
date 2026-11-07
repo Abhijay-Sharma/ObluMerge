@@ -1,0 +1,46 @@
+{% extends "hrms/base.html" %}
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Attendance Record{% endblock %}
+{% block page_title %}{% if object %}Edit{% else %}Add{% endif %} Attendance Record{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px;">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">{{ form.employee.label }}</label>
+          {{ form.employee }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.attendance_date.label }}</label>
+          {{ form.attendance_date }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.check_in.label }}</label>
+          {{ form.check_in }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.check_out.label }}</label>
+          {{ form.check_out }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.status.label }}</label>
+          {{ form.status }}
+          {% if not object %}
+            <div class="form-text">Leave as "Present" with a Check In time to auto-apply the grace-window rules.</div>
+          {% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label">{{ form.remarks.label }}</label>
+          {{ form.remarks }}
+        </div>
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn text-white" style="background:var(--accent);">Save</button>
+        <a href="{% url 'hrms:attendance_records' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

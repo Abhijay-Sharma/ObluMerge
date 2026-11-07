@@ -1,0 +1,1175 @@
+{% extends "hrms/base.html" %}
+{% load static %}
+
+{% block title %}HR Operations Dashboard — Oblu HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* =========================================================
+       OBLU NEXT-GEN COMPACT B2B SAAS DASHBOARD DESIGN SYSTEM
+       ========================================================= */
+
+    :root {
+        --ease-framer: cubic-bezier(0.16, 1, 0.3, 1);
+        --b2b-card-border: rgba(226, 232, 240, 0.9);
+        --b2b-card-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.03), inset 0 1px 0 0 #ffffff;
+        --b2b-card-hover-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 14px 28px -4px rgba(15, 23, 42, 0.09), inset 0 1px 0 0 #ffffff;
+    }
+
+    /* Ambient Canvas */
+    .dashboard-canvas {
+        background: radial-gradient(ellipse at 10% 5%, rgba(99, 102, 241, 0.02) 0%, transparent 40%),
+                    radial-gradient(ellipse at 90% 10%, rgba(13, 148, 136, 0.02) 0%, transparent 40%),
+                    #f8fafc;
+        min-height: calc(100vh - 60px);
+    }
+
+    /* Top Compact Action Filter Bar */
+    .saas-filter-bar {
+        background: #ffffff;
+        border: 1px solid var(--b2b-card-border);
+        border-radius: 14px;
+        padding: 10px 18px;
+        box-shadow: var(--b2b-card-shadow);
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .saas-filter-bar:hover {
+        border-color: rgba(203, 213, 225, 0.95);
+        box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.05), 0 8px 18px -3px rgba(15, 23, 42, 0.04), inset 0 1px 0 0 #ffffff;
+    }
+
+    .saas-control-pill {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 3px 8px;
+        transition: all 0.18s ease;
+    }
+    .saas-control-pill:hover,
+    .saas-control-pill:focus-within {
+        background: #ffffff;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* ─── 6 Executive Compact SaaS KPI Cards ─── */
+    .saas-cards-flex-row {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        width: 100%;
+        margin-bottom: 20px;
+        transition: all 0.25s var(--ease-framer);
+    }
+
+    /* When Sidebar is Open on standard screens (1200px - 1499px), 3 columns x 2 compact rows */
+    @media (max-width: 1499px) and (min-width: 992px) {
+        .saas-cards-flex-row {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        /* When sidebar is collapsed, it fits all 6 in 1 row comfortably */
+        .hrms-shell.collapsed .saas-cards-flex-row {
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+    }
+
+    /* Tablet breakpoint: 3 or 2 cards */
+    @media (max-width: 991px) and (min-width: 641px) {
+        .saas-cards-flex-row,
+        .hrms-shell.collapsed .saas-cards-flex-row {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+    }
+
+    /* Mobile breakpoint: 2 compact cards per row (organized & modern) */
+    @media (max-width: 640px) {
+        .saas-cards-flex-row,
+        .hrms-shell.collapsed .saas-cards-flex-row {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+    }
+
+    /* Ultra-small phones */
+    @media (max-width: 380px) {
+        .saas-cards-flex-row,
+        .hrms-shell.collapsed .saas-cards-flex-row {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+    }
+
+    /* Compact Executive Card Component */
+    .saas-compact-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid var(--b2b-card-border);
+        box-shadow: var(--b2b-card-shadow);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 13px 14px;
+        transition: transform 0.2s var(--ease-framer), box-shadow 0.2s ease, border-color 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+        min-height: 138px;
+    }
+
+    .saas-compact-card:hover {
+        transform: translateY(-2px);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    /* Top Accent Line */
+    .saas-compact-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        transition: height 0.18s ease;
+    }
+    .saas-compact-card:hover::before {
+        height: 4px;
+    }
+
+    .card-theme-blue::before    { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+    .card-theme-purple::before  { background: linear-gradient(90deg, #8b5cf6, #c084fc); }
+    .card-theme-indigo::before  { background: linear-gradient(90deg, #4f46e5, #a5b4fc); }
+    .card-theme-amber::before   { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .card-theme-rose::before    { background: linear-gradient(90deg, #f43f5e, #fda4af); }
+    .card-theme-teal::before    { background: linear-gradient(90deg, #0d9488, #5eead4); }
+
+    .card-theme-blue:hover    { border-color: rgba(37, 99, 235, 0.45); box-shadow: var(--b2b-card-hover-shadow), 0 0 0 1px rgba(37, 99, 235, 0.15); }
+    .card-theme-purple:hover  { border-color: rgba(139, 92, 246, 0.45); box-shadow: var(--b2b-card-hover-shadow), 0 0 0 1px rgba(139, 92, 246, 0.15); }
+    .card-theme-indigo:hover  { border-color: rgba(79, 70, 229, 0.45); box-shadow: var(--b2b-card-hover-shadow), 0 0 0 1px rgba(79, 70, 229, 0.15); }
+    .card-theme-amber:hover   { border-color: rgba(245, 158, 11, 0.45); box-shadow: var(--b2b-card-hover-shadow), 0 0 0 1px rgba(245, 158, 11, 0.15); }
+    .card-theme-rose:hover    { border-color: rgba(244, 63, 94, 0.45); box-shadow: var(--b2b-card-hover-shadow), 0 0 0 1px rgba(244, 63, 94, 0.15); }
+    .card-theme-teal:hover    { border-color: rgba(13, 148, 136, 0.45); box-shadow: var(--b2b-card-hover-shadow), 0 0 0 1px rgba(13, 148, 136, 0.15); }
+
+    /* Card Top Row */
+    .compact-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    /* Category Pill */
+    .compact-category-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #64748b;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 2px 7px;
+        border-radius: 6px;
+        line-height: 1.2;
+    }
+    .compact-category-pill .pill-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+    }
+    .card-theme-blue .pill-dot   { background: #2563eb; }
+    .card-theme-purple .pill-dot { background: #8b5cf6; }
+    .card-theme-indigo .pill-dot { background: #4f46e5; }
+    .card-theme-amber .pill-dot  { background: #f59e0b; }
+    .card-theme-rose .pill-dot   { background: #f43f5e; }
+    .card-theme-teal .pill-dot   { background: #0d9488; }
+
+    /* LARGE, PROMINENT ICON BOX */
+    .saas-icon-large {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.38rem;
+        flex-shrink: 0;
+        transition: transform 0.22s var(--ease-framer), box-shadow 0.22s ease;
+    }
+    .saas-compact-card:hover .saas-icon-large {
+        transform: scale(1.06);
+    }
+
+    .icon-box-blue {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(96, 165, 250, 0.16) 100%);
+        color: #2563eb;
+        border: 1px solid rgba(37, 99, 235, 0.22);
+    }
+    .icon-box-purple {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(192, 132, 252, 0.16) 100%);
+        color: #8b5cf6;
+        border: 1px solid rgba(139, 92, 246, 0.22);
+    }
+    .icon-box-indigo {
+        background: linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(165, 180, 252, 0.16) 100%);
+        color: #4f46e5;
+        border: 1px solid rgba(79, 70, 229, 0.22);
+    }
+    .icon-box-amber {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 191, 36, 0.18) 100%);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+    .icon-box-rose {
+        background: linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, rgba(253, 164, 175, 0.18) 100%);
+        color: #f43f5e;
+        border: 1px solid rgba(244, 63, 94, 0.22);
+    }
+    .icon-box-teal {
+        background: linear-gradient(135deg, rgba(13, 148, 136, 0.12) 0%, rgba(94, 234, 212, 0.18) 100%);
+        color: #0d9488;
+        border: 1px solid rgba(13, 148, 136, 0.25);
+    }
+
+    /* KPI Number & Subtitle */
+    .compact-stat-num {
+        font-size: 1.68rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+        color: #0f172a;
+        margin-top: 4px;
+        margin-bottom: 2px;
+    }
+    .compact-stat-sub {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Bottom Micro-Metrics Strip (Compact Pills) */
+    .saas-card-chips {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .saas-chip-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 6px;
+        border-radius: 5px;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1.3;
+        text-decoration: none;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #334155;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .saas-chip-pill:hover {
+        background: #ffffff;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .chip-accent-success {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #059669;
+    }
+    .chip-accent-warning {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #b45309;
+    }
+    .chip-accent-danger {
+        background: #fff1f2;
+        border-color: #fecdd3;
+        color: #e11d48;
+    }
+    .chip-accent-link {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #2563eb;
+    }
+    .chip-accent-link:hover {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+    }
+
+    /* ─── Featured Attendance Hero Card ─── */
+    .saas-hero-card {
+        background: #ffffff;
+        border: 1px solid var(--b2b-card-border);
+        border-radius: 14px;
+        box-shadow: var(--b2b-card-shadow);
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .saas-hero-card:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: var(--b2b-card-hover-shadow);
+    }
+
+    /* ─── High-Tech B2B Telemetry Metric Tiles ─── */
+    .b2b-telemetry-tile {
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 12px;
+        padding: 13px 15px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 1px 0 0 #ffffff, 0 1px 2px rgba(15, 23, 42, 0.03);
+        transition: all 0.2s var(--ease-framer);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .b2b-telemetry-tile:hover {
+        transform: translateY(-2px);
+        box-shadow: inset 0 1px 0 0 #ffffff, 0 8px 20px -3px rgba(15, 23, 42, 0.07);
+    }
+    .b2b-telemetry-tile::before {
+        content: '';
+        position: absolute;
+        top: -15px;
+        right: -15px;
+        width: 110px;
+        height: 110px;
+        pointer-events: none;
+        border-radius: 50%;
+        filter: blur(20px);
+        opacity: 0.5;
+        transition: opacity 0.3s ease;
+    }
+    .b2b-telemetry-tile:hover::before {
+        opacity: 0.85;
+    }
+    .b2b-telemetry-tile.tile-emerald::before { background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%); }
+    .b2b-telemetry-tile.tile-rose::before    { background: radial-gradient(circle, rgba(244, 63, 94, 0.18) 0%, transparent 70%); }
+    .b2b-telemetry-tile.tile-purple::before  { background: radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, transparent 70%); }
+
+    .b2b-telemetry-tile.tile-emerald:hover { border-color: rgba(16, 185, 129, 0.4); }
+    .b2b-telemetry-tile.tile-rose:hover    { border-color: rgba(244, 63, 94, 0.4); }
+    .b2b-telemetry-tile.tile-purple:hover  { border-color: rgba(139, 92, 246, 0.4); }
+
+    .b2b-tile-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+    .b2b-tile-kpi-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #475569;
+    }
+    .b2b-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 2.5px 8px;
+        border-radius: 9999px;
+        line-height: 1;
+    }
+    .b2b-status-emerald {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #a7f3d0;
+    }
+    .b2b-status-rose {
+        background: #fff1f2;
+        color: #be123c;
+        border: 1px solid #fecdd3;
+    }
+    .b2b-status-purple {
+        background: #f5f3ff;
+        color: #6d28d9;
+        border: 1px solid #ddd6fe;
+    }
+
+    .b2b-tile-stat-row {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        margin-bottom: 7px;
+    }
+    .b2b-tile-stat-num {
+        font-size: 1.85rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        color: #0f172a;
+    }
+    .b2b-tile-stat-sub {
+        font-size: 11.5px;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .b2b-tile-track {
+        width: 100%;
+        height: 4px;
+        background: #f1f5f9;
+        border-radius: 9999px;
+        overflow: hidden;
+        margin-bottom: 9px;
+    }
+    .b2b-tile-fill {
+        height: 100%;
+        border-radius: 9999px;
+        transition: width 0.6s var(--ease-framer);
+    }
+    .b2b-tile-fill-emerald { background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+    .b2b-tile-fill-rose    { background: linear-gradient(90deg, #fb7185 0%, #e11d48 100%); }
+    .b2b-tile-fill-purple  { background: linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%); }
+
+    .b2b-tile-capsule {
+        margin-top: auto;
+        padding-top: 7px;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+    }
+    .b2b-tile-capsule .capsule-lbl {
+        color: #64748b;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .b2b-tile-capsule .capsule-val {
+        font-weight: 700;
+        border-radius: 5px;
+        padding: 2px 6px;
+        font-size: 10.5px;
+    }
+    .capsule-val-emerald { background: #ecfdf5; color: #047857; }
+    .capsule-val-rose    { background: #fff1f2; color: #be123c; }
+    .capsule-val-purple  { background: #f5f3ff; color: #6d28d9; }
+
+    /* Live Pulsing Dot */
+    .pulse-dot {
+        width: 6.5px;
+        height: 6.5px;
+        background-color: #10b981;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+        animation: saas-pulse 1.8s infinite;
+    }
+    @keyframes saas-pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* ─── Premium B2B Job Cards ─── */
+    .b2b-job-card {
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 11px;
+        padding: 11px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        box-shadow: inset 0 1px 0 0 #ffffff, 0 1px 2px rgba(15, 23, 42, 0.03);
+        transition: all 0.2s var(--ease-framer);
+        text-decoration: none;
+        height: 100%;
+    }
+    .b2b-job-card:hover {
+        border-color: rgba(99, 102, 241, 0.35);
+        transform: translateY(-2px);
+        box-shadow: inset 0 1px 0 0 #ffffff, 0 6px 16px -3px rgba(99, 102, 241, 0.08);
+    }
+    .b2b-job-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 2px;
+        display: block;
+    }
+    .b2b-job-meta {
+        font-size: 11px;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .b2b-job-meta .meta-dot {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: #cbd5e1;
+    }
+    .b2b-app-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(99, 102, 241, 0.08);
+        color: #4f46e5;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 9999px;
+        padding: 3px 8px;
+        font-size: 10.5px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .b2b-board-icon-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        transition: all 0.18s ease;
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+    .b2b-board-icon-btn:hover {
+        background: #4f46e5;
+        color: #ffffff;
+        border-color: #4f46e5;
+        transform: scale(1.05);
+    }
+
+    /* ─── Right Column Widgets ─── */
+    .saas-panel-card {
+        background: #ffffff;
+        border: 1px solid var(--b2b-card-border);
+        border-radius: 14px;
+        box-shadow: var(--b2b-card-shadow);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .b2b-birthday-item {
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.85);
+        border-radius: 10px;
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        box-shadow: inset 0 1px 0 0 #ffffff, 0 1px 2px rgba(15, 23, 42, 0.02);
+        transition: all 0.2s ease;
+    }
+    .b2b-birthday-item:hover {
+        border-color: rgba(244, 63, 94, 0.35);
+        background: #fffafb;
+        transform: translateX(2px);
+    }
+    .b2b-avatar-monogram {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 2px 4px rgba(244, 63, 94, 0.2);
+    }
+    .b2b-cal-chip {
+        width: 38px;
+        border-radius: 7px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        padding: 2px 0;
+        flex-shrink: 0;
+        line-height: 1.1;
+    }
+    .b2b-cal-chip .cal-day {
+        font-size: 12px;
+        font-weight: 800;
+        color: #0f172a;
+        display: block;
+    }
+    .b2b-cal-chip .cal-mon {
+        font-size: 8px;
+        font-weight: 700;
+        color: #f43f5e;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: block;
+    }
+
+    .b2b-policy-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 11.5px;
+    }
+    .b2b-policy-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    .b2b-chip-mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 600;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #0f172a;
+        border-radius: 5px;
+        padding: 2px 6px;
+    }
+    .b2b-chip-amber {
+        font-size: 10.5px;
+        font-weight: 700;
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+        border-radius: 5px;
+        padding: 2px 6px;
+    }
+    .b2b-chip-slate {
+        font-size: 10.5px;
+        font-weight: 600;
+        background: #f8fafc;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        border-radius: 5px;
+        padding: 2px 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-canvas container-fluid py-3 px-3 px-md-4">
+
+    <!-- =========================================================
+         TOP BAR: Title, Live Date Filter & Daily Punch Shortcut
+         ========================================================= -->
+    <div class="saas-filter-bar mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2.5">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h1 class="h5 mb-0 fw-bold text-dark tracking-tight">HR Operations Overview</h1>
+                {% if is_today %}
+                    <span class="b2b-status-badge b2b-status-emerald">
+                        <span class="pulse-dot"></span> Live
+                    </span>
+                {% else %}
+                    <span class="b2b-status-badge b2b-status-rose">
+                        <i class="bi bi-clock-history"></i> Historical
+                    </span>
+                {% endif %}
+            </div>
+            <p class="text-muted small mb-0 mt-0.5" style="font-size: 11.5px;">
+                Metrics for <span class="fw-bold text-primary">{{ display_date }}</span>
+                {% if active_company_id and active_company_id != "all" %}
+                    • Unit: <strong class="text-dark">{{ current_company_name }}</strong>
+                {% else %}
+                    • All Global Units &amp; Divisions
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Calendar Date Picker -->
+            <form method="GET" class="saas-control-pill d-flex align-items-center" id="dateFilterForm">
+                <span class="px-1 text-muted"><i class="bi bi-calendar-event text-primary"></i></span>
+                <input type="date" name="date" value="{{ selected_date }}"
+                       class="form-control form-control-sm border-0 fw-bold text-dark bg-transparent py-0"
+                       style="width: 130px; font-size: 12.5px;"
+                       onchange="document.getElementById('dateFilterForm').submit();">
+                {% if not is_today %}
+                    <a href="{% url 'hrms:dashboard' %}" class="btn btn-sm btn-light border-0 text-primary px-1 py-0 ms-1" title="Reset to today">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                {% endif %}
+            </form>
+
+            <!-- Daily Punch Monitor Button -->
+            <a href="{% url 'hrms:attendance_daily_monitor' %}?date={{ selected_date }}"
+               class="btn btn-primary btn-sm rounded-lg px-3 py-1.5 shadow-sm font-semibold d-inline-flex align-items-center gap-1.5"
+               style="border-radius: 9px; font-size: 12.5px;">
+                <i class="bi bi-clock-history"></i>
+                <span>Daily Punch Monitor</span>
+            </a>
+        </div>
+    </div>
+
+
+    <!-- =========================================================
+         6 COMPACT EXECUTIVE SAAS CARDS (WITH LARGE PROMINENT ICONS)
+         ========================================================= -->
+    <div class="saas-cards-flex-row">
+
+        <!-- Card 1: Workforce -->
+        <div class="saas-compact-card card-theme-blue">
+            <div>
+                <div class="compact-card-top">
+                    <div>
+                        <div class="compact-category-pill">
+                            <span class="pill-dot"></span>
+                            <span>Workforce</span>
+                        </div>
+                        <div class="compact-stat-num">{{ total_employees }}</div>
+                        <div class="compact-stat-sub">Active staff enrolled</div>
+                    </div>
+                    <!-- Large Icon Box -->
+                    <div class="saas-icon-large icon-box-blue" title="Workforce Directory">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Micro-Metric Action Chips -->
+            <div class="saas-card-chips">
+                <a href="{% url 'hrms:department_list' %}" class="saas-chip-pill" title="View Departments">
+                    <strong>{{ total_departments }}</strong> Depts
+                </a>
+                <a href="{% url 'hrms:designation_list' %}" class="saas-chip-pill" title="View Designations">
+                    <strong>{{ total_designations }}</strong> Desigs
+                </a>
+                <a href="{% url 'hrms:employee_list' %}" class="saas-chip-pill chip-accent-success" title="New Joiners">
+                    +{{ new_joiners_count }} New
+                </a>
+            </div>
+        </div>
+
+        <!-- Card 2: Leaves -->
+        <div class="saas-compact-card card-theme-purple">
+            <div>
+                <div class="compact-card-top">
+                    <div>
+                        <div class="compact-category-pill">
+                            <span class="pill-dot"></span>
+                            <span>Leaves</span>
+                        </div>
+                        <div class="compact-stat-num">{{ pending_leaves }}</div>
+                        <div class="compact-stat-sub">Pending approval</div>
+                    </div>
+                    <!-- Large Icon Box -->
+                    <div class="saas-icon-large icon-box-purple" title="Leave Management">
+                        <i class="bi bi-umbrella-fill"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Micro-Metric Action Chips -->
+            <div class="saas-card-chips">
+                <span class="saas-chip-pill" title="Staff on leave today">
+                    <strong>{{ time_off_count }}</strong> on leave
+                </span>
+                <span class="saas-chip-pill chip-accent-success" title="Approved this month">
+                    {{ approved_leaves_month }} approved
+                </span>
+                <a href="{% url 'hrms:leave_balance' %}" class="saas-chip-pill chip-accent-link" title="Leave Balances">
+                    Balances &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Card 3: Jobs & ATS -->
+        <div class="saas-compact-card card-theme-indigo">
+            <div>
+                <div class="compact-card-top">
+                    <div>
+                        <div class="compact-category-pill">
+                            <span class="pill-dot"></span>
+                            <span>Jobs &amp; ATS</span>
+                        </div>
+                        <div class="compact-stat-num">{{ open_jobs|default:0 }}</div>
+                        <div class="compact-stat-sub">Active job postings</div>
+                    </div>
+                    <!-- Large Icon Box -->
+                    <div class="saas-icon-large icon-box-indigo" title="Hiring Pipeline">
+                        <i class="bi bi-briefcase-fill"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Micro-Metric Action Chips -->
+            <div class="saas-card-chips">
+                <a href="{% url 'hrms:candidate_list' %}" class="saas-chip-pill" title="Shortlisted Candidates">
+                    <strong>{{ shortlisted_candidates|default:0 }}</strong> Shortlist
+                </a>
+                <a href="{% url 'hrms:interview_list' %}" class="saas-chip-pill" title="Interviews">
+                    <strong>{{ interviewing_candidates|default:0 }}</strong> Sched
+                </a>
+                <a href="{% url 'hrms:application_list' %}" class="saas-chip-pill chip-accent-link" title="Review Applications">
+                    {{ total_applications|default:0 }} Apps &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Card 4: Policies & Shifts -->
+        <div class="saas-compact-card card-theme-amber">
+            <div>
+                <div class="compact-card-top">
+                    <div>
+                        <div class="compact-category-pill">
+                            <span class="pill-dot"></span>
+                            <span>Policies</span>
+                        </div>
+                        <div class="compact-stat-num">{{ total_policies_count|default:0 }}</div>
+                        <div class="compact-stat-sub">Active shift rules</div>
+                    </div>
+                    <!-- Large Icon Box -->
+                    <div class="saas-icon-large icon-box-amber" title="Workplace Policies">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Micro-Metric Action Chips -->
+            <div class="saas-card-chips">
+                <span class="saas-chip-pill" title="Standard shift time">
+                    <i class="bi bi-clock me-0.5 text-muted"></i>{{ active_shift_start }}
+                </span>
+                <span class="saas-chip-pill chip-accent-warning" title="Grace buffer">
+                    {{ active_grace_minutes }}m grace
+                </span>
+                <a href="{% url 'hrms:holiday_list' %}" class="saas-chip-pill chip-accent-link" title="Company Holidays">
+                    Holidays &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Card 5: Biometrics -->
+        <div class="saas-compact-card card-theme-rose">
+            <div>
+                <div class="compact-card-top">
+                    <div>
+                        <div class="compact-category-pill">
+                            <span class="pill-dot"></span>
+                            <span>Biometrics</span>
+                        </div>
+                        <div class="compact-stat-num">
+                            {{ enrolled_biometrics }}<span class="text-muted fw-normal" style="font-size: 0.95rem;">/{{ total_employees }}</span>
+                        </div>
+                        <div class="compact-stat-sub">{{ biometric_percentage }}% enrolled Face ID</div>
+                    </div>
+                    <!-- Large Icon Box -->
+                    <div class="saas-icon-large icon-box-rose" title="Biometric Security">
+                        <i class="bi bi-fingerprint"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Micro-Metric Action Chips -->
+            <div class="saas-card-chips">
+                <a href="{% url 'hrms:enroll_face' %}" class="saas-chip-pill chip-accent-danger" title="Enroll Face ID">
+                    <strong>{{ pending_biometrics }}</strong> Pending
+                </a>
+                <a href="{% url 'hrms:kiosk_page' %}" target="_blank" class="saas-chip-pill chip-accent-link" title="Launch Kiosk Mode">
+                    Kiosk <i class="bi bi-box-arrow-up-right ms-0.5" style="font-size: 8px;"></i>
+                </a>
+                <a href="{% url 'hrms:biometric_status_list' %}" class="saas-chip-pill" title="Biometrics Console">
+                    Status
+                </a>
+            </div>
+        </div>
+
+        <!-- Card 6: Hardware Assets -->
+        <div class="saas-compact-card card-theme-teal">
+            <div>
+                <div class="compact-card-top">
+                    <div>
+                        <div class="compact-category-pill">
+                            <span class="pill-dot"></span>
+                            <span>Hardware</span>
+                        </div>
+                        <div class="compact-stat-num">{{ total_assets|default:0 }}</div>
+                        <div class="compact-stat-sub">Tracked devices &amp; assets</div>
+                    </div>
+                    <!-- Large Icon Box -->
+                    <div class="saas-icon-large icon-box-teal" title="Hardware Assets">
+                        <i class="bi bi-laptop-fill"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Micro-Metric Action Chips -->
+            <div class="saas-card-chips">
+                <span class="saas-chip-pill" title="Assigned devices">
+                    <strong>{{ assigned_assets|default:0 }}</strong> in use
+                </span>
+                <span class="saas-chip-pill chip-accent-success" title="In stock / Available">
+                    {{ unassigned_assets|default:0 }} stock
+                </span>
+                <a href="{% url 'hrms:asset_add' %}" class="saas-chip-pill chip-accent-link" title="Register Asset">
+                    + Add
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         MAIN TWO-COLUMN WORKBENCH (ATTENDANCE HERO & PIPELINE)
+         ========================================================= -->
+    <div class="row g-3 mb-4">
+
+        <!-- LEFT COLUMN: Featured Quick Attendance Hero & Recruitment Pipeline -->
+        <div class="col-12 col-lg-8 col-xl-8 col-xxl-9">
+
+            <!-- FEATURED QUICK ATTENDANCE COMMAND HERO -->
+            <div class="saas-hero-card p-3 p-md-3.5 mb-3">
+                
+                <!-- Hero Header -->
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2.5 mb-3">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="saas-icon-large icon-box-teal" style="width: 38px; height: 38px; font-size: 1.15rem; border-radius: 10px;">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h2 class="h6 mb-0 fw-bold text-dark tracking-tight">Quick Attendance Summary</h2>
+                                <span class="badge bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-pill px-2 py-0.5 font-semibold" style="font-size: 0.68rem;">
+                                    <span class="pulse-dot"></span> Live
+                                </span>
+                            </div>
+                            <span class="text-muted small" style="font-size: 11.5px;">Real-time punch telemetry for <span class="fw-bold text-primary">{{ display_date }}</span></span>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'hrms:attendance_daily_monitor' %}?date={{ selected_date }}"
+                           class="btn btn-sm btn-primary rounded-lg px-3 py-1.5 fw-semibold shadow-sm d-inline-flex align-items-center gap-1.5"
+                           style="border-radius: 9px; font-size: 12.5px;">
+                            <span>Open Full Punch Monitor &amp; Calendar</span>
+                            <i class="bi bi-box-arrow-up-right text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 3 High-Tech B2B Telemetry Metric Breakdown Tiles -->
+                <div class="row g-2.5 mb-2.5">
+                    <!-- Metric 1: Checked In -->
+                    <div class="col-12 col-md-4">
+                        <div class="b2b-telemetry-tile tile-emerald">
+                            <div class="b2b-tile-head">
+                                <span class="b2b-tile-kpi-tag"><span class="pulse-dot"></span> Checked In</span>
+                                <span class="b2b-status-badge b2b-status-emerald"><i class="bi bi-shield-check"></i> Present</span>
+                            </div>
+                            <div class="b2b-tile-stat-row">
+                                <div class="b2b-tile-stat-num">{{ present_today }}</div>
+                                <div class="b2b-tile-stat-sub">/ {{ total_employees }} staff</div>
+                            </div>
+                            <div class="b2b-tile-track">
+                                <div class="b2b-tile-fill b2b-tile-fill-emerald" style="width: {% if total_employees %}{% widthratio present_today total_employees 100 %}{% else %}0{% endif %}%;"></div>
+                            </div>
+                            <div class="b2b-tile-capsule">
+                                <span class="capsule-lbl"><i class="bi bi-person-workspace text-success"></i> Active on Duty</span>
+                                <span class="capsule-val capsule-val-emerald">{{ currently_working }} working</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 2: Not In Yet -->
+                    <div class="col-12 col-md-4">
+                        <div class="b2b-telemetry-tile tile-rose">
+                            <div class="b2b-tile-head">
+                                <span class="b2b-tile-kpi-tag"><i class="bi bi-clock-history text-danger"></i> Not In Yet</span>
+                                <span class="b2b-status-badge b2b-status-rose"><i class="bi bi-exclamation-circle"></i> Pending</span>
+                            </div>
+                            <div class="b2b-tile-stat-row">
+                                <div class="b2b-tile-stat-num">{{ absent_count }}</div>
+                                <div class="b2b-tile-stat-sub">staff absent</div>
+                            </div>
+                            <div class="b2b-tile-track">
+                                <div class="b2b-tile-fill b2b-tile-fill-rose" style="width: {% if total_employees %}{% widthratio absent_count total_employees 100 %}{% else %}0{% endif %}%;"></div>
+                            </div>
+                            <div class="b2b-tile-capsule">
+                                <span class="capsule-lbl"><i class="bi bi-hourglass-split text-danger"></i> Pending Check-in</span>
+                                <span class="capsule-val capsule-val-rose">No punch yet</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 3: Leave Applications -->
+                    <div class="col-12 col-md-4">
+                        <div class="b2b-telemetry-tile tile-purple">
+                            <div class="b2b-tile-head">
+                                <span class="b2b-tile-kpi-tag"><i class="bi bi-umbrella-fill" style="color: #8b5cf6;"></i> Leaves</span>
+                                <span class="b2b-status-badge b2b-status-purple"><i class="bi bi-calendar-event"></i> On Leave</span>
+                            </div>
+                            <div class="b2b-tile-stat-row">
+                                <div class="b2b-tile-stat-num">{{ time_off_count }}</div>
+                                <div class="b2b-tile-stat-sub">on leave today</div>
+                            </div>
+                            <div class="b2b-tile-track">
+                                <div class="b2b-tile-fill b2b-tile-fill-purple" style="width: {% if total_employees %}{% widthratio time_off_count total_employees 100 %}{% else %}0{% endif %}%;"></div>
+                            </div>
+                            <div class="b2b-tile-capsule">
+                                <span class="capsule-lbl"><i class="bi bi-inbox-fill" style="color: #8b5cf6;"></i> Pending Review</span>
+                                <span class="capsule-val capsule-val-purple">{{ pending_leaves }} requests</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Jump -->
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center pt-2 border-top border-slate-200/80 gap-2">
+                    <span class="text-muted small" style="font-size: 11.5px;">
+                        <i class="bi bi-info-circle text-primary me-1"></i>Track employee punch hours, grace strikes, and regularization requests on the <strong>Daily Monitor</strong>.
+                    </span>
+                    <a href="{% url 'hrms:attendance_daily_monitor' %}?date={{ selected_date }}" class="small fw-bold text-primary text-decoration-none d-inline-flex align-items-center gap-1" style="font-size: 12px;">
+                        <span>View Details &amp; Calendar</span> <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- ACTIVE RECRUITMENT PIPELINE CARD -->
+            <div class="saas-panel-card p-3 p-md-3.5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="saas-icon-large icon-box-indigo" style="width: 34px; height: 34px; font-size: 1rem; border-radius: 8px;">
+                            <i class="bi bi-briefcase-fill"></i>
+                        </div>
+                        <div>
+                            <h2 class="h6 mb-0 fw-bold text-dark tracking-tight">Active Recruitment Pipeline</h2>
+                            <span class="text-muted small" style="font-size: 11.5px;">Open vacancies and candidates in screening</span>
+                        </div>
+                    </div>
+                    <a href="{% url 'hrms:jobposting_list' %}" class="small text-primary fw-bold text-decoration-none d-inline-flex align-items-center gap-1" style="font-size: 12px;">
+                        <span>View All Jobs ({{ open_jobs|default:0 }})</span> <i class="bi bi-chevron-right text-xs"></i>
+                    </a>
+                </div>
+
+                <div class="row g-2.5">
+                    {% for job in open_jobs_list %}
+                    <div class="col-12 col-md-6">
+                        <div class="b2b-job-card">
+                            <div class="min-w-0 flex-grow-1">
+                                <span class="b2b-job-title truncate">{{ job.title }}</span>
+                                <div class="b2b-job-meta">
+                                    <span>{{ job.company.name|default:"Oblu Healthcare" }}</span>
+                                    <span class="meta-dot"></span>
+                                    <span><i class="bi bi-calendar2 me-1 opacity-75"></i>{{ job.posted_on|date:"d M"|default:job.created_at|date:"d M" }}</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 shrink-0">
+                                <span class="b2b-app-pill">
+                                    <i class="bi bi-people-fill"></i>
+                                    <strong>{{ job.app_count|default:job.applications.count|default:0 }}</strong> Apps
+                                </span>
+                                <a href="{% url 'hrms:job_kanban' job.id %}" class="b2b-board-icon-btn" title="View Kanban Board">
+                                    <i class="bi bi-kanban"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center text-muted py-3 small">
+                        <i class="bi bi-briefcase text-2xl d-block mb-1 text-slate-300"></i>
+                        No active job openings currently posted.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Celebrations (Birthdays This Month) & Shift Policy Rules -->
+        <div class="col-12 col-lg-4 col-xl-4 col-xxl-3">
+
+            <!-- Celebrations (Birthdays This Month) Card -->
+            <div class="saas-panel-card p-3 p-xl-3.5 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2.5">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="saas-icon-large icon-box-rose" style="width: 28px; height: 28px; font-size: 0.9rem; border-radius: 7px;">
+                            <i class="bi bi-gift-fill"></i>
+                        </div>
+                        <h2 class="h6 fw-bold mb-0 text-dark" style="font-size: 13.5px;">Celebrations &amp; Birthdays</h2>
+                    </div>
+                    <span class="b2b-status-badge b2b-status-rose" style="font-size: 9.5px;">This Month</span>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    {% for emp in upcoming_birthdays %}
+                    <div class="b2b-birthday-item">
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                            <div class="b2b-avatar-monogram">
+                                {{ emp.first_name|first|upper }}{{ emp.last_name|first|upper }}
+                            </div>
+                            <div class="min-w-0">
+                                <a href="{% url 'hrms:employee_detail' emp.pk %}" class="fw-bold text-dark small text-decoration-none d-block truncate" style="font-size: 12.5px;">
+                                    {{ emp.full_name|default:emp.first_name }}
+                                </a>
+                                <div class="text-muted truncate" style="font-size: 11px;">{{ emp.designation.title|default:"Staff" }}</div>
+                            </div>
+                        </div>
+                        <div class="b2b-cal-chip">
+                            <span class="cal-day">{{ emp.date_of_birth|date:"d" }}</span>
+                            <span class="cal-mon">{{ emp.date_of_birth|date:"M"|upper }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-2.5 small">
+                        <i class="bi bi-balloon fs-5 d-block mb-1 text-muted opacity-50"></i>
+                        No birthdays this month.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Shift Policy Rules Card -->
+            <div class="saas-panel-card p-3 p-xl-3.5 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2.5">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="saas-icon-large icon-box-blue" style="width: 28px; height: 28px; font-size: 0.9rem; border-radius: 7px;">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <h2 class="h6 fw-bold mb-0 text-dark" style="font-size: 13.5px;">Shift Policy Rules</h2>
+                    </div>
+                    <a href="{% url 'hrms:attendance_policy' %}" class="small text-primary text-decoration-none fw-bold" style="font-size: 11.5px;">Configure</a>
+                </div>
+                <div class="d-flex flex-column">
+                    <div class="b2b-policy-row">
+                        <span class="text-muted small"><i class="bi bi-calendar3 me-1 text-primary"></i>Standard Shift:</span>
+                        <span class="b2b-chip-mono">{{ active_shift_start }} – {{ active_shift_end }}</span>
+                    </div>
+                    <div class="b2b-policy-row">
+                        <span class="text-muted small"><i class="bi bi-shield-check me-1 text-amber"></i>Grace Buffer:</span>
+                        <span class="b2b-chip-amber">{{ active_grace_minutes }}m buffer</span>
+                    </div>
+                    <div class="b2b-policy-row">
+                        <span class="text-muted small"><i class="bi bi-layers me-1 text-teal"></i>Active Policies:</span>
+                        <span class="b2b-chip-slate">{{ total_policies_count }} active rules</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

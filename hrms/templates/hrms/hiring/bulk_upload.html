@@ -1,0 +1,342 @@
+{% extends "hrms/base.html" %}
+{% block title %}Bulk Resume Upload — {{ job.title }}{% endblock %}
+{% block page_title %}Bulk Resume Upload{% endblock %}
+
+{% block extra_css %}
+<style>
+  .upload-hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+  }
+  .upload-hero .job-meta { font-size: .82rem; color: #c4b5fd; }
+
+  /* Dropzone */
+  .dropzone-wrap {
+    border: 2.5px dashed #c4b5fd;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #faf5ff, #f5f3ff);
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all .2s;
+    cursor: pointer;
+    position: relative;
+  }
+  .dropzone-wrap.drag-over {
+    border-color: #7c3aed;
+    background: linear-gradient(135deg, #ede9fe, #e0e7ff);
+    transform: scale(1.01);
+  }
+  .dropzone-icon { font-size: 3rem; color: #8b5cf6; display: block; margin-bottom: .75rem; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  .dropzone-input { display: none; }
+  .dropzone-title { font-size: 1.1rem; font-weight: 700; color: #1e1b4b; margin-bottom: .3rem; }
+  .dropzone-sub { font-size: .83rem; color: #6b7280; }
+  .browse-btn {
+    display: inline-block; margin-top: 1rem;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: #fff; border: none; border-radius: 10px;
+    padding: .5rem 1.4rem; font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: transform .15s, box-shadow .15s;
+  }
+  .browse-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,.4); }
+
+  /* File queue */
+  .file-queue { margin-top: 1.5rem; }
+  .queue-item {
+    display: flex; align-items: center; gap: .75rem;
+    background: #fff; border: 1.5px solid #e8eaf0; border-radius: 10px;
+    padding: .65rem .9rem; margin-bottom: .5rem;
+    font-size: .83rem; transition: border-color .2s;
+  }
+  .queue-item.done { border-color: #bbf7d0; }
+  .queue-item.error { border-color: #fca5a5; }
+  .queue-item.linked { border-color: #fde68a; }
+  .queue-item.skipped { border-color: #d1d5db; opacity: .7; }
+  .queue-icon { font-size: 1rem; flex-shrink: 0; }
+  .queue-name { flex: 1; font-weight: 600; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .queue-meta { font-size: .74rem; color: #6b7280; flex: 2; }
+  .queue-status { flex-shrink: 0; }
+  .status-badge {
+    font-size: .7rem; font-weight: 700; padding: .2rem .65rem; border-radius: 99px;
+    display: inline-flex; align-items: center; gap: .3rem;
+  }
+  .sb-pending   { background: #f3f4f6; color: #374151; }
+  .sb-uploading { background: #e0f2fe; color: #0369a1; }
+  .sb-parsed    { background: #dcfce7; color: #166534; }
+  .sb-linked    { background: #fef3c7; color: #92400e; }
+  .sb-skipped   { background: #f1f5f9; color: #64748b; }
+  .sb-error     { background: #fee2e2; color: #991b1b; }
+
+  /* Results table */
+  .results-card { margin-top: 2rem; }
+  .results-table th { font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+  .results-table td { font-size: .83rem; vertical-align: middle; }
+  .exp-badge { font-size: .7rem; background: #f3f4f6; color: #374151; border-radius: 99px; padding: .1rem .5rem; font-weight: 600; }
+  .summary-strip {
+    background: #f8fafc; border-radius: 10px; padding: .75rem 1rem;
+    display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: .83rem;
+    border: 1.5px solid #e8eaf0; margin-bottom: 1rem;
+  }
+  .summary-stat { display: flex; flex-direction: column; align-items: center; }
+  .summary-stat .val { font-size: 1.3rem; font-weight: 800; line-height: 1; }
+  .summary-stat .lbl { font-size: .7rem; color: #6b7280; margin-top: .1rem; }
+  .progress-bar-wrap { height: 4px; background: #e8eaf0; border-radius: 99px; overflow: hidden; margin-top: .35rem; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #8b5cf6, #06b6d4); border-radius: 99px; transition: width .3s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="upload-hero">
+  <div>
+    <div class="fw-bold fs-5"><i class="bi bi-cloud-upload me-2"></i>Bulk Resume Upload</div>
+    <div class="job-meta">{{ job.title }}{% if job.department %} · {{ job.department }}{% endif %}</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'hrms:job_kanban' job.pk %}" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;">
+      <i class="bi bi-kanban me-1"></i>Kanban Board
+    </a>
+    <a href="{% url 'hrms:jobposting_list' %}" class="btn btn-sm" style="background:rgba(255,255,255,.1);color:#c4b5fd;border:1px solid rgba(255,255,255,.2);border-radius:8px;">
+      <i class="bi bi-arrow-left me-1"></i>All Jobs
+    </a>
+  </div>
+</div>
+
+<!-- Dropzone -->
+<div x-data="bulkUploader()" x-init="init()">
+  <div class="dropzone-wrap" id="dropzone"
+       @dragover.prevent="dragOver = true"
+       @dragleave.prevent="dragOver = false"
+       @drop.prevent="handleDrop($event)"
+       :class="{ 'drag-over': dragOver }"
+       @click="$refs.fileInput.click()">
+    <i class="bi bi-cloud-arrow-up dropzone-icon"></i>
+    <div class="dropzone-title">Drag & drop PDF resumes here</div>
+    <div class="dropzone-sub">Drop up to 50 PDF files at once, or click to browse</div>
+    <button type="button" class="browse-btn" @click.stop="$refs.fileInput.click()">
+      <i class="bi bi-folder2-open me-1"></i>Browse Files
+    </button>
+    <input type="file" x-ref="fileInput" class="dropzone-input" multiple accept=".pdf"
+           @change="addFiles($event.target.files)">
+  </div>
+
+  <!-- File Queue -->
+  <div class="file-queue" x-show="queue.length > 0">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold" style="font-size:.9rem;">
+        <i class="bi bi-list-ul me-1 text-muted"></i>
+        Upload Queue (<span x-text="queue.length"></span> files)
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.8rem;"
+                @click="clearQueue()" x-show="!uploading">
+          <i class="bi bi-x-lg me-1"></i>Clear
+        </button>
+        <button type="button" class="btn btn-sm fw-semibold" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;border-radius:8px;font-size:.85rem;"
+                @click="startUpload()" :disabled="uploading || queue.length === 0">
+          <span x-show="!uploading"><i class="bi bi-upload me-1"></i>Upload All</span>
+          <span x-show="uploading" class="d-flex align-items-center gap-2">
+            <span class="spinner-border spinner-border-sm"></span> Uploading…
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-bar-wrap mb-3" x-show="uploading || doneCount > 0">
+      <div class="progress-bar-fill" :style="'width:' + progressPct + '%'"></div>
+    </div>
+
+    <template x-for="(item, idx) in queue" :key="idx">
+      <div class="queue-item" :class="item.statusClass">
+        <i class="queue-icon bi" :class="item.icon"></i>
+        <div class="queue-name" x-text="item.file.name"></div>
+        <div class="queue-meta" x-text="item.meta"></div>
+        <div class="queue-status">
+          <span class="status-badge" :class="'sb-' + item.status">
+            <i class="bi" :class="item.statusIcon"></i>
+            <span x-text="item.statusLabel"></span>
+          </span>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Results table (after upload) -->
+  <div class="results-card card border-0 shadow-sm" x-show="results.length > 0" style="border-radius:14px;">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="fw-bold" style="font-size:1rem;"><i class="bi bi-table me-2 text-muted"></i>Parsed Candidates</div>
+        <a href="{% url 'hrms:job_kanban' job.pk %}" class="btn btn-sm"
+           style="background:#8b5cf6;color:#fff;border-radius:8px;font-size:.8rem;">
+          <i class="bi bi-kanban me-1"></i>View on Kanban
+        </a>
+      </div>
+      <!-- Summary strip -->
+      <div class="summary-strip">
+        <div class="summary-stat"><div class="val text-success" x-text="countByStatus('created')"></div><div class="lbl">New Candidates</div></div>
+        <div class="summary-stat"><div class="val text-warning" x-text="countByStatus('duplicate_linked')"></div><div class="lbl">Existing (Linked)</div></div>
+        <div class="summary-stat"><div class="val text-muted" x-text="countByStatus('duplicate_skipped')"></div><div class="lbl">Skipped (Duplicate)</div></div>
+        <div class="summary-stat"><div class="val text-danger" x-text="errorCount"></div><div class="lbl">Errors</div></div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table results-table mb-0">
+          <thead>
+            <tr>
+              <th>File</th><th>Candidate Name</th><th>Email</th><th>Experience</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(r, idx) in results" :key="idx">
+              <tr>
+                <td style="color:#6b7280;" x-text="r.filename || r.file || '—'"></td>
+                <td class="fw-semibold" x-text="r.candidate_name || '—'"></td>
+                <td x-text="r.email || '—'"></td>
+                <td>
+                  <span class="exp-badge" x-text="(r.experience_years || 0) + ' yrs'"></span>
+                </td>
+                <td>
+                  <span class="status-badge"
+                        :class="r.status === 'created' ? 'sb-parsed' : r.status === 'duplicate_linked' ? 'sb-linked' : r.status === 'duplicate_skipped' ? 'sb-skipped' : 'sb-error'">
+                    <i class="bi" :class="r.status === 'created' ? 'bi-person-plus-fill' : r.status === 'duplicate_linked' ? 'bi-link-45deg' : r.status === 'duplicate_skipped' ? 'bi-skip-forward-fill' : 'bi-exclamation-triangle-fill'"></i>
+                    <span x-text="r.status === 'created' ? 'Parsed' : r.status === 'duplicate_linked' ? 'Linked' : r.status === 'duplicate_skipped' ? 'Skipped' : 'Error'"></span>
+                  </span>
+                </td>
+              </tr>
+            </template>
+            <template x-for="(e, idx) in errors" :key="'err' + idx">
+              <tr>
+                <td style="color:#6b7280;" x-text="e.filename || '—'"></td>
+                <td colspan="3" class="text-danger fst-italic" x-text="e.error"></td>
+                <td><span class="status-badge sb-error"><i class="bi bi-exclamation-triangle-fill"></i> Error</span></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function bulkUploader() {
+  return {
+    queue: [],
+    results: [],
+    errors: [],
+    uploading: false,
+    dragOver: false,
+    doneCount: 0,
+    errorCount: 0,
+
+    init() {},
+
+    get progressPct() {
+      if (!this.queue.length) return 0;
+      return Math.round((this.doneCount / this.queue.length) * 100);
+    },
+
+    addFiles(files) {
+      Array.from(files).forEach(file => {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+          this.queue.push({ file, status: 'error', statusLabel: 'Not PDF', statusClass: 'error',
+            icon: 'bi-file-earmark-x', statusIcon: 'bi-exclamation-triangle-fill', meta: 'Only PDF files are accepted' });
+          return;
+        }
+        this.queue.push({ file, status: 'pending', statusLabel: 'Pending', statusClass: '',
+          icon: 'bi-file-earmark-pdf', statusIcon: 'bi-clock', meta: this.fmtSize(file.size) });
+      });
+    },
+
+    handleDrop(event) {
+      this.dragOver = false;
+      const files = event.dataTransfer.files;
+      if (files.length) this.addFiles(files);
+    },
+
+    clearQueue() { this.queue = []; this.results = []; this.errors = []; this.doneCount = 0; this.errorCount = 0; },
+
+    countByStatus(status) {
+      return this.results.filter(r => r.status === status).length;
+    },
+
+    fmtSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    },
+
+    async startUpload() {
+      const pdfFiles = this.queue.filter(q => q.status === 'pending');
+      if (!pdfFiles.length) return;
+      this.uploading = true;
+      this.doneCount = 0;
+      this.errorCount = 0;
+      const csrf = document.querySelector('meta[name="csrf-token"]').content;
+
+      const formData = new FormData();
+      pdfFiles.forEach(q => {
+        formData.append('files', q.file);
+        q.status = 'uploading';
+        q.statusLabel = 'Uploading…';
+        q.statusClass = '';
+        q.statusIcon = 'bi-arrow-repeat';
+      });
+
+      try {
+        const resp = await fetch('/hrms/api/jobs/{{ job.pk }}/bulk-upload-resumes/', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrf },
+          body: formData
+        });
+        const data = await resp.json();
+
+        // Map results back to queue items
+        const created = data.created_candidates || [];
+        this.results = created;
+        this.errors = data.errors || [];
+        this.errorCount = this.errors.length;
+
+        // Update queue item statuses
+        pdfFiles.forEach((q, i) => {
+          const match = created.find(r => r.filename === q.file.name) || created[i];
+          if (match) {
+            q.status = match.status === 'created' ? 'done' : match.status === 'duplicate_linked' ? 'linked' : 'skipped';
+            q.statusLabel = match.status === 'created' ? 'Parsed' : match.status === 'duplicate_linked' ? 'Linked' : 'Skipped';
+            q.statusClass = q.status;
+            q.statusIcon = match.status === 'created' ? 'bi-check-circle-fill' : 'bi-link-45deg';
+            q.meta = (match.candidate_name || '') + (match.email ? ' · ' + match.email : '') + (match.experience_years ? ' · ' + match.experience_years + ' yrs' : '');
+          } else {
+            const err = (data.errors || []).find(e => e.filename === q.file.name);
+            q.status = 'error'; q.statusLabel = 'Error'; q.statusClass = 'error';
+            q.statusIcon = 'bi-exclamation-triangle-fill';
+            q.meta = err ? err.error : 'Unknown error';
+          }
+          this.doneCount++;
+        });
+
+      } catch (err) {
+        pdfFiles.forEach(q => {
+          q.status = 'error'; q.statusLabel = 'Network error'; q.statusClass = 'error';
+          q.statusIcon = 'bi-exclamation-triangle-fill';
+        });
+        this.errorCount = pdfFiles.length;
+      }
+
+      this.uploading = false;
+    }
+  };
+}
+</script>
+{% endblock %}

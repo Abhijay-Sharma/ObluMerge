@@ -1,0 +1,58 @@
+{% extends "hrms/base.html" %}
+{% load hrms_extras %}
+{% block title %}Payslip{% endblock %}
+{% block page_title %}Payslip — {{ payslip.payroll_run.month|month_name }} {{ payslip.payroll_run.year }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <a href="{% url 'hrms:payslip_pdf' payslip.pk %}" class="btn btn-sm text-white w-100 w-md-auto" style="background:var(--accent);">
+    <i class="bi bi-file-earmark-pdf"></i> Download PDF
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Attendance Breakdown</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><td>Full Days</td><td class="text-end">{{ payslip.full_days }}</td></tr>
+          <tr><td>Half Days</td><td class="text-end">{{ payslip.half_days }}</td></tr>
+          <tr><td>Comp-Off Days Availed</td><td class="text-end">{{ payslip.comp_off_days }}</td></tr>
+          {% if payslip.comp_off_earned > 0 or payslip.comp_off_remaining > 0 %}
+          <tr class="table-light"><td class="ps-3 text-muted small">&bull; Comp-Off Earned in Month</td><td class="text-end small">{{ payslip.comp_off_earned }} Days</td></tr>
+          <tr class="table-light"><td class="ps-3 text-muted small">&bull; Comp-Off Used as Leave</td><td class="text-end small">{{ payslip.comp_off_used }} Days</td></tr>
+          <tr class="table-light"><td class="ps-3 text-primary small fw-semibold">&bull; Comp-Off Unused (Encashed)</td><td class="text-end small fw-semibold text-primary">{{ payslip.comp_off_remaining }} Days</td></tr>
+          {% endif %}
+          <tr><td>Paid Leave Days</td><td class="text-end">{{ payslip.paid_leave_days }}</td></tr>
+          <tr><td>Off Days (weekly-off/holiday)</td><td class="text-end">{{ payslip.off_days }}</td></tr>
+          <tr><td class="text-danger">Absent Days</td><td class="text-end text-danger">{{ payslip.absent_days }}</td></tr>
+          <tr class="border-top"><td class="fw-semibold">Paid Days</td><td class="text-end fw-semibold">{{ payslip.paid_days }} / {{ payslip.total_days_in_month }}</td></tr>
+          <tr><td>Daily Wage</td><td class="text-end">₹{{ payslip.daily_wage }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Earnings &amp; Deductions</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><td>Gross Salary (Basic+HRA+Allowance)</td><td class="text-end">₹{{ payslip.gross_salary }}</td></tr>
+          {% if payslip.comp_off_encashment > 0 %}
+          <tr class="table-light"><td class="text-primary fw-semibold"><i class="bi bi-cash-coin me-1"></i>Comp-Off Encashment ({{ payslip.comp_off_remaining }} Days)</td><td class="text-end text-primary fw-semibold">+ ₹{{ payslip.comp_off_encashment }}</td></tr>
+          {% endif %}
+          <tr><td>Extra / Incentive</td><td class="text-end text-success">+ ₹{{ payslip.extra_earning }}</td></tr>
+          <tr class="border-top"><td class="fw-semibold">Total Earnings</td><td class="text-end fw-semibold">₹{{ payslip.total_earnings }}</td></tr>
+          <tr><td>Absence Penalty</td><td class="text-end text-danger">− ₹{{ payslip.penalty_deduction }}</td></tr>
+          <tr><td>Loan/Advance Repayment</td><td class="text-end text-danger">− ₹{{ payslip.loan_deduction }}</td></tr>
+          <tr><td>PF / ESIC / PT / TDS (from salary)</td><td class="text-end text-danger">− included in Total Deductions</td></tr>
+          <tr class="border-top"><td class="fw-semibold">Total Deductions</td><td class="text-end fw-semibold">₹{{ payslip.total_deductions }}</td></tr>
+          <tr class="border-top"><td class="fw-bold" style="color:var(--accent);">Net Pay</td><td class="text-end fw-bold" style="color:var(--accent);">₹{{ payslip.net_pay }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

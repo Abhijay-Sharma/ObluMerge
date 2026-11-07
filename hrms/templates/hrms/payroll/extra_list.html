@@ -1,0 +1,33 @@
+{% extends "hrms/base.html" %}
+{% block title %}Incentives / Extras{% endblock %}
+{% block page_title %}Incentives / Extras{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <a href="{% url 'hrms:extra_add' %}" class="btn btn-sm text-white" style="background:var(--accent);">
+    <i class="bi bi-plus-lg"></i> Queue Incentive
+  </a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light"><tr><th>Employee</th><th>Label</th><th>Amount</th><th>Status</th><th>Payroll Run</th></tr></thead>
+      <tbody>
+        {% for e in extras %}
+        <tr>
+          <td>{{ e.employee.full_name }}</td>
+          <td>{{ e.label }}</td>
+          <td>{{ e.amount }}</td>
+          <td>{% if e.is_consumed %}<span class="badge text-bg-success">Applied</span>{% else %}<span class="badge text-bg-warning">Pending</span>{% endif %}</td>
+          <td>{{ e.payroll_run|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-4">No incentives queued.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="text-muted small mt-3">Pending incentives are automatically added to the employee's Earnings the next time payroll is processed for them, then marked Applied.</p>
+{% endblock %}
