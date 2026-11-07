@@ -229,15 +229,15 @@ ROLE_MATRIX = {
     "hr": {
         "display_name": "HR Manager",
         "perms": {
-            HR_ADMIN_PERMS,
-            BASE_EMPLOYEE_PERMS,
+            **HR_ADMIN_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
     "manager": {
         "display_name": "Reporting Manager",
         "perms": {
-            MANAGER_TEAM_PERMS,
-            BASE_EMPLOYEE_PERMS,
+            **MANAGER_TEAM_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
     "employee": {
