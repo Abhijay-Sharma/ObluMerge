@@ -3,6 +3,66 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from access_control.models import Role, Permission, RolePermission
 
+# Baseline self-service permissions granted to every employee in the company
+BASE_EMPLOYEE_PERMS = {
+    "employee.view_self": "self",
+    "employee.doc_upload": "self",
+    "attendance.punch": "self",
+    "attendance.view": "self",
+    "attendance.regularize_apply": "self",
+    "leave.apply": "self",
+    "leave.view": "self",
+    "payroll.view_payslip": "self",
+    "hiring.my_interviews": "self",
+    "policy.view": "all",
+    "notice.view": "all",
+    "asset.view_self": "self",
+}
+
+# Manager permissions (supervision over direct & indirect reports)
+MANAGER_TEAM_PERMS = {
+    "manager.dashboard": "team",
+    "employee.view": "team",
+    "attendance.view": "team",
+    "attendance.regularize_review": "team",
+    "leave.approve": "team",
+    "leave.view": "team",
+    "hiring.interview_feedback": "team",
+}
+
+# HR Administrator permissions (organization-wide)
+HR_ADMIN_PERMS = {
+    "org.manage": "all",
+    "employee.manage": "all",
+    "employee.view": "all",
+    "employee.enroll_face": "all",
+    "attendance.manage": "all",
+    "attendance.view": "all",
+    "attendance.kiosk": "all",
+    "attendance.live_track": "all",
+    "leave.manage": "all",
+    "leave.approve": "all",
+    "leave.view": "all",
+    "hiring.manage": "all",
+    "hiring.view": "all",
+    "payroll.view": "all",
+    "payroll.run": "all",
+    "policy.manage": "all",
+    "notice.manage": "all",
+    "asset.manage": "all",
+}
+
+# Payroll & Accounts Operations permissions
+PAYROLL_ACCOUNTS_PERMS = {
+    "payroll.manage": "all",
+    "payroll.view": "all",
+    "payroll.run": "all",
+    "payroll.payout": "all",
+    "payroll.salary_structure": "all",
+    "payroll.loans": "all",
+    "employee.bank_verify": "all",
+}
+
 ROLE_MATRIX = {
     # =========================================================================
     # 👑 Super Admin (Full Unrestricted System Access)
@@ -27,8 +87,15 @@ ROLE_MATRIX = {
             "product_tier.manage": "all",
             "analytics.view": "all",
             "customer.unassigned": "all",
+            # HRMS Global
+            **HR_ADMIN_PERMS,
+            **PAYROLL_ACCOUNTS_PERMS,
+            **MANAGER_TEAM_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
+
+
 
     # =========================================================================
     # 💼 Sales Head (Sales Leadership & Approval Authority)
@@ -47,6 +114,8 @@ ROLE_MATRIX = {
             "credit.overdue": "all",            # Approves overdue credit bypass
             "stock.request": "all",
             "product_price.view": "all",
+            **MANAGER_TEAM_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
 
@@ -65,6 +134,8 @@ ROLE_MATRIX = {
             "stock.request": "all",
             "inventory.view": "all",
             "product_price.view": "all",
+            **MANAGER_TEAM_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
 
@@ -82,6 +153,8 @@ ROLE_MATRIX = {
             "stock.request": "all",
             "inventory.view": "all",
             "product_tier.manage": "all",
+            **PAYROLL_ACCOUNTS_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
 
@@ -93,6 +166,7 @@ ROLE_MATRIX = {
         "display_name": "Warehouse",
         "perms": {
             "proforma.dispatch": "all",
+            **BASE_EMPLOYEE_PERMS,
 
         }
     },
@@ -110,6 +184,8 @@ ROLE_MATRIX = {
             "proforma.view": "team",
             "stock.request": "team",
             "product_price.view": "all",
+            **MANAGER_TEAM_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
 
@@ -126,6 +202,8 @@ ROLE_MATRIX = {
             "proforma.view": "team",
             "stock.request": "team",
             "product_price.view": "all",
+            **MANAGER_TEAM_PERMS,
+            **BASE_EMPLOYEE_PERMS,
         }
     },
 
@@ -141,6 +219,7 @@ ROLE_MATRIX = {
             "proforma.view": "self",
             "stock.request": "self",
             "product_price.view": "all",
+            **BASE_EMPLOYEE_PERMS,
         }
     },
 
@@ -148,9 +227,23 @@ ROLE_MATRIX = {
     # 👥 Human Resources
     # =========================================================================
     "hr": {
-        "display_name": "Human Resources",
+        "display_name": "HR Manager",
         "perms": {
-            "customer.view": "all",
+            HR_ADMIN_PERMS,
+            BASE_EMPLOYEE_PERMS,
+        }
+    },
+    "manager": {
+        "display_name": "Reporting Manager",
+        "perms": {
+            MANAGER_TEAM_PERMS,
+            BASE_EMPLOYEE_PERMS,
+        }
+    },
+    "employee": {
+        "display_name": "Employee",
+        "perms": {
+            **BASE_EMPLOYEE_PERMS,
         }
     },
 }
