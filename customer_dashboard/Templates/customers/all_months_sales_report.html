@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Report Dashboard</title>
+    <title>Sales Report Dashboard | Oblu</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -22,7 +22,24 @@
             margin: 0; padding: 25px;
         }
 
-        /* Stats Section */
+        /* Top Return Header */
+        .top-return-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .back-link {
+            color: var(--accent-green);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
         .stats-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -43,69 +60,33 @@
         .stat-card p { margin: 10px 0 0; font-size: 24px; font-weight: 700; color: var(--accent-green); }
         .stat-card p.yellow { color: var(--accent-yellow); }
 
-        /* Filter Area */
         .filter-card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             padding: 15px 20px; border-radius: 12px; margin-bottom: 25px;
         }
 
-        .filter-form {
-            display: flex;
-            align-items: flex-end;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .input-group label {
-            font-size: 10px;
-            color: #666;
-            text-transform: uppercase;
-            font-weight: 700;
-        }
+        .filter-form { display: flex; align-items: flex-end; gap: 15px; flex-wrap: wrap; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 10px; color: #666; text-transform: uppercase; font-weight: 700; }
 
         select, input[type="date"] {
-            background: #1a1a1a;
-            color: #fff;
-            padding: 10px 12px;
-            border: 1px solid #333;
-            border-radius: 8px;
-            font-size: 13px;
-            outline: none;
+            background: #1a1a1a; color: #fff; padding: 10px 12px; border: 1px solid #333;
+            border-radius: 8px; font-size: 13px; outline: none;
         }
 
         .btn-calculate {
-            background: var(--accent-green);
-            color: #000;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 8px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.3s;
+            background: var(--accent-green); color: #000; border: none; padding: 10px 25px;
+            border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s;
         }
-
         .btn-calculate:hover { opacity: 0.8; }
 
-        /* Average Insight Block */
         .avg-insight-card {
-            background: linear-gradient(145deg, #0b0b0b, #1a1a1a);
-            border: 1px solid var(--accent-green);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: linear-gradient(145deg, #0b0b0b, #1a1a1a); border: 1px solid var(--accent-green);
+            border-radius: 15px; padding: 20px; margin-bottom: 25px; display: flex;
+            justify-content: space-between; align-items: center;
         }
 
-        /* Table Styles (Keep existing) */
         .report-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a1a1a; color: #666; font-size: 11px; text-transform: uppercase; padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
@@ -124,12 +105,18 @@
 </head>
 <body>
 
+    <!-- Top Return Header -->
+    <div class="top-return-nav">
+        <a href="{% url 'customers:dashboard_home' %}" class="back-link">← Return to Dashboard</a>
+        <span style="font-size:12px;color:#888;">Oblu Sales Intelligence</span>
+    </div>
+
     <div class="filter-card">
         <form method="get" class="filter-form">
             <div class="input-group">
                 <label>Salesperson</label>
                 <select name="salesperson">
-                    <option value="">-- Select --</option>
+                    <option value="">-- Select Salesperson --</option>
                     {% for sp in salespersons %}
                     <option value="{{ sp.id }}" {% if selected_salesperson.id == sp.id %}selected{% endif %}>
                         {{ sp.name }}
@@ -153,8 +140,6 @@
     </div>
 
     {% if grouped_months %}
-
-    <!-- NEW: RANGE AVERAGE ANALYSIS BLOCK -->
     <div class="avg-insight-card">
         <div>
             <h4 style="margin: 0; font-size: 14px; color: var(--accent-green); text-transform: uppercase;">Range Average Analysis</h4>
@@ -168,7 +153,6 @@
         </div>
     </div>
 
-    <!-- STAT CARDS -->
     <div class="stats-container">
         <div class="stat-card">
             <h3>Total Revenue</h3>
@@ -203,7 +187,6 @@
                     <tr>
                         <td colspan="8" class="month-header">{{ month_name }}</td>
                     </tr>
-
                     {% for r in data.rows %}
                     <tr style="{% if not r.invoice_total %}opacity: 0.8;{% endif %}">
                         <td class="sn-col">{{ r.sn }}</td>
@@ -211,7 +194,6 @@
                         <td>
                             {% if r.customer_id %}<a href="{% url 'customers:customerpaymentstatus' r.customer_id %}">{{ r.customer }}</a>
                             {% else %}{{ r.customer }}{% endif %}
-
                             {% if r.is_unpaid %}<span class="badge bg-red">UNPAID</span>
                             {% elif r.is_partially_paid %}<span class="badge bg-orange">PARTIAL</span>{% endif %}
                         </td>
@@ -223,7 +205,6 @@
                         <td style="font-size: 12px; max-width: 250px;">{{ r.product }}</td>
                         <td>{{ r.quantity }}</td>
                         <td class="text-right text-muted">₹{{ r.item_amount }}</td>
-
                         <td class="text-right fw-bold" style="background: rgba(0,255,153,0.02);">
                             {% if r.invoice_total %}
                                 <span style="color: var(--accent-green); font-weight: 700;">₹{{ r.invoice_total }}</span>
@@ -233,14 +214,12 @@
                         </td>
                     </tr>
                     {% endfor %}
-
                     <tr class="month-total-row">
                         <td colspan="7" class="text-right">Total Sales of {{ month_name }}</td>
                         <td class="text-right">₹{{ data.monthly_total }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
-
             <tfoot>
                 <tr class="grand-total-row">
                     <td colspan="7" class="text-right">GRAND TOTAL BUSINESS (ALL TIME)</td>

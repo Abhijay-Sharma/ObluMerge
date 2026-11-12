@@ -2,229 +2,99 @@
 {% block content %}
 
 <style>
-    /*  PAGE  */
-    .page-wrapper {
-      max-width: 1200px;
-      margin: auto;
-    }
+    .page-wrapper { max-width: 1200px; margin: auto; }
+    .page-header h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
+    .page-sub { color: #666; margin-bottom: 16px; font-size: 0.95rem; }
 
-    /*  HEADER  */
-    .page-header h2 {
-      font-size: 1.8rem;
-      font-weight: 700;
-    }
-    .page-sub {
-      color: #666;
-      margin-bottom: 20px;
-    }
+    .filter-panel { background: #0f0f0f; border-radius: 14px; padding: 18px; margin-bottom: 24px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+    .filter-panel label { font-size: 0.75rem; color: #aaa; margin-bottom: 6px; display: block; }
+    .filter-panel input, .filter-panel select { width: 100%; padding: 10px 12px; border-radius: 8px; border: none; font-size: 13px; }
+    .filter-panel button { background: linear-gradient(135deg, #059669, #10b981); color: #fff; border: none; border-radius: 10px; padding: 12px; font-weight: 600; cursor: pointer; }
 
-    /*  FILTER PANEL */
-    .filter-panel {
-      background: #0f0f0f;
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 24px;
-    }
+    .payment-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; }
+    .payment-table th { background: #111; color: #fff; padding: 14px; font-size: 0.85rem; text-align: left; }
+    .payment-table td { padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    .payment-table tbody tr:hover { background: #f8f9fa; }
 
-    .filter-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 14px;
-    }
-
-    .filter-panel label {
-      font-size: 0.75rem;
-      color: #aaa;
-      margin-bottom: 6px;
-      display: block;
-    }
-
-    .filter-panel input,
-    .filter-panel select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: none;
-    }
-
-    .filter-panel button {
-      background: linear-gradient(135deg, #000, #444);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 12px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    /*  TABLE  */
-    .payment-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    .payment-table th {
-      background: #111;
-      color: #fff;
-      padding: 14px;
-      font-size: 0.85rem;
-      text-align: left;
-    }
-
-    .payment-table td {
-      padding: 12px 14px;
-      border-bottom: 1px solid #eee;
-      font-size: 0.9rem;
-    }
-
-    .payment-table tbody tr:hover {
-      background: #f8f9fa;
-    }
-
-    /*  ROW STATUS  */
     .row-paid    { background:#e6f4ea; border-left: 6px solid #28a745; }
     .row-partial { background:#fff9db; border-left: 6px solid #ffc107; }
     .row-unpaid  { background:#fdecea; border-left: 6px solid #dc3545; }
 
-    /*  ALIGNMENT  */
-    .amount, .unpaid, .credit {
-      text-align: right;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
+    .amount, .unpaid, .credit { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .badge { padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+    .badge-paid { background: #e6f4ea; color: #1e7e34; }
+    .badge-partial { background: #fff4d6; color: #946200; }
+    .badge-unpaid { background: #fdecea; color: #b02a37; }
+    .credit-crossed { background: #fdecea; color: #dc3545; padding: 4px 8px; border-radius: 6px; font-weight: 700; display: inline-block; min-width: 36px; text-align: center; }
 
-    /*  BADGES  */
-    .badge {
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .badge-paid {
-      background: #e6f4ea;
-      color: #1e7e34;
-    }
-
-    .badge-partial {
-      background: #fff4d6;
-      color: #946200;
-    }
-
-    .badge-unpaid {
-      background: #fdecea;
-      color: #b02a37;
-    }
-
-    /*  CREDIT DAYS  */
-    .credit-crossed {
-      background: #fdecea;
-      color: #dc3545;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-weight: 700;
-      display: inline-block;
-      min-width: 36px;
-      text-align: center;
-    }
-
-    /*  RESPONSIVE  */
     @media (max-width: 992px) {
       .filter-grid { grid-template-columns: repeat(2, 1fr); }
-
       .payment-table thead { display: none; }
-
-      .payment-table,
-      .payment-table tbody,
-      .payment-table tr,
-      .payment-table td {
-        display: block;
-        width: 100%;
-      }
-
-      .payment-table tr {
-        margin-bottom: 16px;
-        border-radius: 14px;
-        padding: 14px;
-        border: 1px solid #ddd;
-      }
-
-      .payment-table td {
-        border: none;
-        padding: 6px 0;
-      }
-
-      .payment-table td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        font-size: 0.75rem;
-        color: #666;
-        display: block;
-      }
-    }
-
-    @media (max-width: 576px) {
-      .filter-grid { grid-template-columns: 1fr; }
+      .payment-table, .payment-table tbody, .payment-table tr, .payment-table td { display: block; width: 100%; }
+      .payment-table tr { margin-bottom: 16px; border-radius: 14px; padding: 14px; border: 1px solid #ddd; }
+      .payment-table td { border: none; padding: 6px 0; }
+      .payment-table td::before { content: attr(data-label); font-weight: 600; font-size: 0.75rem; color: #666; display: block; }
     }
 </style>
 
 <div class="page-wrapper">
 
-  <!--HEADER-->
+  <!-- HEADER -->
   <div class="page-header">
-    <h2>{{ customer.name }}</h2>
-    <div class="page-sub">
-      Outstanding: <strong>{{ credit_profile.outstanding_balance|default:"N/A" }}</strong> |
-      Credit Period: <strong>{{ credit_profile.credit_period_days|default:"N/A" }} days</strong>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h2>{{ customer.name }}</h2>
+        <div class="page-sub">
+          Outstanding: <strong>₹{{ credit_profile.outstanding_balance|default:"0.00" }}</strong> |
+          Credit Period: <strong>{{ credit_profile.credit_period_days|default:"N/A" }} days</strong>
+
+          <!-- Direct Edit Credit Days Action (RBAC Gated to Super Admin & Sales Head) -->
+          {% if '*' in permissions or 'customer.edit_credit' in permissions %}
+          <a href="{% url 'customers:edit-credit-period' customer.id %}" class="btn btn-sm btn-outline-primary ms-2 py-0" style="font-size: 0.75rem;">
+            ✏️ Edit Days
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <a href="{% url 'customers:customer_payment_threads' customer.id %}" class="btn btn-success fw-bold btn-sm shadow-sm">
+          💬 View All Payment Discussions
+        </a>
+      </div>
     </div>
-    <div style="margin-top:10px;">
-    <a href="{% url 'customers:customer_payment_threads' customer.id %}"
-       style="background:#35be64;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600;">
-        View All Payment Discussions
-    </a>
-  </div>
   </div>
 
-  <!--FILTERS-->
+  <!-- FILTERS -->
   <div class="filter-panel">
     <form method="get">
       <div class="filter-grid">
-
         <div>
           <label>Voucher Type</label>
           <select name="voucher_type">
-            <option value="">All</option>
+            <option value="">All Types</option>
             {% for vt in voucher_types %}
-              <option value="{{ vt }}" {% if filters.voucher_type == vt %}selected{% endif %}>
-                {{ vt }}
-              </option>
+              <option value="{{ vt }}" {% if filters.voucher_type == vt %}selected{% endif %}>{{ vt }}</option>
             {% endfor %}
           </select>
         </div>
-
         <div>
           <label>From Date</label>
           <input type="date" name="start_date" value="{{ filters.start_date }}">
         </div>
-
         <div>
           <label>To Date</label>
           <input type="date" name="end_date" value="{{ filters.end_date }}">
         </div>
-
         <div>
           <label>Payment Status</label>
           <select name="payment_status">
-            <option value="">All</option>
+            <option value="">All Statuses</option>
             <option value="paid" {% if filters.payment_status == "paid" %}selected{% endif %}>Paid</option>
             <option value="partial" {% if filters.payment_status == "partial" %}selected{% endif %}>Partial</option>
             <option value="unpaid" {% if filters.payment_status == "unpaid" %}selected{% endif %}>Unpaid</option>
           </select>
         </div>
-
         <div>
           <label>&nbsp;</label>
           <button type="submit">Apply Filters</button>
@@ -233,7 +103,7 @@
     </form>
   </div>
 
-  <!--TABLE-->
+  <!-- TABLE -->
   <table class="payment-table">
     <thead>
       <tr>
@@ -248,22 +118,18 @@
         <th>Payment Discussion</th>
       </tr>
     </thead>
-
     <tbody>
       {% for v in vouchers %}
-      <tr class="
-        {% if v.is_fully_paid %}row-paid
-        {% elif v.is_partially_paid %}row-partial
-        {% elif v.is_unpaid %}row-unpaid{% endif %}
-      ">
-
-        <td data-label="Date">{{ v.voucher_date }}</td>
-        <td data-label="Voucher No">{{ v.voucher.voucher_number }}</td>
+      <tr class="{% if v.is_fully_paid %}row-paid{% elif v.is_partially_paid %}row-partial{% elif v.is_unpaid %}row-unpaid{% endif %}">
+        <td data-label="Date">{{ v.voucher_date|date:"d M Y" }}</td>
+        <td data-label="Voucher No">
+          <a href="{% url 'voucher_detail' v.voucher.id %}" target="_blank" class="fw-bold text-decoration-none">
+            {{ v.voucher.voucher_number }} ↗
+          </a>
+        </td>
         <td data-label="Type">{{ v.voucher_type }}</td>
-
         <td class="amount" data-label="Amount">{{ v.voucher_amount|default:"-" }}</td>
         <td class="unpaid" data-label="Unpaid">{{ v.unpaid_amount|default:"-" }}</td>
-
         <td data-label="Status">
           {% if v.is_fully_paid %}
             <span class="badge badge-paid">Paid</span>
@@ -273,7 +139,6 @@
             <span class="badge badge-unpaid">Unpaid</span>
           {% else %}—{% endif %}
         </td>
-
         <td class="credit" data-label="Credit Days">
           {% if v.is_credit_period_crossed %}
             <span class="credit-crossed">{{ v.credit_days_elapsed }}</span>
@@ -281,34 +146,25 @@
             {{ v.credit_days_elapsed|default:"-" }}
           {% endif %}
         </td>
+        <td>{{ v.sold_by.name|default:"-" }}</td>
         <td>
-          {% if v.sold_by %}
-            {{v.sold_by.name}}
-          {% else %}
-            -
+          <a href="{% url 'customers:payment_thread_detail' v.id %}" class="btn btn-sm btn-outline-primary py-0" style="font-size: 0.8rem;">
+            View / Notes
+          </a>
+          {% if v.payment_thread.ticket_status == "RAISED" %}
+            <span style="color:#d93025; font-weight:700; font-size:0.75rem; margin-left:4px;">● TICKET</span>
+          {% elif v.payment_thread.ticket_status == "SOLVED" %}
+            <span style="color:#188038; font-weight:700; font-size:0.75rem; margin-left:4px;">✔ SOLVED</span>
           {% endif %}
         </td>
-        <td>
-        <a href="{% url 'customers:payment_thread_detail' v.id %}">
-          View / Add Remarks
-        </a>
-
-        {% if v.payment_thread.ticket_status == "RAISED" %}
-            <span style="color:red;">● Ticket Raised</span>
-        {% elif v.payment_thread.ticket_status == "SOLVED" %}
-            <span style="color:green;">✔ Solved</span>
-        {% endif %}
-      </td>
-
       </tr>
       {% empty %}
       <tr>
-        <td colspan="7" style="text-align:center;">No vouchers found</td>
+        <td colspan="9" style="text-align:center; padding:32px; color:#888;">No vouchers found matching criteria.</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
 </div>
-
 {% endblock %}

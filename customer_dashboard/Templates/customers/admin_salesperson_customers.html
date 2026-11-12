@@ -625,7 +625,7 @@ table.master tbody td {
   color: var(--text-body);
 }
 
-/* ─── PARENT UNIT ROW (CLEAN ENTERPRISE ELEVATION) ───────────── */
+/* ─── PARENT UNIT ROW ────────────────────────────────────────── */
 tr.unit-header td {
   background: #fafbfc !important;
   font-weight: 600;
@@ -705,7 +705,7 @@ tr.unit-header td:first-child {
   margin-left: 6px;
 }
 
-/* ─── CHILD MEMBER ROW (TREE HIERARCHY) ──────────────────────── */
+/* ─── CHILD MEMBER ROW ───────────────────────────────────────── */
 tr.unit-member td {
   background: #ffffff;
   font-size: 13px;
@@ -1547,7 +1547,7 @@ tr:hover .cust-avatar-badge {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </span>
         <input type="text" id="customerSearch" class="filter-control" placeholder="Search by name, ledger (e.g. 32 Watts), or phone..." autocomplete="off">
-        <button type="button" id="clearSearchBtn" style="display:none;position:absolute;right:34px;top:50%;transform:translateY(-50%);border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 5px;" title="Clear search">✕</button>
+        <button type="button" id="clearSearchBtn" style="display:none;position:absolute;right:34px;top:50%;transform:translateY(-50%);border:none;background:none;color:var(--text-muted);cursor:font-size:13px;padding:2px 5px;" title="Clear search">✕</button>
         <span class="search-kbd-hint">Ctrl + K</span>
         <div id="searchSuggestions" class="suggestions-box"></div>
       </div>
@@ -2033,7 +2033,7 @@ tr:hover .cust-avatar-badge {
           <p>{{ r.remark }}</p>
           <small>{{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}</small>
         </div>
-        {% if request.user.is_accountant %}
+        {% if '*' in permissions or 'customer.edit' in permissions %}
         <form method="post" action="{{ request.get_full_path }}" style="margin:0;">
           {% csrf_token %}
           <input type="hidden" name="delete_remark_id" value="{{ r.id }}">
@@ -2067,7 +2067,7 @@ tr:hover .cust-avatar-badge {
           <p>{{ r.remark }}</p>
           <small>{{ r.salesperson }} · {{ r.created_at|date:"d M Y, H:i" }}</small>
         </div>
-        {% if request.user.is_accountant %}
+        {% if '*' in permissions or 'customer.edit' in permissions %}
         <form method="post" action="{{ request.get_full_path }}" style="margin:0;">
           {% csrf_token %}
           <input type="hidden" name="delete_remark_id" value="{{ r.id }}">

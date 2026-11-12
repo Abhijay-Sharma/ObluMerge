@@ -80,7 +80,7 @@ class Command(BaseCommand):
             """
 
         # Dashboard Link (Update the domain to your actual live URL)
-        dashboard_url = "http://127.0.0.1:8000/customers/payment-followups/"
+        dashboard_url = "https://oblutools.com/customers/payment-followups/"
 
         # HTML Body
         html_content = f"""

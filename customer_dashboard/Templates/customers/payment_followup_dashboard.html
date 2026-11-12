@@ -186,12 +186,12 @@
 
                     <form method="get" style="display:flex; align-items:center; gap:15px;">
 
-                        <!-- 1. SALESPERSON DROPDOWN  -->
-                        {% if is_accountant %}
+                        <!-- 1. DYNAMIC SALESPERSON DROPDOWN (Shown to ANY manager or admin who has a team) -->
+                        {% if salespersons and salespersons.count > 1 %}
                         <div style="display:flex; align-items:center; gap:5px;">
                             <span style="font-size:13px; color:#5f6368;">Salesperson:</span>
                             <select name="salesperson" onchange="this.form.submit()" style="padding:4px 8px; border-radius:4px; border:1px solid #dadce0; font-size:13px;">
-                                <option value="">-- Show All --</option>
+                                <option value="">-- Show All Team --</option>
                                 {% for sp in salespersons %}
                                 <option value="{{ sp.id }}" {% if selected_salesperson == sp.id|stringformat:"s" %}selected{% endif %}>{{ sp.name }}</option>
                                 {% endfor %}
@@ -199,24 +199,15 @@
                         </div>
                         {% endif %}
 
-                        <!-- 2. NEW CUSTOMER SEARCH  -->
+                        <!-- 2. CUSTOMER SEARCH & STATUS FILTERS -->
                         <div class="search-wrapper">
                             <div style="display:flex; align-items:center; gap:5px;">
                                 <span style="font-size:13px; color:#5f6368;">Find Customer:</span>
                                 <input type="text" id="cust-search" name="q" value="{{ search_query }}"
                                        placeholder="Search Customer..." autocomplete="off"
                                        style="padding:4px 8px; border:1px solid #dadce0; border-radius:4px; font-size:13px; width: 250px;">
-                                 <!-- NEW: Ankush's Team Dropdown -->
-                                {% if is_ankush %}
-                                <select name="target_sp" onchange="this.form.submit()" style="padding:4px 8px; border-radius:4px; border:1px solid #dadce0; font-size:13px; background: #fffde7; border-color: #fbc02d;">
-                                    <option value="">-- Show All --</option>
-                                    <option value="Ankush" {% if selected_target_sp == "Ankush" %}selected{% endif %}>My Records</option>
-                                    <option value="Satish" {% if selected_target_sp == "Satish" %}selected{% endif %}>Satish's Records</option>
-                                    <option value="Naveen" {% if selected_target_sp == "Naveen" %}selected{% endif %}>Naveen's Records</option>
-                                </select>
-                                {% endif %}
 
-                                <!-- Credit Period Bypass Filter -->
+                               <!-- Credit Period Bypass Filter -->
                                <div style="display:flex; align-items:center; gap:10px; margin-left: 15px; padding-left: 15px; border-left: 1px solid #dadce0;">
                                     <span style="font-size: 12px; color: #5f6368; font-weight: 600;">FILTER BY:</span>
 
@@ -239,8 +230,6 @@
                                         </label>
                                     </div>
                                </div>
-
-                            <!--<button type="submit" class="btn-sheet btn-blue">Search</button>-->
                             </div>
 
                             <div id="suggestions-box" class="suggestions-list" style="display:none;"></div>
@@ -256,6 +245,8 @@
                             </a>
                         {% endif %}
                     </form>
+
+
                 </div>
 
                 <div style="display:flex; align-items:center; gap:10px; margin-left: 20px;">

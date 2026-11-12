@@ -53,274 +53,104 @@ from datetime import date
 from tally_voucher.models import VoucherEmiPaymentAllocation
 from django.contrib.auth.decorators import login_required
 from .models import CustomerRemark, CrossSellingRemark
+from access_control.mixins import RBACViewMixin   # <-- 1. Import mixin
+from access_control.services import get_user_effective_permissions, can
+from access_control.services import scope_queryset
 
 
-class DashboardHomeView(LoginRequiredMixin, TemplateView):
+
+class DashboardHomeView(RBACViewMixin, TemplateView):
     template_name = "customers/home_page.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-
         user = self.request.user
 
-        # --------------------------------------------------
-        # BASIC USER FLAGS
-        # --------------------------------------------------
+        emp = getattr(user, "employee_profile", None)
+        user_roles = []
+        if emp:
+            for assignment in emp.role_assignments.filter(is_active=True):
+                if assignment.is_currently_valid():
+                    user_roles.append(assignment.role.role_key)
+
+        active_role = user_roles[0] if user_roles else None
+        effective_perms = get_user_effective_permissions(user)
 
         ctx["is_superuser"] = user.is_superuser
-        ctx["is_accountant"] = getattr(user, "is_accountant", False)
+        ctx["is_accountant"] = bool(
+            user.is_superuser
+            or getattr(user, "is_accountant", False)
+            or any(r in user_roles for r in ["admin", "sales_head", "accounts_operations", "business"])
+        )
+        ctx["is_rsm"] = bool("rsm" in user_roles or "sales_head" in user_roles or "admin" in user_roles or user.is_superuser)
+        ctx["is_asm"] = bool("asm" in user_roles or ctx["is_rsm"])
 
-        # --------------------------------------------------
-        # LOGGED-IN SALESPERSON
-        # --------------------------------------------------
-
-        salesperson = SalesPerson.objects.filter(
-            user=user
-        ).first()
-
-        ctx["salesperson"] = salesperson
-
-        # --------------------------------------------------
-        # DEFAULT
-        # --------------------------------------------------
-
-        ctx["is_rsm"] = False
-        ctx["is_asm"] = False
-
-        # --------------------------------------------------
-        # RSM IDENTIFICATION
-        #
-        # Your existing system identifies Ankush and Aman
-        # as RSMs.
-        # --------------------------------------------------
-
-        if salesperson:
-
-            name = (salesperson.name or "").strip().lower()
-
-            if name in ["ankush", "aman"]:
-                ctx["is_rsm"] = True
-
-            else:
-                # A salesperson with a manager is an ASM
-                if salesperson.manager_id:
-                    ctx["is_asm"] = True
-
-        # --------------------------------------------------
-        # POWER USERS
-        # --------------------------------------------------
-
-        if user.is_superuser:
-            ctx["is_rsm"] = True
-            ctx["is_asm"] = True
-
-        elif user.is_accountant:
-            ctx["is_rsm"] = True
-
+        ctx["user_role"] = active_role
+        ctx["user_roles"] = user_roles
+        ctx["permissions"] = effective_perms
+        ctx["salesperson"] = SalesPerson.objects.filter(user=user).first()
         return ctx
 
 
-class AdminSalesPersonCustomersViewLegacy(AccountantRequiredMixin, TemplateView):
+EXCLUDED_SALESPERSON_NAMES = ["Abhijay", "Aryan", "Danish", "Jackson", "Mukesh", "Nimit", "Raman", "test1", "Vibhuti"]
+
+class AdminSalesPersonCustomersView(RBACViewMixin,  TemplateView):
     template_name = "customers/admin_salesperson_customers.html"
+    rbac_permission = "customer.view"
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
+    def _get_visible_salespersons(self, user):
+        """
+        Returns the SalesPerson queryset the logged-in user is allowed to view.
 
-        excluded_names = ["Abhijay","Aryan","Danish","Jackson","Mukesh","Nimit","Raman","test1","Vibhuti"]
+        Accountant:
+            → all salespersons except excluded names
 
-        ctx["salespersons"] = (
+        Everyone else:
+            → their own salesperson profile
+            → salespersons who report to them through manager
+        """
+
+        base_qs = (
             SalesPerson.objects
-            .all()
-            .exclude(name__in=excluded_names)
+            .exclude(name__in=EXCLUDED_SALESPERSON_NAMES)
             .order_by(Lower("name"))
         )
+        return scope_queryset(user, "customer.view", base_qs)
 
-        selected_id = self.request.GET.get("salesperson")
-        status_filter = self.request.GET.get("status", "all")
-        outstanding_filter = self.request.GET.get("outstanding", "all")
+    def _can_view_salesperson(self, user, salesperson_id):
+        """
+        Check whether the logged-in user is allowed
+        to view this salesperson.
+        """
 
-        ctx["status_filter"] = status_filter
-        ctx["outstanding_filter"] = outstanding_filter
-
-        if not selected_id:
-            ctx["customers"] = []
-            ctx["selected_salesperson"] = None
-            return ctx
-
-        salesperson = SalesPerson.objects.filter(id=selected_id).first()
-        ctx["selected_salesperson"] = salesperson
-
-        if not salesperson:
-            ctx["customers"] = []
-            return ctx
-
-        # ---------------- BASE QUERY ----------------
-        customers = Customer.objects.filter(
-            salesperson=salesperson
-        ).select_related("credit_profile")
-
-        # ---------------- OUTSTANDING FILTER (DB LEVEL) ----------------
-        if outstanding_filter == "due":
-            customers = customers.filter(
-                credit_profile__outstanding_balance__gt=0
-            )
-
-        elif outstanding_filter == "clear":
-            customers = customers.filter(
-                Q(credit_profile__outstanding_balance__lte=0) |
-                Q(credit_profile__isnull=True)
-            )
-
-        cutoff_date = date.today() - timedelta(days=90)
-
-        # ---------------- CUSTOMER LOOP ----------------
-        customers = list(customers)
-
-        for customer in customers:
-
-            customer.remarks_list = customer.remarks.select_related(
-                "salesperson", "salesperson__user"
-            ).order_by("-created_at")
-
-            customer.followups_list = customer.followups.select_related(
-                "salesperson", "salesperson__user"
-            ).order_by("-followup_date")
-
-            credit_profile = getattr(customer, "credit_profile", None)
-            customer.trial_balance = (
-                credit_profile.outstanding_balance if credit_profile else None
-            )
-
-            vouchers = Voucher.objects.filter(
-                party_name__iexact=customer.name
-            ).order_by("-date")
-
-            customer.vouchers_list = vouchers
-
-            tax_invoice_vouchers = vouchers.filter(
-                voucher_type="TAX INVOICE"
-            )
-
-            customer.last_order_date = (
-                tax_invoice_vouchers.first().date
-                if tax_invoice_vouchers.exists()
-                else None
-            )
-
-            customer.total_orders = tax_invoice_vouchers.count()
-
-            total_value = 0
-            for v in tax_invoice_vouchers:
-                total_row = v.rows.filter(
-                    ledger__iexact=v.party_name
-                ).first()
-                if total_row:
-                    total_value += total_row.amount
-
-            customer.total_order_value = total_value
-
-            customer.is_red_flag = (
-                    customer.last_order_date is None
-                    or customer.last_order_date < cutoff_date
-            )
-
-        # ---------------- STATUS FILTER (PYTHON LEVEL) ----------------
-        if status_filter == "active":
-            customers = [c for c in customers if not c.is_red_flag]
-
-        elif status_filter == "inactive":
-            customers = [c for c in customers if c.is_red_flag]
-
-        # ---------------- STATS ----------------
-        active = sum(1 for c in customers if not c.is_red_flag)
-        inactive = sum(1 for c in customers if c.is_red_flag)
-
-        outstanding_count = sum(
-            1 for c in customers
-            if c.trial_balance and c.trial_balance > 0
+        return (
+            self._get_visible_salespersons(user)
+            .filter(id=salesperson_id)
+            .exists()
         )
 
-        total_outstanding_amount = sum(
-            c.trial_balance for c in customers
-            if c.trial_balance and c.trial_balance > 0
-        )
-
-        # ---------------- FOLLOWUPS ----------------
-        today = date.today()
-
-        all_followups = CustomerFollowUp.objects.filter(
-            salesperson=salesperson
-        ).select_related("customer").order_by("followup_date")
-
-        ctx["followups_previous"] = all_followups.filter(
-            followup_date__lt=today
-        )
-        ctx["followups_today"] = all_followups.filter(
-            followup_date=today
-        )
-        ctx["followups_future"] = all_followups.filter(
-            followup_date__gt=today
-        )
-
-        # ---------------- CONTEXT ----------------
-        ctx["customers"] = customers
-        ctx["active_count"] = active
-        ctx["inactive_count"] = inactive
-        ctx["outstanding_count"] = outstanding_count
-        ctx["total_outstanding_amount"] = total_outstanding_amount
-
-        return ctx
-
-    def post(self, request, *args, **kwargs):
-
-        # Preserve existing filters automatically
-        redirect_url = request.get_full_path()
-        scroll_to = request.POST.get("scroll_to")  # reads a value sent from the form
-
-        # DELETE REMARK
-        delete_id = request.POST.get("delete_remark_id")
-        if delete_id and request.user.is_accountant:
-
-            remark = get_object_or_404(CustomerRemark, id=delete_id)
-            remark.delete()
-            messages.success(request, "Remark deleted successfully 🗑️")
-            return redirect(f"{redirect_url}#{scroll_to}")
-
-        # ADD REMARK
-        remark_text = request.POST.get("remark", "").strip()
-        customer_id = request.POST.get("customer_id")
-
-        if not customer_id or not remark_text:
-            return redirect(f"{redirect_url}#{scroll_to}")
-
-        customer = get_object_or_404(Customer, id=customer_id)
-        salesperson = request.user.salesperson_profile.first()
-
-        CustomerRemark.objects.create(
-            customer=customer,
-            salesperson=salesperson,
-            remark=remark_text
-        )
-
-        messages.success(request, "Remark added successfully ✅")
-        return redirect(f"{redirect_url}#{scroll_to}")
-
-class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
-    template_name = "customers/admin_salesperson_customers.html"
+    def _get_salesperson_from_request(self, request):
+        sid = request.GET.get("salesperson") or request.POST.get("salesperson_id")
+        if sid:
+            return SalesPerson.objects.filter(id=sid).first()
+        return None
 
     # ------------------------------------------------------------------ #
     #  GET                                                                  #
     # ------------------------------------------------------------------ #
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        user = self.request.user
 
-        excluded_names = ["Abhijay","Aryan","Danish","Jackson","Mukesh","Nimit","Raman","test1","Vibhuti"]
+        visible_salespersons = self._get_visible_salespersons(
+            user
+        )
 
-        ctx["salespersons"] = (
-            SalesPerson.objects
-            .all()
-            .exclude(name__in=excluded_names)
-            .order_by(Lower("name"))
+        ctx["salespersons"] = visible_salespersons
+
+        ctx["salesperson_picker_hidden"] = (
+                not self.request.user.is_superuser
+                and visible_salespersons.count() <= 1
         )
 
         selected_id = self.request.GET.get("salesperson")
@@ -331,17 +161,20 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         ctx["outstanding_filter"] = outstanding_filter
 
         if not selected_id:
-            ctx["customers"] = []
-            ctx["units"] = []
-            ctx["selected_salesperson"] = None
+            own = SalesPerson.objects.filter(user=user).first()
+            if own and self._can_view_salesperson(user, own.id):
+                selected_id = str(own.id)
+            elif visible_salespersons.exists():
+                selected_id = str(visible_salespersons.first().id)
+        if not selected_id or not self._can_view_salesperson(user, selected_id):
+            ctx.update({"customers": [], "units": [], "selected_salesperson": None})
             return ctx
 
         salesperson = SalesPerson.objects.filter(id=selected_id).first()
         ctx["selected_salesperson"] = salesperson
 
         if not salesperson:
-            ctx["customers"] = []
-            ctx["units"] = []
+            ctx.update({"customers": [], "units": []})
             return ctx
 
         # ── BASE QUERY ────────────────────────────────────────────────── #
@@ -406,13 +239,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
                     or customer.last_order_date < cutoff_date
             )
 
-        # ── STATUS FILTER (PYTHON LEVEL) ──────────────────────────────── #
-        if status_filter == "active":
-            customers = [c for c in customers if not c.is_red_flag]
-        elif status_filter == "inactive":
-            customers = [c for c in customers if c.is_red_flag]
-
-        # ── BUILD UNITS + STANDALONE LIST ────────────────────────────── #
+        # ── BUILD UNITS + STANDALONE LIST (ALL CUSTOMERS) ─────────────── #
         # Map unit_id → list of enriched customers
         unit_map = {}  # {unit_id: {"unit": CustomerUnit, "members": [...]}}
         standalone = []  # customers not in any unit
@@ -427,17 +254,17 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             else:
                 standalone.append(customer)
 
-        # Build enriched unit objects
+        # Build enriched unit objects with complete member telemetry
         enriched_units = []
         for uid, data in unit_map.items():
             unit_obj = data["unit"]
             members = data["members"]
             unit_obj.members = members
 
-            # unit is active if at least one member is active
+            # Unit is active if at least one member is active; inactive only if ALL members are inactive
             unit_obj.is_red_flag = all(m.is_red_flag for m in members)
 
-            # aggregate financials for display
+            # Aggregate financials for display
             unit_obj.total_orders = sum(m.total_orders for m in members)
             unit_obj.total_order_value = sum(m.total_order_value for m in members)
 
@@ -455,11 +282,7 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
             enriched_units.append(unit_obj)
 
-        # ── ALL UNITS FOR THIS SALESPERSON (for "add to existing unit" dropdown) #
-        all_units = CustomerUnit.objects.filter(salesperson=salesperson).order_by("name")
-
-        # ── STATS (across both units and standalone) ──────────────────── #
-        # Each unit counts as 1; each standalone counts as 1
+        # ── STATS (across both units and standalone for this salesperson) ── #
         all_display_items = enriched_units + standalone
         active_count = sum(1 for x in all_display_items if not x.is_red_flag)
         inactive_count = sum(1 for x in all_display_items if x.is_red_flag)
@@ -473,6 +296,21 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
                 outstanding_count += 1
                 total_outstanding_amount += bal
 
+        # ── STATUS FILTER (DISPLAY LEVEL) ─────────────────────────────── #
+        # Filter units and standalone without distorting the unit classification
+        if status_filter == "active":
+            displayed_units = [u for u in enriched_units if not u.is_red_flag]
+            displayed_standalone = [c for c in standalone if not c.is_red_flag]
+        elif status_filter == "inactive":
+            displayed_units = [u for u in enriched_units if u.is_red_flag]
+            displayed_standalone = [c for c in standalone if c.is_red_flag]
+        else:
+            displayed_units = enriched_units
+            displayed_standalone = standalone
+
+        # ── ALL UNITS FOR THIS SALESPERSON (for "add to existing unit" dropdown) #
+        all_units = CustomerUnit.objects.filter(salesperson=salesperson).order_by("name")
+
         # ── FOLLOW-UPS ────────────────────────────────────────────────── #
         today = date.today()
 
@@ -485,8 +323,8 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
         ctx["followups_future"] = all_followups.filter(followup_date__gt=today)
 
         # ── CONTEXT ───────────────────────────────────────────────────── #
-        ctx["customers"] = standalone  # standalone (no unit)
-        ctx["units"] = enriched_units  # unit groups
+        ctx["customers"] = displayed_standalone  # standalone (no unit)
+        ctx["units"] = displayed_units  # unit groups
         ctx["all_units"] = all_units  # for dropdown
         ctx["total_display_count"] = total_display
         ctx["active_count"] = active_count
@@ -506,12 +344,14 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
 
         # ── DELETE REMARK ─────────────────────────────────────────────── #
         delete_id = request.POST.get("delete_remark_id")
-        if delete_id and request.user.is_accountant:
-            remark = get_object_or_404(CustomerRemark, id=delete_id)
-            remark.delete()
-            messages.success(request, "Remark deleted successfully 🗑️")
+        if delete_id:
+            if can(request.user, "customer.edit"):
+                remark = get_object_or_404(CustomerRemark, id=delete_id)
+                remark.delete()
+                messages.success(request, "Remark deleted successfully 🗑️")
+            else:
+                messages.error(request, "You do not have permission to delete remarks.")
             return redirect(f"{redirect_url}#{scroll_to}")
-
         # ── ADD REMARK ────────────────────────────────────────────────── #
         remark_text = request.POST.get("remark", "").strip()
         customer_id = request.POST.get("customer_id")
@@ -598,787 +438,14 @@ class AdminSalesPersonCustomersView(AccountantRequiredMixin, TemplateView):
             return SalesPerson.objects.filter(id=sid).first()
         return None
 
-# access level based
-# Names always excluded from the salesperson dropdown regardless of role
-EXCLUDED_SALESPERSON_NAMES = ["Abhijay","Aryan","Danish","Jackson","Mukesh","Nimit","Raman","test1","Vibhuti"]
-class AdminSalesPersonCustomersView(LoginRequiredMixin,TemplateView):
-    template_name = "customers/admin_salesperson_customers.html"
-
-    # ------------------------------------------------------------------ #
-    #  ACCESS HELPERS                                                       #
-    # ------------------------------------------------------------------ #
-
-    def _get_visible_salespersons(self, user):
-        """
-        Returns the SalesPerson queryset the logged-in user is allowed to view.
-
-        - Accountant  → all salespersons (minus excluded names)
-        - Everyone else → only themselves + any salesperson who has set this
-                          user's salesperson profile as their manager
-        """
-        base_qs = (
-            SalesPerson.objects
-            .exclude(name__in=EXCLUDED_SALESPERSON_NAMES)
-            .order_by(Lower("name"))
-        )
-
-        if user.is_accountant:
-            return base_qs
-
-        # Get the salesperson profile(s) for this user
-        own_profiles = SalesPerson.objects.filter(user=user)
-        if not own_profiles.exists():
-            return SalesPerson.objects.none()
-
-        own_profile = own_profiles.first()
-
-        # Visible = own profile + salespersons who report to them as manager
-        visible_ids = list(own_profiles.values_list("id", flat=True))
-        team_ids = list(
-            SalesPerson.objects.filter(manager=own_profile)
-            .values_list("id", flat=True)
-        )
-        visible_ids += team_ids
-
-        return base_qs.filter(id__in=visible_ids)
-
-    def _can_view_salesperson(self, user, salesperson_id):
-        """Returns True if user is allowed to view the given salesperson's data."""
-        return self._get_visible_salespersons(user).filter(id=salesperson_id).exists()
-
-    # ------------------------------------------------------------------ #
-    #  GET                                                                  #
-    # ------------------------------------------------------------------ #
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-
-        visible_salespersons = self._get_visible_salespersons(self.request.user)
-        ctx["salespersons"] = visible_salespersons
-
-        # Hide the picker when non-accountant has exactly one visible option
-        ctx["salesperson_picker_hidden"] = (
-                not self.request.user.is_accountant
-                and visible_salespersons.count() == 1
-        )
-
-        selected_id = self.request.GET.get("salesperson")
-        status_filter = self.request.GET.get("status", "all")
-        outstanding_filter = self.request.GET.get("outstanding", "all")
-
-        ctx["status_filter"] = status_filter
-        ctx["outstanding_filter"] = outstanding_filter
-
-        # Auto-select own profile for non-accountants when no ?salesperson= given
-        if not selected_id and not self.request.user.is_accountant:
-            own = SalesPerson.objects.filter(user=self.request.user).first()
-            if own and self._can_view_salesperson(self.request.user, own.id):
-                selected_id = str(own.id)
-
-        if not selected_id:
-            ctx["customers"] = []
-            ctx["units"] = []
-            ctx["selected_salesperson"] = None
-            return ctx
-
-        # ACCESS GUARD — silently redirect to own profile if not allowed
-        if not self._can_view_salesperson(self.request.user, selected_id):
-            own = SalesPerson.objects.filter(user=self.request.user).first()
-            if own:
-                selected_id = str(own.id)
-            else:
-                ctx.update({"customers": [], "units": [], "selected_salesperson": None, "access_denied": True})
-                return ctx
-
-        salesperson = SalesPerson.objects.filter(id=selected_id).first()
-        ctx["selected_salesperson"] = salesperson
-
-        if not salesperson:
-            ctx["customers"] = []
-            ctx["units"] = []
-            return ctx
-
-        # ── BASE QUERY ────────────────────────────────────────────────── #
-        customers_qs = Customer.objects.filter(
-            salesperson=salesperson
-        ).select_related("credit_profile", "unit_membership__unit")
-
-        # ── OUTSTANDING FILTER (DB LEVEL) ─────────────────────────────── #
-        if outstanding_filter == "due":
-            customers_qs = customers_qs.filter(
-                credit_profile__outstanding_balance__gt=0
-            )
-        elif outstanding_filter == "clear":
-            customers_qs = customers_qs.filter(
-                Q(credit_profile__outstanding_balance__lte=0) |
-                Q(credit_profile__isnull=True)
-            )
-
-        cutoff_date = date.today() - timedelta(days=90)
-
-        # ── ENRICH EACH CUSTOMER ──────────────────────────────────────── #
-        customers = list(customers_qs)
-
-        for customer in customers:
-            customer.remarks_list = customer.remarks.select_related(
-                "salesperson", "salesperson__user"
-            ).order_by("-created_at")
-
-            customer.followups_list = customer.followups.select_related(
-                "salesperson", "salesperson__user"
-            ).order_by("-followup_date")
-
-            credit_profile = getattr(customer, "credit_profile", None)
-            customer.trial_balance = (
-                credit_profile.outstanding_balance if credit_profile else None
-            )
-
-            vouchers = Voucher.objects.filter(
-                party_name__iexact=customer.name
-            ).order_by("-date")
-
-            customer.vouchers_list = vouchers
-            tax_invoices = vouchers.filter(voucher_type="TAX INVOICE")
-
-            customer.last_order_date = (
-                tax_invoices.first().date if tax_invoices.exists() else None
-            )
-            customer.total_orders = tax_invoices.count()
-
-            total_value = 0
-            for v in tax_invoices:
-                total_row = v.rows.filter(ledger__iexact=v.party_name).first()
-                if total_row:
-                    total_value += total_row.amount
-            customer.total_order_value = total_value
-
-            customer.is_red_flag = (
-                    customer.last_order_date is None
-                    or customer.last_order_date < cutoff_date
-            )
-
-        # ── STATUS FILTER (PYTHON LEVEL) ──────────────────────────────── #
-        if status_filter == "active":
-            customers = [c for c in customers if not c.is_red_flag]
-        elif status_filter == "inactive":
-            customers = [c for c in customers if c.is_red_flag]
-
-        # ── BUILD UNITS + STANDALONE LIST ────────────────────────────── #
-        unit_map = {}
-        standalone = []
-
-        for customer in customers:
-            membership = getattr(customer, "unit_membership", None)
-            if membership:
-                uid = membership.unit_id
-                if uid not in unit_map:
-                    unit_map[uid] = {"unit": membership.unit, "members": []}
-                unit_map[uid]["members"].append(customer)
-            else:
-                standalone.append(customer)
-
-        enriched_units = []
-        for uid, data in unit_map.items():
-            unit_obj = data["unit"]
-            members = data["members"]
-            unit_obj.members = members
-            unit_obj.is_red_flag = all(m.is_red_flag for m in members)
-            unit_obj.total_orders = sum(m.total_orders for m in members)
-            unit_obj.total_order_value = sum(m.total_order_value for m in members)
-
-            outstanding_members = [m for m in members if m.trial_balance and m.trial_balance > 0]
-            unit_obj.trial_balance = (
-                sum(m.trial_balance for m in outstanding_members)
-                if outstanding_members else None
-            )
-
-            last_dates = [m.last_order_date for m in members if m.last_order_date]
-            unit_obj.last_order_date = max(last_dates) if last_dates else None
-
-            enriched_units.append(unit_obj)
-
-        all_units = CustomerUnit.objects.filter(salesperson=salesperson).order_by("name")
-
-        # ── STATS ─────────────────────────────────────────────────────── #
-        all_display_items = enriched_units + standalone
-        active_count = sum(1 for x in all_display_items if not x.is_red_flag)
-        inactive_count = sum(1 for x in all_display_items if x.is_red_flag)
-        total_display = len(all_display_items)
-
-        outstanding_count = 0
-        total_outstanding_amount = 0
-        for x in all_display_items:
-            bal = getattr(x, "trial_balance", None)
-            if bal and bal > 0:
-                outstanding_count += 1
-                total_outstanding_amount += bal
-
-        # ── FOLLOW-UPS ────────────────────────────────────────────────── #
-        today = date.today()
-        all_followups = CustomerFollowUp.objects.filter(
-            salesperson=salesperson
-        ).select_related("customer").order_by("followup_date")
-
-        ctx["followups_previous"] = all_followups.filter(followup_date__lt=today)
-        ctx["followups_today"] = all_followups.filter(followup_date=today)
-        ctx["followups_future"] = all_followups.filter(followup_date__gt=today)
-
-        ctx["customers"] = standalone
-        ctx["units"] = enriched_units
-        ctx["all_units"] = all_units
-        ctx["total_display_count"] = total_display
-        ctx["active_count"] = active_count
-        ctx["inactive_count"] = inactive_count
-        ctx["outstanding_count"] = outstanding_count
-        ctx["total_outstanding_amount"] = total_outstanding_amount
-
-        return ctx
-
-    # ------------------------------------------------------------------ #
-    #  POST                                                                 #
-    # ------------------------------------------------------------------ #
-
-    def post(self, request, *args, **kwargs):
-        redirect_url = request.get_full_path()
-        scroll_to = request.POST.get("scroll_to", "")
-        action = request.POST.get("action", "")
-
-        # POST-level access guard
-        target_sp = self._get_salesperson_from_request(request)
-        if target_sp and not self._can_view_salesperson(request.user, target_sp.id):
-            messages.error(request, "You don't have permission to modify this data.")
-            return redirect(redirect_url)
-
-        # ── DELETE REMARK ─────────────────────────────────────────────── #
-        delete_id = request.POST.get("delete_remark_id")
-        if delete_id and request.user.is_accountant:
-            remark = get_object_or_404(CustomerRemark, id=delete_id)
-            remark.delete()
-            messages.success(request, "Remark deleted successfully 🗑️")
-            return redirect(f"{redirect_url}#{scroll_to}")
-
-        # ── ADD REMARK ────────────────────────────────────────────────── #
-        remark_text = request.POST.get("remark", "").strip()
-        customer_id = request.POST.get("customer_id")
-
-        if remark_text and customer_id:
-            customer = get_object_or_404(Customer, id=customer_id)
-            salesperson = request.user.salesperson_profile.first()
-            CustomerRemark.objects.create(
-                customer=customer,
-                salesperson=salesperson,
-                remark=remark_text
-            )
-            messages.success(request, "Remark added successfully ✅")
-            return redirect(f"{redirect_url}#{scroll_to}")
-
-        # ── CREATE UNIT ───────────────────────────────────────────────── #
-        if action == "create_unit":
-            unit_name = request.POST.get("unit_name", "").strip()
-            cid = request.POST.get("customer_id")
-            salesperson = target_sp
-            if unit_name and cid and salesperson:
-                customer = get_object_or_404(Customer, id=cid)
-                unit, _ = CustomerUnit.objects.get_or_create(
-                    name=unit_name, salesperson=salesperson
-                )
-                CustomerUnitMembership.objects.get_or_create(
-                    customer=customer, defaults={"unit": unit}
-                )
-                messages.success(request, f"Unit '{unit_name}' created ✅")
-            return redirect(redirect_url)
-
-        # ── ADD TO EXISTING UNIT ──────────────────────────────────────── #
-        if action == "add_to_unit":
-            unit_id = request.POST.get("unit_id")
-            cid = request.POST.get("customer_id")
-            if unit_id and cid:
-                customer = get_object_or_404(Customer, id=cid)
-                unit = get_object_or_404(CustomerUnit, id=unit_id)
-                CustomerUnitMembership.objects.filter(customer=customer).delete()
-                CustomerUnitMembership.objects.create(customer=customer, unit=unit)
-                messages.success(request, f"Added to unit '{unit.name}' ✅")
-            return redirect(redirect_url)
-
-        # ── LEAVE UNIT ────────────────────────────────────────────────── #
-        if action == "leave_unit":
-            cid = request.POST.get("customer_id")
-            if cid:
-                CustomerUnitMembership.objects.filter(customer_id=cid).delete()
-                messages.success(request, "Customer removed from unit ✅")
-            return redirect(redirect_url)
-
-        # ── RENAME UNIT ───────────────────────────────────────────────── #
-        if action == "rename_unit":
-            unit_id = request.POST.get("unit_id")
-            new_name = request.POST.get("unit_name", "").strip()
-            if unit_id and new_name:
-                unit = get_object_or_404(CustomerUnit, id=unit_id)
-                unit.name = new_name
-                unit.save()
-                messages.success(request, f"Unit renamed to '{new_name}' ✅")
-            return redirect(redirect_url)
-
-        # ── DELETE UNIT ───────────────────────────────────────────────── #
-        if action == "delete_unit":
-            unit_id = request.POST.get("unit_id")
-            if unit_id:
-                unit = get_object_or_404(CustomerUnit, id=unit_id)
-                unit.delete()
-                messages.success(request, "Unit deleted. Customers are now standalone ✅")
-            return redirect(redirect_url)
-
-        return redirect(redirect_url)
-
-    # ── HELPER ────────────────────────────────────────────────────────── #
-
-    def _get_salesperson_from_request(self, request):
-        """Return the SalesPerson for the current page context."""
-        sid = request.GET.get("salesperson") or request.POST.get("salesperson_id")
-        if sid:
-            return SalesPerson.objects.filter(id=sid).first()
-        return None
-
-#gagan version
-class AdminSalesPersonCustomersView(LoginRequiredMixin,TemplateView):
-    template_name = "customers/admin_salesperson_customers.html"
-
-    # ------------------------------------------------------------------ #
-    #  ACCESS HELPERS                                                       #
-    # ------------------------------------------------------------------ #
-
-    def _get_visible_salespersons(self, user):
-        """
-        Returns the SalesPerson queryset the logged-in user is allowed to view.
-
-        - Accountant  → all salespersons (minus excluded names)
-        - Everyone else → only themselves + any salesperson who has set this
-                          user's salesperson profile as their manager
-        """
-        base_qs = (
-            SalesPerson.objects
-            .exclude(name__in=EXCLUDED_SALESPERSON_NAMES)
-            .order_by(Lower("name"))
-        )
-
-        if user.is_accountant:
-            return base_qs
-
-        # Get the salesperson profile(s) for this user
-        own_profiles = SalesPerson.objects.filter(user=user)
-        if not own_profiles.exists():
-            return SalesPerson.objects.none()
-
-        own_profile = own_profiles.first()
-
-        # Visible = own profile + salespersons who report to them as manager
-        visible_ids = list(own_profiles.values_list("id", flat=True))
-        team_ids = list(
-            SalesPerson.objects.filter(manager=own_profile)
-            .values_list("id", flat=True)
-        )
-        visible_ids += team_ids
-
-        return base_qs.filter(id__in=visible_ids)
-
-    def _can_view_salesperson(self, user, salesperson_id):
-        """Returns True if user is allowed to view the given salesperson's data."""
-        return self._get_visible_salespersons(user).filter(id=salesperson_id).exists()
-
-    # ------------------------------------------------------------------ #
-    #  GET                                                                  #
-    # ------------------------------------------------------------------ #
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-
-        visible_salespersons = self._get_visible_salespersons(self.request.user)
-        ctx["salespersons"] = visible_salespersons
-
-        # Hide the picker when non-accountant has exactly one visible option
-        ctx["salesperson_picker_hidden"] = (
-                not self.request.user.is_accountant
-                and visible_salespersons.count() == 1
-        )
-
-        selected_id = self.request.GET.get("salesperson")
-        status_filter = self.request.GET.get("status", "all")
-        outstanding_filter = self.request.GET.get("outstanding", "all")
-
-        ctx["status_filter"] = status_filter
-        ctx["outstanding_filter"] = outstanding_filter
-
-        # Auto-select own profile for non-accountants when no ?salesperson= given
-        if not selected_id and not self.request.user.is_accountant:
-            own = SalesPerson.objects.filter(user=self.request.user).first()
-            if own and self._can_view_salesperson(self.request.user, own.id):
-                selected_id = str(own.id)
-
-        if not selected_id:
-            ctx["customers"] = []
-            ctx["units"] = []
-            ctx["selected_salesperson"] = None
-            return ctx
-
-        # ACCESS GUARD — silently redirect to own profile if not allowed
-        if not self._can_view_salesperson(self.request.user, selected_id):
-            own = SalesPerson.objects.filter(user=self.request.user).first()
-            if own:
-                selected_id = str(own.id)
-            else:
-                ctx.update({"customers": [], "units": [], "selected_salesperson": None, "access_denied": True})
-                return ctx
-
-        salesperson = SalesPerson.objects.filter(id=selected_id).first()
-        ctx["selected_salesperson"] = salesperson
-
-        if not salesperson:
-            ctx["customers"] = []
-            ctx["units"] = []
-            return ctx
-
-        # ── BASE QUERY ────────────────────────────────────────────────── #
-        customers_qs = Customer.objects.filter(
-            salesperson=salesperson
-        ).select_related("credit_profile", "unit_membership__unit")
-
-        # ── OUTSTANDING FILTER (DB LEVEL) ─────────────────────────────── #
-        if outstanding_filter == "due":
-            customers_qs = customers_qs.filter(
-                credit_profile__outstanding_balance__gt=0
-            )
-        elif outstanding_filter == "clear":
-            customers_qs = customers_qs.filter(
-                Q(credit_profile__outstanding_balance__lte=0) |
-                Q(credit_profile__isnull=True)
-            )
-
-        cutoff_date = date.today() - timedelta(days=90)
-
-        # ── ENRICH EACH CUSTOMER ──────────────────────────────────────── #
-        customers = list(customers_qs)
-
-        for customer in customers:
-            customer.remarks_list = customer.remarks.select_related(
-                "salesperson", "salesperson__user"
-            ).order_by("-created_at")
-
-            customer.followups_list = customer.followups.select_related(
-                "salesperson", "salesperson__user"
-            ).order_by("-followup_date")
-
-            credit_profile = getattr(customer, "credit_profile", None)
-            customer.trial_balance = (
-                credit_profile.outstanding_balance if credit_profile else None
-            )
-
-            vouchers = Voucher.objects.filter(
-                party_name__iexact=customer.name
-            ).order_by("-date")
-
-            customer.vouchers_list = vouchers
-            tax_invoices = vouchers.filter(voucher_type="TAX INVOICE")
-
-            customer.last_order_date = (
-                tax_invoices.first().date if tax_invoices.exists() else None
-            )
-            customer.total_orders = tax_invoices.count()
-
-            total_value = 0
-            for v in tax_invoices:
-                total_row = v.rows.filter(ledger__iexact=v.party_name).first()
-                if total_row:
-                    total_value += total_row.amount
-            customer.total_order_value = total_value
-
-            customer.is_red_flag = (
-                    customer.last_order_date is None
-                    or customer.last_order_date < cutoff_date
-            )
-
-        # ── BUILD UNITS + STANDALONE LIST (ALL CUSTOMERS) ─────────────── #
-        unit_map = {}
-        standalone = []
-
-        for customer in customers:
-            membership = getattr(customer, "unit_membership", None)
-            if membership:
-                uid = membership.unit_id
-                if uid not in unit_map:
-                    unit_map[uid] = {"unit": membership.unit, "members": []}
-                unit_map[uid]["members"].append(customer)
-            else:
-                standalone.append(customer)
-
-        enriched_units = []
-        for uid, data in unit_map.items():
-            unit_obj = data["unit"]
-            members = data["members"]
-            unit_obj.members = members
-            # Unit is active if at least one member is active; inactive only if ALL members are inactive
-            unit_obj.is_red_flag = all(m.is_red_flag for m in members)
-            unit_obj.total_orders = sum(m.total_orders for m in members)
-            unit_obj.total_order_value = sum(m.total_order_value for m in members)
-
-            outstanding_members = [m for m in members if m.trial_balance and m.trial_balance > 0]
-            unit_obj.trial_balance = (
-                sum(m.trial_balance for m in outstanding_members)
-                if outstanding_members else None
-            )
-
-            last_dates = [m.last_order_date for m in members if m.last_order_date]
-            unit_obj.last_order_date = max(last_dates) if last_dates else None
-
-            enriched_units.append(unit_obj)
-
-        all_units = CustomerUnit.objects.filter(salesperson=salesperson).order_by("name")
-
-        # ── STATS (across both units and standalone for this salesperson) ── #
-        all_display_items = enriched_units + standalone
-        active_count = sum(1 for x in all_display_items if not x.is_red_flag)
-        inactive_count = sum(1 for x in all_display_items if x.is_red_flag)
-        total_display = len(all_display_items)
-
-        outstanding_count = 0
-        total_outstanding_amount = 0
-        for x in all_display_items:
-            bal = getattr(x, "trial_balance", None)
-            if bal and bal > 0:
-                outstanding_count += 1
-                total_outstanding_amount += bal
-
-        # ── STATUS FILTER (DISPLAY LEVEL) ─────────────────────────────── #
-        if status_filter == "active":
-            displayed_units = [u for u in enriched_units if not u.is_red_flag]
-            displayed_standalone = [c for c in standalone if not c.is_red_flag]
-        elif status_filter == "inactive":
-            displayed_units = [u for u in enriched_units if u.is_red_flag]
-            displayed_standalone = [c for c in standalone if c.is_red_flag]
-        else:
-            displayed_units = enriched_units
-            displayed_standalone = standalone
-
-        # ── FOLLOW-UPS ────────────────────────────────────────────────── #
-        today = date.today()
-        all_followups = CustomerFollowUp.objects.filter(
-            salesperson=salesperson
-        ).select_related("customer").order_by("followup_date")
-
-        ctx["followups_previous"] = all_followups.filter(followup_date__lt=today)
-        ctx["followups_today"] = all_followups.filter(followup_date=today)
-        ctx["followups_future"] = all_followups.filter(followup_date__gt=today)
-
-        ctx["customers"] = displayed_standalone
-        ctx["units"] = displayed_units
-        ctx["all_units"] = all_units
-        ctx["total_display_count"] = total_display
-        ctx["active_count"] = active_count
-        ctx["inactive_count"] = inactive_count
-        ctx["outstanding_count"] = outstanding_count
-        ctx["total_outstanding_amount"] = total_outstanding_amount
-
-        return ctx
-
-    # ------------------------------------------------------------------ #
-    #  POST                                                                 #
-    # ------------------------------------------------------------------ #
-
-    def post(self, request, *args, **kwargs):
-        redirect_url = request.get_full_path()
-        scroll_to = request.POST.get("scroll_to", "")
-        action = request.POST.get("action", "")
-
-        # POST-level access guard
-        target_sp = self._get_salesperson_from_request(request)
-        if target_sp and not self._can_view_salesperson(request.user, target_sp.id):
-            messages.error(request, "You don't have permission to modify this data.")
-            return redirect(redirect_url)
-
-        # ── DELETE REMARK ─────────────────────────────────────────────── #
-        delete_id = request.POST.get("delete_remark_id")
-        if delete_id and request.user.is_accountant:
-            remark = get_object_or_404(CustomerRemark, id=delete_id)
-            remark.delete()
-            messages.success(request, "Remark deleted successfully 🗑️")
-            return redirect(f"{redirect_url}#{scroll_to}")
-
-        # ── ADD REMARK ────────────────────────────────────────────────── #
-        remark_text = request.POST.get("remark", "").strip()
-        customer_id = request.POST.get("customer_id")
-
-        if remark_text and customer_id:
-            customer = get_object_or_404(Customer, id=customer_id)
-            salesperson = request.user.salesperson_profile.first()
-            CustomerRemark.objects.create(
-                customer=customer,
-                salesperson=salesperson,
-                remark=remark_text
-            )
-            messages.success(request, "Remark added successfully ✅")
-            return redirect(f"{redirect_url}#{scroll_to}")
-
-        # ── CREATE UNIT ───────────────────────────────────────────────── #
-        if action == "create_unit":
-            unit_name = request.POST.get("unit_name", "").strip()
-            cid = request.POST.get("customer_id")
-            salesperson = target_sp
-            if unit_name and cid and salesperson:
-                customer = get_object_or_404(Customer, id=cid)
-                unit, _ = CustomerUnit.objects.get_or_create(
-                    name=unit_name, salesperson=salesperson
-                )
-                CustomerUnitMembership.objects.get_or_create(
-                    customer=customer, defaults={"unit": unit}
-                )
-                messages.success(request, f"Unit '{unit_name}' created ✅")
-            return redirect(redirect_url)
-
-        # ── ADD TO EXISTING UNIT ──────────────────────────────────────── #
-        if action == "add_to_unit":
-            unit_id = request.POST.get("unit_id")
-            cid = request.POST.get("customer_id")
-            if unit_id and cid:
-                customer = get_object_or_404(Customer, id=cid)
-                unit = get_object_or_404(CustomerUnit, id=unit_id)
-                CustomerUnitMembership.objects.filter(customer=customer).delete()
-                CustomerUnitMembership.objects.create(customer=customer, unit=unit)
-                messages.success(request, f"Added to unit '{unit.name}' ✅")
-            return redirect(redirect_url)
-
-        # ── LEAVE UNIT ────────────────────────────────────────────────── #
-        if action == "leave_unit":
-            cid = request.POST.get("customer_id")
-            if cid:
-                CustomerUnitMembership.objects.filter(customer_id=cid).delete()
-                messages.success(request, "Customer removed from unit ✅")
-            return redirect(redirect_url)
-
-        # ── RENAME UNIT ───────────────────────────────────────────────── #
-        if action == "rename_unit":
-            unit_id = request.POST.get("unit_id")
-            new_name = request.POST.get("unit_name", "").strip()
-            if unit_id and new_name:
-                unit = get_object_or_404(CustomerUnit, id=unit_id)
-                unit.name = new_name
-                unit.save()
-                messages.success(request, f"Unit renamed to '{new_name}' ✅")
-            return redirect(redirect_url)
-
-        # ── DELETE UNIT ───────────────────────────────────────────────── #
-        if action == "delete_unit":
-            unit_id = request.POST.get("unit_id")
-            if unit_id:
-                unit = get_object_or_404(CustomerUnit, id=unit_id)
-                unit.delete()
-                messages.success(request, "Unit deleted. Customers are now standalone ✅")
-            return redirect(redirect_url)
-
-        return redirect(redirect_url)
-
-    # ── HELPER ────────────────────────────────────────────────────────── #
-
-    def _get_salesperson_from_request(self, request):
-        """Return the SalesPerson for the current page context."""
-        sid = request.GET.get("salesperson") or request.POST.get("salesperson_id")
-        if sid:
-            return SalesPerson.objects.filter(id=sid).first()
-        return None
-
-
-class CustomerListViewLegacy(AccountantRequiredMixin, ListView):
-    model = Customer
-    template_name = "customers/data_Legacy.html"
-    context_object_name = "customers"
-    paginate_by = 50
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-
-        salesperson = self.request.GET.get("salesperson")
-        state = self.request.GET.get("state")
-        search = self.request.GET.get("search", "")
-
-        if salesperson:
-            qs = qs.filter(salesperson__name=salesperson)
-
-        if state:
-            qs = qs.filter(state=state)
-
-        if search:
-            qs = qs.filter(name__icontains=search)
-
-        # --------------------------------------------------
-        # 1️⃣ Latest voucher (ID + DATE) per customer
-        # --------------------------------------------------
-        latest_voucher = (
-            Voucher.objects
-            .annotate(party_clean=Lower(Trim("party_name")))
-            .filter(
-                party_clean=Lower(Trim(OuterRef("name"))),
-                voucher_type="TAX INVOICE"
-            )
-            .order_by("-date")
-        )
-
-        qs = qs.annotate(
-            last_purchase_date=Subquery(
-                latest_voucher.values("date")[:1]
-            ),
-            last_voucher_id=Subquery(
-                latest_voucher.values("id")[:1]
-            )
-        )
-
-        # --------------------------------------------------
-        # 2️⃣ Product name from that voucher
-        # --------------------------------------------------
-        last_product = (
-            VoucherStockItem.objects
-            .filter(
-                voucher_id=OuterRef("last_voucher_id")
-            )
-            .values("item__name", "item_name_text")
-        )
-
-        qs = qs.annotate(
-            last_product_name=Subquery(
-                last_product.values("item__name")[:1]
-            )
-        )
-
-        return qs
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-
-        ctx["salespersons"] = SalesPerson.objects.values_list(
-            "name", flat=True
-        ).distinct()
-
-        ctx["states"] = Customer.objects.values_list(
-            "state", flat=True
-        ).distinct()
-
-        ctx["total_customers"] = Customer.objects.count()
-        ctx["total_salespersons"] = SalesPerson.objects.count()
-        ctx["unassigned_count"] = Customer.objects.filter(
-            salesperson__isnull=True
-        ).count()
-
-        ctx["top_state"] = (
-            Customer.objects.values("state")
-            .annotate(c=Count("id"))
-            .order_by("-c")
-            .first()
-        )
-
-        return ctx
-
-class CustomerListView(AccountantRequiredMixin, ListView):
+class CustomerListView(RBACViewMixin, ListView):
     model = Customer
     template_name = "customers/data.html"
     context_object_name = "customers"
     paginate_by = 50
+
+    # ONLY Super Admin, Sales Head, and Business Manager have this permission:
+    rbac_permission = "customer.view_all"
 
     def get_queryset(self):
         qs = Customer.objects.select_related("salesperson")
@@ -1445,10 +512,13 @@ class CustomerListView(AccountantRequiredMixin, ListView):
         return ctx
 
 #new view- for credit period
-class EditCreditPeriodView(AccountantRequiredMixin,UpdateView):
+class EditCreditPeriodView(RBACViewMixin,UpdateView):
     model = CustomerCreditProfile
     form_class = CustomerCreditForm
     template_name = "customers/edit_credit_period.html"
+    # Restricts this view exclusively to Super Admin and Sales Head:
+    rbac_permission = "customer.edit_credit"
+
 
     def get_object(self):
         customer = get_object_or_404(Customer, pk=self.kwargs["pk"])
@@ -1461,8 +531,9 @@ class EditCreditPeriodView(AccountantRequiredMixin,UpdateView):
         return reverse_lazy("customers:data")
 
 
-class ChartsView(AccountantRequiredMixin, TemplateView):
+class ChartsView(RBACViewMixin, TemplateView):
     template_name = "customers/charts.html"
+    rbac_permission = "analytics.view"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -1627,8 +698,9 @@ class ChartsView(AccountantRequiredMixin, TemplateView):
 
 
 
-class UnassignedView(AccountantRequiredMixin,TemplateView):
+class UnassignedView(RBACViewMixin,TemplateView):
     template_name = "customers/unassigned.html"
+    rbac_permission = "customer.unassigned"
 
 
     def get_context_data(self, **kwargs):
@@ -1637,8 +709,8 @@ class UnassignedView(AccountantRequiredMixin,TemplateView):
         return ctx
 
 
-
-class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
+#remove this view no longer in use
+class  SalesPersonCustomerOrdersView(RBACViewMixin, ListView):
     template_name = "customers/salesperson_customer_orders.html"
     context_object_name = "customers"
     model = Customer
@@ -1900,8 +972,10 @@ class SalesPersonCustomerOrdersView(LoginRequiredMixin, ListView):
             ctx["sp_followups_upcoming"] = []
         return ctx
 
-class CustomerPaymentStatusView(LoginRequiredMixin, TemplateView):
+class CustomerPaymentStatusView(RBACViewMixin, TemplateView):
     template_name = "customers/customer_payment_status.html"
+    rbac_permission = "payment.view"
+
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -1964,8 +1038,10 @@ class CustomerPaymentStatusView(LoginRequiredMixin, TemplateView):
         ctx["filters"] = self.request.GET
         return ctx
 
-class PaymentThreadDetailView(LoginRequiredMixin,TemplateView):
+class PaymentThreadDetailView(RBACViewMixin,TemplateView):
     template_name = "customers/payment_thread_detail.html"
+    rbac_permission = "payment.view"
+
 
     def dispatch(self, request, *args, **kwargs):
         self.voucher_status = get_object_or_404(
@@ -2103,7 +1179,7 @@ class PaymentThreadDetailView(LoginRequiredMixin,TemplateView):
 
         return ctx
 
-class CustomerPaymentThreadsView(LoginRequiredMixin, TemplateView):
+class CustomerPaymentThreadsView(RBACViewMixin, TemplateView):
     template_name = "customers/customer_payment_threads.html"
 
     def dispatch(self, request, *args, **kwargs):
@@ -2172,571 +1248,24 @@ class CustomerPaymentThreadsView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
 
+
+# ============================================================================
+# PAYMENT FOLLOW-UP DASHBOARD
+# ============================================================================
+
+class PaymentFollowUpDashboardView(RBACViewMixin, TemplateView):
     template_name = "customers/payment_followup_dashboard.html"
+    rbac_permission = "payment.view"
 
     def get_queryset(self):
-
-        user = self.request.user
-
-        qs = CustomerVoucherStatus.objects.filter(
-            Q(is_unpaid=True) | Q(is_partially_paid=True)
-        ).select_related(
-            "customer",
-            "voucher",
-            "customer__salesperson"
-        ).prefetch_related(
-            "payment_thread__remarks",
-            "payment_thread__expected_date_history",
-            "payment_thread__ticket_events"
-        )
-
-        salesperson_id = self.request.GET.get("salesperson")
-
-        if user.is_superuser:
-
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-
-        else:
-
-            qs = qs.filter(customer__salesperson__user=user)
-
-        return qs
-
-    def get_context_data(self, **kwargs):
-
-        ctx = super().get_context_data(**kwargs)
-
-        qs = self.get_queryset()
-
-        # ensure threads exist
-        for vs in qs:
-            PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
-
-        ctx["voucher_statuses"] = qs
-        ctx["salespersons"] = SalesPerson.objects.all()
-
-        ctx["selected_salesperson"] = self.request.GET.get("salesperson")
-
-        return ctx
-
-class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
-
-    template_name = "customers/payment_followup_dashboard.html"
-
-    def get_queryset(self):
-
-        user = self.request.user
-        salesperson_id = self.request.GET.get("salesperson")
-
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-
-        if is_power_user and not salesperson_id:
-            return CustomerVoucherStatus.objects.none()
-
-        qs = (CustomerVoucherStatus.objects.filter(
-            Q(is_unpaid=True) | Q(is_partially_paid=True)
-        )
-        .select_related(
-            "customer",
-            "voucher",
-            "customer__salesperson",
-            "customer__credit_profile"
-        )
-        .prefetch_related(
-            "payment_thread__remarks",
-            "payment_thread__expected_date_history",
-            "payment_thread__ticket_events"
-        ))
-
-        if is_power_user:
-            # Power users (Admin/Accountants) see the specific person they selected
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-        else:
-            # Regular salespersons only see their own assigned customers
-            qs = qs.filter(customer__salesperson__user=user)
-
-        return qs.order_by("customer__name")
-
-    def get_context_data(self, **kwargs):
-
-        ctx = super().get_context_data(**kwargs)
-        user = self.request.user
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-        qs = self.get_queryset()
-        today = date.today()
-
-        if qs.exists():
-            for vs in qs:
-                PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
-
-                # 2. CREDIT PERIOD CALCULATION
-                credit_period = 0
-                if hasattr(vs.customer, "credit_profile") and vs.customer.credit_profile:
-                    credit_period = vs.customer.credit_profile.credit_period_days
-
-                days_elapsed = (today - vs.voucher_date).days
-
-                if days_elapsed > credit_period:
-                    vs.credit_display_text = f"Crossed by {days_elapsed - credit_period} days"
-                    vs.credit_display_color = "status-crossed"
-                else:
-                    remaining = max(credit_period - days_elapsed, 0)
-                    vs.credit_display_text = f"{remaining} days remaining"
-
-                    if remaining <= 10:
-                        vs.credit_display_color = "status-warning"
-                    else:
-                        vs.credit_display_color = "status-remaining"
-
-        ctx["voucher_statuses"] = qs
-        ctx["salespersons"] = SalesPerson.objects.all()
-        ctx["selected_salesperson"] = self.request.GET.get("salesperson")
-        ctx["is_staff"] = is_power_user
-
-        return ctx
-
-#kashish version
-class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
-
-    template_name = "customers/payment_followup_dashboard.html"
-
-    def get_queryset(self):
-
         user = self.request.user
         salesperson_id = self.request.GET.get("salesperson")
         search_query = self.request.GET.get("q")
         customer_id = self.request.GET.get("customer_id")
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-
-        qs = (CustomerVoucherStatus.objects.filter(
-            Q(is_unpaid=True) | Q(is_partially_paid=True)
-        )
-        .select_related(
-            "customer",
-            "voucher",
-            "customer__salesperson",
-            "customer__credit_profile"
-        )
-        .prefetch_related(
-            "voucher__rows",
-            "payment_thread__remarks",
-            "payment_thread__expected_date_history",
-            "payment_thread__ticket_events"
-        ))
-
-        if customer_id:
-            qs = qs.filter(customer_id=customer_id)
-
-        elif is_power_user:
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-        else:
-            qs = qs.filter(customer__salesperson__user=user)
-
-        if search_query:
-            qs = qs.filter(customer__name__icontains=search_query)
-
-        return qs.order_by("customer__name", "voucher_date")
-
-    def get_context_data(self, **kwargs):
-
-        ctx = super().get_context_data(**kwargs)
-        user = self.request.user
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-        qs = self.get_queryset()
-        today = date.today()
-        emi_voucher_ids = set(
-            VoucherEmiPaymentAllocation.objects.values_list('voucher__voucher_id', flat=True)
-        )
-        exclude_list = [
-            "Nimit", "Jackson", "Akshay", "Nitin", "online Order",
-            "Vibhuti", "Raman", "Abhijay", "Danish", "Mukesh", "Online", "test1", "Aryan",
-        ]
-        if qs.exists():
-            for vs in qs:
-                PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
-
-                vs.has_emi = vs.voucher.id in emi_voucher_ids
-
-                # --- NEW: PASS TOTAL AMOUNT ---
-                # We fetch this from the related voucher object
-                party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
-                vs.total_invoice_amt = party_entry.amount if party_entry else 0
-
-                # 2. CREDIT PERIOD CALCULATION
-                credit_period = 0
-                if hasattr(vs.customer, "credit_profile") and vs.customer.credit_profile:
-                    credit_period = vs.customer.credit_profile.credit_period_days
-
-                days_elapsed = (today - vs.voucher_date).days
-
-                if days_elapsed > credit_period:
-                    vs.credit_display_text = f"Crossed by {days_elapsed - credit_period} days"
-                    vs.credit_display_color = "status-crossed"
-                else:
-                    remaining = max(credit_period - days_elapsed, 0)
-                    vs.credit_display_text = f"{remaining} days remaining"
-                    if remaining <= 10:
-                        vs.credit_display_color = "status-warning"
-                    else:
-                        vs.credit_display_color = "status-remaining"
-
-        ctx["voucher_statuses"] = qs
-        ctx["customer_suggestions"] = qs.values_list('customer__name', flat=True).distinct()
-        ctx["search_query"] = self.request.GET.get("q", "")
-        ctx["salespersons"] = SalesPerson.objects.exclude(
-            name__in=exclude_list
-        ).order_by('name')
-        ctx["selected_customer_id"] = self.request.GET.get("customer_id")
-        ctx["selected_salesperson"] = self.request.GET.get("salesperson")
-        ctx["is_accountant"] = is_power_user
-
-        return ctx
-
-def export_payment_followup(request):
-        # 1. REUSE FILTERING LOGIC
-        user = request.user
-        salesperson_id = request.GET.get("salesperson")
-        search_query = request.GET.get("q")
-        customer_id = request.GET.get("customer_id")
-        export_type = request.GET.get("type")  # 'excel' or 'pdf'
-
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-
-        qs = CustomerVoucherStatus.objects.filter(
-            Q(is_unpaid=True) | Q(is_partially_paid=True)
-        ).select_related("customer", "voucher", "customer__salesperson", "customer__credit_profile")
-
-        if customer_id:
-            qs = qs.filter(customer_id=customer_id)
-        elif is_power_user:
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-        else:
-            qs = qs.filter(customer__salesperson__user=user)
-
-        if search_query:
-            qs = qs.filter(customer__name__icontains=search_query)
-
-        qs = qs.order_by("customer__name")
-        today = date.today()
-
-        # 2. PREPARE DATA
-        data_list = []
-        for vs in qs:
-            credit_period = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
-                                                                                     'credit_profile') and vs.customer.credit_profile else 0
-            days_elapsed = vs.credit_days_elapsed or 0
-
-            if vs.is_credit_period_crossed:
-                c_status = f"Crossed by {days_elapsed} days"
-            else:
-                c_status = f"{max(credit_period - days_elapsed, 0)} days remaining"
-
-            # Find total amount (using the ledger logic from previous step)
-            party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
-            total_amt = party_entry.amount if party_entry else 0
-
-            data_list.append({
-                'customer': vs.customer.name,
-                'voucher': vs.voucher.voucher_number,
-                'date': vs.voucher_date.strftime('%d-%m-%Y'),
-                'credit': c_status,
-                'total': total_amt,
-                'pending': vs.unpaid_amount,
-                'sp': vs.customer.salesperson.name
-            })
-
-        # 3. EXPORT EXCEL
-        if export_type == 'excel':
-            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.xlsx"'
-
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "Payment FollowUp"
-            headers = ['Customer', 'Voucher', 'Date', 'Credit Status', 'Total Amount', 'Pending', 'Salesperson']
-            ws.append(headers)
-
-            for item in data_list:
-                ws.append(
-                    [item['customer'], item['voucher'], item['date'], item['credit'], item['total'], item['pending'],
-                     item['sp']])
-
-            wb.save(response)
-            return response
-
-        # 4. EXPORT PDF
-        elif export_type == 'pdf':
-            template_path = 'customers/export_pdf_template.html'
-            context = {'data': data_list, 'today': today}
-            response = HttpResponse(content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.pdf"'
-
-            template = get_template(template_path)
-            html = template.render(context)
-            pisa_status = pisa.CreatePDF(html, dest=response)
-
-            if pisa_status.err:
-                return HttpResponse('We had some errors <pre>' + html + '</pre>')
-            return response
-
-
-#kashish version with new feature by which the user can filter those customers who had credit period overdue
-class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
-
-    template_name = "customers/payment_followup_dashboard.html"
-
-    def get_queryset(self):
-
-        user = self.request.user
-        salesperson_id = self.request.GET.get("salesperson")
-        search_query = self.request.GET.get("q")
-        customer_id = self.request.GET.get("customer_id")
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-        target_sp = self.request.GET.get("target_sp")
-        overdue_only = self.request.GET.get("overdue_only") == "true"
-
-
-        qs = (CustomerVoucherStatus.objects.filter(
-            Q(is_unpaid=True) | Q(is_partially_paid=True)
-        )
-        .select_related(
-            "customer",
-            "voucher",
-            "customer__salesperson",
-            "customer__credit_profile"
-        )
-        .prefetch_related(
-            "voucher__rows",
-            "payment_thread__remarks",
-            "payment_thread__expected_date_history",
-            "payment_thread__ticket_events"
-        ))
-
-        if customer_id:
-            qs = qs.filter(customer_id=customer_id)
-
-        elif is_power_user:
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-        else:
-            current_sp = SalesPerson.objects.filter(user=user).first()
-            if current_sp and current_sp.name == "Ankush":
-                if target_sp in ["Ankush", "Satish", "Naveen"]:
-                    qs = qs.filter(customer__salesperson__name=target_sp)
-                else:
-                    # Default: Show all three
-                    qs = qs.filter(customer__salesperson__name__in=["Ankush", "Satish", "Naveen"])
-            else:
-                qs = qs.filter(customer__salesperson__user=user)
-
-                # NEW: Overdue Filtering Logic
-        if overdue_only:
-            today = date.today()
-            valid_ids = []
-            for vs in qs:
-                credit_days = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
-                                                                                       'credit_profile') and vs.customer.credit_profile else 0
-                days_elapsed = (today - vs.voucher_date).days
-                if days_elapsed > credit_days:
-                    valid_ids.append(vs.id)
-            qs = qs.filter(id__in=valid_ids)
-
-        if search_query:
-            qs = qs.filter(customer__name__icontains=search_query)
-
-        return qs.order_by("customer__name", "voucher_date")
-
-    def get_context_data(self, **kwargs):
-
-        ctx = super().get_context_data(**kwargs)
-        user = self.request.user
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-        qs = self.get_queryset()
-        today = date.today()
-        emi_voucher_ids = set(
-            VoucherEmiPaymentAllocation.objects.values_list('voucher__voucher_id', flat=True)
-        )
-        exclude_list = [
-            "Nimit", "Jackson", "Akshay", "Nitin", "online Order",
-            "Vibhuti", "Raman", "Abhijay", "Danish", "Mukesh", "Online", "test1", "Aryan",
-        ]
-        if qs.exists():
-            for vs in qs:
-                PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
-
-                vs.has_emi = vs.voucher.id in emi_voucher_ids
-
-                # --- NEW: PASS TOTAL AMOUNT ---
-                # We fetch this from the related voucher object
-                party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
-                vs.total_invoice_amt = party_entry.amount if party_entry else 0
-
-                # 2. CREDIT PERIOD CALCULATION
-                credit_period = 0
-                if hasattr(vs.customer, "credit_profile") and vs.customer.credit_profile:
-                    credit_period = vs.customer.credit_profile.credit_period_days
-
-                days_elapsed = (today - vs.voucher_date).days
-
-                if days_elapsed > credit_period:
-                    vs.credit_display_text = f"Crossed by {days_elapsed - credit_period} days"
-                    vs.credit_display_color = "status-crossed"
-                else:
-                    remaining = max(credit_period - days_elapsed, 0)
-                    vs.credit_display_text = f"{remaining} days remaining"
-                    if remaining <= 10:
-                        vs.credit_display_color = "status-warning"
-                    else:
-                        vs.credit_display_color = "status-remaining"
-
-        ctx["voucher_statuses"] = qs
-        ctx["customer_suggestions"] = qs.values_list('customer__name', flat=True).distinct()
-        ctx["search_query"] = self.request.GET.get("q", "")
-        ctx["salespersons"] = SalesPerson.objects.exclude(
-            name__in=exclude_list
-        ).order_by('name')
-        ctx["selected_customer_id"] = self.request.GET.get("customer_id")
-        ctx["selected_salesperson"] = self.request.GET.get("salesperson")
-        ctx["is_accountant"] = is_power_user
-        user_sp = SalesPerson.objects.filter(user=self.request.user).first()
-        ctx["is_ankush"] = user_sp.name == "Ankush" if user_sp else False
-        ctx["selected_target_sp"] = self.request.GET.get("target_sp", "")
-        ctx["overdue_only"] = self.request.GET.get("overdue_only") == "true"
-
-        return ctx
-
-def export_payment_followup(request):
-        # 1. REUSE FILTERING LOGIC
-        user = request.user
-        salesperson_id = request.GET.get("salesperson")
-        search_query = request.GET.get("q")
-        customer_id = request.GET.get("customer_id")
-        export_type = request.GET.get("type")  # 'excel' or 'pdf'
-        target_sp = request.GET.get("target_sp")
-        overdue_only = request.GET.get("overdue_only") == "true"
-
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-
-        qs = CustomerVoucherStatus.objects.filter(
-            Q(is_unpaid=True) | Q(is_partially_paid=True)
-        ).select_related("customer", "voucher", "customer__salesperson", "customer__credit_profile")
-
-        if customer_id:
-            qs = qs.filter(customer_id=customer_id)
-        elif is_power_user:
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-        if overdue_only:
-            today = date.today()
-            valid_ids = []
-            for vs in qs:
-                cp = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
-                                                                              'credit_profile') and vs.customer.credit_profile else 0
-                if (today - vs.voucher_date).days > cp:
-                    valid_ids.append(vs.id)
-            qs = qs.filter(id__in=valid_ids)
-
-        else:
-            # Apply the same "Ankush" logic here
-            current_sp = SalesPerson.objects.filter(user=user).first()
-            if current_sp and current_sp.name == "Ankush":
-                if target_sp in ["Ankush", "Satish", "Naveen"]:
-                    qs = qs.filter(customer__salesperson__name=target_sp)
-                else:
-                    qs = qs.filter(customer__salesperson__name__in=["Ankush", "Satish", "Naveen"])
-            else:
-                qs = qs.filter(customer__salesperson__user=user)
-
-        if search_query:
-            qs = qs.filter(customer__name__icontains=search_query)
-
-        qs = qs.order_by("customer__name")
-        today = date.today()
-
-        # 2. PREPARE DATA
-        data_list = []
-        for vs in qs:
-            credit_period = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
-                                                                                     'credit_profile') and vs.customer.credit_profile else 0
-            days_elapsed = vs.credit_days_elapsed or 0
-
-            if vs.is_credit_period_crossed:
-                c_status = f"Crossed by {days_elapsed} days"
-            else:
-                c_status = f"{max(credit_period - days_elapsed, 0)} days remaining"
-
-            # Find total amount (using the ledger logic from previous step)
-            party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
-            total_amt = party_entry.amount if party_entry else 0
-
-            data_list.append({
-                'customer': vs.customer.name,
-                'voucher': vs.voucher.voucher_number,
-                'date': vs.voucher_date.strftime('%d-%m-%Y'),
-                'credit': c_status,
-                'total': total_amt,
-                'pending': vs.unpaid_amount,
-                'sp': vs.customer.salesperson.name
-            })
-
-        # 3. EXPORT EXCEL
-        if export_type == 'excel':
-            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.xlsx"'
-
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "Payment FollowUp"
-            headers = ['Customer', 'Voucher', 'Date', 'Credit Status', 'Total Amount', 'Pending', 'Salesperson']
-            ws.append(headers)
-
-            for item in data_list:
-                ws.append(
-                    [item['customer'], item['voucher'], item['date'], item['credit'], item['total'], item['pending'],
-                     item['sp']])
-
-            wb.save(response)
-            return response
-
-        # 4. EXPORT PDF
-        elif export_type == 'pdf':
-            template_path = 'customers/export_pdf_template.html'
-            context = {'data': data_list, 'today': today}
-            response = HttpResponse(content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.pdf"'
-
-            template = get_template(template_path)
-            html = template.render(context)
-            pisa_status = pisa.CreatePDF(html, dest=response)
-
-            if pisa_status.err:
-                return HttpResponse('We had some errors <pre>' + html + '</pre>')
-            return response
-
-
-class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
-
-    template_name = "customers/payment_followup_dashboard.html"
-
-    def get_queryset(self):
-
-        user = self.request.user
-        salesperson_id = self.request.GET.get("salesperson")
-        search_query = self.request.GET.get("q")
-        customer_id = self.request.GET.get("customer_id")
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
-        target_sp = self.request.GET.get("target_sp")
         overdue_only = self.request.GET.get("overdue_only") == "true"
         status_filter = self.request.GET.get("status_filter")
 
-
-
         qs = (CustomerVoucherStatus.objects.filter(
             Q(is_unpaid=True) | Q(is_partially_paid=True)
         )
@@ -2753,34 +1282,33 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
             "payment_thread__ticket_events"
         ))
 
+        # 1. Scope based on Role (Self, Team, All)
+        qs = scope_queryset(user, "payment.view", qs)
+
+        # 2. Filters
         if customer_id:
             qs = qs.filter(customer_id=customer_id)
 
-        elif is_power_user:
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-        else:
-            current_sp = SalesPerson.objects.filter(user=user).first()
-            if current_sp and current_sp.name == "Ankush":
-                if target_sp in ["Ankush", "Satish", "Naveen"]:
-                    qs = qs.filter(customer__salesperson__name=target_sp)
-                else:
-                    # Default: Show all three
-                    qs = qs.filter(customer__salesperson__name__in=["Ankush", "Satish", "Naveen"])
+        # Unified single salesperson filter (ID or Name)
+        if salesperson_id:
+            if str(salesperson_id).isdigit():
+                qs = qs.filter(customer__salesperson_id=int(salesperson_id))
             else:
-                qs = qs.filter(customer__salesperson__user=user)
+                qs = qs.filter(customer__salesperson__name__iexact=str(salesperson_id).strip())
 
-        # STATUS FILTRATION LOGIC
-        if status_filter:
+        if status_filter or overdue_only:
             today = date.today()
             valid_ids = []
             for vs in qs:
-                credit_days = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
-                                                                                       'credit_profile') and vs.customer.credit_profile else 0
+                cp = (
+                    vs.customer.credit_profile.credit_period_days
+                    if hasattr(vs.customer, 'credit_profile') and vs.customer.credit_profile
+                    else 0
+                )
                 days_elapsed = (today - vs.voucher_date).days
-                remaining = credit_days - days_elapsed
+                remaining = credit_days - days_elapsed if 'credit_days' in locals() else (cp - days_elapsed)
 
-                if status_filter == "overdue" and days_elapsed > credit_days:
+                if (overdue_only or status_filter == "overdue") and days_elapsed > cp:
                     valid_ids.append(vs.id)
                 elif status_filter == "warning" and 0 <= remaining <= 10:
                     valid_ids.append(vs.id)
@@ -2789,19 +1317,17 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
 
             qs = qs.filter(id__in=valid_ids)
 
-
         if search_query:
             qs = qs.filter(customer__name__icontains=search_query)
 
         return qs.order_by("customer__name", "voucher_date")
 
     def get_context_data(self, **kwargs):
-
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
         qs = self.get_queryset()
         today = date.today()
+
         emi_voucher_ids = set(
             VoucherEmiPaymentAllocation.objects.values_list('voucher__voucher_id', flat=True)
         )
@@ -2809,18 +1335,15 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
             "Nimit", "Jackson", "Akshay", "Nitin", "online Order",
             "Vibhuti", "Raman", "Abhijay", "Danish", "Mukesh", "Online", "test1", "Aryan",
         ]
+
         if qs.exists():
             for vs in qs:
                 PaymentDiscussionThread.objects.get_or_create(voucher_status=vs)
-
                 vs.has_emi = vs.voucher.id in emi_voucher_ids
 
-                # --- NEW: PASS TOTAL AMOUNT ---
-                # We fetch this from the related voucher object
                 party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
                 vs.total_invoice_amt = party_entry.amount if party_entry else 0
 
-                # 2. CREDIT PERIOD CALCULATION
                 credit_period = 0
                 if hasattr(vs.customer, "credit_profile") and vs.customer.credit_profile:
                     credit_period = vs.customer.credit_profile.credit_period_days
@@ -2838,224 +1361,140 @@ class PaymentFollowUpDashboardView(LoginRequiredMixin, TemplateView):
                     else:
                         vs.credit_display_color = "status-remaining"
 
+        # DYNAMIC RBAC TEAM RESOLUTION:
+        # Resolves only the salespersons visible in this user's hierarchy
+        scoped_custs = scope_queryset(user, "payment.view", Customer.objects.all())
+        allowed_sp_ids = scoped_custs.values_list("salesperson_id", flat=True).distinct()
+        visible_sp = SalesPerson.objects.filter(id__in=allowed_sp_ids).exclude(name__in=exclude_list).order_by('name')
+
         ctx["voucher_statuses"] = qs
         ctx["customer_suggestions"] = qs.values_list('customer__name', flat=True).distinct()
         ctx["search_query"] = self.request.GET.get("q", "")
-        ctx["salespersons"] = SalesPerson.objects.exclude(
-            name__in=exclude_list
-        ).order_by('name')
+
+        # This dropdown automatically populates correctly for ANY manager:
+        ctx["salespersons"] = visible_sp
+
         ctx["selected_customer_id"] = self.request.GET.get("customer_id")
         ctx["selected_salesperson"] = self.request.GET.get("salesperson")
-        ctx["is_accountant"] = is_power_user
-        user_sp = SalesPerson.objects.filter(user=self.request.user).first()
-        ctx["is_ankush"] = user_sp.name == "Ankush" if user_sp else False
-        ctx["selected_target_sp"] = self.request.GET.get("target_sp", "")
         ctx["overdue_only"] = self.request.GET.get("overdue_only") == "true"
         ctx["status_filter"] = self.request.GET.get("status_filter", "")
 
-
+        # Notice: NO is_ankush, NO hardcoded names!
         return ctx
 
-def send_payment_ticket_email(request, thread, action):
-    voucher_status = thread.voucher_status
-    customer = voucher_status.customer
-    voucher = voucher_status.voucher
 
-    # Get the customer's salesperson email
-    salesperson = customer.salesperson
-    salesperson_email = None
-
-    if salesperson and salesperson.user:
-        salesperson_email = salesperson.user.email
-
-    # Get the user's manager email
-    manager = getattr(request.user, "manager", None)
-    manager_user = getattr(manager, "user", None) if manager else None
-
-    manager_email = (
-        getattr(manager, "email", None)
-        or getattr(manager_user, "email", None)
-    )
-
-    # Build the ticket URL
-    page_link = "https://oblutools.com" + reverse(
-        "customers:payment_thread_detail",
-        args=[voucher_status.id],
-    )
-
-    # Choose subject and action text
-    if action == "RAISED":
-        subject = "🚨 Payment Ticket Raised"
-        action_text = "raised"
-    else:
-        subject = "✅ Payment Ticket Solved"
-        action_text = "solved"
-
-    salesperson_name = (
-        request.user.get_full_name()
-        or request.user.username
-    )
-
-    # Email body
-    body = f"""
-Hello,
-
-The user {salesperson_name} has {action_text} a payment ticket.
-
-Customer: {customer.name}
-Invoice: {voucher.voucher_number}
-Action: {action_text.title()}
-
-Please review the ticket details.
-
-Open Ticket:
-{page_link}
-
-Regards,
-OBLU Tools
-"""
-
-    # Only Nitin in the To field
-    to_emails = ["nitin@obluhc.com"]
-
-    # Other recipients in CC
-    cc_emails = [
-        salesperson_email,
-        manager_email,
-        request.user.email,
-        "abhijay.obluhc@gmail.com",
-        "management@obluhc.com",
-    ]
-
-    # Remove empty addresses, duplicates, and Nitin from CC
-    to_emails_lower = {email.lower() for email in to_emails}
-
-    cc_emails = list(dict.fromkeys(
-        email.strip()
-        for email in cc_emails
-        if email
-        and email.strip()
-        and email.strip().lower() not in to_emails_lower
-    ))
-
-    # Send email
-    msg = EmailMultiAlternatives(
-        subject=subject,
-        body=body,
-        from_email="crm@oblutools.com",
-        to=to_emails,
-        cc=cc_emails,
-    )
-
-    msg.send(fail_silently=False)
 
 def export_payment_followup(request):
-        # 1. REUSE FILTERING LOGIC
-        user = request.user
-        salesperson_id = request.GET.get("salesperson")
-        search_query = request.GET.get("q")
-        customer_id = request.GET.get("customer_id")
-        export_type = request.GET.get("type")  # 'excel' or 'pdf'
-        target_sp = request.GET.get("target_sp")
-        overdue_only = request.GET.get("overdue_only") == "true"
+    user = request.user
+    salesperson_id = request.GET.get("salesperson")
+    search_query = request.GET.get("q")
+    customer_id = request.GET.get("customer_id")
+    export_type = request.GET.get("type")
+    target_sp = request.GET.get("target_sp")
+    overdue_only = request.GET.get("overdue_only") == "true"
+    status_filter = request.GET.get("status_filter")
 
-        is_power_user = user.is_superuser or getattr(user, 'is_accountant', False)
+    qs = CustomerVoucherStatus.objects.filter(
+        Q(is_unpaid=True) | Q(is_partially_paid=True)
+    ).select_related("customer", "voucher", "customer__salesperson", "customer__credit_profile")
 
-        qs = CustomerVoucherStatus.objects.filter(
-            Q(is_unpaid=True) | Q(is_partially_paid=True)
-        ).select_related("customer", "voucher", "customer__salesperson", "customer__credit_profile")
+    # 1. RBAC SCOPING (Matches view exactly)
+    qs = scope_queryset(user, "payment.view", qs)
 
-        if customer_id:
-            qs = qs.filter(customer_id=customer_id)
-        elif is_power_user:
-            if salesperson_id:
-                qs = qs.filter(customer__salesperson_id=salesperson_id)
-        if overdue_only:
-            today = date.today()
-            valid_ids = []
-            for vs in qs:
-                cp = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
-                                                                              'credit_profile') and vs.customer.credit_profile else 0
-                if (today - vs.voucher_date).days > cp:
-                    valid_ids.append(vs.id)
-            qs = qs.filter(id__in=valid_ids)
+    if customer_id:
+        qs = qs.filter(customer_id=customer_id)
 
+    selected_sp = salesperson_id or target_sp
+    if selected_sp:
+        if str(selected_sp).isdigit():
+            qs = qs.filter(customer__salesperson_id=int(selected_sp))
         else:
-            # Apply the same "Ankush" logic here
-            current_sp = SalesPerson.objects.filter(user=user).first()
-            if current_sp and current_sp.name == "Ankush":
-                if target_sp in ["Ankush", "Satish", "Naveen"]:
-                    qs = qs.filter(customer__salesperson__name=target_sp)
-                else:
-                    qs = qs.filter(customer__salesperson__name__in=["Ankush", "Satish", "Naveen"])
-            else:
-                qs = qs.filter(customer__salesperson__user=user)
+            qs = qs.filter(customer__salesperson__name__iexact=str(selected_sp).strip())
 
-        if search_query:
-            qs = qs.filter(customer__name__icontains=search_query)
-
-        qs = qs.order_by("customer__name")
+    if status_filter or overdue_only:
         today = date.today()
-
-        # 2. PREPARE DATA
-        data_list = []
+        valid_ids = []
         for vs in qs:
-            credit_period = vs.customer.credit_profile.credit_period_days if hasattr(vs.customer,
-                                                                                     'credit_profile') and vs.customer.credit_profile else 0
-            days_elapsed = vs.credit_days_elapsed or 0
+            cp = (
+                vs.customer.credit_profile.credit_period_days
+                if hasattr(vs.customer, 'credit_profile') and vs.customer.credit_profile
+                else 0
+            )
+            days_elapsed = (today - vs.voucher_date).days
+            if (overdue_only or status_filter == "overdue") and days_elapsed > cp:
+                valid_ids.append(vs.id)
+        qs = qs.filter(id__in=valid_ids)
 
-            if vs.is_credit_period_crossed:
-                c_status = f"Crossed by {days_elapsed} days"
-            else:
-                c_status = f"{max(credit_period - days_elapsed, 0)} days remaining"
+    if search_query:
+        qs = qs.filter(customer__name__icontains=search_query)
 
-            # Find total amount (using the ledger logic from previous step)
-            party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
-            total_amt = party_entry.amount if party_entry else 0
+    qs = qs.order_by("customer__name")
+    today = date.today()
 
-            data_list.append({
-                'customer': vs.customer.name,
-                'voucher': vs.voucher.voucher_number,
-                'date': vs.voucher_date.strftime('%d-%m-%Y'),
-                'credit': c_status,
-                'total': total_amt,
-                'pending': vs.unpaid_amount,
-                'sp': vs.customer.salesperson.name
-            })
+    data_list = []
+    for vs in qs:
+        credit_period = (
+            vs.customer.credit_profile.credit_period_days
+            if hasattr(vs.customer, 'credit_profile') and vs.customer.credit_profile
+            else 0
+        )
+        days_elapsed = vs.credit_days_elapsed or 0
 
-        # 3. EXPORT EXCEL
-        if export_type == 'excel':
-            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.xlsx"'
+        if vs.is_credit_period_crossed:
+            c_status = f"Crossed by {days_elapsed} days"
+        else:
+            c_status = f"{max(credit_period - days_elapsed, 0)} days remaining"
 
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "Payment FollowUp"
-            headers = ['Customer', 'Voucher', 'Date', 'Credit Status', 'Total Amount', 'Pending', 'Salesperson']
-            ws.append(headers)
+        party_entry = next((r for r in vs.voucher.rows.all() if r.ledger == vs.voucher.party_name), None)
+        total_amt = party_entry.amount if party_entry else 0
 
-            for item in data_list:
-                ws.append(
-                    [item['customer'], item['voucher'], item['date'], item['credit'], item['total'], item['pending'],
-                     item['sp']])
+        data_list.append({
+            'customer': vs.customer.name,
+            'voucher': vs.voucher.voucher_number,
+            'date': vs.voucher_date.strftime('%d-%m-%Y'),
+            'credit': c_status,
+            'total': total_amt,
+            'pending': vs.unpaid_amount,
+            'sp': vs.customer.salesperson.name if vs.customer.salesperson else "-"
+        })
 
-            wb.save(response)
-            return response
+    # EXPORT EXCEL
+    if export_type == 'excel':
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.xlsx"'
 
-        # 4. EXPORT PDF
-        elif export_type == 'pdf':
-            template_path = 'customers/export_pdf_template.html'
-            context = {'data': data_list, 'today': today}
-            response = HttpResponse(content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.pdf"'
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Payment FollowUp"
+        headers = ['Customer', 'Voucher', 'Date', 'Credit Status', 'Total Amount', 'Pending', 'Salesperson']
+        ws.append(headers)
 
-            template = get_template(template_path)
-            html = template.render(context)
-            pisa_status = pisa.CreatePDF(html, dest=response)
+        for item in data_list:
+            ws.append([
+                item['customer'], item['voucher'], item['date'], item['credit'],
+                item['total'], item['pending'], item['sp']
+            ])
 
-            if pisa_status.err:
-                return HttpResponse('We had some errors <pre>' + html + '</pre>')
-            return response
+        wb.save(response)
+        return response
+
+    # EXPORT PDF
+    elif export_type == 'pdf':
+        template_path = 'customers/export_pdf_template.html'
+        context = {'data': data_list, 'today': today}
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Payment_Followup_{today}.pdf"'
+
+        template = get_template(template_path)
+        html = template.render(context)
+        pisa_status = pisa.CreatePDF(html, dest=response)
+
+        if pisa_status.err:
+            return HttpResponse('We had some errors <pre>' + html + '</pre>')
+        return response
+
+    return HttpResponse("Invalid export type", status=400)
+
 
 @require_POST
 def payment_followup_action(request):
@@ -3116,7 +1555,6 @@ def payment_followup_action(request):
             event_type="RAISED",
             performed_by=request.user
         )
-        send_payment_ticket_email(request, thread, "RAISED")
 
         return JsonResponse({"status": "ok"})
 
@@ -3133,11 +1571,12 @@ def payment_followup_action(request):
             event_type="SOLVED",
             performed_by=request.user
         )
-        send_payment_ticket_email(request, thread, "SOLVED")
 
         return JsonResponse({"status": "ok"})
-class CustomerEditView(AccountantRequiredMixin, View):
+
+class CustomerEditView(RBACViewMixin, View):
     template_name = "customers/edit_customer.html"
+    rbac_permission = "customer.edit"
 
     def get(self, request, pk):
         customer = get_object_or_404(Customer, pk=pk)
@@ -3175,7 +1614,7 @@ class CustomerEditView(AccountantRequiredMixin, View):
 def get_logged_in_salesperson(user):
     return SalesPerson.objects.filter(user=user).first()
 
-class ClaimOwnVoucherView(LoginRequiredMixin, View):
+class ClaimOwnVoucherView(RBACViewMixin, View):
     template_name = "customers/claim_own_vouchers.html"
 
     def get(self, request):
@@ -3228,7 +1667,7 @@ class ClaimOwnVoucherView(LoginRequiredMixin, View):
 
         return redirect("customers:claim_own_voucher")
 
-class RequestVoucherClaimView(LoginRequiredMixin, View):
+class RequestVoucherClaimView(RBACViewMixin, View):
     template_name = "customers/request_voucher_claim.html"
 
     def get(self, request):
@@ -3284,7 +1723,7 @@ class RequestVoucherClaimView(LoginRequiredMixin, View):
         )
         return redirect("customers:request_voucher_claim")
 
-class ApproveVoucherClaimsView(LoginRequiredMixin, View):
+class ApproveVoucherClaimsView(RBACViewMixin, View):
     template_name = "customers/approve_voucher_claims.html"
 
     def get(self, request):
@@ -3338,7 +1777,7 @@ class ApproveVoucherClaimsView(LoginRequiredMixin, View):
 
         return redirect("customers:approve_voucher_claims")
 
-class CustomerVouchersOverviewView(LoginRequiredMixin, View):
+class CustomerVouchersOverviewView(RBACViewMixin, View):
     template_name = "customers/customer_vouchers_overview.html"
 
     def get(self, request):
@@ -3379,7 +1818,7 @@ class CustomerVouchersOverviewView(LoginRequiredMixin, View):
             "salesperson": sp,
         })
 
-class AdminVoucherClaimManagementView(AccountantRequiredMixin, View):
+class AdminVoucherClaimManagementView(RBACViewMixin, View):
     template_name = "customers/admin_voucher_claim_management.html"
 
     def get(self, request):
@@ -3436,7 +1875,7 @@ class AdminVoucherClaimManagementView(AccountantRequiredMixin, View):
         messages.success(request, "Voucher claim updated.")
         return redirect(request.META.get("HTTP_REFERER"))
 
-class SalesReportView(AccountantRequiredMixin,TemplateView):
+class SalesReportView(RBACViewMixin,TemplateView):
     template_name = "customers/sales_report.html"
 
     def get_context_data(self, **kwargs):
@@ -3555,118 +1994,9 @@ class SalesReportView(AccountantRequiredMixin,TemplateView):
 
         return ctx
 
-class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
-    template_name = "customers/monthly_sales_report.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-
-        # ---------------------------------
-        # BASIC FILTERS
-        # ---------------------------------
-
-        month_picker = self.request.GET.get("month_picker")
-
-        today = date.today()
-        if month_picker:
-            year, month = map(int, month_picker.split("-"))
-        else:
-            year, month = today.year, today.month
-
-        ctx["year"] = year
-        ctx["month"] = month
-
-        start_date = date(year, month, 1)
-        end_date = date(year, month, monthrange(year, month)[1])
-
-        salesperson = SalesPerson.objects.filter(user=self.request.user).first()
-        ctx["selected_salesperson"] = salesperson
-
-        if not salesperson:
-            ctx["rows"] = []
-            return ctx
-
-
-        # ---------------------------------
-        # ALL TAX INVOICES (PAID + UNPAID)
-        # ---------------------------------
-        voucher_statuses = CustomerVoucherStatus.objects.filter(
-            sold_by=salesperson,
-            voucher_type__iexact="TAX INVOICE",
-            voucher_date__range=[start_date, end_date],
-        )
-
-        vouchers = Voucher.objects.filter(
-            id__in=voucher_statuses.values_list("voucher_id", flat=True)
-        )
-
-        voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
-
-        # ---------------------------------
-        # STOCK ITEMS
-        # ---------------------------------
-        stock_items = (
-            VoucherStockItem.objects
-            .filter(voucher__in=vouchers)
-            .select_related("voucher", "item")
-            .order_by("voucher__date")
-        )
-
-        rows = []
-
-        total_sales = Decimal("0.00")
-        processed_vouchers = set()
-
-        # ---------------------------------
-        # BUILD ROWS + MAPS
-        # ---------------------------------
-        for si in stock_items:
-            product = si.item
-            if not product:
-                continue
-
-            if si.voucher_id not in processed_vouchers:
-
-                processed_vouchers.add(si.voucher_id)
-
-                party_row = si.voucher.rows.filter(
-                    ledger__iexact=si.voucher.party_name
-                ).first()
-
-                if party_row:
-                    total_sales += Decimal(str(party_row.amount))
-
-            voucher_status = voucher_status_map.get(si.voucher_id)
-
-            is_fully_paid = bool(voucher_status and voucher_status.is_fully_paid)
-            is_partially_paid = bool(voucher_status and voucher_status.is_partially_paid)
-            is_unpaid = bool(voucher_status and voucher_status.is_unpaid)
-
-
-            rows.append({
-                "date": si.voucher.date,
-                "customer": si.voucher.party_name,
-                "customer_id": voucher_status.customer_id if voucher_status else None,
-                "voucher_id": si.voucher.id,
-                "voucher_no": si.voucher.voucher_number,
-                "product": product.name,
-                "quantity": si.quantity,
-                "amount": si.amount,
-                "is_fully_paid": is_fully_paid,
-                "is_partially_paid": is_partially_paid,
-                "is_unpaid": is_unpaid,
-            })
-
-        # ---------------------------------
-        # CONTEXT
-        # ---------------------------------
-        ctx["rows"] = rows
-        ctx["total_sales"] = total_sales
-
-        return ctx
 
 # new temp view to show ankush his teammates and aman his
-class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
+class MonthlySalesReportView(RBACViewMixin, TemplateView):
     template_name = "customers/monthly_sales_report.html"
 
     def get_context_data(self, **kwargs):
@@ -3769,7 +2099,7 @@ class MonthlySalesReportView(LoginRequiredMixin, TemplateView):
         ctx["total_sales"] = total_sales
         return ctx
 
-class AllMonthsSalesReportView(AccountantRequiredMixin, TemplateView):
+class AllMonthsSalesReportView(RBACViewMixin, TemplateView):
     template_name = "customers/all_months_sales_report.html"
 
     def get_context_data(self, **kwargs):
@@ -3871,12 +2201,1013 @@ class AllMonthsSalesReportView(AccountantRequiredMixin, TemplateView):
         return ctx
 
 
+class CustomerDetailView(RBACViewMixin, TemplateView):
+    template_name = "customers/customer_detail.html"
+    rbac_permission = "customer.view"
+
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        customer = get_object_or_404(
+            Customer.objects.select_related(
+                "salesperson",
+                "credit_profile"
+            ),
+            pk=self.kwargs["pk"]
+        )
+
+        ctx["customer"] = customer
+
+        # UNIT FUNCTIONALITY (NEW)
+        # =====================================================
+        # Check if this customer belongs to any unit
+        membership = CustomerUnitMembership.objects.filter(customer=customer).select_related('unit').first()
+
+        if membership:
+            unit = membership.unit
+            ctx["unit"] = unit
+            # Fetch all customers belonging to this unit
+            # We select related credit_profile and salesperson for detailed display
+            ctx["unit_members"] = Customer.objects.filter(
+                unit_membership__unit=unit
+            ).select_related("credit_profile", "salesperson").order_by("name")
+        else:
+            ctx["unit"] = None
+            ctx["unit_members"] = []
+
+        # =====================================================
+        # REMARKS + FOLLOWUPS TIMELINE
+        # =====================================================
+
+        timeline = []
+
+        remarks = CustomerRemark.objects.filter(
+            customer=customer
+        ).select_related("salesperson")
+
+        for r in remarks:
+            timeline.append({
+                "type": "remark",
+                "date": r.created_at,
+                "salesperson": r.salesperson,
+                "text": r.remark,
+                "obj": r,
+            })
+
+        followups = CustomerFollowUp.objects.filter(
+            customer=customer
+        ).select_related("salesperson")
+
+        for f in followups:
+            timeline.append({
+                "type": "followup",
+                "date": f.created_at,
+                "salesperson": f.salesperson,
+                "obj": f,
+            })
+
+        timeline = sorted(
+            timeline,
+            key=lambda x: x["date"],
+            reverse=True
+        )
+
+        ctx["timeline"] = timeline
+
+        # =====================================================
+        # TOP 5 PRODUCTS
+        # =====================================================
+
+        invoices = Voucher.objects.filter(
+            party_name__iexact=customer.name,
+            voucher_type="TAX INVOICE"
+        )
+
+        product_month_data = defaultdict(
+            lambda: defaultdict(float)
+        )
+
+        stock_rows = VoucherStockItem.objects.filter(
+            voucher__in=invoices
+        ).select_related(
+            "voucher",
+            "item"
+        )
+
+        for row in stock_rows:
+
+            product_name = (
+                row.item.name
+                if row.item
+                else row.item_name_text
+            )
+
+            month_key = row.voucher.date.strftime("%b%y")
+
+            product_month_data[product_name][month_key] += float(
+                row.quantity
+            )
+
+        ranked_products = sorted(
+            product_month_data.items(),
+            key=lambda x: sum(x[1].values()),
+            reverse=True
+        )[:5]
+
+        top_products = []
+
+        for idx, (product, months) in enumerate(
+            ranked_products,
+            start=1
+        ):
+            top_products.append({
+                "sno": idx,
+                "product": product,
+                "months": dict(months)
+            })
+
+        ctx["top_products"] = top_products
+
+        # =====================================================
+        # PAYMENT SUMMARY
+        # =====================================================
+
+        credit_profile = getattr(
+            customer,
+            "credit_profile",
+            None
+        )
+
+        ctx["credit_profile"] = credit_profile
+
+        pending_vouchers = (
+            CustomerVoucherStatus.objects
+            .filter(
+                customer=customer
+            )
+            .filter(
+                is_fully_paid=False
+            )
+            .select_related("voucher")
+            .order_by("-voucher_date")
+        )
+
+        ctx["pending_vouchers"] = pending_vouchers
+
+        # =====================================================
+        # PAYMENT REMARKS
+        # =====================================================
+
+        payment_remarks = (
+            PaymentRemark.objects
+            .filter(
+                thread__voucher_status__customer=customer
+            )
+            .select_related(
+                "created_by",
+                "thread__voucher_status"
+            )
+            .order_by("-created_at")
+        )
+
+        ctx["payment_remarks"] = payment_remarks
+
+        return ctx
+
+
+CROSS_SELLING_CATEGORIES = [
+    {
+        "id": "template_sheet",
+        "name": "Template Sheet",
+        "badge_color": "info",
+        "expected_items": "Erkolen 0.6mm, Erkodur al 0.6mm, Erkodur 0.6mm, Template U, Template E",
+    },
+    {
+        "id": "aligner_sheet",
+        "name": "Aligner Sheet",
+        "badge_color": "primary",
+        "expected_items": "Erkodur 0.8mm, Erkodur al 0.8mm, Zendura FLX 0.76mm, Zendura Viva 0.76mm, One S 0.76mm, Nova 0.76mm, Pro S 0.76mm, Pro Neo 0.76mm",
+    },
+    {
+        "id": "retainer_sheet",
+        "name": "Retainer Sheet",
+        "badge_color": "success",
+        "expected_items": "Erkodur 1mm, Erkodur al 1mm, Zendura A 0.76mm, One S 1mm, Pro S 1mm",
+    },
+    {
+        "id": "resin",
+        "name": "Resin",
+        "badge_color": "warning",
+        "expected_items": "Anycubic, Graphy Model Resin, Jamghe, Aqua Model Resin, Formlabs Model Resin",
+    },
+    {
+        "id": "other_consumable",
+        "name": "Other Consumables",
+        "badge_color": "secondary",
+        "expected_items": "Aligner Box, Chewies, Extractor",
+    },
+]
+
+
+def classify_cross_selling_category(item_name, category_name=""):
+    """
+    Classifies a product name (and optional category name) into one of the 5 cross-selling categories.
+    """
+    name = (item_name or "").strip().lower()
+    cat = (category_name or "").strip().lower()
+    combined = f"{name} {cat}"
+
+    # 1. Template Sheet (0.6mm / Erkolen / Template U / Template E)
+    if "template u" in combined or "templete u" in combined or "template e" in combined or "templete e" in combined:
+        return "template_sheet"
+    if "erkolen" in combined:
+        return "template_sheet"
+    if "erkodur" in combined and ("0.6" in combined or "0.60" in combined or "60" in combined):
+        return "template_sheet"
+    if "template sheet" in combined or "templete sheet" in combined:
+        return "template_sheet"
+
+    # 2. Aligner Sheet (0.8mm, 0.76mm, FLX, Viva, Nova, Pro Neo, One S 0.76, Pro S 0.76)
+    if "zendura flx" in combined or "zendura viva" in combined or "flx" in combined or "viva" in combined:
+        return "aligner_sheet"
+    if "pro neo" in combined or "proneo" in combined:
+        return "aligner_sheet"
+    if "nova" in combined and (
+            "0.76" in combined or "sheet" in combined or "aligner" in combined or "foil" in combined):
+        return "aligner_sheet"
+    if ("one s" in combined or "ones" in combined) and ("0.76" in combined or "76" in combined):
+        return "aligner_sheet"
+    if ("pro s" in combined or "pros" in combined) and ("0.76" in combined or "76" in combined):
+        return "aligner_sheet"
+    if "erkodur" in combined and ("0.8" in combined or "0.80" in combined or "80" in combined):
+        return "aligner_sheet"
+    if "aligner sheet" in combined or "aligner foil" in combined:
+        return "aligner_sheet"
+
+    # 3. Retainer Sheet (1mm, 1.0mm, Zendura A, One S 1mm, Pro S 1mm)
+    if "zendura a" in combined or "zendura-a" in combined:
+        return "retainer_sheet"
+    if ("one s" in combined or "ones" in combined) and (
+            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} "):
+        return "retainer_sheet"
+    if ("pro s" in combined or "pros" in combined) and (
+            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} "):
+        return "retainer_sheet"
+    if "erkodur" in combined and (
+            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} " or "1.00" in combined):
+        return "retainer_sheet"
+    if "retainer sheet" in combined or "retainer foil" in combined:
+        return "retainer_sheet"
+
+    # 4. Resin (Anycubic, Graphy, Jamghe, Aqua, Formlabs, Dtech, etc.)
+    if "anycubic" in combined or "graphy" in combined or "jamghe" in combined or "formlabs" in combined or "form labs" in combined:
+        return "resin"
+    if "aqua" in combined and ("model" in combined or "resin" in combined):
+        return "resin"
+    if ("dtech" in combined or "d-tech" in combined) and (
+            "resin" in combined or "model" in combined or "standard" in combined):
+        return "resin"
+    if "resin" in combined:
+        return "resin"
+
+    # 5. Other Consumables (Aligner box, Chewies, Extractor)
+    if "aligner box" in combined or "aligner case" in combined:
+        return "other_consumable"
+    if "chewie" in combined or "chewies" in combined or "chewer" in combined:
+        return "other_consumable"
+    if "extractor" in combined or "extraction" in combined or "aligner remover" in combined or "aligner tool" in combined:
+        return "other_consumable"
+
+
+def ensure_cross_selling_table():
+    """Ensures the isolated CrossSellingRemark table exists in the database."""
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS "customer_dashboard_crosssellingremark" (
+                    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    "remark" text NOT NULL,
+                    "created_at" datetime NOT NULL,
+                    "customer_id" bigint NOT NULL REFERENCES "customer_dashboard_customer" ("id") DEFERRABLE INITIALLY DEFERRED,
+                    "salesperson_id" bigint NULL REFERENCES "customer_dashboard_salesperson" ("id") DEFERRABLE INITIALLY DEFERRED
+                );
+            """)
+    except Exception:
+        pass
+
+
+def get_cross_selling_dataset():
+    """
+    Builds the dataset of all customers who bought at least one product
+    from the 5 target categories.
+    Returns:
+        dict: {
+            "customers": list of customer analysis dicts,
+            "all_qualifying_count": int,
+            "stats": dict of aggregate metrics
+        }
+    """
+    ensure_cross_selling_table()
+    # 1. Fetch all customers and map them by normalized name
+    customers = Customer.objects.select_related("salesperson").prefetch_related(
+        "cross_selling_remarks__salesperson").all()
+    customer_by_name = {}
+    customer_by_id = {}
+    for c in customers:
+        norm_name = c.name.strip().lower()
+        customer_by_name[norm_name] = c
+        customer_by_id[c.id] = c
+
+    # 2. Fetch stock items for TAX INVOICE / sale vouchers
+    stock_items = (
+        VoucherStockItem.objects.filter(
+            Q(voucher__voucher_type__iexact="TAX INVOICE") | Q(voucher__voucher_type__iexact="sale")
+        )
+        .select_related("item", "item__category", "voucher")
+        .order_by("-voucher__date")
+    )
+
+    # 3. Aggregate customer purchases per category
+    customer_cat_map = defaultdict(lambda: {
+        "categories": {cat["id"]: {"bought": False, "items": [], "total_qty": 0, "total_amt": 0} for cat in
+                       CROSS_SELLING_CATEGORIES},
+        "last_order_date": None,
+        "total_spend": 0,
+        "total_items_count": 0,
+    })
+
+    for si in stock_items:
+        party_name = (si.voucher.party_name or "").strip().lower()
+        if not party_name or party_name not in customer_by_name:
+            continue
+
+        customer = customer_by_name[party_name]
+        p_name = si.item.name if si.item else (si.item_name_text or "")
+        c_name = si.item.category.name if (si.item and si.item.category) else ""
+
+        cat_id = classify_cross_selling_category(p_name, c_name)
+        if not cat_id:
+            continue
+
+        c_data = customer_cat_map[customer.id]
+        c_data["categories"][cat_id]["bought"] = True
+        qty = float(si.quantity or 0)
+        amt = float(si.amount or 0)
+        c_data["categories"][cat_id]["total_qty"] += qty
+        c_data["categories"][cat_id]["total_amt"] += amt
+        c_data["categories"][cat_id]["items"].append({
+            "product_name": p_name,
+            "quantity": qty,
+            "amount": amt,
+            "date": si.voucher.date,
+            "voucher_number": si.voucher.voucher_number,
+            "voucher_id": si.voucher.id,
+        })
+        c_data["total_spend"] += amt
+        c_data["total_items_count"] += 1
+
+        if not c_data["last_order_date"] or si.voucher.date > c_data["last_order_date"]:
+            c_data["last_order_date"] = si.voucher.date
+
+    # 4. Build analysis list for customers who bought at least 1 category
+    today = date.today()
+    cutoff_date = today - timedelta(days=90)
+    analysis_list = []
+    category_bought_counts = {cat["id"]: 0 for cat in CROSS_SELLING_CATEGORIES}
+    category_missing_counts = {cat["id"]: 0 for cat in CROSS_SELLING_CATEGORIES}
+    score_distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+    for cust_id, p_info in customer_cat_map.items():
+        customer = customer_by_id.get(cust_id)
+        if not customer:
+            continue
+
+        bought_cats = [cat_id for cat_id, val in p_info["categories"].items() if val["bought"]]
+        bought_count = len(bought_cats)
+
+        if bought_count == 0:
+            continue
+
+        missing_cats = [cat for cat in CROSS_SELLING_CATEGORIES if not p_info["categories"][cat["id"]]["bought"]]
+        missing_cat_ids = [cat["id"] for cat in missing_cats]
+
+        # Update stats
+        score_distribution[bought_count] += 1
+        for cat in CROSS_SELLING_CATEGORIES:
+            if p_info["categories"][cat["id"]]["bought"]:
+                category_bought_counts[cat["id"]] += 1
+            else:
+                category_missing_counts[cat["id"]] += 1
+
+        # Cross-Selling Specific Customer Remarks (Ordered Oldest to Newest)
+        all_remarks = list(customer.cross_selling_remarks.select_related("salesperson").order_by("created_at"))
+        latest_remark = all_remarks[-1] if all_remarks else None
+
+        # Build 5-Category Checklist matching the user's diagram
+        # If bought: show the actual product name(s) bought with [✓]
+        # If missing: show the category name with [✗]
+        checklist_items = []
+        latest_vouchers_by_cat = []
+        vouchers_map = OrderedDict()
+
+        for cat in CROSS_SELLING_CATEGORIES:
+            cat_data = p_info["categories"][cat["id"]]
+            if cat_data["bought"]:
+                # Get unique bought product names
+                distinct_products = list(
+                    OrderedDict.fromkeys([it["product_name"] for it in cat_data["items"] if it.get("product_name")]))
+                prod_display = ", ".join(distinct_products) if distinct_products else cat["name"]
+
+                # Get the latest voucher specifically for this category
+                latest_cat_voucher = cat_data["items"][0] if cat_data["items"] else None
+                v_date = latest_cat_voucher.get("date") if latest_cat_voucher else None
+                days_ago = (today - v_date).days if v_date else None
+                is_within_90_days = bool(days_ago is not None and days_ago <= 90)
+
+                checklist_items.append({
+                    "category_id": cat["id"],
+                    "category_name": cat["name"],
+                    "bought": True,
+                    "display_text": prod_display,
+                    "badge_color": cat["badge_color"],
+                    "total_qty": round(cat_data["total_qty"], 2),
+                    "total_amt": round(cat_data["total_amt"], 2),
+                    "items": cat_data["items"],
+                    "latest_voucher": {
+                        "id": latest_cat_voucher.get("voucher_id") if latest_cat_voucher else None,
+                        "voucher_number": latest_cat_voucher.get("voucher_number") if latest_cat_voucher else "",
+                        "date": v_date,
+                        "days_ago": days_ago,
+                        "is_within_90_days": is_within_90_days,
+                        "product_name": latest_cat_voucher.get("product_name") if latest_cat_voucher else "",
+                    } if latest_cat_voucher else None,
+                })
+
+                if latest_cat_voucher:
+                    latest_vouchers_by_cat.append({
+                        "category_id": cat["id"],
+                        "category_name": cat["name"],
+                        "id": latest_cat_voucher.get("voucher_id"),
+                        "voucher_number": latest_cat_voucher.get("voucher_number"),
+                        "date": v_date,
+                        "days_ago": days_ago,
+                        "is_within_90_days": is_within_90_days,
+                        "product_name": latest_cat_voucher.get("product_name"),
+                    })
+
+                for it in cat_data["items"]:
+                    v_num = it.get("voucher_number")
+                    v_id = it.get("voucher_id")
+                    if v_num and v_num not in vouchers_map:
+                        vouchers_map[v_num] = {
+                            "id": v_id,
+                            "voucher_number": v_num,
+                            "date": it.get("date"),
+                            "product_name": it.get("product_name"),
+                        }
+            else:
+                checklist_items.append({
+                    "category_id": cat["id"],
+                    "category_name": cat["name"],
+                    "bought": False,
+                    "display_text": cat["name"],
+                    "badge_color": "secondary",
+                    "total_qty": 0,
+                    "total_amt": 0,
+                    "items": [],
+                    "latest_voucher": None,
+                    "expected_items": cat["expected_items"],
+                })
+
+        vouchers_list = list(vouchers_map.values())
+        vouchers_list.sort(key=lambda x: str(x.get("date") or ""), reverse=True)
+        latest_voucher = vouchers_list[0] if vouchers_list else None
+
+        # Build category status list for stats/export compatibility
+        cat_status_list = []
+        for cat in CROSS_SELLING_CATEGORIES:
+            cat_data = p_info["categories"][cat["id"]]
+            cat_status_list.append({
+                "id": cat["id"],
+                "name": cat["name"],
+                "badge_color": cat["badge_color"],
+                "expected_items": cat["expected_items"],
+                "bought": cat_data["bought"],
+                "items": cat_data["items"][:5],
+                "total_items": len(cat_data["items"]),
+                "total_qty": round(cat_data["total_qty"], 2),
+                "total_amt": round(cat_data["total_amt"], 2),
+            })
+
+        today = date.today()
+        cutoff_date = today - timedelta(days=90)
+        last_order_d = p_info["last_order_date"]
+        is_active = bool(last_order_d and last_order_d >= cutoff_date)
+        days_since_last = (today - last_order_d).days if last_order_d else None
+
+        analysis_list.append({
+            "customer": customer,
+            "is_active": is_active,
+            "is_inactive": not is_active,
+            "customer_status": "Active" if is_active else "Inactive",
+            "days_since_last_order": days_since_last,
+            "bought_count": bought_count,
+            "missing_count": len(missing_cats),
+            "bought_cats": bought_cats,
+            "missing_cat_ids": missing_cat_ids,
+            "missing_cats": missing_cats,
+            "checklist_items": checklist_items,
+            "latest_voucher": latest_voucher,
+            "latest_vouchers_by_cat": latest_vouchers_by_cat,
+            "vouchers_list": vouchers_list,
+            "other_vouchers_count": max(0, len(vouchers_list) - 1),
+            "cat_status_list": cat_status_list,
+            "categories_map": p_info["categories"],
+            "last_order_date": p_info["last_order_date"],
+            "total_spend": round(p_info["total_spend"], 2),
+            "latest_remark": latest_remark,
+            "all_remarks": all_remarks,
+            "total_remarks_count": len(all_remarks),
+        })
+
+    # Sort customers by bought_count (descending), then last_order_date
+    analysis_list.sort(key=lambda x: (-x["bought_count"], str(x["last_order_date"] or "")), reverse=False)
+
+    stats = {
+        "total_qualifying": len(analysis_list),
+        "active_count": sum(1 for c in analysis_list if c["is_active"]),
+        "inactive_count": sum(1 for c in analysis_list if not c["is_active"]),
+        "fully_converted": score_distribution[5],
+        "cross_sell_opportunities": len(analysis_list) - score_distribution[5],
+        "score_distribution": score_distribution,
+        "category_bought_counts": category_bought_counts,
+        "category_missing_counts": category_missing_counts,
+    }
+
+    return {
+        "customers": analysis_list,
+        "stats": stats,
+    }
+
+def _clean_string_tokens(s):
+    if not s:
+        return []
+    cleaned = "".join(ch.lower() if ch.isalnum() else " " for ch in str(s))
+    return [t for t in cleaned.split() if t]
+
+
+def _sp_matches_target_names(sp, target_names):
+    """
+    Checks whether a SalesPerson instance matches any of the target names.
+    Supports exact match, word tokens (e.g. 'Satish Kumar' matches 'satish'),
+    and prefix matching on tokens.
+    """
+    if not sp or not sp.name:
+        return False
+    sp_tokens = _clean_string_tokens(sp.name)
+    sp_name_lower = sp.name.strip().lower()
+
+    for target in target_names:
+        t_clean = target.strip().lower()
+        if t_clean == sp_name_lower or t_clean in sp_tokens:
+            return True
+        if any(tok.startswith(t_clean) or t_clean.startswith(tok) for tok in sp_tokens if len(tok) >= 3 and len(t_clean) >= 3):
+            return True
+    return False
+
+
+
+# ============================================================================
+# 1. HELPER: RBAC USER PERMISSIONS FOR CROSS-SELLING
+# ============================================================================
+def get_cross_selling_user_permissions(user):
+    """
+    Evaluates permissions dynamically using RBAC:
+    - Super Admin / Sales Head / Business / Accounts: Company-wide view, can select any salesperson.
+    - RSM: Sees regional team downline.
+    - ASM / Salesperson: Scoped to self/territory.
+    """
+    all_sp = SalesPerson.objects.all().order_by("name")
+    hide = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan", "test1"]
+
+    emp = getattr(user, "employee_profile", None)
+    user_roles = [a.role.role_key for a in emp.role_assignments.filter(is_active=True)] if emp else []
+
+    is_executive = bool(
+        user.is_superuser
+        or getattr(user, "is_accountant", False)
+        or any(r in user_roles for r in ["admin", "sales_head", "business", "accounts_operations"])
+    )
+
+    user_sp = SalesPerson.objects.filter(user=user).first()
+
+    if is_executive:
+        allowed_sp = [sp for sp in all_sp if sp.name.lower() not in hide]
+        return {
+            "is_executive": True,
+            "allowed_salespersons": allowed_sp,
+            "can_select_salesperson": True,
+            "user_sp": user_sp,
+            "user_roles": user_roles,
+        }
+
+    # For managers (RSM / ASM) and salespeople: Scoped via RBAC hierarchy
+    scoped_customers = scope_queryset(user, "customer.view", Customer.objects.all())
+    allowed_sp_ids = set(scoped_customers.values_list("salesperson_id", flat=True).distinct())
+    allowed_sp = [sp for sp in all_sp if sp.id in allowed_sp_ids and sp.name.lower() not in hide]
+
+    return {
+        "is_executive": False,
+        "allowed_salespersons": allowed_sp,
+        "can_select_salesperson": len(allowed_sp) > 1,
+        "user_sp": user_sp,
+        "user_roles": user_roles,
+    }
+
+def filter_cross_selling_customers(customers_list, perm, selected_sp_id=""):
+    """
+    Applies RBAC visibility to the precomputed cross-selling dataset.
+    """
+    if perm["is_executive"]:
+        base = customers_list
+        if selected_sp_id:
+            scoped = [c for c in base if c["customer"].salesperson and str(c["customer"].salesperson.id) == str(selected_sp_id)]
+        else:
+            scoped = base
+        return base, scoped
+
+    # Scoped to downline hierarchy
+    allowed_sp_ids = {str(sp.id) for sp in perm["allowed_salespersons"]}
+    base = [c for c in customers_list if c["customer"].salesperson and str(c["customer"].salesperson.id) in allowed_sp_ids]
+
+    if selected_sp_id and selected_sp_id in allowed_sp_ids:
+        scoped = [c for c in base if c["customer"].salesperson and str(c["customer"].salesperson.id) == str(selected_sp_id)]
+    else:
+        scoped = base
+
+    return base, scoped
+
+
+
+
+def compute_cross_selling_stats(customer_list):
+    """Computes summary KPI statistics for a given list of customer analysis dicts."""
+    total = len(customer_list)
+    active = sum(1 for c in customer_list if c.get("is_active"))
+    inactive = total - active
+    fully_converted = sum(1 for c in customer_list if c.get("bought_count") == 5)
+    cross_sell = total - fully_converted
+
+    score_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for c in customer_list:
+        b_cnt = c.get("bought_count", 0)
+        if b_cnt in score_distribution:
+            score_distribution[b_cnt] += 1
+
+    return {
+        "total_qualifying": total,
+        "active_count": active,
+        "inactive_count": inactive,
+        "fully_converted": fully_converted,
+        "cross_sell_opportunities": cross_sell,
+        "score_distribution": score_distribution,
+    }
+
+
+# ============================================================================
+# 2. VIEW: CROSS-SELLING MATRIX (RBAC SECURED)
+# ============================================================================
+class CrossSellingMatrixView(RBACViewMixin, TemplateView):
+    """
+    Dedicated view for the 5-Category Customer Cross-Selling Matrix & Gap Analysis.
+    Allows sales teams to identify product gaps and add customer remarks directly.
+    """
+    template_name = "customers/cross_selling_matrix.html"
+    rbac_permission = "customer.view"  # Gated by customer view capability
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        dataset = get_cross_selling_dataset()
+        customers_list = dataset["customers"]
+
+        perm = get_cross_selling_user_permissions(self.request.user)
+        user_roles = perm.get("user_roles", [])
+        is_exec = perm.get("is_executive", False)
+
+        # ── DYNAMIC RBAC CONTEXT (Zero KeyError bugs) ─────────────────── #
+        ctx["is_executive"] = is_exec
+        ctx["is_accountant"] = is_exec  # Backward-compatibility for template
+        ctx["is_rsm"] = bool("rsm" in user_roles or "sales_head" in user_roles or is_exec)
+        ctx["is_asm"] = bool("asm" in user_roles or ctx["is_rsm"])
+        ctx["rsm_team_label"] = "Team Customers" if ctx["is_rsm"] else "My Customers"
+
+        ctx["can_select_salesperson"] = perm["can_select_salesperson"]
+        ctx["current_sp"] = perm.get("user_sp")
+        ctx["salespersons"] = perm["allowed_salespersons"]
+        ctx["categories"] = CROSS_SELLING_CATEGORIES
+
+        # ── FILTERS FROM URL ─────────────────────────────────────────── #
+        sp_id = self.request.GET.get("salesperson", "").strip()
+        search_query = self.request.GET.get("q", "").strip()
+        missing_cat = self.request.GET.get("missing_cat", "").strip()
+        bought_cat = self.request.GET.get("bought_cat", "").strip()
+        score_filter = self.request.GET.get("score", "").strip()
+        status_filter = self.request.GET.get("status", "").strip()
+
+        # Apply role-based visibility and salesperson filter
+        base_accessible_customers, scoped_customers = filter_cross_selling_customers(
+            customers_list, perm, sp_id
+        )
+
+        filtered_customers = scoped_customers
+
+        if search_query:
+            q_lower = search_query.lower()
+            filtered_customers = [
+                c for c in filtered_customers
+                if (
+                    q_lower in c["customer"].name.lower()
+                    or (c["customer"].phone and q_lower in c["customer"].phone.lower())
+                    or (c["customer"].state and q_lower in c["customer"].state.lower())
+                    or (c["customer"].district and q_lower in c["customer"].district.lower())
+                )
+            ]
+
+        if missing_cat:
+            filtered_customers = [c for c in filtered_customers if missing_cat in c["missing_cat_ids"]]
+
+        if bought_cat:
+            filtered_customers = [c for c in filtered_customers if bought_cat in c["bought_cats"]]
+
+        if score_filter and score_filter.isdigit():
+            s_val = int(score_filter)
+            filtered_customers = [c for c in filtered_customers if c["bought_count"] == s_val]
+
+        if status_filter == "active":
+            filtered_customers = [c for c in filtered_customers if c["is_active"]]
+        elif status_filter == "inactive":
+            filtered_customers = [c for c in filtered_customers if not c["is_active"]]
+
+        ctx["customers_data"] = filtered_customers
+        ctx["total_filtered"] = len(filtered_customers)
+        ctx["stats"] = compute_cross_selling_stats(base_accessible_customers)
+
+        # Preserve state for template inputs
+        ctx["selected_sp_id"] = sp_id if perm["can_select_salesperson"] else ""
+        ctx["search_query"] = search_query
+        ctx["selected_missing_cat"] = missing_cat
+        ctx["selected_bought_cat"] = bought_cat
+        ctx["selected_score"] = score_filter
+        ctx["selected_status"] = status_filter
+
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest" or request.POST.get("is_ajax") == "true"
+        delete_id = request.POST.get("delete_remark_id")
+
+        # ── 1. DELETE REMARK (RBAC Gated: Admin & Users with customer.edit) ─── #
+        if delete_id:
+            if not (request.user.is_superuser or can(request.user, "customer.edit")):
+                if is_ajax:
+                    return JsonResponse({"success": False, "error": "You do not have permission to delete remarks."}, status=403)
+                messages.error(request, "You do not have permission to delete remarks.")
+                return redirect(request.get_full_path())
+
+            remark = get_object_or_404(CrossSellingRemark, id=delete_id)
+            remark.delete()
+            if is_ajax:
+                return JsonResponse({"success": True, "action": "deleted", "message": "Remark deleted successfully."})
+            messages.success(request, "Remark deleted successfully 🗑️")
+            return redirect(request.get_full_path())
+
+        # ── 2. ADD REMARK ─────────────────────────────────────────────── #
+        customer_id = request.POST.get("customer_id")
+        remark_text = request.POST.get("remark", "").strip()
+
+        if not customer_id or not remark_text:
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Customer ID and Remark text are required."}, status=400)
+            messages.error(request, "Please enter a remark before saving.")
+            return redirect(request.get_full_path())
+
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        # 🔒 Object-Level Security: Verify user has permission to access this customer
+        if not can(request.user, "customer.view", customer):
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Unauthorized to access this customer."}, status=403)
+            messages.error(request, "Unauthorized to access this customer.")
+            return redirect(request.get_full_path())
+
+        # Resolve SalesPerson profile
+        salesperson = None
+        if hasattr(request.user, "salesperson_profile") and request.user.salesperson_profile.exists():
+            salesperson = request.user.salesperson_profile.first()
+        elif request.user.is_authenticated:
+            salesperson = (
+                SalesPerson.objects.filter(user=request.user).first()
+                or SalesPerson.objects.filter(name__iexact=request.user.username).first()
+                or SalesPerson.objects.filter(name__iexact=request.user.get_full_name()).first()
+            )
+            if not salesperson:
+                display_name = request.user.get_full_name() or request.user.username or "User"
+                salesperson, _ = SalesPerson.objects.get_or_create(name=display_name)
+
+        if not salesperson:
+            salesperson = customer.salesperson or SalesPerson.objects.first()
+
+        new_remark = CrossSellingRemark.objects.create(
+            customer=customer,
+            salesperson=salesperson,
+            remark=remark_text
+        )
+
+        total_remarks = customer.cross_selling_remarks.count()
+
+        if is_ajax:
+            author_display = new_remark.salesperson.name if (new_remark.salesperson and new_remark.salesperson.name) else (request.user.get_full_name() or request.user.username)
+            return JsonResponse({
+                "success": True,
+                "action": "created",
+                "total_count": total_remarks,
+                "remark": {
+                    "id": new_remark.id,
+                    "text": new_remark.remark,
+                    "salesperson": author_display,
+                    "created_at": new_remark.created_at.strftime("%d %b %Y, %I:%M %p"),
+                }
+            })
+
+        messages.success(request, f"Remark added for {customer.name} ✅")
+        return redirect(f"{request.get_full_path()}#customer-row-{customer_id}")
+
+@login_required
+def export_cross_selling_matrix(request):
+    """
+    Exports the Cross-Selling Gap Analysis dataset to an Excel spreadsheet.
+    """
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+    dataset = get_cross_selling_dataset()
+    customers_list = dataset["customers"]
+
+    perm = get_cross_selling_user_permissions(request.user)
+
+    # Apply filters if provided
+    sp_id = request.GET.get("salesperson", "").strip()
+    search_query = request.GET.get("q", "").strip()
+    missing_cat = request.GET.get("missing_cat", "").strip()
+    bought_cat = request.GET.get("bought_cat", "").strip()
+    score_filter = request.GET.get("score", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+
+    # Role-based visibility scoping
+    _, scoped_customers = filter_cross_selling_customers(customers_list, perm, sp_id)
+    customers_list = scoped_customers
+
+    if search_query:
+        q_lower = search_query.lower()
+        customers_list = [
+            c for c in customers_list
+            if (
+                    q_lower in c["customer"].name.lower()
+                    or (c["customer"].phone and q_lower in c["customer"].phone.lower())
+                    or (c["customer"].state and q_lower in c["customer"].state.lower())
+            )
+        ]
+    if missing_cat:
+        customers_list = [c for c in customers_list if missing_cat in c["missing_cat_ids"]]
+    if bought_cat:
+        customers_list = [c for c in customers_list if bought_cat in c["bought_cats"]]
+    if score_filter and score_filter.isdigit():
+        customers_list = [c for c in customers_list if c["bought_count"] == int(score_filter)]
+    if status_filter == "active":
+        customers_list = [c for c in customers_list if c["is_active"]]
+    elif status_filter == "inactive":
+        customers_list = [c for c in customers_list if not c["is_active"]]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Cross-Selling Opportunities"
+
+    # Header styling
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+    bought_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
+    missing_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    active_fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+    inactive_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+
+    headers = [
+        "S.No",
+        "Customer Name",
+        "Customer Status",
+        "Phone",
+        "State",
+        "District",
+        "Salesperson",
+        "Template Sheet",
+        "Aligner Sheet",
+        "Retainer Sheet",
+        "Resin",
+        "Other Consumables",
+        "Score (Bought/5)",
+        "Missing Categories",
+        "Total Spend (₹)",
+        "Last Order Date",
+        "Remarks History",
+    ]
+
+    ws.append(headers)
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_align
+
+    for idx, c in enumerate(customers_list, start=1):
+        cust = c["customer"]
+        missing_names = ", ".join([cat["name"] for cat in c["missing_cats"]]) if c[
+            "missing_cats"] else "None (Fully Converted)"
+        if c.get("all_remarks"):
+            remark_text = " | \n".join([
+                                           f"[{r.created_at.strftime('%d-%m-%Y %I:%M %p')} - {r.salesperson.name if r.salesperson else 'User'}]: {r.remark}"
+                                           for r in c["all_remarks"]])
+        else:
+            remark_text = ""
+
+        row_values = [
+            idx,
+            cust.name,
+            "Active" if c["is_active"] else "Inactive",
+            cust.phone or "-",
+            cust.state or "-",
+            cust.district or "-",
+            str(cust.salesperson) if cust.salesperson else "Unassigned",
+            "✅ BOUGHT" if c["categories_map"]["template_sheet"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["aligner_sheet"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["retainer_sheet"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["resin"]["bought"] else "❌ MISSING",
+            "✅ BOUGHT" if c["categories_map"]["other_consumable"]["bought"] else "❌ MISSING",
+            f"{c['bought_count']}/5",
+            missing_names,
+            c["total_spend"],
+            c["last_order_date"].strftime("%d-%m-%Y") if c["last_order_date"] else "-",
+            remark_text,
+        ]
+        ws.append(row_values)
+
+        # Style status cells
+        row_num = idx + 1
+
+        # Style Customer Status cell (Col 3)
+        status_cell = ws.cell(row=row_num, column=3)
+        status_cell.alignment = center_align
+        if c["is_active"]:
+            status_cell.fill = active_fill
+            status_cell.font = Font(color="166534", bold=True)
+        else:
+            status_cell.fill = inactive_fill
+            status_cell.font = Font(color="991B1B", bold=True)
+
+        for cat_col_idx, cat_id in enumerate(
+                ["template_sheet", "aligner_sheet", "retainer_sheet", "resin", "other_consumable"], start=8):
+            cell = ws.cell(row=row_num, column=cat_col_idx)
+            cell.alignment = center_align
+            if c["categories_map"][cat_id]["bought"]:
+                cell.fill = bought_fill
+                cell.font = Font(color="065F46", bold=True)
+            else:
+                cell.fill = missing_fill
+                cell.font = Font(color="991B1B", bold=True)
+
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or "")) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="cross_selling_gap_analysis.xlsx"'
+    wb.save(response)
+    return response
+
 
 
 # KASHISH KPI VIEWS
 
 #sales report by each product
-class SalesByProductsView(LoginRequiredMixin, TemplateView):
+class SalesByProductsView(RBACViewMixin, TemplateView):
     template_name = "customers/product_sales_report.html"
 
     def get_context_data(self, **kwargs):
@@ -3951,7 +3282,7 @@ class SalesByProductsView(LoginRequiredMixin, TemplateView):
         return ctx
 
 # page created by swasti
-class SalesPersonCustomerOwnershipView(LoginRequiredMixin,TemplateView):
+class SalesPersonCustomerOwnershipView(RBACViewMixin,TemplateView):
     template_name = "customers/salesperson_customer_summary.html"
 
     def get_context_data(self, **kwargs):
@@ -4067,7 +3398,7 @@ class SalesPersonCustomerOwnershipView(LoginRequiredMixin,TemplateView):
         return ctx
 
 #page created by swasti
-class AdminSalespersonConversionReportView(AccountantRequiredMixin, TemplateView):
+class AdminSalespersonConversionReportView(RBACViewMixin, TemplateView):
     template_name = "customers/salesperson_performance_report.html"
 
     def get_context_data(self, **kwargs):
@@ -4827,8 +4158,10 @@ from django.db.models import Count
 from .models import Customer
 
 
-class MapView(AccountantRequiredMixin,TemplateView):
+class MapView(RBACViewMixin,TemplateView):
     template_name = "customers/map.html"
+    rbac_permission = "customer.view_all"
+
 
     # simplified state coords; extend as needed
     STATE_COORDS = {
@@ -4897,8 +4230,10 @@ class MapView(AccountantRequiredMixin,TemplateView):
         return ctx
 
 
-class DetailedMapView(AccountantRequiredMixin, TemplateView):
+class DetailedMapView(RBACViewMixin, TemplateView):
     template_name = "customers/detailed_map.html"
+    rbac_permission = "analytics.view"
+
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -4924,8 +4259,10 @@ class DetailedMapView(AccountantRequiredMixin, TemplateView):
         return ctx
 
 
-class GeoSalesReportView(AccountantRequiredMixin, TemplateView):
+class GeoSalesReportView(RBACViewMixin, TemplateView):
     template_name = "customers/geo_sales_report.html"
+    rbac_permission = "customer.view_all"
+
 
     STATE_COORDS = {
         "Andhra Pradesh": [15.91, 79.74], "Arunachal Pradesh": [28.21, 94.72], "Assam": [26.20, 92.93],
@@ -5039,1115 +4376,3 @@ class GeoSalesReportView(AccountantRequiredMixin, TemplateView):
                  d_map2.items()])
 
         return ctx
-
-
-class CustomerDetailView(LoginRequiredMixin, TemplateView):
-    template_name = "customers/customer_detail.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-
-        customer = get_object_or_404(
-            Customer.objects.select_related(
-                "salesperson",
-                "credit_profile"
-            ),
-            pk=self.kwargs["pk"]
-        )
-
-        ctx["customer"] = customer
-
-        # UNIT FUNCTIONALITY (NEW)
-        # =====================================================
-        # Check if this customer belongs to any unit
-        membership = CustomerUnitMembership.objects.filter(customer=customer).select_related('unit').first()
-
-        if membership:
-            unit = membership.unit
-            ctx["unit"] = unit
-            # Fetch all customers belonging to this unit
-            # We select related credit_profile and salesperson for detailed display
-            ctx["unit_members"] = Customer.objects.filter(
-                unit_membership__unit=unit
-            ).select_related("credit_profile", "salesperson").order_by("name")
-        else:
-            ctx["unit"] = None
-            ctx["unit_members"] = []
-
-        # =====================================================
-        # REMARKS + FOLLOWUPS TIMELINE
-        # =====================================================
-
-        timeline = []
-
-        remarks = CustomerRemark.objects.filter(
-            customer=customer
-        ).select_related("salesperson")
-
-        for r in remarks:
-            timeline.append({
-                "type": "remark",
-                "date": r.created_at,
-                "salesperson": r.salesperson,
-                "text": r.remark,
-                "obj": r,
-            })
-
-        followups = CustomerFollowUp.objects.filter(
-            customer=customer
-        ).select_related("salesperson")
-
-        for f in followups:
-            timeline.append({
-                "type": "followup",
-                "date": f.created_at,
-                "salesperson": f.salesperson,
-                "obj": f,
-            })
-
-        timeline = sorted(
-            timeline,
-            key=lambda x: x["date"],
-            reverse=True
-        )
-
-        ctx["timeline"] = timeline
-
-        # =====================================================
-        # TOP 5 PRODUCTS
-        # =====================================================
-
-        invoices = Voucher.objects.filter(
-            party_name__iexact=customer.name,
-            voucher_type="TAX INVOICE"
-        )
-
-        product_month_data = defaultdict(
-            lambda: defaultdict(float)
-        )
-
-        stock_rows = VoucherStockItem.objects.filter(
-            voucher__in=invoices
-        ).select_related(
-            "voucher",
-            "item"
-        )
-
-        for row in stock_rows:
-
-            product_name = (
-                row.item.name
-                if row.item
-                else row.item_name_text
-            )
-
-            month_key = row.voucher.date.strftime("%b%y")
-
-            product_month_data[product_name][month_key] += float(
-                row.quantity
-            )
-
-        ranked_products = sorted(
-            product_month_data.items(),
-            key=lambda x: sum(x[1].values()),
-            reverse=True
-        )[:5]
-
-        top_products = []
-
-        for idx, (product, months) in enumerate(
-            ranked_products,
-            start=1
-        ):
-            top_products.append({
-                "sno": idx,
-                "product": product,
-                "months": dict(months)
-            })
-
-        ctx["top_products"] = top_products
-
-        # =====================================================
-        # PAYMENT SUMMARY
-        # =====================================================
-
-        credit_profile = getattr(
-            customer,
-            "credit_profile",
-            None
-        )
-
-        ctx["credit_profile"] = credit_profile
-
-        pending_vouchers = (
-            CustomerVoucherStatus.objects
-            .filter(
-                customer=customer
-            )
-            .filter(
-                is_fully_paid=False
-            )
-            .select_related("voucher")
-            .order_by("-voucher_date")
-        )
-
-        ctx["pending_vouchers"] = pending_vouchers
-
-        # =====================================================
-        # PAYMENT REMARKS
-        # =====================================================
-
-        payment_remarks = (
-            PaymentRemark.objects
-            .filter(
-                thread__voucher_status__customer=customer
-            )
-            .select_related(
-                "created_by",
-                "thread__voucher_status"
-            )
-            .order_by("-created_at")
-        )
-
-        ctx["payment_remarks"] = payment_remarks
-
-        return ctx
-
-
-CROSS_SELLING_CATEGORIES = [
-    {
-        "id": "template_sheet",
-        "name": "Template Sheet",
-        "badge_color": "info",
-        "expected_items": "Erkolen 0.6mm, Erkodur al 0.6mm, Erkodur 0.6mm, Template U, Template E",
-    },
-    {
-        "id": "aligner_sheet",
-        "name": "Aligner Sheet",
-        "badge_color": "primary",
-        "expected_items": "Erkodur 0.8mm, Erkodur al 0.8mm, Zendura FLX 0.76mm, Zendura Viva 0.76mm, One S 0.76mm, Nova 0.76mm, Pro S 0.76mm, Pro Neo 0.76mm",
-    },
-    {
-        "id": "retainer_sheet",
-        "name": "Retainer Sheet",
-        "badge_color": "success",
-        "expected_items": "Erkodur 1mm, Erkodur al 1mm, Zendura A 0.76mm, One S 1mm, Pro S 1mm",
-    },
-    {
-        "id": "resin",
-        "name": "Resin",
-        "badge_color": "warning",
-        "expected_items": "Anycubic, Graphy Model Resin, Jamghe, Aqua Model Resin, Formlabs Model Resin",
-    },
-    {
-        "id": "other_consumable",
-        "name": "Other Consumables",
-        "badge_color": "secondary",
-        "expected_items": "Aligner Box, Chewies, Extractor",
-    },
-]
-
-
-def classify_cross_selling_category(item_name, category_name=""):
-    """
-    Classifies a product name (and optional category name) into one of the 5 cross-selling categories.
-    """
-    name = (item_name or "").strip().lower()
-    cat = (category_name or "").strip().lower()
-    combined = f"{name} {cat}"
-
-    # 1. Template Sheet (0.6mm / Erkolen / Template U / Template E)
-    if "template u" in combined or "templete u" in combined or "template e" in combined or "templete e" in combined:
-        return "template_sheet"
-    if "erkolen" in combined:
-        return "template_sheet"
-    if "erkodur" in combined and ("0.6" in combined or "0.60" in combined or "60" in combined):
-        return "template_sheet"
-    if "template sheet" in combined or "templete sheet" in combined:
-        return "template_sheet"
-
-    # 2. Aligner Sheet (0.8mm, 0.76mm, FLX, Viva, Nova, Pro Neo, One S 0.76, Pro S 0.76)
-    if "zendura flx" in combined or "zendura viva" in combined or "flx" in combined or "viva" in combined:
-        return "aligner_sheet"
-    if "pro neo" in combined or "proneo" in combined:
-        return "aligner_sheet"
-    if "nova" in combined and (
-            "0.76" in combined or "sheet" in combined or "aligner" in combined or "foil" in combined):
-        return "aligner_sheet"
-    if ("one s" in combined or "ones" in combined) and ("0.76" in combined or "76" in combined):
-        return "aligner_sheet"
-    if ("pro s" in combined or "pros" in combined) and ("0.76" in combined or "76" in combined):
-        return "aligner_sheet"
-    if "erkodur" in combined and ("0.8" in combined or "0.80" in combined or "80" in combined):
-        return "aligner_sheet"
-    if "aligner sheet" in combined or "aligner foil" in combined:
-        return "aligner_sheet"
-
-    # 3. Retainer Sheet (1mm, 1.0mm, Zendura A, One S 1mm, Pro S 1mm)
-    if "zendura a" in combined or "zendura-a" in combined:
-        return "retainer_sheet"
-    if ("one s" in combined or "ones" in combined) and (
-            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} "):
-        return "retainer_sheet"
-    if ("pro s" in combined or "pros" in combined) and (
-            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} "):
-        return "retainer_sheet"
-    if "erkodur" in combined and (
-            "1mm" in combined or "1.0" in combined or "1 mm" in combined or " 1 " in f" {combined} " or "1.00" in combined):
-        return "retainer_sheet"
-    if "retainer sheet" in combined or "retainer foil" in combined:
-        return "retainer_sheet"
-
-    # 4. Resin (Anycubic, Graphy, Jamghe, Aqua, Formlabs, Dtech, etc.)
-    if "anycubic" in combined or "graphy" in combined or "jamghe" in combined or "formlabs" in combined or "form labs" in combined:
-        return "resin"
-    if "aqua" in combined and ("model" in combined or "resin" in combined):
-        return "resin"
-    if ("dtech" in combined or "d-tech" in combined) and (
-            "resin" in combined or "model" in combined or "standard" in combined):
-        return "resin"
-    if "resin" in combined:
-        return "resin"
-
-    # 5. Other Consumables (Aligner box, Chewies, Extractor)
-    if "aligner box" in combined or "aligner case" in combined:
-        return "other_consumable"
-    if "chewie" in combined or "chewies" in combined or "chewer" in combined:
-        return "other_consumable"
-    if "extractor" in combined or "extraction" in combined or "aligner remover" in combined or "aligner tool" in combined:
-        return "other_consumable"
-
-
-def ensure_cross_selling_table():
-    """Ensures the isolated CrossSellingRemark table exists in the database."""
-    try:
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS "customer_dashboard_crosssellingremark" (
-                    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-                    "remark" text NOT NULL,
-                    "created_at" datetime NOT NULL,
-                    "customer_id" bigint NOT NULL REFERENCES "customer_dashboard_customer" ("id") DEFERRABLE INITIALLY DEFERRED,
-                    "salesperson_id" bigint NULL REFERENCES "customer_dashboard_salesperson" ("id") DEFERRABLE INITIALLY DEFERRED
-                );
-            """)
-    except Exception:
-        pass
-
-
-def get_cross_selling_dataset():
-    """
-    Builds the dataset of all customers who bought at least one product
-    from the 5 target categories.
-    Returns:
-        dict: {
-            "customers": list of customer analysis dicts,
-            "all_qualifying_count": int,
-            "stats": dict of aggregate metrics
-        }
-    """
-    ensure_cross_selling_table()
-    # 1. Fetch all customers and map them by normalized name
-    customers = Customer.objects.select_related("salesperson").prefetch_related(
-        "cross_selling_remarks__salesperson").all()
-    customer_by_name = {}
-    customer_by_id = {}
-    for c in customers:
-        norm_name = c.name.strip().lower()
-        customer_by_name[norm_name] = c
-        customer_by_id[c.id] = c
-
-    # 2. Fetch stock items for TAX INVOICE / sale vouchers
-    stock_items = (
-        VoucherStockItem.objects.filter(
-            Q(voucher__voucher_type__iexact="TAX INVOICE") | Q(voucher__voucher_type__iexact="sale")
-        )
-        .select_related("item", "item__category", "voucher")
-        .order_by("-voucher__date")
-    )
-
-    # 3. Aggregate customer purchases per category
-    customer_cat_map = defaultdict(lambda: {
-        "categories": {cat["id"]: {"bought": False, "items": [], "total_qty": 0, "total_amt": 0} for cat in
-                       CROSS_SELLING_CATEGORIES},
-        "last_order_date": None,
-        "total_spend": 0,
-        "total_items_count": 0,
-    })
-
-    for si in stock_items:
-        party_name = (si.voucher.party_name or "").strip().lower()
-        if not party_name or party_name not in customer_by_name:
-            continue
-
-        customer = customer_by_name[party_name]
-        p_name = si.item.name if si.item else (si.item_name_text or "")
-        c_name = si.item.category.name if (si.item and si.item.category) else ""
-
-        cat_id = classify_cross_selling_category(p_name, c_name)
-        if not cat_id:
-            continue
-
-        c_data = customer_cat_map[customer.id]
-        c_data["categories"][cat_id]["bought"] = True
-        qty = float(si.quantity or 0)
-        amt = float(si.amount or 0)
-        c_data["categories"][cat_id]["total_qty"] += qty
-        c_data["categories"][cat_id]["total_amt"] += amt
-        c_data["categories"][cat_id]["items"].append({
-            "product_name": p_name,
-            "quantity": qty,
-            "amount": amt,
-            "date": si.voucher.date,
-            "voucher_number": si.voucher.voucher_number,
-            "voucher_id": si.voucher.id,
-        })
-        c_data["total_spend"] += amt
-        c_data["total_items_count"] += 1
-
-        if not c_data["last_order_date"] or si.voucher.date > c_data["last_order_date"]:
-            c_data["last_order_date"] = si.voucher.date
-
-    # 4. Build analysis list for customers who bought at least 1 category
-    today = date.today()
-    cutoff_date = today - timedelta(days=90)
-    analysis_list = []
-    category_bought_counts = {cat["id"]: 0 for cat in CROSS_SELLING_CATEGORIES}
-    category_missing_counts = {cat["id"]: 0 for cat in CROSS_SELLING_CATEGORIES}
-    score_distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
-
-    for cust_id, p_info in customer_cat_map.items():
-        customer = customer_by_id.get(cust_id)
-        if not customer:
-            continue
-
-        bought_cats = [cat_id for cat_id, val in p_info["categories"].items() if val["bought"]]
-        bought_count = len(bought_cats)
-
-        if bought_count == 0:
-            continue
-
-        missing_cats = [cat for cat in CROSS_SELLING_CATEGORIES if not p_info["categories"][cat["id"]]["bought"]]
-        missing_cat_ids = [cat["id"] for cat in missing_cats]
-
-        # Update stats
-        score_distribution[bought_count] += 1
-        for cat in CROSS_SELLING_CATEGORIES:
-            if p_info["categories"][cat["id"]]["bought"]:
-                category_bought_counts[cat["id"]] += 1
-            else:
-                category_missing_counts[cat["id"]] += 1
-
-        # Cross-Selling Specific Customer Remarks (Ordered Oldest to Newest)
-        all_remarks = list(customer.cross_selling_remarks.select_related("salesperson").order_by("created_at"))
-        latest_remark = all_remarks[-1] if all_remarks else None
-
-        # Build 5-Category Checklist matching the user's diagram
-        # If bought: show the actual product name(s) bought with [✓]
-        # If missing: show the category name with [✗]
-        checklist_items = []
-        latest_vouchers_by_cat = []
-        vouchers_map = OrderedDict()
-
-        for cat in CROSS_SELLING_CATEGORIES:
-            cat_data = p_info["categories"][cat["id"]]
-            if cat_data["bought"]:
-                # Get unique bought product names
-                distinct_products = list(
-                    OrderedDict.fromkeys([it["product_name"] for it in cat_data["items"] if it.get("product_name")]))
-                prod_display = ", ".join(distinct_products) if distinct_products else cat["name"]
-
-                # Get the latest voucher specifically for this category
-                latest_cat_voucher = cat_data["items"][0] if cat_data["items"] else None
-                v_date = latest_cat_voucher.get("date") if latest_cat_voucher else None
-                days_ago = (today - v_date).days if v_date else None
-                is_within_90_days = bool(days_ago is not None and days_ago <= 90)
-
-                checklist_items.append({
-                    "category_id": cat["id"],
-                    "category_name": cat["name"],
-                    "bought": True,
-                    "display_text": prod_display,
-                    "badge_color": cat["badge_color"],
-                    "total_qty": round(cat_data["total_qty"], 2),
-                    "total_amt": round(cat_data["total_amt"], 2),
-                    "items": cat_data["items"],
-                    "latest_voucher": {
-                        "id": latest_cat_voucher.get("voucher_id") if latest_cat_voucher else None,
-                        "voucher_number": latest_cat_voucher.get("voucher_number") if latest_cat_voucher else "",
-                        "date": v_date,
-                        "days_ago": days_ago,
-                        "is_within_90_days": is_within_90_days,
-                        "product_name": latest_cat_voucher.get("product_name") if latest_cat_voucher else "",
-                    } if latest_cat_voucher else None,
-                })
-
-                if latest_cat_voucher:
-                    latest_vouchers_by_cat.append({
-                        "category_id": cat["id"],
-                        "category_name": cat["name"],
-                        "id": latest_cat_voucher.get("voucher_id"),
-                        "voucher_number": latest_cat_voucher.get("voucher_number"),
-                        "date": v_date,
-                        "days_ago": days_ago,
-                        "is_within_90_days": is_within_90_days,
-                        "product_name": latest_cat_voucher.get("product_name"),
-                    })
-
-                for it in cat_data["items"]:
-                    v_num = it.get("voucher_number")
-                    v_id = it.get("voucher_id")
-                    if v_num and v_num not in vouchers_map:
-                        vouchers_map[v_num] = {
-                            "id": v_id,
-                            "voucher_number": v_num,
-                            "date": it.get("date"),
-                            "product_name": it.get("product_name"),
-                        }
-            else:
-                checklist_items.append({
-                    "category_id": cat["id"],
-                    "category_name": cat["name"],
-                    "bought": False,
-                    "display_text": cat["name"],
-                    "badge_color": "secondary",
-                    "total_qty": 0,
-                    "total_amt": 0,
-                    "items": [],
-                    "latest_voucher": None,
-                    "expected_items": cat["expected_items"],
-                })
-
-        vouchers_list = list(vouchers_map.values())
-        vouchers_list.sort(key=lambda x: str(x.get("date") or ""), reverse=True)
-        latest_voucher = vouchers_list[0] if vouchers_list else None
-
-        # Build category status list for stats/export compatibility
-        cat_status_list = []
-        for cat in CROSS_SELLING_CATEGORIES:
-            cat_data = p_info["categories"][cat["id"]]
-            cat_status_list.append({
-                "id": cat["id"],
-                "name": cat["name"],
-                "badge_color": cat["badge_color"],
-                "expected_items": cat["expected_items"],
-                "bought": cat_data["bought"],
-                "items": cat_data["items"][:5],
-                "total_items": len(cat_data["items"]),
-                "total_qty": round(cat_data["total_qty"], 2),
-                "total_amt": round(cat_data["total_amt"], 2),
-            })
-
-        today = date.today()
-        cutoff_date = today - timedelta(days=90)
-        last_order_d = p_info["last_order_date"]
-        is_active = bool(last_order_d and last_order_d >= cutoff_date)
-        days_since_last = (today - last_order_d).days if last_order_d else None
-
-        analysis_list.append({
-            "customer": customer,
-            "is_active": is_active,
-            "is_inactive": not is_active,
-            "customer_status": "Active" if is_active else "Inactive",
-            "days_since_last_order": days_since_last,
-            "bought_count": bought_count,
-            "missing_count": len(missing_cats),
-            "bought_cats": bought_cats,
-            "missing_cat_ids": missing_cat_ids,
-            "missing_cats": missing_cats,
-            "checklist_items": checklist_items,
-            "latest_voucher": latest_voucher,
-            "latest_vouchers_by_cat": latest_vouchers_by_cat,
-            "vouchers_list": vouchers_list,
-            "other_vouchers_count": max(0, len(vouchers_list) - 1),
-            "cat_status_list": cat_status_list,
-            "categories_map": p_info["categories"],
-            "last_order_date": p_info["last_order_date"],
-            "total_spend": round(p_info["total_spend"], 2),
-            "latest_remark": latest_remark,
-            "all_remarks": all_remarks,
-            "total_remarks_count": len(all_remarks),
-        })
-
-    # Sort customers by bought_count (descending), then last_order_date
-    analysis_list.sort(key=lambda x: (-x["bought_count"], str(x["last_order_date"] or "")), reverse=False)
-
-    stats = {
-        "total_qualifying": len(analysis_list),
-        "active_count": sum(1 for c in analysis_list if c["is_active"]),
-        "inactive_count": sum(1 for c in analysis_list if not c["is_active"]),
-        "fully_converted": score_distribution[5],
-        "cross_sell_opportunities": len(analysis_list) - score_distribution[5],
-        "score_distribution": score_distribution,
-        "category_bought_counts": category_bought_counts,
-        "category_missing_counts": category_missing_counts,
-    }
-
-    return {
-        "customers": analysis_list,
-        "stats": stats,
-    }
-
-CROSS_SELLING_RSM_TEAMS = {
-    "ankush": {
-        "label": "Ankush's Team (Ankush, Naveen, Satish)",
-        "rsm_name": "Ankush",
-        "asms": ["naveen", "satish"],
-        "all_members": ["ankush", "naveen", "satish"],
-    },
-    "aman": {
-        "label": "Aman's Team (Aman, Kaushik, Rushikesh, Aditya, Avinash)",
-        "rsm_name": "Aman",
-        "asms": ["kaushik", "rushikesh", "aditya", "avinash"],
-        "all_members": ["aman", "kaushik", "rushikesh", "aditya", "avinash"],
-    },
-}
-
-
-def _clean_string_tokens(s):
-    if not s:
-        return []
-    cleaned = "".join(ch.lower() if ch.isalnum() else " " for ch in str(s))
-    return [t for t in cleaned.split() if t]
-
-
-def _sp_matches_target_names(sp, target_names):
-    """
-    Checks whether a SalesPerson instance matches any of the target names.
-    Supports exact match, word tokens (e.g. 'Satish Kumar' matches 'satish'),
-    and prefix matching on tokens.
-    """
-    if not sp or not sp.name:
-        return False
-    sp_tokens = _clean_string_tokens(sp.name)
-    sp_name_lower = sp.name.strip().lower()
-
-    for target in target_names:
-        t_clean = target.strip().lower()
-        if t_clean == sp_name_lower or t_clean in sp_tokens:
-            return True
-        if any(tok.startswith(t_clean) or t_clean.startswith(tok) for tok in sp_tokens if len(tok) >= 3 and len(t_clean) >= 3):
-            return True
-    return False
-
-
-def get_cross_selling_user_permissions(user):
-    """
-    Evaluates permissions and role for the Cross-Selling Matrix:
-      1. Accountants / Superusers:
-         - See all customers
-         - Full salesperson dropdown with all salespeople
-         - Can select any salesperson or view all
-      2. RSMs (Ankush and Aman):
-         - Can only see their own and their team's customers
-         - Dropdown only displays their team members (with 'All Team Members' default)
-         - Ankush's team: Ankush, Naveen, Satish
-         - Aman's team: Aman, Kaushik, Rushikesh, Aditya, Avinash
-      3. ASMs / Salespersons:
-         - Can only see their own customers
-         - No access to the salesperson dropdown
-    """
-    all_sp = SalesPerson.objects.all().order_by("name")
-    hide = ["abhijay", "raman", "vibhuti", "akshay", "nitin", "onine", "online order", "mukesh", "aryan", "test1"]
-
-    # 1. Check if user is an accountant / superuser
-    is_accountant = bool(user.is_superuser or getattr(user, "is_accountant", False))
-    if is_accountant:
-        allowed_sp = [sp for sp in all_sp if sp.name.lower() not in hide]
-        return {
-            "is_accountant": True,
-            "is_rsm": False,
-            "is_asm": False,
-            "rsm_key": None,
-            "rsm_team_label": "",
-            "user_sp": None,
-            "allowed_salespersons": allowed_sp,
-            "can_select_salesperson": True,
-            "team_member_names": [],
-        }
-
-    # 2. Resolve the SalesPerson profile of the logged-in user
-    user_sp = None
-    if hasattr(user, "salesperson_profile") and user.salesperson_profile.exists():
-        user_sp = user.salesperson_profile.first()
-    if not user_sp:
-        user_sp = (
-            SalesPerson.objects.filter(user=user).first()
-            or SalesPerson.objects.filter(name__iexact=user.username).first()
-            or SalesPerson.objects.filter(name__iexact=user.get_full_name()).first()
-        )
-    if not user_sp:
-        u_tokens = _clean_string_tokens(f"{user.username} {user.get_full_name()}")
-        for sp in all_sp:
-            if _sp_matches_target_names(sp, u_tokens):
-                user_sp = sp
-                break
-
-    # 3. Check if the user is an RSM (Ankush or Aman)
-    user_ident_tokens = _clean_string_tokens(
-        f"{user.username} {user.get_full_name()} {user.first_name} {user_sp.name if user_sp else ''}"
-    )
-
-    rsm_key = None
-    if "ankush" in user_ident_tokens:
-        rsm_key = "ankush"
-    elif "aman" in user_ident_tokens:
-        rsm_key = "aman"
-
-    if rsm_key:
-        team_info = CROSS_SELLING_RSM_TEAMS[rsm_key]
-        team_members = team_info["all_members"]
-
-        team_salespersons = []
-        for sp in all_sp:
-            if sp.name.lower() in hide:
-                continue
-            # Match against team member names
-            if _sp_matches_target_names(sp, team_members):
-                team_salespersons.append(sp)
-            # Or if manager is set to this RSM
-            elif sp.manager and _sp_matches_target_names(sp.manager, [rsm_key]):
-                if sp not in team_salespersons:
-                    team_salespersons.append(sp)
-            elif user_sp and sp.manager_id == user_sp.id:
-                if sp not in team_salespersons:
-                    team_salespersons.append(sp)
-
-        if user_sp and user_sp not in team_salespersons:
-            team_salespersons.insert(0, user_sp)
-
-        return {
-            "is_accountant": False,
-            "is_rsm": True,
-            "is_asm": False,
-            "rsm_key": rsm_key,
-            "rsm_team_label": team_info["label"],
-            "user_sp": user_sp,
-            "allowed_salespersons": team_salespersons,
-            "can_select_salesperson": True,
-            "team_member_names": team_members,
-        }
-
-    # 4. ASM / Individual Salesperson
-    return {
-        "is_accountant": False,
-        "is_rsm": False,
-        "is_asm": True,
-        "rsm_key": None,
-        "rsm_team_label": "",
-        "user_sp": user_sp,
-        "allowed_salespersons": [user_sp] if user_sp else [],
-        "can_select_salesperson": False,
-        "team_member_names": [user_sp.name.lower()] if user_sp else [],
-    }
-
-
-def filter_cross_selling_customers(customers_list, perm, selected_sp_id=""):
-    """
-    Applies role-based visibility to customers_list.
-    Returns:
-      (base_accessible_customers, scoped_customers)
-    where base_accessible_customers is the set of all customers the user can see (for KPI calculations),
-    and scoped_customers is further filtered by selected_sp_id if applicable.
-    """
-    # 1. Accountant / Superuser
-    if perm["is_accountant"]:
-        base_customers = customers_list
-        if selected_sp_id:
-            scoped = [
-                c for c in base_customers
-                if c["customer"].salesperson and str(c["customer"].salesperson.id) == selected_sp_id
-            ]
-        else:
-            scoped = base_customers
-        return base_customers, scoped
-
-    # 2. RSM (Ankush or Aman)
-    if perm["is_rsm"]:
-        allowed_sp_ids = {sp.id for sp in perm["allowed_salespersons"]}
-        team_members = perm["team_member_names"]
-
-        def _is_in_rsm_team(c):
-            sp = c["customer"].salesperson
-            if not sp:
-                return False
-            if sp.id in allowed_sp_ids:
-                return True
-            return _sp_matches_target_names(sp, team_members)
-
-        base_customers = [c for c in customers_list if _is_in_rsm_team(c)]
-
-        # If a valid team salesperson is selected in dropdown
-        if selected_sp_id and selected_sp_id in {str(sp_id) for sp_id in allowed_sp_ids}:
-            scoped = [
-                c for c in base_customers
-                if c["customer"].salesperson and str(c["customer"].salesperson.id) == selected_sp_id
-            ]
-        else:
-            # Default to whole team
-            scoped = base_customers
-
-        return base_customers, scoped
-
-    # 3. ASM / Salesperson (own customers only, dropdown ignored)
-    user_sp = perm["user_sp"]
-    if not user_sp:
-        return [], []
-
-    def _is_own_customer(c):
-        sp = c["customer"].salesperson
-        if not sp:
-            return False
-        if sp.id == user_sp.id:
-            return True
-        return _sp_matches_target_names(sp, [user_sp.name])
-
-    base_customers = [c for c in customers_list if _is_own_customer(c)]
-    return base_customers, base_customers
-
-
-def compute_cross_selling_stats(customer_list):
-    """Computes summary KPI statistics for a given list of customer analysis dicts."""
-    total = len(customer_list)
-    active = sum(1 for c in customer_list if c.get("is_active"))
-    inactive = total - active
-    fully_converted = sum(1 for c in customer_list if c.get("bought_count") == 5)
-    cross_sell = total - fully_converted
-
-    score_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
-    for c in customer_list:
-        b_cnt = c.get("bought_count", 0)
-        if b_cnt in score_distribution:
-            score_distribution[b_cnt] += 1
-
-    return {
-        "total_qualifying": total,
-        "active_count": active,
-        "inactive_count": inactive,
-        "fully_converted": fully_converted,
-        "cross_sell_opportunities": cross_sell,
-        "score_distribution": score_distribution,
-    }
-
-
-class CrossSellingMatrixView(LoginRequiredMixin, TemplateView):
-    """
-    Dedicated view for the 5-Category Customer Cross-Selling Matrix & Gap Analysis.
-    Allows sales teams to identify product gaps and add customer remarks directly.
-    """
-    template_name = "customers/cross_selling_matrix.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-
-        dataset = get_cross_selling_dataset()
-        customers_list = dataset["customers"]
-
-        perm = get_cross_selling_user_permissions(self.request.user)
-
-        ctx["is_accountant"] = perm["is_accountant"]
-        ctx["is_rsm"] = perm["is_rsm"]
-        ctx["is_asm"] = perm["is_asm"]
-        ctx["rsm_team_label"] = perm["rsm_team_label"]
-        ctx["can_select_salesperson"] = perm["can_select_salesperson"]
-        ctx["current_sp"] = perm["user_sp"]
-        ctx["salespersons"] = perm["allowed_salespersons"]
-        ctx["categories"] = CROSS_SELLING_CATEGORIES
-
-        # Filters from GET params
-        sp_id = self.request.GET.get("salesperson", "").strip()
-        search_query = self.request.GET.get("q", "").strip()
-        missing_cat = self.request.GET.get("missing_cat", "").strip()
-        bought_cat = self.request.GET.get("bought_cat", "").strip()
-        score_filter = self.request.GET.get("score", "").strip()
-        status_filter = self.request.GET.get("status", "").strip()
-
-        # Apply role-based visibility and salesperson filter
-        base_accessible_customers, scoped_customers = filter_cross_selling_customers(
-            customers_list, perm, sp_id
-        )
-
-        filtered_customers = scoped_customers
-
-        if search_query:
-            q_lower = search_query.lower()
-            filtered_customers = [
-                c for c in filtered_customers
-                if (
-                        q_lower in c["customer"].name.lower()
-                        or (c["customer"].phone and q_lower in c["customer"].phone.lower())
-                        or (c["customer"].state and q_lower in c["customer"].state.lower())
-                        or (c["customer"].district and q_lower in c["customer"].district.lower())
-                )
-            ]
-
-        if missing_cat:
-            filtered_customers = [
-                c for c in filtered_customers
-                if missing_cat in c["missing_cat_ids"]
-            ]
-
-        if bought_cat:
-            filtered_customers = [
-                c for c in filtered_customers
-                if bought_cat in c["bought_cats"]
-            ]
-
-        if score_filter and score_filter.isdigit():
-            s_val = int(score_filter)
-            filtered_customers = [
-                c for c in filtered_customers
-                if c["bought_count"] == s_val
-            ]
-
-        if status_filter == "active":
-            filtered_customers = [c for c in filtered_customers if c["is_active"]]
-        elif status_filter == "inactive":
-            filtered_customers = [c for c in filtered_customers if not c["is_active"]]
-
-        ctx["customers_data"] = filtered_customers
-        ctx["total_filtered"] = len(filtered_customers)
-        ctx["stats"] = compute_cross_selling_stats(base_accessible_customers)
-
-        # Selected filters for maintaining state in template
-        ctx["selected_sp_id"] = sp_id if perm["can_select_salesperson"] else ""
-        ctx["search_query"] = search_query
-        ctx["selected_missing_cat"] = missing_cat
-        ctx["selected_bought_cat"] = bought_cat
-        ctx["selected_score"] = score_filter
-        ctx["selected_status"] = status_filter
-
-        return ctx
-
-    def post(self, request, *args, **kwargs):
-        """
-        Handles adding customer remarks directly from the Cross-Selling Matrix.
-        Supports both AJAX requests and standard POST form submissions.
-        """
-        is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest" or request.POST.get("is_ajax") == "true"
-        customer_id = request.POST.get("customer_id")
-        remark_text = request.POST.get("remark", "").strip()
-        delete_id = request.POST.get("delete_remark_id")
-
-        # Handle Delete Remark (accountant/admin only)
-        if delete_id and request.user.is_accountant:
-            remark = get_object_or_404(CrossSellingRemark, id=delete_id)
-            remark.delete()
-            if is_ajax:
-                return JsonResponse(
-                    {"success": True, "action": "deleted", "message": "Cross-selling remark deleted successfully."})
-            messages.success(request, "Remark deleted successfully 🗑️")
-            return redirect(request.get_full_path())
-
-        if not customer_id or not remark_text:
-            if is_ajax:
-                return JsonResponse({"success": False, "error": "Customer ID and Remark text are required."},
-                                    status=400)
-            messages.error(request, "Please enter a remark before saving.")
-            return redirect(request.get_full_path())
-
-        customer = get_object_or_404(Customer, id=customer_id)
-
-        # Determine the user / salesperson saving the remark
-        salesperson = None
-        if hasattr(request.user, "salesperson_profile") and request.user.salesperson_profile.exists():
-            salesperson = request.user.salesperson_profile.first()
-        elif request.user.is_authenticated:
-            salesperson = (
-                    SalesPerson.objects.filter(user=request.user).first()
-                    or SalesPerson.objects.filter(name__iexact=request.user.username).first()
-                    or SalesPerson.objects.filter(name__iexact=request.user.get_full_name()).first()
-            )
-            if not salesperson:
-                display_name = request.user.get_full_name() or request.user.username or "User"
-                salesperson, _ = SalesPerson.objects.get_or_create(name=display_name)
-
-        if not salesperson:
-            salesperson = customer.salesperson or SalesPerson.objects.first()
-
-        new_remark = CrossSellingRemark.objects.create(
-            customer=customer,
-            salesperson=salesperson,
-            remark=remark_text
-        )
-
-        total_remarks = customer.cross_selling_remarks.count()
-
-        if is_ajax:
-            author_display = new_remark.salesperson.name if (
-                        new_remark.salesperson and new_remark.salesperson.name) else (
-                        request.user.get_full_name() or request.user.username or "User")
-            return JsonResponse({
-                "success": True,
-                "action": "created",
-                "total_count": total_remarks,
-                "remark": {
-                    "id": new_remark.id,
-                    "text": new_remark.remark,
-                    "salesperson": author_display,
-                    "created_at": new_remark.created_at.strftime("%d %b %Y, %I:%M %p"),
-                }
-            })
-
-        messages.success(request, f"Remark added for {customer.name} ✅")
-        redirect_url = request.get_full_path()
-        return redirect(f"{redirect_url}#customer-row-{customer_id}")
-
-
-@login_required
-def export_cross_selling_matrix(request):
-    """
-    Exports the Cross-Selling Gap Analysis dataset to an Excel spreadsheet.
-    """
-    import openpyxl
-    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-
-    dataset = get_cross_selling_dataset()
-    customers_list = dataset["customers"]
-
-    perm = get_cross_selling_user_permissions(request.user)
-
-    # Apply filters if provided
-    sp_id = request.GET.get("salesperson", "").strip()
-    search_query = request.GET.get("q", "").strip()
-    missing_cat = request.GET.get("missing_cat", "").strip()
-    bought_cat = request.GET.get("bought_cat", "").strip()
-    score_filter = request.GET.get("score", "").strip()
-    status_filter = request.GET.get("status", "").strip()
-
-    # Role-based visibility scoping
-    _, scoped_customers = filter_cross_selling_customers(customers_list, perm, sp_id)
-    customers_list = scoped_customers
-
-    if search_query:
-        q_lower = search_query.lower()
-        customers_list = [
-            c for c in customers_list
-            if (
-                    q_lower in c["customer"].name.lower()
-                    or (c["customer"].phone and q_lower in c["customer"].phone.lower())
-                    or (c["customer"].state and q_lower in c["customer"].state.lower())
-            )
-        ]
-    if missing_cat:
-        customers_list = [c for c in customers_list if missing_cat in c["missing_cat_ids"]]
-    if bought_cat:
-        customers_list = [c for c in customers_list if bought_cat in c["bought_cats"]]
-    if score_filter and score_filter.isdigit():
-        customers_list = [c for c in customers_list if c["bought_count"] == int(score_filter)]
-    if status_filter == "active":
-        customers_list = [c for c in customers_list if c["is_active"]]
-    elif status_filter == "inactive":
-        customers_list = [c for c in customers_list if not c["is_active"]]
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Cross-Selling Opportunities"
-
-    # Header styling
-    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
-    header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
-    bought_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
-    missing_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
-    active_fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
-    inactive_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
-    center_align = Alignment(horizontal="center", vertical="center")
-    left_align = Alignment(horizontal="left", vertical="center")
-
-    headers = [
-        "S.No",
-        "Customer Name",
-        "Customer Status",
-        "Phone",
-        "State",
-        "District",
-        "Salesperson",
-        "Template Sheet",
-        "Aligner Sheet",
-        "Retainer Sheet",
-        "Resin",
-        "Other Consumables",
-        "Score (Bought/5)",
-        "Missing Categories",
-        "Total Spend (₹)",
-        "Last Order Date",
-        "Remarks History",
-    ]
-
-    ws.append(headers)
-
-    for col_idx in range(1, len(headers) + 1):
-        cell = ws.cell(row=1, column=col_idx)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = center_align
-
-    for idx, c in enumerate(customers_list, start=1):
-        cust = c["customer"]
-        missing_names = ", ".join([cat["name"] for cat in c["missing_cats"]]) if c[
-            "missing_cats"] else "None (Fully Converted)"
-        if c.get("all_remarks"):
-            remark_text = " | \n".join([
-                                           f"[{r.created_at.strftime('%d-%m-%Y %I:%M %p')} - {r.salesperson.name if r.salesperson else 'User'}]: {r.remark}"
-                                           for r in c["all_remarks"]])
-        else:
-            remark_text = ""
-
-        row_values = [
-            idx,
-            cust.name,
-            "Active" if c["is_active"] else "Inactive",
-            cust.phone or "-",
-            cust.state or "-",
-            cust.district or "-",
-            str(cust.salesperson) if cust.salesperson else "Unassigned",
-            "✅ BOUGHT" if c["categories_map"]["template_sheet"]["bought"] else "❌ MISSING",
-            "✅ BOUGHT" if c["categories_map"]["aligner_sheet"]["bought"] else "❌ MISSING",
-            "✅ BOUGHT" if c["categories_map"]["retainer_sheet"]["bought"] else "❌ MISSING",
-            "✅ BOUGHT" if c["categories_map"]["resin"]["bought"] else "❌ MISSING",
-            "✅ BOUGHT" if c["categories_map"]["other_consumable"]["bought"] else "❌ MISSING",
-            f"{c['bought_count']}/5",
-            missing_names,
-            c["total_spend"],
-            c["last_order_date"].strftime("%d-%m-%Y") if c["last_order_date"] else "-",
-            remark_text,
-        ]
-        ws.append(row_values)
-
-        # Style status cells
-        row_num = idx + 1
-
-        # Style Customer Status cell (Col 3)
-        status_cell = ws.cell(row=row_num, column=3)
-        status_cell.alignment = center_align
-        if c["is_active"]:
-            status_cell.fill = active_fill
-            status_cell.font = Font(color="166534", bold=True)
-        else:
-            status_cell.fill = inactive_fill
-            status_cell.font = Font(color="991B1B", bold=True)
-
-        for cat_col_idx, cat_id in enumerate(
-                ["template_sheet", "aligner_sheet", "retainer_sheet", "resin", "other_consumable"], start=8):
-            cell = ws.cell(row=row_num, column=cat_col_idx)
-            cell.alignment = center_align
-            if c["categories_map"][cat_id]["bought"]:
-                cell.fill = bought_fill
-                cell.font = Font(color="065F46", bold=True)
-            else:
-                cell.fill = missing_fill
-                cell.font = Font(color="991B1B", bold=True)
-
-    # Auto-adjust column widths
-    for col in ws.columns:
-        max_len = max(len(str(cell.value or "")) for cell in col)
-        col_letter = openpyxl.utils.get_column_letter(col[0].column)
-        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
-
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = 'attachment; filename="cross_selling_gap_analysis.xlsx"'
-    wb.save(response)
-    return response
