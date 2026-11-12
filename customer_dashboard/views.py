@@ -1306,7 +1306,7 @@ class PaymentFollowUpDashboardView(RBACViewMixin, TemplateView):
                     else 0
                 )
                 days_elapsed = (today - vs.voucher_date).days
-                remaining = credit_days - days_elapsed if 'credit_days' in locals() else (cp - days_elapsed)
+                remaining = cp - days_elapsed if 'credit_days' in locals() else (cp - days_elapsed)
 
                 if (overdue_only or status_filter == "overdue") and days_elapsed > cp:
                     valid_ids.append(vs.id)
