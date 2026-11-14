@@ -29,6 +29,7 @@ def get_user_effective_permissions(user):
             "product_price.view": {"all"},
             "stock.request": {"all"},
             "customer.view": {"all"},
+            "payment.view": {"all"},
         }
 
     # 3. Fallback for warehouse user
