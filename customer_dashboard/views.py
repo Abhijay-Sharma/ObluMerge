@@ -61,6 +61,7 @@ from access_control.services import scope_queryset
 
 class DashboardHomeView(RBACViewMixin, TemplateView):
     template_name = "customers/home_page.html"
+    rbac_permission = "customer.view"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -77,11 +78,11 @@ class DashboardHomeView(RBACViewMixin, TemplateView):
         effective_perms = get_user_effective_permissions(user)
 
         ctx["is_superuser"] = user.is_superuser
-        ctx["is_accountant"] = bool(
-            user.is_superuser
-            or getattr(user, "is_accountant", False)
-            or any(r in user_roles for r in ["admin", "sales_head", "accounts_operations", "business"])
-        )
+        # ctx["is_accountant"] = bool(
+        #     user.is_superuser
+        #     or getattr(user, "is_accountant", False)
+        #     or any(r in user_roles for r in ["admin", "sales_head", "accounts_operations", "business"])
+        # )
         ctx["is_rsm"] = bool("rsm" in user_roles or "sales_head" in user_roles or "admin" in user_roles or user.is_superuser)
         ctx["is_asm"] = bool("asm" in user_roles or ctx["is_rsm"])
 
@@ -1875,16 +1876,60 @@ class AdminVoucherClaimManagementView(RBACViewMixin, View):
         messages.success(request, "Voucher claim updated.")
         return redirect(request.META.get("HTTP_REFERER"))
 
-class SalesReportView(RBACViewMixin,TemplateView):
+EXCLUDED_SALESPERSON_NAMES = [
+    "Abhijay", "Aryan", "Danish", "Jackson", "Mukesh",
+    "Nimit", "Raman", "test1", "Vibhuti", "Online", "online Order"
+]
+
+def get_rbac_accessible_salespersons(user):
+    """
+    Returns the SalesPerson queryset the logged-in user is authorized to see:
+    - Super Admin / Sales Head / Business Manager: All active salespersons
+    - RSM / ASM: Themselves + their downline team members
+    - Salesperson: Themselves only
+    """
+    base_sp_qs = (
+        SalesPerson.objects
+        .exclude(name__in=EXCLUDED_SALESPERSON_NAMES)
+        .order_by(Lower("name"))
+    )
+
+    emp = getattr(user, "employee_profile", None)
+    user_roles = [a.role.role_key for a in emp.role_assignments.filter(is_active=True)] if emp else []
+
+    is_exec = bool(
+        user.is_superuser
+        or any(r in user_roles for r in ["admin", "sales_head", "business"])
+    )
+
+    if is_exec:
+        return base_sp_qs
+
+    # Scope salespersons via RBAC customer hierarchy
+    scoped_custs = scope_queryset(user, "customer.view", Customer.objects.all())
+    allowed_sp_ids = set(scoped_custs.values_list("salesperson_id", flat=True).distinct())
+
+    user_sp = SalesPerson.objects.filter(user=user).first()
+    if user_sp:
+        allowed_sp_ids.add(user_sp.id)
+
+    return base_sp_qs.filter(id__in=allowed_sp_ids)
+
+
+# ============================================================================
+# 1. SALES REPORT VIEW
+# ============================================================================
+class SalesReportView(RBACViewMixin, TemplateView):
     template_name = "customers/sales_report.html"
+    rbac_permission = "customer.view"  # 👈 Blocks HR, Accounts & Warehouse (403)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        user = self.request.user
 
-        # ---------------------------------
-        # BASIC FILTERS
-        # ---------------------------------
-        ctx["salespersons"] = SalesPerson.objects.all().order_by("name")
+        # 1. RBAC-Filtered Salespersons list
+        viewable_sp = get_rbac_accessible_salespersons(user)
+        ctx["salespersons"] = viewable_sp
 
         salesperson_id = self.request.GET.get("salesperson")
         month_picker = self.request.GET.get("month_picker")
@@ -1898,28 +1943,30 @@ class SalesReportView(RBACViewMixin,TemplateView):
         ctx["year"] = year
         ctx["month"] = month
 
+        # Default to logged-in salesperson if no selection
         if not salesperson_id:
+            own_sp = SalesPerson.objects.filter(user=user).first()
+            if own_sp and viewable_sp.filter(id=own_sp.id).exists():
+                salesperson_id = str(own_sp.id)
+            elif viewable_sp.exists():
+                salesperson_id = str(viewable_sp.first().id)
+
+        # 2. Strict Security: Block URL tampering if requesting a rep outside scope
+        if not salesperson_id or not viewable_sp.filter(id=salesperson_id).exists():
             ctx.update({
                 "rows": [],
                 "selected_salesperson": None,
+                "total_sales": Decimal("0.00")
             })
             return ctx
 
-        year = ctx["year"]
-        month = ctx["month"]
+        salesperson = viewable_sp.filter(id=salesperson_id).first()
+        ctx["selected_salesperson"] = salesperson
 
         start_date = date(year, month, 1)
         end_date = date(year, month, monthrange(year, month)[1])
 
-        salesperson = SalesPerson.objects.filter(id=salesperson_id).first()
-        ctx["selected_salesperson"] = salesperson
-
-        if not salesperson:
-            return ctx
-
-        # ---------------------------------
-        # ALL TAX INVOICES (PAID + UNPAID)
-        # ---------------------------------
+        # 3. Data Query
         voucher_statuses = CustomerVoucherStatus.objects.filter(
             sold_by=salesperson,
             voucher_type__iexact="TAX INVOICE",
@@ -1929,12 +1976,8 @@ class SalesReportView(RBACViewMixin,TemplateView):
         vouchers = Voucher.objects.filter(
             id__in=voucher_statuses.values_list("voucher_id", flat=True)
         )
-
         voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
 
-        # ---------------------------------
-        # STOCK ITEMS
-        # ---------------------------------
         stock_items = (
             VoucherStockItem.objects
             .filter(voucher__in=vouchers)
@@ -1946,31 +1989,20 @@ class SalesReportView(RBACViewMixin,TemplateView):
         processed_vouchers = set()
         total_sales = Decimal("0.00")
 
-        # ---------------------------------
-        # BUILD ROWS + MAPS
-        # ---------------------------------
         for si in stock_items:
             product = si.item
             if not product:
                 continue
 
             if si.voucher_id not in processed_vouchers:
-
                 processed_vouchers.add(si.voucher_id)
-
                 party_row = si.voucher.rows.filter(
                     ledger__iexact=si.voucher.party_name
                 ).first()
-
                 if party_row:
                     total_sales += Decimal(str(party_row.amount))
 
             voucher_status = voucher_status_map.get(si.voucher_id)
-
-            is_fully_paid = bool(voucher_status and voucher_status.is_fully_paid)
-            is_partially_paid = bool(voucher_status and voucher_status.is_partially_paid)
-            is_unpaid = bool(voucher_status and voucher_status.is_unpaid)
-
 
             rows.append({
                 "date": si.voucher.date,
@@ -1981,58 +2013,57 @@ class SalesReportView(RBACViewMixin,TemplateView):
                 "product": product.name,
                 "quantity": si.quantity,
                 "amount": si.amount,
-                "is_fully_paid": is_fully_paid,
-                "is_partially_paid": is_partially_paid,
-                "is_unpaid": is_unpaid,
+                "is_fully_paid": bool(voucher_status and voucher_status.is_fully_paid),
+                "is_partially_paid": bool(voucher_status and voucher_status.is_partially_paid),
+                "is_unpaid": bool(voucher_status and voucher_status.is_unpaid),
             })
 
-        # ---------------------------------
-        # CONTEXT
-        # ---------------------------------
         ctx["rows"] = rows
         ctx["total_sales"] = total_sales
-
         return ctx
 
 
-# new temp view to show ankush his teammates and aman his
+# ============================================================================
+# 2. MONTHLY SALES REPORT VIEW
+# ============================================================================
 class MonthlySalesReportView(RBACViewMixin, TemplateView):
     template_name = "customers/monthly_sales_report.html"
+    rbac_permission = "customer.view"  # 👈 Blocks HR, Accounts & Warehouse (403)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        user = self.request.user
 
-        # 1. Identify the logged-in SalesPerson
-        user_sp = SalesPerson.objects.filter(user=self.request.user).first()
-        if not user_sp:
-            ctx["rows"] = []
+        # 1. Resolve Viewable Salespersons via dynamic RBAC hierarchy
+        viewable_salespersons = get_rbac_accessible_salespersons(user)
+        ctx["viewable_salespersons"] = viewable_salespersons
+        ctx["is_manager"] = viewable_salespersons.count() > 1
+
+        if not viewable_salespersons.exists():
+            ctx.update({
+                "rows": [],
+                "selected_salesperson": None,
+                "total_sales": Decimal("0.00")
+            })
             return ctx
 
-        # 2. Determine Viewable Salespersons (Manager Hierarchy)
-        # The user can always see themselves.
-        # If they are a manager, they can also see their team members.
-        team_members = user_sp.team_members.all()
-        viewable_salespersons = [user_sp] + list(team_members)
-
-        ctx["viewable_salespersons"] = viewable_salespersons
-        ctx["is_manager"] = team_members.exists()
-
-        # 3. Handle Filters (Month and Selected Salesperson)
-        month_picker = self.request.GET.get("month_picker")
+        # 2. Target Salesperson Resolution
         target_sp_id = self.request.GET.get("salesperson_id")
+        user_sp = SalesPerson.objects.filter(user=user).first()
 
-        # Set default target to the logged-in user
-        target_salesperson = user_sp
+        # Default fallback logic (Admin-safe: defaults to first rep if user is Admin)
+        target_salesperson = user_sp if (user_sp and viewable_salespersons.filter(id=user_sp.id).exists()) else viewable_salespersons.first()
 
-        # If a salesperson is selected from dropdown, validate they are in the allowed list
+        # Validate dropdown selection
         if target_sp_id:
-            requested_sp = SalesPerson.objects.filter(id=target_sp_id).first()
-            if requested_sp in viewable_salespersons:
+            requested_sp = viewable_salespersons.filter(id=target_sp_id).first()
+            if requested_sp:
                 target_salesperson = requested_sp
 
         ctx["selected_salesperson"] = target_salesperson
 
-        # Month Logic
+        # 3. Month & Date Range Logic
+        month_picker = self.request.GET.get("month_picker")
         today = date.today()
         if month_picker:
             year, month = map(int, month_picker.split("-"))
@@ -2044,9 +2075,7 @@ class MonthlySalesReportView(RBACViewMixin, TemplateView):
         start_date = date(year, month, 1)
         end_date = date(year, month, monthrange(year, month)[1])
 
-        # ---------------------------------
-        # DATA QUERY (Filter by the TARGET salesperson)
-        # ---------------------------------
+        # 4. Data Query for Selected Salesperson
         voucher_statuses = CustomerVoucherStatus.objects.filter(
             sold_by=target_salesperson,
             voucher_type__iexact="TAX INVOICE",
@@ -2056,7 +2085,6 @@ class MonthlySalesReportView(RBACViewMixin, TemplateView):
         vouchers = Voucher.objects.filter(
             id__in=voucher_statuses.values_list("voucher_id", flat=True)
         )
-
         voucher_status_map = {cvs.voucher_id: cvs for cvs in voucher_statuses}
 
         stock_items = (
@@ -2072,7 +2100,8 @@ class MonthlySalesReportView(RBACViewMixin, TemplateView):
 
         for si in stock_items:
             product = si.item
-            if not product: continue
+            if not product:
+                continue
 
             if si.voucher_id not in processed_vouchers:
                 processed_vouchers.add(si.voucher_id)

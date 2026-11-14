@@ -1,4 +1,11 @@
-# access_control/services.py
+"""
+access_control/services.py
+
+Central Authorization Engine.
+Provides capability verification, object-level ownership checks,
+and dynamic database queryset scoping based on RBAC roles and scopes.
+"""
+
 from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -9,39 +16,35 @@ from customer_dashboard.models import SalesPerson
 User = get_user_model()
 
 
+# =============================================================================
+# 1. EFFECTIVE PERMISSION RESOLVER (WITH REQUEST-LEVEL CACHING)
+# =============================================================================
+
 def get_user_effective_permissions(user):
-    """Returns {permission_key: set_of_granted_scopes}."""
-    if not user.is_authenticated:
+    """
+    Returns a dictionary of effective permissions and their granted scopes:
+        {"permission.key": {"self", "team", ...}}
+
+    Performance Optimization:
+    Caches the calculated dictionary on the user object in memory
+    to avoid redundant database queries during a single HTTP request cycle.
+    """
+    if not user or not user.is_authenticated:
         return {}
 
-    # 1. Superuser gets global access
+    # Check request-level memory cache
+    if hasattr(user, "_effective_perms_cache"):
+        return user._effective_perms_cache
+
+    # Superuser has unrestricted master access
     if user.is_superuser:
-        return {"*": {"all"}}
-
-    # 2. Fallback for accounts/finance users (ONLY their specific permissions, NO price approval, NO quotation)
-    u_lower = user.username.lower()
-    if getattr(user, "is_accountant", False) or u_lower in ["accounts", "accountant", "finance"]:
-        return {
-            "proforma.view": {"all"},
-            "dispatch.queue": {"all"},
-            "proforma.dispatch": {"all"},
-            "product_tier.manage": {"all"},
-            "product_price.view": {"all"},
-            "stock.request": {"all"},
-            "customer.view": {"all"},
-            "payment.view": {"all"},
-        }
-
-    # 3. Fallback for warehouse user
-    if "warehouse" in u_lower:
-        return {
-            "proforma.dispatch": {"all"},
-            "inventory.view": {"all"},
-            "stock.request": {"all"},
-        }
+        perms = {"*": {"all"}}
+        user._effective_perms_cache = perms
+        return perms
 
     emp = getattr(user, "employee_profile", None)
     if not emp:
+        user._effective_perms_cache = {}
         return {}
 
     now = timezone.now()
@@ -54,8 +57,12 @@ def get_user_effective_permissions(user):
         Q(ends_at__isnull=True) | Q(ends_at__gte=now)
     )
 
-    role_ids = active_assignments.values_list("role_id", flat=True)
+    role_ids = list(active_assignments.values_list("role_id", flat=True))
+    if not role_ids:
+        user._effective_perms_cache = {}
+        return {}
 
+    # Fetch all permissions granted to active roles
     role_perms = RolePermission.objects.filter(
         role_id__in=role_ids
     ).select_related("permission")
@@ -65,34 +72,62 @@ def get_user_effective_permissions(user):
         key = rp.permission.permission_key
         perm_map.setdefault(key, set()).add(rp.default_scope)
 
+    # Cache on user object for subsequent calls in the same request
+    user._effective_perms_cache = perm_map
     return perm_map
 
 
+# =============================================================================
+# 2. OBJECT OWNERSHIP RESOLVER
+# =============================================================================
+
 def get_object_owner_user_id(obj):
-    """Accurately extracts the Django User ID owner from any model instance."""
+    """
+    Polymorphic resolver to extract the Django User ID owner from any model.
+    Handles ForeignKeys, CharField usernames (Proforma/Quotation), and indirect links.
+    """
+    if not obj:
+        return None
+
+    # 1. Direct User ForeignKey / ID
     if hasattr(obj, "user_id") and obj.user_id:
         return obj.user_id
+
+    # 2. Direct created_by ForeignKey / ID
     if hasattr(obj, "created_by_id") and obj.created_by_id:
         return obj.created_by_id
 
-    # Handle models where created_by is stored as username string (ProformaInvoice / QuotationMaker)
+    # 3. CharField created_by username (Legacy Proforma/Quotation schema)
     if hasattr(obj, "created_by") and isinstance(obj.created_by, str) and obj.created_by:
-        owner_u = User.objects.filter(username=obj.created_by).values_list("id", flat=True).first()
-        if owner_u:
-            return owner_u
+        owner_id = User.objects.filter(username=obj.created_by).values_list("id", flat=True).first()
+        if owner_id:
+            return owner_id
 
-    if hasattr(obj, "salesperson") and obj.salesperson:
+    # 4. Direct Salesperson profile link
+    if hasattr(obj, "salesperson") and obj.salesperson and obj.salesperson.user_id:
         return obj.salesperson.user_id
 
+    # 5. Customer -> Salesperson link
     if hasattr(obj, "customer") and obj.customer and obj.customer.salesperson:
         return obj.customer.salesperson.user_id
 
     return None
 
 
+# =============================================================================
+# 3. CAPABILITY & OBJECT-LEVEL SECURITY (can)
+# =============================================================================
+
 def can(user, permission_key, obj=None):
-    if not user.is_authenticated:
+    """
+    Evaluates capability and object-level permission for a given user.
+    Usage:
+        can(user, "proforma.create")          -> General action check
+        can(user, "proforma.view", invoice)   -> Object-level ownership check
+    """
+    if not user or not user.is_authenticated:
         return False
+
     if user.is_superuser:
         return True
 
@@ -104,12 +139,15 @@ def can(user, permission_key, obj=None):
     if not granted_scopes:
         return False
 
+    # Action-level check or organization-wide scope
     if obj is None or "all" in granted_scopes:
         return True
 
-    emp = getattr(user, "employee_profile", None)
     owner_user_id = get_object_owner_user_id(obj)
+    if not owner_user_id:
+        return False
 
+    # Ownership checks against scopes
     if "self" in granted_scopes and owner_user_id == user.id:
         return True
 
@@ -120,12 +158,28 @@ def can(user, permission_key, obj=None):
 
     return False
 
-# access_control/services.py
+
+# =============================================================================
+# 4. DATABASE QUERYSET SCOPING (Row-Level Security)
+# =============================================================================
+
+def _is_relation(model, field_name):
+    """Helper to determine if a model field is a relational field (ForeignKey, etc.)."""
+    try:
+        return model._meta.get_field(field_name).is_relation
+    except Exception:
+        return False
+
 
 def scope_queryset(user, permission_key, queryset):
-    if not user.is_authenticated:
+    """
+    Injects SQL WHERE clauses to restrict querysets to the user's authorized scope.
+    Translates 'self', 'team', and 'all' scopes into native Django Q objects.
+    """
+    if not user or not user.is_authenticated:
         return queryset.none()
-    if user.is_superuser or getattr(user, "is_accountant", False):
+
+    if user.is_superuser:
         return queryset
 
     perms = get_user_effective_permissions(user)
@@ -136,6 +190,7 @@ def scope_queryset(user, permission_key, queryset):
     if not granted_scopes:
         return queryset.none()
 
+    # If granted 'all' scope (e.g. Sales Head, Admin), return entire queryset unfiltered
     if "all" in granted_scopes:
         return queryset
 
@@ -145,23 +200,13 @@ def scope_queryset(user, permission_key, queryset):
 
     union_filter = Q()
 
-    # Helper to check if a field is a ForeignKey/relation or CharField
-    def is_rel(field_name):
-        try:
-            return model._meta.get_field(field_name).is_relation
-        except Exception:
-            return False
-
-    # =========================================================================
-    # Scope Rule: SELF
-    # =========================================================================
+    # -------------------------------------------------------------------------
+    # Scope Rule: SELF (Own records only)
+    # -------------------------------------------------------------------------
     if "self" in granted_scopes:
         self_q = Q()
         if hasattr(model, "created_by"):
-            if is_rel("created_by"):
-                self_q |= Q(created_by=user)
-            else:
-                self_q |= Q(created_by=user.username)
+            self_q |= Q(created_by=user) if _is_relation(model, "created_by") else Q(created_by=user.username)
         if hasattr(model, "user"):
             self_q |= Q(user=user)
         if hasattr(model, "salesperson"):
@@ -170,9 +215,9 @@ def scope_queryset(user, permission_key, queryset):
             self_q |= Q(customer__salesperson=sp_profile) if sp_profile else Q(customer__salesperson__user=user)
         union_filter |= self_q
 
-    # =========================================================================
-    # Scope Rule: TEAM
-    # =========================================================================
+    # -------------------------------------------------------------------------
+    # Scope Rule: TEAM (Own records + Downline reports)
+    # -------------------------------------------------------------------------
     if "team" in granted_scopes:
         accessible_user_ids = get_accessible_user_ids(user)
         accessible_usernames = list(
@@ -186,30 +231,25 @@ def scope_queryset(user, permission_key, queryset):
 
         team_q = Q()
         if hasattr(model, "created_by"):
-            # SAFE CHECK: Use IDs if ForeignKey, use Usernames if CharField
-            if is_rel("created_by"):
-                team_q |= Q(created_by_id__in=accessible_user_ids)
-            else:
-                team_q |= Q(created_by__in=accessible_usernames)
-
+            team_q |= Q(created_by_id__in=accessible_user_ids) if _is_relation(model, "created_by") else Q(created_by__in=accessible_usernames)
         if hasattr(model, "user"):
-            team_q |= Q(user_id__in=accessible_user_ids) if is_rel("user") else Q(user__in=accessible_usernames)
+            team_q |= Q(user_id__in=accessible_user_ids) if _is_relation(model, "user") else Q(user__in=accessible_usernames)
         if hasattr(model, "salesperson"):
             team_q |= Q(salesperson__user_id__in=accessible_user_ids) | Q(salesperson_id__in=team_sp_ids)
         if hasattr(model, "customer"):
             team_q |= Q(customer__salesperson__user_id__in=accessible_user_ids) | Q(customer__salesperson_id__in=team_sp_ids)
         union_filter |= team_q
 
-    # =========================================================================
+    # -------------------------------------------------------------------------
     # Scope Rule: DEPARTMENT
-    # =========================================================================
+    # -------------------------------------------------------------------------
     if "department" in granted_scopes and emp and emp.department_id:
         if hasattr(model, "department"):
             union_filter |= Q(department=emp.department)
 
-    # =========================================================================
+    # -------------------------------------------------------------------------
     # Scope Rule: COMPANY
-    # =========================================================================
+    # -------------------------------------------------------------------------
     if "company" in granted_scopes and emp:
         if hasattr(model, "company"):
             allowed_cos = list(emp.managed_companies.values_list("id", flat=True))

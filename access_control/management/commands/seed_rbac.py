@@ -114,6 +114,7 @@ ROLE_MATRIX = {
             "credit.overdue": "all",            # Approves overdue credit bypass
             "stock.request": "all",
             "product_price.view": "all",
+            "customer.unassigned": "all",
             **MANAGER_TEAM_PERMS,
             **BASE_EMPLOYEE_PERMS,
         }
@@ -127,6 +128,8 @@ ROLE_MATRIX = {
         "perms": {
             "customer.view_all": "all",
             "customer.view": "all",
+            "customer.unassigned": "all",
+            "customer.edit_credit": "all",
             "customer.edit": "all",
             "payment.view": "all",
             "proforma.create": "all",
@@ -142,12 +145,23 @@ ROLE_MATRIX = {
     # =========================================================================
     # 📊 Accounts & Operations (Finance, Dispatch Queue & Tier Slabs)
     # =========================================================================
-     "accounts_operations": {
-        "display_name": "Accounts & Operations",
+     "accounts": {
+        "display_name": "Accounts",
         "perms": {
-            "customer.view_all": "all",
-            "customer.view": "all",
-            "payment.view": "all",
+            "proforma.view": "all",
+            "dispatch.queue": "all",
+            "proforma.dispatch": "all",
+            "stock.request": "all",
+            "inventory.view": "all",
+            "product_tier.manage": "all",
+            **PAYROLL_ACCOUNTS_PERMS,
+            **BASE_EMPLOYEE_PERMS,
+        }
+    },
+    "operations": {
+        "display_name": "Operations",
+        "perms": {
+            "proforma.view": "all",
             "dispatch.queue": "all",
             "proforma.dispatch": "all",
             "stock.request": "all",
@@ -182,7 +196,6 @@ ROLE_MATRIX = {
             "payment.view": "team",
             "proforma.create": "team",
             "proforma.view": "team",
-            "stock.request": "team",
             "product_price.view": "all",
             **MANAGER_TEAM_PERMS,
             **BASE_EMPLOYEE_PERMS,
@@ -200,7 +213,6 @@ ROLE_MATRIX = {
             "payment.view": "team",
             "proforma.create": "team",
             "proforma.view": "team",
-            "stock.request": "team",
             "product_price.view": "all",
             **MANAGER_TEAM_PERMS,
             **BASE_EMPLOYEE_PERMS,
