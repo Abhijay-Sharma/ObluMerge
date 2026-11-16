@@ -1,3 +1,5 @@
+{% extends "proforma_invoice/base.html" %}
+{% load rbac_tags %}
 {% block content %}
 
 <style>
@@ -151,7 +153,6 @@
   }
 
   /* ── PRIORITY INDICATOR ──────────────────────── */
-  /* Rows needing packing action get a subtle left accent */
   .wh-row--action {
     background: #FAFEFF !important;
     border-left: 3px solid var(--info);
@@ -236,7 +237,9 @@
     font-size: 12px;
     color: var(--accent);
     font-weight: 500;
+    text-decoration: none;
   }
+  .wh-mono:hover { text-decoration: underline; }
   .wh-customer {
     font-weight: 600;
     color: var(--text-primary);
@@ -344,6 +347,9 @@
 <div class="wh-page">
 <div class="wh-container">
 
+  <!-- ── RBAC GUARD: WAREHOUSE, ACCOUNTS & ADMIN ───────────────────── -->
+  {% if is_warehouse or is_accountant or "warehouse" in user_roles or "accounts_operations" in user_roles or "admin" in user_roles or request.user.is_superuser %}
+
   <!-- ── PAGE HEADER ──────────────────────────────── -->
   <div class="wh-page-header">
     <div>
@@ -356,11 +362,21 @@
         <span class="wh-stat__label">Total</span>
       </div>
       <div class="wh-stat">
-        <span class="wh-stat__num wh-stat__num--cyan">—</span>
+        <span class="wh-stat__num wh-stat__num--cyan">
+          {% with to_pack=0 %}
+            {% for d in dispatches %}{% if d.status == 'waiting_for_packing' %}{% with to_pack=to_pack|add:1 %}{% endwith %}{% endif %}{% endfor %}
+            {{ to_pack|default:"0" }}
+          {% endwith %}
+        </span>
         <span class="wh-stat__label">To Pack</span>
       </div>
       <div class="wh-stat">
-        <span class="wh-stat__num wh-stat__num--green">—</span>
+        <span class="wh-stat__num wh-stat__num--green">
+          {% with to_disp=0 %}
+            {% for d in dispatches %}{% if d.status == 'packing_approved' %}{% with to_disp=to_disp|add:1 %}{% endwith %}{% endif %}{% endfor %}
+            {{ to_disp|default:"0" }}
+          {% endwith %}
+        </span>
         <span class="wh-stat__label">To Dispatch</span>
       </div>
     </div>
@@ -400,7 +416,15 @@
         <tbody>
           {% for dispatch in dispatches %}
           <tr class="{% if dispatch.status == 'waiting_for_packing' or dispatch.status == 'packing_approved' %}wh-row--action{% endif %}">
-            <td><span class="wh-mono">{{ dispatch.invoice.id }}</span></td>
+            <td>
+              {% if request.user|can:"proforma.view" %}
+                <a href="{% url 'proforma_detail' dispatch.invoice.id %}" target="_blank" class="wh-mono">
+                  #{{ dispatch.invoice.id }}
+                </a>
+              {% else %}
+                <span class="wh-mono">#{{ dispatch.invoice.id }}</span>
+              {% endif %}
+            </td>
             <td><span class="wh-customer">{{ dispatch.invoice.customer.name }}</span></td>
             <td>
               {% if dispatch.status == "requested" %}
@@ -470,6 +494,19 @@
       Highlighted rows require warehouse action (packing or dispatch)
     </div>
   </div>
+
+  {% else %}
+  <!-- ACCESS RESTRICTED -->
+  <div style="max-width: 500px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #f87171; text-align: center;">
+    <h3 style="color: #dc2626; margin-bottom: 10px;">🔒 Access Restricted</h3>
+    <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+      This warehouse dashboard is reserved exclusively for <strong>Warehouse</strong>, <strong>Accounts & Operations</strong>, and <strong>Super Admin</strong>.
+    </p>
+    <a href="{% url 'home' %}" style="background: #1e293b; color: white; padding: 8px 20px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
+      Return to Home
+    </a>
+  </div>
+  {% endif %}
 
 </div>
 </div>

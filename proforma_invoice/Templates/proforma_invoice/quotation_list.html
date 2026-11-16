@@ -1,5 +1,6 @@
 {% extends "proforma_invoice/base.html" %}
 {% load quotation_extras %}
+{% load rbac_tags %}
 {% block content %}
 
 <style>
@@ -49,7 +50,7 @@
         margin-bottom: 12px; background: var(--light-bg); padding: 12px 8px;
         border-radius: 10px; border: 1px solid var(--border); width: 100%;
     }
-    .station { display: flex; flex-direction: column; align-items: center; font-size: 9px; font-weight: 800; color: #ccc; width: 65px; }
+    .station { display: flex; flex-direction: column; align-items: center; font-size: 9px; font-weight: 800; color: #ccc; width: 80px; }
     .station .icon { font-size: 16px; margin-bottom: 2px; filter: grayscale(1); transition: all 0.3s; }
     .station.active { color: var(--primary); }
     .station.active .icon { filter: grayscale(0); transform: scale(1.1); }
@@ -58,15 +59,12 @@
     .station.rejected { color: var(--danger); }
     .station.rejected .icon { filter: grayscale(0); }
 
-    .connector { height: 3px; width: 30px; background: var(--border); margin-top: -22px; position: relative; }
-    .connector.done { background: var(--success); }
-
     /* --- UNIFIED COMMUNICATION MODAL --- */
     .custom-overlay {
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center;
     }
-    .custom-overlay.active { display: flex; } /* For Rejection/Price modals */
+    .custom-overlay.active { display: flex; }
 
     #modalChatHistory { display: flex; flex-direction: column; gap: 10px; }
 
@@ -77,23 +75,22 @@
     .b-accounts { background: #064e3b; border-left: 4px solid #10b981; align-self: flex-start; }
     .b-admin { background: #450a0a; border-left: 4px solid #ef4444; align-self: flex-start; }
 
+    .btn-blue { position: relative; }
 
-/* Notification Dot Styling */
-.btn-blue { position: relative; } /* Needed for absolute positioning of dot */
+    .notification-dot {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 12px;
+        height: 12px;
+        background-color: #ff4d4d;
+        border: 2px solid white;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 5px rgba(255, 77, 77, 0.8);
+        animation: pulse-dot 1.5s infinite;
+    }
 
-.notification-dot {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 12px;
-    height: 12px;
-    background-color: #ff4d4d; /* Bright Red */
-    border: 2px solid white;
-    border-radius: 50%;
-    display: inline-block;
-    box-shadow: 0 0 5px rgba(255, 77, 77, 0.8);
-    animation: pulse-dot 1.5s infinite;
-}
     .modal-custom-overlay {
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;
@@ -105,24 +102,19 @@
     .close-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
     .rej-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .rej-table th, .rej-table td { padding: 10px; border-bottom: 1px solid #333; font-size: 0.85rem; }
-    .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
 
+    @keyframes pulse-dot {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+        70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+    }
 
-@keyframes pulse-dot {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
-    70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
-}
-
-    /* --- LAYOUT HELPERS --- */
     .action-container { display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 160px; padding: 10px !important; }
     .table-container { background: #fff; border-radius: 12px; }
 
-    /* --- RESPONSIVENESS --- */
     @media (max-width: 768px) {
-        .station { width: 55px; }
+        .station { width: 60px; }
         .station .icon { font-size: 14px; }
-        .connector { width: 20px; }
         .table-responsive { border-radius: 8px; border: 1px solid var(--border); }
     }
 </style>
@@ -131,29 +123,40 @@
     <div class="table-container bg-white p-4 shadow-sm rounded">
         <h1 class="mb-4">Quotation Maker</h1>
 
-        <div class="top-actions mb-3">
-            <a href="{% url 'home' %}" class="btn btn-sm btn-outline-dark">Home</a>
-            <a href="{% url 'create_proforma' %}" class="btn btn-sm btn-dark">+ Create Proforma</a>
-            <a href="{% url 'quotation_create' %}" class="btn btn-sm btn-dark">+ Create Quotation</a>
-
+        <div class="top-actions mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <a href="{% url 'home' %}" class="btn btn-sm btn-outline-dark">Home</a>
+                {% if request.user|can:"proforma.create" %}
+                    <a href="{% url 'create_proforma' %}" class="btn btn-sm btn-outline-dark">+ Create Proforma</a>
+                    <a href="{% url 'quotation_create' %}" class="btn btn-sm btn-dark">+ Create Quotation</a>
+                {% endif %}
+            </div>
+            <div>
+                <span class="badge text-bg-secondary">{{ role_display_name }}</span>
+            </div>
         </div>
 
         <!-- ---------------- FILTER BAR ---------------- -->
         <form method="get" class="filters mb-4 d-flex flex-wrap gap-2">
-            {% if request.user.is_accountant %}
+            {% if is_executive or "rsm" in user_roles %}
             <select name="created_by" class="form-control w-auto">
-                <option value="">Created By</option>
-                {% for u in users %}<option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>{{ u.username }}</option>{% endfor %}
+                <option value="">Created By (All)</option>
+                {% for u in users %}
+                    <option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>{{ u.username }}</option>
+                {% endfor %}
             </select>
             {% endif %}
 
             <select name="customer" class="form-control w-auto">
-                <option value="">Customer</option>
-                {% for c in customers %}<option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>{{ c.customer__name }}</option>{% endfor %}
+                <option value="">Customer (All)</option>
+                {% for c in customers %}
+                    <option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>{{ c.customer__name }}</option>
+                {% endfor %}
             </select>
 
             <input type="date" name="start_date" class="form-control w-auto" value="{{ request.GET.start_date }}">
-            <button type="submit" class="btn btn-primary btn-sm px-4">Apply</button>
+            <button type="submit" class="btn btn-primary btn-sm px-4">Apply Filters</button>
+            <a href="{% url 'quotation_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
         </form>
 
         <div class="table-responsive">
@@ -164,22 +167,20 @@
                         <th>Customer / Created By</th>
                         <th>Date</th>
                         <th>Grand Total</th>
-                       <th>Courier Mode</th>
+                        <th>Courier Mode</th>
                         <th>Status</th>
                         <th>Approval Journey & Actions</th>
-                        <th>Communication History & Reply</th>
+                        <th>Communication</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for q in quotations %}
                     <tr>
-                        {% with stock_req=q.stock_request %}
                         {% with price_req=q.price_requests.all|dictsort:"id"|last %}
-                        {% with stock_status=stock_req.status|default:"none" %}
                         {% with price_status=price_req.status|default:"none" %}
 
                         <!-- 1. ID -->
-                        <td>#{{ q.id }}</td>
+                        <td><b>#{{ q.id }}</b></td>
 
                         <!-- 2. Customer / Created By -->
                         <td>
@@ -191,11 +192,11 @@
                         <td>{{ q.date_created|date:"d M Y" }}</td>
 
                         <!-- 4. Grand Total -->
-                        <td class="fw-bold">₹{{ q.grand_total|floatformat:2  }}</td>
+                        <td class="fw-bold">₹{{ q.grand_total|floatformat:2 }}</td>
 
                         <td>{{ q.get_courier_mode_display }}</td>
 
-                        <!-- 5. STATUS & VIEW PERMISSIONS -->
+                        <!-- 5. STATUS & VIEW ACTIONS -->
                         <td>
                             {% if q.is_converted_to_proforma %}
                                 <div class="badge bg-success text-white w-100 p-2 mb-1" style="font-size: 0.65rem;">✅ CONVERTED TO PI</div>
@@ -213,17 +214,16 @@
                                 {% endif %}
                             {% endif %}
 
-                            <!-- TRACK PROGRESS BUTTON (Remains same for transparency) -->
                             <button type="button" class="btn-pro-action btn-light border w-100 mt-1"
-                                    style="font-size: 0.65rem; font-weight: bold; background: #222; color: #333;"
+                                    style="font-size: 0.65rem; font-weight: bold;"
                                     onclick="openRejectedModal('{{ q.id }}')">
                                 📊 Price Status Details
                             </button>
                         </td>
+
                         <!-- 6. APPROVAL JOURNEY & ACTIONS -->
                         <td class="action-container">
                             <div class="approval-tracker mb-1">
-                                <!-- Only Price Station is needed for Quotations -->
                                 <div class="station {% if price_status == 'pending' %}active{% elif price_status == 'approved' %}completed{% elif price_status == 'rejected' %}rejected{% endif %}">
                                     <span class="icon">⚖️</span><span>Price Approval</span>
                                     {% if price_status != 'none' %}
@@ -234,65 +234,66 @@
                                 </div>
                             </div>
 
-                            <!-- Box 1 and Box 2 in the same row -->
-<div style="display: flex; gap: 6px; width: 100%; margin-top: 6px;">
-    <button type="button"
-            class="btn-pro-action btn-dark"
-            style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
-            onclick="openEditItemsModal('quotation', '{{ q.id }}')">
-        ✏️ Edit Products
-    </button>
-    <button type="button"
-            class="btn-pro-action btn-dark"
-            style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
-            onclick="openAuditTrailModal('quotation', '{{ q.id }}')">
-        📋 Edit History
-    </button>
-</div>
+                            <!-- EDIT PRODUCTS & AUDIT LOG -->
+                            <div style="display: flex; gap: 6px; width: 100%; margin-top: 6px;">
+                                {% if not q.is_converted_to_proforma and request.user|can:"proforma.create" %}
+                                    <button type="button"
+                                            class="btn-pro-action btn-dark"
+                                            style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
+                                            onclick="openEditItemsModal('quotation', '{{ q.id }}')">
+                                        ✏️ Edit Products
+                                    </button>
+                                {% elif q.is_converted_to_proforma %}
+                                    <button type="button"
+                                            class="btn-pro-action btn-grey"
+                                            style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
+                                            disabled title="Converted quotations are permanently locked">
+                                        🔒 Converted
+                                    </button>
+                                {% endif %}
 
-                            <!-- Inside your Quotation row action block -->
-<a href="{% url 'quotation_request_price_change' q.id %}"
-   class="btn btn-sm btn-info text-white fw-bold"
-   style="border-radius: 20px; padding: 5px 14px; font-size: 0.75rem; text-decoration: none; margin-top: 5px; display: inline-block;">
-    🔄 REQUEST PRICE CHANGE
-</a>
+                                <button type="button"
+                                        class="btn-pro-action btn-dark"
+                                        style="flex: 1; margin: 0; padding: 6px 2px; font-size: 0.7rem;"
+                                        onclick="openAuditTrailModal('quotation', '{{ q.id }}')">
+                                    📋 Edit History
+                                </button>
+                            </div>
+
+                            <!-- REQUEST PRICE CHANGE (Sales Staff) -->
+                            {% if "admin" not in user_roles and not request.user.is_superuser and not q.is_converted_to_proforma %}
+                                <a href="{% url 'quotation_request_price_change' q.id %}"
+                                   class="btn btn-sm btn-info text-white fw-bold w-100 mt-1"
+                                   style="border-radius: 8px; font-size: 0.7rem; text-decoration: none;">
+                                    🔄 Request Price Change
+                                </a>
+                            {% endif %}
+
+                            <!-- CONVERT TO PI BUTTON -->
                             <div class="w-100 mt-2">
                                 {% if q.is_converted_to_proforma %}
                                     <div class="text-center p-2 border rounded bg-light w-100">
                                         <small class="text-success fw-bold">Converted to PI</small><br>
-                                    {% if q.converted_at %}
-                                        <small style="font-size: 9px;">Convert Time: {{ q.date_created|timesince:q.converted_at }}</small>
-                                    {% else %}
-                                    <small style="font-size: 9px;">Converted</small>
-                                {% endif %}
-
+                                        {% if q.converted_at %}
+                                            <small style="font-size: 9px; color: #888;">Time: {{ q.date_created|timesince:q.converted_at }}</small>
+                                        {% endif %}
                                     </div>
                                 {% else %}
-
                                     {% if q.has_pending_price_requests %}
-                                        <!-- Locked if any item is still 'pending' -->
-                                        <button class="btn-pro-action btn-grey" disabled
-                                                title="All price requests must be Approved or Rejected before conversion.">
+                                        <button class="btn-pro-action btn-grey" disabled title="Pending price requests must be resolved before conversion.">
                                             🔒 Waiting for Approval
                                         </button>
-                                      {% else %}
-
-                                        <!-- CONVERT TO PI BUTTON -->
+                                    {% elif request.user|can:"proforma.create" %}
                                         <a href="{% url 'convert_to_pi' q.id %}"
                                            class="btn-pro-action btn-yellow"
                                            onclick="return handleConversion(event, this);">
                                             🔄 Convert to PI
                                         </a>
-
-
+                                    {% endif %}
                                 {% endif %}
-                            {% endif %}
                             </div>
-
-<!--                            {% if not q.is_converted_to_proforma %}-->
-<!--                                <a href="{% url 'proforma_price_change_request_create' q.id %}" class="btn-pro-action btn-info-custom mt-1">✎ Request Price Change</a>-->
-<!--                            {% endif %}-->
                         </td>
+
                         <!-- 7. MESSAGE HUB -->
                         <td>
                             <button class="btn-pro-action btn-blue" onclick="openRemarkModal('{{ q.id }}','Quotation')">
@@ -304,7 +305,14 @@
                                 {% endwith %}
                             </button>
                         </td>
-                        {% endwith %}{% endwith %}{% endwith %}{% endwith %}
+                        {% endwith %}{% endwith %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <h5>No quotations found.</h5>
+                            <p class="small">Quotations matching your territory/role will appear here.</p>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -313,9 +321,7 @@
     </div>
 </div>
 
-<!--; ==========================================-->
-<!--     UNIFIED REMARK MODAL (Add to all 3 files)-->
-<!--     ========================================== &ndash;&gt;-->
+<!-- ================= UNIFIED REMARK MODAL ================= -->
 <div id="globalRemarkModal" class="custom-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; padding: 20px;">
     <div style="background:#1e1e1e; width:100%; max-width:450px; padding:20px; border-radius:12px; border:1px solid #444; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
@@ -324,12 +330,10 @@
         </div>
 
         <div id="modalChatHistory" style="height:320px; overflow-y:auto; background:#111; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; flex-direction:column; gap:10px; border:1px solid #333;">
-            <!-- History loads here -->
         </div>
 
-
         <input type="hidden" id="modalInvoiceId">
-        <input type="hidden" id="modalObjectType"> <!-- ADD THIS LINE -->
+        <input type="hidden" id="modalObjectType">
 
         <textarea id="modalRemarkInput" style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; border-radius:8px; padding:10px; outline:none; resize:none; font-size: 14px;" rows="3" placeholder="Write to other departments..."></textarea>
 
@@ -340,11 +344,11 @@
     </div>
 </div>
 
-<!-- UPDATED REQUEST DETAILS MODAL -->
+<!-- ================= REQUEST DETAILS MODAL ================= -->
 <div id="detailsModal" class="modal-custom-overlay">
-    <div class="modal-custom-content" style="max-width: 700px;"> <!-- Increased width for more data -->
+    <div class="modal-custom-content" style="max-width: 700px;">
         <div class="modal-custom-header">
-            <h5 class="m-0">Request Tracking - Invoice #<span id="detInvId"></span></h5>
+            <h5 class="m-0">Request Tracking - Quotation #<span id="detInvId"></span></h5>
             <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
         </div>
         <div class="modal-custom-body" id="detailsContent">
@@ -365,11 +369,10 @@
                 🔒 This document is locked and cannot be edited.
             </div>
 
-            <!-- Existing Products Table -->
             <h6 class="fw-bold mb-2 text-secondary">Current Items</h6>
             <table class="rej-table border mb-4" id="modalItemsTable">
                 <thead>
-                    <tr>
+                    <tr style="background: #2a2a2a;">
                         <th>Product</th>
                         <th style="width: 80px;">Qty</th>
                         <th>Price (₹)</th>
@@ -378,31 +381,28 @@
                     </tr>
                 </thead>
                 <tbody id="modalItemsBody">
-                    <!-- Populated by JS -->
                 </tbody>
             </table>
 
-            <!-- Add Product Section -->
+            {% if request.user|can:"proforma.create" %}
             <div id="addItemSection" class="p-3 bg-dark rounded border border-secondary mt-3">
                 <h6 class="fw-bold text-warning mb-2">+ Add Product</h6>
                 <div class="row g-2 align-items-end">
+                    <div class="col-md-7 position-relative">
+                        <label class="small text-muted">Search & Select Product</label>
+                        <input type="text"
+                               id="productSearchInput"
+                               class="form-control form-control-sm bg-dark text-white border-secondary"
+                               placeholder="Type product name to search..."
+                               autocomplete="off"
+                               oninput="handleProductSearch(this.value)">
+                        <input type="hidden" id="selectedProductId">
 
-<div class="col-md-7 position-relative">
-    <label class="small text-muted">Search & Select Product</label>
-    <input type="text"
-           id="productSearchInput"
-           class="form-control form-control-sm bg-dark text-white border-secondary"
-           placeholder="Type product name to search..."
-           autocomplete="off"
-           oninput="handleProductSearch(this.value)">
-    <input type="hidden" id="selectedProductId">
-
-    <!-- Search Dropdown List -->
-    <div id="productSearchResults"
-         class="dropdown-menu bg-dark border-secondary w-100 shadow"
-         style="max-height: 220px; overflow-y: auto; display: none; position: absolute; top: 100%; left: 0; z-index: 1050;">
-    </div>
-</div>
+                        <div id="productSearchResults"
+                             class="dropdown-menu bg-dark border-secondary w-100 shadow"
+                             style="max-height: 220px; overflow-y: auto; display: none; position: absolute; top: 100%; left: 0; z-index: 1050;">
+                        </div>
+                    </div>
                     <div class="col-md-3">
                         <label class="small text-muted">Quantity</label>
                         <input type="number" id="modalAddQuantity" class="form-control form-control-sm bg-dark text-white border-secondary" value="1" min="1">
@@ -412,6 +412,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -435,7 +436,7 @@ let currentModalDocId = null;
 let searchDebounceTimer = null;
 
 // ==========================================
-// 1. REMARK HUB (COMMUNICATION)
+// 1. REMARK HUB
 // ==========================================
 function openRemarkModal(objId, objType) {
     document.getElementById('modalInvoiceId').value = objId;
@@ -576,14 +577,13 @@ function closeDetailsModal() {
 }
 
 // ==========================================
-// 3. EDIT PRODUCTS MODAL & SEARCH LOGIC
+// 3. EDIT PRODUCTS MODAL
 // ==========================================
 function openEditItemsModal(docType, docId) {
     currentModalDocType = docType;
     currentModalDocId = docId;
     document.getElementById('editDocTitle').innerText = `${docType.toUpperCase()} #${docId}`;
 
-    // Reset input fields
     const searchInput = document.getElementById('productSearchInput');
     const selectedId = document.getElementById('selectedProductId');
     const resultsBox = document.getElementById('productSearchResults');
@@ -719,7 +719,7 @@ function submitAddItemModal() {
 }
 
 // ==========================================
-// 4. AUDIT TRAIL (EDIT HISTORY)
+// 4. AUDIT TRAIL
 // ==========================================
 function openAuditTrailModal(docType, docId) {
     document.getElementById('auditDocTitle').innerText = `${docType.toUpperCase()} #${docId}`;
@@ -782,7 +782,6 @@ function handleConversion(event, element) {
     return true;
 }
 
-// Global click event to dismiss modals and dropdown popups
 window.onclick = function(event) {
     const remarkModal = document.getElementById('globalRemarkModal');
     const detailsModal = document.getElementById('detailsModal');
@@ -794,7 +793,6 @@ window.onclick = function(event) {
     if (event.target === editModal) closeEditItemsModal();
     if (event.target === auditModal) closeAuditModal();
 
-    // Close product search dropdown when clicking outside
     const resultsBox = document.getElementById('productSearchResults');
     const searchInput = document.getElementById('productSearchInput');
     if (resultsBox && eTargetNotSearch(event, resultsBox, searchInput)) {

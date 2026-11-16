@@ -1,4 +1,5 @@
 {% load static %}
+{% load rbac_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -70,15 +71,14 @@
     .form-section { margin-bottom: 30px; }
     .form-section h3 { margin-bottom: 15px; font-size: 1.25rem; }
 
-    /* Fix Customer suggestions to match Product style */
     #customer-suggestions, #shipping-suggestions, #product-suggestions {
       border: 1px solid #eee;
       border-radius: 12px;
       margin-top: 5px;
       max-height: 250px;
       overflow-y: auto;
-      list-style: none !important; /* Force remove bullets */
-      padding: 0 !important;       /* Force remove padding */
+      list-style: none !important;
+      padding: 0 !important;
       box-shadow: 0 5px 15px rgba(0,0,0,0.05);
       background: #fff;
     }
@@ -90,7 +90,7 @@
         color: #444;
         font-size: 0.95rem;
         transition: background 0.2s;
-        display: block; /* Ensure it behaves like a box */
+        display: block;
     }
 
     .suggest-item:hover, .shipping-item:hover, .product-item:hover {
@@ -126,13 +126,12 @@
     .table-wrapper { width: 100%; overflow-x: auto; border: 1px solid #eee; border-radius: 8px; }
     table { width: 100%; border-collapse: collapse; min-width: 850px; }
     th, td { border: 1px solid #eee; padding: 12px 8px; text-align: center; vertical-align: top; }
-    th { background: #f8f9fa; font-size: 0.75rem; text-transform: uppercase; color: #666; }
+    th { background: #f8d7da; font-size: 0.75rem; text-transform: uppercase; color: #666; }
     .actual-val-label { display: block; font-size: 0.7rem; color: #999; margin-top: 2px; }
     .moq-warning { color: #e74c3c; font-size: 0.75rem; font-weight: bold; display: block; margin-top: 4px; }
 
     .action-col { display: none; }
 
-    /* --- COURIER BUTTONS --- */
     .courier-btn {
       padding: 10px 35px;
       border-radius: 30px;
@@ -151,7 +150,6 @@
     .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .submit-btn:disabled { background: #ccc !important; cursor: not-allowed; opacity: 0.6; }
 
-    /* MODAL POPUP STYLING */
     .modal {
       display: none; position: fixed; z-index: 9999; left:0; top:0; width:100%; height:100%;
       background: rgba(0,0,0,0.6);
@@ -213,18 +211,25 @@
                      {% endif %}
                 </div>
 
+                <!-- Overdue Credit Alert Box -->
                 <div id="credit-lock-container" class="alert alert-danger mt-3" style="display:none; border-left: 8px solid #c0392b; color: #000; border-radius: 15px;">
                     <h5 style="color: #c0392b; font-weight:bold;">⚠️ CREDIT PERIOD EXCEEDED</h5>
                     <ul id="overdue-pi-list" style="font-weight: bold;"></ul>
-                    <p>Locked until Admin approval.</p>
+                    {% if request.user|can:"credit.overdue" %}
+                        <p class="text-success fw-bold">✓ You have Credit Overdue Authority. You may proceed and submit directly.</p>
+                    {% else %}
+                        <p>Locked until Admin / Sales Head approval.</p>
+                    {% endif %}
                 </div>
-                <!-- NEW: EMI/PDC Covered Container (Green Box) -->
-            <div id="emi-info-container" class="alert alert-success mt-3" style="display:none; border-left: 8px solid #27ae60; color: #155724; background-color: #d4edda; border-radius: 15px;">
-                <h5 style="color: #1e7e34; font-weight:bold;">✅ EMI / PDC COVERED</h5>
-                <ul id="emi-pi-list" style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;"></ul>
-                <p style="font-size: 0.8rem; margin-top: 5px; color: #155724;">This customer has running EMIs/PDCs. No additional credit approval required.</p>
+
+                <!-- EMI/PDC Covered Container -->
+                <div id="emi-info-container" class="alert alert-success mt-3" style="display:none; border-left: 8px solid #27ae60; color: #155724; background-color: #d4edda; border-radius: 15px;">
+                    <h5 style="color: #1e7e34; font-weight:bold;">✅ EMI / PDC COVERED</h5>
+                    <ul id="emi-pi-list" style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;"></ul>
+                    <p style="font-size: 0.8rem; margin-top: 5px; color: #155724;">This customer has running EMIs/PDCs. No additional credit approval required.</p>
+                </div>
             </div>
-            </div>
+
             <div class="col-md-6">
                 <strong>Selected Shipping:</strong>
                 <span id="main-shipping-name">{% if shipping_customer %}{{ shipping_customer.name }}{% else %}None{% endif %}</span>
@@ -291,7 +296,7 @@
         <button type="button" class="courier-btn" data-mode="air">✈️ Air</button>
       </div>
 
-      <!-- RESTORED: Price & Courier Request Section -->
+      <!-- Price & Courier Request Section -->
       <div class="form-section" style="background: #f9f9f9; padding: 20px; border-radius: 12px; color: #333;">
         <h4>Price & Courier Request</h4>
         <div class="row">
@@ -342,14 +347,17 @@
 </div>
 
 <script>
+// RBAC Credit Authority flag injected from backend
+const userHasCreditOverride = {% if request.user|can:"credit.overdue" %}true{% else %}false{% endif %};
+
 let isCreditBlocked = false;
-let isEmiCovered = false; // Add this line
+let isEmiCovered = false;
+
 $(function () {
     const customers = [{% for c in customers %}{ id: "{{ c.id }}", name: "{{ c.name|escapejs }}", address: "{{ c.address|default:''|escapejs }}", phone: "{{ c.phone|default:''|escapejs }}" },{% endfor %}];
     const products = [{% for p in items %}{ id: "{{ p.id }}", name: "{{ p.name|escapejs }}", category: "{{ p.category.name|upper|escapejs }}", stock: parseInt("{{ p.quantity|default:0 }}"), min_qty: parseInt("{{ p.proforma_price.min_requirement|default:1 }}"), base_price: parseFloat("{{ p.proforma_price.price|default:0 }}"), tiers: [{% if p.proforma_price.has_dynamic_price %}{% for tier in p.proforma_price.price_tiers.all %}{ min_qty: {{ tier.min_quantity }}, price: {{ tier.unit_price }} },{% endfor %}{% endif %}].sort((a, b) => b.min_qty - a.min_qty), courier: { "surface": [{% for s in p.courier_sheets.all %}{% if s.mode == 'surface' %}{% for t in s.tiers.all %}{ min: {{ t.min_quantity }}, max: {{ t.max_quantity|default:99999 }}, charge: {{ t.charge }} },{% endfor %}{% endif %}{% endfor %}], "air": [{% for s in p.courier_sheets.all %}{% if s.mode == 'air' %}{% for t in s.tiers.all %}{ min: {{ t.min_quantity }}, max: {{ t.max_quantity|default:99999 }}, charge: {{ t.charge }} },{% endfor %}{% endif %}{% endfor %}] } },{% endfor %}];
 
     let customerHistory = [];
-    let isCreditBlocked = false;
     var activeRow;
 
     function updateUnifiedButton() {
@@ -358,7 +366,8 @@ $(function () {
         let hasStock = $("#stock-warning-banner").is(":visible");
         $(".price-input-check").each(function() { if ($(this).val() !== "") hasPrice = true; });
 
-        if (isCreditBlocked) {
+        // If customer is credit-blocked and user DOES NOT have override authority:
+        if (isCreditBlocked && !userHasCreditOverride) {
             btn.text("⚠️ Submit for Credit Overdue Approval").val("request_credit").css("background", "#c0392b");
         } else if (hasPrice || hasStock) {
             btn.text("📩 Send Request to Accounts").val("request_accounts").css("background", "#e67e22");
@@ -367,44 +376,23 @@ $(function () {
         }
     }
 
-<!--    function checkCustomerCredit(customerId) {-->
-<!--        if (!customerId) return;-->
-<!--        fetch(`/proforma/api/check-credit/${customerId}/`)-->
-<!--            .then(res => res.json())-->
-<!--            .then(data => {-->
-<!--                isCreditBlocked = data.is_blocked;-->
-<!--                if (isCreditBlocked) {-->
-<!--                    $("#credit-lock-container").show();-->
-<!--                    $("#overdue-pi-list").empty();-->
-<!--                    data.overdue_invoices.forEach(inv => $("#overdue-pi-list").append(`<li>PI #${inv.pi_id} (Dated: ${inv.date})</li>`));-->
-<!--                } else { $("#credit-lock-container").hide(); }-->
-<!--                updateUnifiedButton();-->
-<!--            });-->
-<!--    }-->
-
-
     function checkCustomerCredit(customerId) {
         if (!customerId) return;
         fetch(`/proforma/api/check-credit/${customerId}/`)
             .then(res => res.json())
             .then(data => {
-                // 1. Update Global Variable
                 isCreditBlocked = data.is_blocked;
 
-                // 2. Handle Hard Block (Red Box)
-                // Show only if there are 'Real' overdue records (is_blocked is true)
                 if (isCreditBlocked) {
                     $("#credit-lock-container").show();
                     $("#overdue-pi-list").empty();
                     data.overdue_invoices.forEach(inv =>
                         $("#overdue-pi-list").append(`<li>PI #${inv.pi_id} (Dated: ${inv.date})</li>`)
                     );
-                    $("#emi-info-container").hide(); // Hide green box if hard blocked
+                    $("#emi-info-container").hide();
                 } else {
                     $("#credit-lock-container").hide();
 
-                    // 3. Handle EMI Bypass (Green Box)
-                    // If not blocked, but there WERE overdue items covered by EMI
                     if (data.emi_covered_invoices && data.emi_covered_invoices.length > 0) {
                         $("#emi-info-container").show();
                         $("#emi-pi-list").empty();
@@ -418,6 +406,7 @@ $(function () {
                 updateUnifiedButton();
             });
     }
+
     function calculateLiveValues() {
         let grandCourier = 0; let mode = $("#id_courier_mode").val();
         let totalSheetQty = 0; let sheetRuleProduct = null;
@@ -519,11 +508,11 @@ $(function () {
 
         customers.forEach(c => {
             if(c.name.toLowerCase().includes(q)) {
-                // Wrap name in <b> to match product dropdown style
                 list.append(`<li class="${isShip ? 'shipping-item' : 'suggest-item'}" data-id="${c.id}" data-name="${c.name}"><b>${c.name}</b></li>`);
             }
         });
     });
+
     $("#real-add-row-btn").click(function() {
         let nf = $(".item-form:first").clone(); nf.find("input, textarea").val(""); nf.find(".product-label").text("None");
         nf.find(".available-stock-display").text("0"); nf.find(".new-item-tag").hide(); nf.removeAttr('data-current-stock').css('background-color', 'transparent');
@@ -536,8 +525,6 @@ $(function () {
 
     $(document).on("input", 'input[name$="-quantity"], .price-input-check, #id_requested_courier, textarea', calculateLiveValues);
     $(".courier-btn").click(function() { $(".courier-btn").removeClass("active"); $(this).addClass("active"); $("#id_courier_mode").val($(this).data("mode")); calculateLiveValues(); });
-
-
 
     $('#proforma-form').on('submit', function() { let act = $(document.activeElement).val(); if (act) $(this).append('<input type="hidden" name="action" value="' + act + '">'); });
     calculateLiveValues(); toggleActionColumn();

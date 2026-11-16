@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; line-height: 1.5; }
+        .container { max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; }
+        .header { background-color: #1e293b; color: #ffffff; padding: 12px 16px; border-radius: 4px; }
+        .details { margin: 16px 0; border-collapse: collapse; width: 100%; }
+        .details td { padding: 8px; border-bottom: 1px solid #eee; }
+        .btn { display: inline-block; padding: 10px 18px; background-color: #2563eb; color: #ffffff !important; text-decoration: none; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 style="margin:0;">📦 Packing Required — PI #{{ dispatch.invoice.id }}</h2>
+        </div>
+        <p>Hello Warehouse Team,</p>
+        <p>Accounts has uploaded the invoice and initiated packing for the following dispatch request:</p>
+
+        <table class="details">
+            <tr>
+                <td><strong>Proforma Invoice:</strong></td>
+                <td>#{{ dispatch.invoice.id }}</td>
+            </tr>
+            <tr>
+                <td><strong>Customer:</strong></td>
+                <td>{{ dispatch.invoice.customer.name }}</td>
+            </tr>
+            <tr>
+                <td><strong>Invoice Number:</strong></td>
+                <td>{{ dispatch.invoice_number }}</td>
+            </tr>
+            <tr>
+                <td><strong>Shipment Method:</strong></td>
+                <td>{{ dispatch.shipment_method.name }}</td>
+            </tr>
+        </table>
+
+        <p>
+            <a href="https://oblutools.com/proforma/dispatch/{{ dispatch.id }}/" class="btn">
+                Open Dispatch & Upload Packing Photos
+            </a>
+        </p>
+    </div>
+</body>
+</html>

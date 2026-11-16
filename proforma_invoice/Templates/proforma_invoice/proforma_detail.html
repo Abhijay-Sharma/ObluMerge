@@ -1,415 +1,431 @@
 {% load static %}
+{% load rbac_tags %}
+<!DOCTYPE html>
 <html lang="en">
 <head>
-
-<link rel="stylesheet"
- href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-
 <meta charset="UTF-8">
-<title>Proforma Invoice</title>
+<title>Proforma Invoice #{{ invoice.id }}</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-@page { size:A4 portrait; margin:14mm; }
+@page { size: A4 portrait; margin: 12mm; }
 
-body{
+body {
   font-family: Arial, Helvetica, sans-serif;
-  font-size:12px;
-  color:#000;
-  margin:0;
+  font-size: 12px;
+  color: #000;
+  margin: 0;
+  background-color: #f4f6f8;
 }
 
-.wrapper{ width:100%; }
-.invoice-container{ padding:10px 14px; }
+.wrapper { width: 100%; max-width: 900px; margin: 0 auto; background: #fff; padding: 25px 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.invoice-container { padding: 20px 10px; }
 
-/* ================= GLOBAL ================= */
-table{ width:100%; border-collapse:collapse; }
-td, th{ padding:6px; vertical-align:top; }
+/* ================= NO-PRINT ACTION BAR ================= */
+.no-print-bar {
+  max-width: 900px;
+  margin: 15px auto 20px auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.btn-ui {
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-ui:hover { transform: translateY(-1px); }
+.btn-ui-back { background: #e0e0e0; color: #333; }
+.btn-ui-print { background: #222; color: #fff; }
+.btn-ui-dispatch { background: #0b78a8; color: #fff; }
+.btn-ui-price { background: #e67e22; color: #fff; }
 
-.bold{ font-weight:bold; }
-.center{ text-align:center; }
-.right{ text-align:right; }
+/* ================= GLOBAL TABLE ================= */
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: 6px; vertical-align: top; }
+
+.bold { font-weight: bold; }
+.center { text-align: center; }
+.right { text-align: right; }
 
 /* ================= HEADER ================= */
-.header-top{
-  display:grid;
-  grid-template-columns:120px 1fr auto;
-  column-gap:14px;
+.header-top {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  column-gap: 14px;
 }
 
-.company-info{ line-height:1.4; }
+.company-info { line-height: 1.4; font-size: 11px; }
 
-.logo{
-  width:120px;
-  height:100px;
-  object-fit:contain;
+.logo {
+  width: 120px;
+  height: 90px;
+  object-fit: contain;
 }
 
-hr{
-  border:none;
-  border-top:2px solid #0b78a8;
-  margin:10px 0 14px;
+hr {
+  border: none;
+  border-top: 2px solid #0b78a8;
+  margin: 10px 0 14px;
 }
 
-.header-title{
-  text-align:center;
-  font-size:18px;
-  font-weight:bold;
-  color:#0b78a8;
-  margin-bottom:14px;
+.header-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: #0b78a8;
+  margin-bottom: 14px;
+  letter-spacing: 0.5px;
 }
 
 /* ================= INFO GRID ================= */
-.info-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:30px;
-  margin-bottom:18px;
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 25px;
+  margin-bottom: 18px;
+  font-size: 11px;
 }
-.info-grid b{ display:block; margin-bottom:6px; }
+.info-grid b { display: block; margin-bottom: 6px; }
 
 /* ================= ITEM TABLE ================= */
-.item-table{
-  border:2px solid #000;
+.item-table {
+  border: 2px solid #000;
 }
 
 .item-table th,
-.item-table td{
-  border-left:1px solid #000;
+.item-table td {
+  border-left: 1px solid #000;
 }
 
-.item-table thead th{
-  background:#0b78a8;
-  color:#fff;
-  text-align:center;
-  border-bottom:2px solid #000;
+.item-table thead th {
+  background: #0b78a8;
+  color: #fff;
+  text-align: center;
+  border-bottom: 2px solid #000;
+  font-size: 11px;
 }
 
-.item-table tbody td{
-  border-bottom:1px solid #999;
+.item-table tbody td {
+  border-bottom: 1px solid #999;
+  font-size: 11px;
 }
 
-.item-table tbody tr:last-child td{
-  border-bottom:none;
+.item-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.item-name{
-  text-align:left;
-  padding-left:12px;
+.item-name {
+  text-align: left;
+  padding-left: 10px;
 }
 
 /* ================= TOTALS ================= */
-.totals-wrapper table{
-  margin-top:-3px;
-  border-bottom:2px solid #000;
+.totals-wrapper table {
+  margin-top: -1px;
+  border-bottom: 2px solid #000;
 }
 
-.totals-wrapper td{
-  border-bottom:1px solid #999;
+.totals-wrapper td {
+  border-bottom: 1px solid #999;
 }
 
-.totals-wrapper td:last-child{
-  border-left:2px solid #000;
-  border-right:2px solid #000;
-  text-align:right;
-  width:123px;
+.totals-wrapper td:last-child {
+  border-left: 2px solid #000;
+  border-right: 2px solid #000;
+  text-align: right;
+  width: 130px;
 }
 
-.totals-wrapper tr:last-child td{
-  border-bottom:none;
-  font-weight:bold;
+.totals-wrapper tr:last-child td {
+  border-bottom: none;
+  font-weight: bold;
 }
 
-.totals-highlight{
-  background:#0b78a8;
-  color:#fff;
+.totals-highlight {
+  background: #0b78a8;
+  color: #fff;
 }
+
 /* ================= QR ================= */
-.qr-box{
-  display:flex;
-  justify-content:flex-end;
+.qr-box {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.qr-row{
-  display:flex;
-  gap:10px;
+.qr-row {
+  display: flex;
+  gap: 8px;
 }
 
-.qr-item{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:6px;
-  width:110px;
+.qr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 95px;
 }
 
-.qr-img{
-  width:90px;
-  height:90px;
-  object-fit:contain;
+.qr-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
 }
 
-.qr-text{
-  font-size:10px;
-  font-weight:bold;
-  color:#0b78a8;
-  display:flex;
-  align-items:center;
-  gap:6px;
+.qr-text {
+  font-size: 9px;
+  font-weight: bold;
+  color: #0b78a8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-
-/* ================= BANK + QR ================= */
-
-.bank-section{
-  margin-top:18px;
-  display:flex;
-  align-items:flex-start;
-  gap:40px;
+/* ================= BANK ================= */
+.bank-section {
+  margin-top: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
 }
 
-.bank-qr{
-  text-align:center;
-  flex:0 0 auto;
+.bank-details {
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
-.bank-details{
-  flex:1;
+.signature-block {
+  text-align: right;
+  margin-top: -140px;
 }
 
-.bank-qr img{
-  width:110px;
-  height:auto;
+.footer-text {
+  text-align: center;
+  font-size: 10.5px;
+  margin-top: 25px;
+  color: #555;
 }
 
-.bank-qr-title{
-  margin-top:6px;
-  font-weight:bold;
-  color:#0b78a8;
-}
 /* ================= PRINT ================= */
-@media print{
-
-  *{
+@media print {
+  * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-
-  body{ font-size:11px; color:#000 !important; }
-  .logo{ width:90px; height:60px; }
-  .no-print{ display:none; }
+  body { font-size: 11px; color: #000 !important; background: #fff !important; }
+  .wrapper { width: 100%; max-width: 100%; box-shadow: none; padding: 0; }
+  .invoice-container { padding: 0; }
+  .no-print, .no-print-bar { display: none !important; }
 
   .item-table th,
-  .item-table td{
-    padding:4px;
-    font-size:11px;
-    color:#000 !important;
+  .item-table td {
+    padding: 4px;
+    font-size: 10.5px;
+    color: #000 !important;
   }
 
-  /* HEADER BLUE IN PRINT */
-  .item-table thead th{
-    background:#0b78a8 !important;
-    color:#fff !important;
+  .item-table thead th {
+    background: #0b78a8 !important;
+    color: #fff !important;
   }
 
-  /* TOTAL ROW BLUE IN PRINT */
-  .totals-highlight td{
-    background:#0b78a8 !important;
-    color:#fff !important;
+  .totals-highlight td {
+    background: #0b78a8 !important;
+    color: #fff !important;
   }
 
-  .totals-wrapper td:last-child{
-    width:160px;
+  .totals-wrapper td:last-child {
+    width: 140px;
   }
-
-  /* QR print layout */
-  .qr-row{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:6px 10px;
-    justify-items:center;
-  }
-
-  .qr-item.yt{
-    grid-column:1 / -1;
-  }
-
-  .qr-img{
-    width:85px;
-    height:85px;
-  }
-
-  .qr-text{
-    font-size:9px;
-  }
-}
-
-.footer-text{
-  text-align:center;
-  font-size:11px;
-  margin-top:30px;
 }
 </style>
 </head>
 
 <body>
+
+<!-- ================= SCREEN-ONLY ACTION BAR ================= -->
+<div class="no-print-bar">
+  <div>
+    {% if request.user|can:"proforma.view" %}
+      <a href="{% url 'proforma_list' %}" class="btn-ui btn-ui-back">
+        <i class="fa-solid fa-arrow-left"></i> Back to Invoices
+      </a>
+    {% endif %}
+  </div>
+
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <!-- Dispatch Request Action -->
+    {% if invoice.dispatch_status == 'processing' and request.user|can:"proforma.view" %}
+      <a href="{% url 'request_dispatch' invoice.id %}"
+         class="btn-ui btn-ui-dispatch"
+         onclick="return confirm('Are you sure you want to request dispatch for this order?');">
+        <i class="fa-solid fa-truck-fast"></i> Request Dispatch
+      </a>
+    {% endif %}
+
+    <!-- Price Change Request Action (FIXED: correct URL name) -->
+    {% if invoice.dispatch_status != 'dispatched' and request.user|can:"proforma.view" %}
+      <a href="{% url 'proforma_price_change_request_create' invoice.id %}" class="btn-ui btn-ui-price">
+        <i class="fa-solid fa-tags"></i> Request Price Change
+      </a>
+    {% endif %}
+
+    <!-- Print Button -->
+    <button onclick="window.print()" class="btn-ui btn-ui-print">
+      <i class="fa-solid fa-print"></i> Print / Save as PDF
+    </button>
+  </div>
+</div>
+
 <div class="invoice-container">
 <div class="wrapper">
 
 <!-- HEADER -->
 <div class="header-top">
+  <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
+       class="logo" alt="Oblu Logo">
 
-<img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png"
-     class="logo">
-
-<div class="company-info">
-<b>OBLU HEALTHCARE LLP</b><br>
-UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
-ROAD NO.44, Pitampura, New Delhi – 110034<br>
-Phone : 96504 47099<br>
-Email : sales@obluhc.com<br>
-GSTIN : 07AAIFO0279M1ZU<br>
-PAN : AAIFO0279M<br>
-State : 07-Delhi
-</div>
-
-<div class="qr-box">
-  <div class="qr-row">
-
-    <div class="qr-item ig">
-      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png"
-           class="qr-img">
-      <div class="qr-text">
-        <i class="fa-brands fa-instagram"></i>
-        OBLU_HEALTHCARE
-      </div>
-    </div>
-
-    <div class="qr-item fb">
-      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png"
-           class="qr-img">
-      <div class="qr-text">
-        <i class="fa-brands fa-facebook" style="color:#4670b9;"></i>
-        Oblu Healthcare
-      </div>
-    </div>
-
-    <div class="qr-item yt">
-      <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png"
-           class="qr-img">
-      <div class="qr-text">
-        <i class="fa-brands fa-youtube" style="color:#c41717;"></i>
-        Oblu Healthcare
-      </div>
-    </div>
-
+  <div class="company-info">
+    <b>OBLU HEALTHCARE LLP</b><br>
+    UNIT NO.705-706 PLOT NO.3, P P CITY CENTRE,<br>
+    ROAD NO.44, Pitampura, New Delhi – 110034<br>
+    Phone : 96504 47099<br>
+    Email : sales@obluhc.com<br>
+    GSTIN : 07AAIFO0279M1ZU<br>
+    PAN : AAIFO0279M<br>
+    State : 07-Delhi
   </div>
-</div>
 
+  <div class="qr-box">
+    <div class="qr-row">
+      <div class="qr-item ig">
+        <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png" class="qr-img">
+        <div class="qr-text">
+          <i class="fa-brands fa-instagram"></i> OBLU_HEALTHCARE
+        </div>
+      </div>
+
+      <div class="qr-item fb">
+        <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png" class="qr-img">
+        <div class="qr-text">
+          <i class="fa-brands fa-facebook" style="color:#4670b9;"></i> Oblu Healthcare
+        </div>
+      </div>
+
+      <div class="qr-item yt">
+        <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png" class="qr-img">
+        <div class="qr-text">
+          <i class="fa-brands fa-youtube" style="color:#c41717;"></i> Oblu Healthcare
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <hr>
 <div class="header-title">Proforma Invoice</div>
 
-<!-- ================= INFO ================= -->
+<!-- ================= INFO GRID ================= -->
 <div class="info-grid">
-
   <div>
-    <b>Order From<br><br>
+    <b>Order From</b>
     {{ invoice.customer.name }}<br>
     {{ invoice.customer.address }}<br>
     {{ invoice.customer.city }} - {{ invoice.customer.pincode }}<br>
     {{ invoice.customer.state }}<br>
-    Contact : {{ invoice.customer.phone }} </b>
+    Contact : {{ invoice.customer.phone }}
   </div>
-
-    <div>
-        <b>Ship To<br><br>
-
-        {% if invoice.shipping_customer and invoice.shipping_customer.id != invoice.customer.id %}
-            <!-- CASE 1: A completely different Customer profile was selected -->
-            {{ invoice.shipping_customer.name }}<br>
-            {{ invoice.shipping_customer.address }}<br>
-            {{ invoice.shipping_customer.district }} - {{ invoice.shipping_customer.pincode }}<br>
-            {{ invoice.shipping_customer.state }}<br>
-            Mob : {{ invoice.shipping_customer.phone }}
-
-        {% elif invoice.customer.shipping_address and invoice.customer.shipping_address != "N/A" %}
-            <!-- CASE 2: Same customer, but we use the specific Shipping Fields -->
-            {{ invoice.customer.name }}<br>
-            {{ invoice.customer.shipping_address }}<br>
-            {{ invoice.customer.district }} - {{ invoice.customer.shipping_pincode }}<br>
-            {{ invoice.customer.state }}<br>
-            Mob : {{ invoice.customer.shipping_phone }}
-
-        {% else %}
-            <!-- CASE 3: No special shipping info - Use Billing Address -->
-            {{ invoice.customer.name }}<br>
-            {{ invoice.customer.address }}<br>
-            {{ invoice.customer.district }} - {{ invoice.customer.pincode }}<br>
-            {{ invoice.customer.state }}<br>
-            Mob : {{ invoice.customer.phone }}
-        {% endif %}
-
-        </b>
-    </div>
 
   <div>
-    <b>Order Details<br><br>
-    Order No. : {{ invoice.id }}<br>
-    Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
-    Place of Supply : Delhi</b>
+    <b>Ship To</b>
+    {% if invoice.shipping_customer and invoice.shipping_customer.id != invoice.customer.id %}
+        {{ invoice.shipping_customer.name }}<br>
+        {{ invoice.shipping_customer.address }}<br>
+        {{ invoice.shipping_customer.district }} - {{ invoice.shipping_customer.pincode }}<br>
+        {{ invoice.shipping_customer.state }}<br>
+        Mob : {{ invoice.shipping_customer.phone }}
+    {% elif invoice.customer.shipping_address and invoice.customer.shipping_address != "N/A" %}
+        {{ invoice.customer.name }}<br>
+        {{ invoice.customer.shipping_address }}<br>
+        {{ invoice.customer.district }} - {{ invoice.customer.shipping_pincode }}<br>
+        {{ invoice.customer.state }}<br>
+        Mob : {{ invoice.customer.shipping_phone }}
+    {% else %}
+        {{ invoice.customer.name }}<br>
+        {{ invoice.customer.address }}<br>
+        {{ invoice.customer.district }} - {{ invoice.customer.pincode }}<br>
+        {{ invoice.customer.state }}<br>
+        Mob : {{ invoice.customer.phone }}
+    {% endif %}
   </div>
 
+  <div>
+    <b>Order Details</b>
+    Order No. : #{{ invoice.id }}<br>
+    Date : {{ invoice.date_created|date:"d-m-Y" }}<br>
+    Dispatch Status : <span style="text-transform: uppercase; font-weight: bold;">{{ invoice.dispatch_status }}</span><br>
+    Place of Supply : Delhi
+  </div>
 </div>
 
 <!-- ================= ITEM TABLE ================= -->
 <table class="item-table">
 <thead>
 <tr>
-  <th>#</th>
-  <th class="item-name">Item name</th>
-  <th>HSN</th>
-  <th>Qty</th>
-  <th class="right">Rate<br>(Inc.)</th>
-  <th class="right">Rate<br>(Exc.)</th>
-  <th class="right">Taxable <br> Value</th>
-  <th class="center">GST%</th>
-  <th class="right">Amount</th>
-    <!-- ⬇️ ADD THIS LINE HERE ⬇️ -->
-  {% if invoice.dispatch_status != 'dispatched' %}
-    <th class="center no-print" style="width: 40px;">Action</th>
+  <th style="width: 4%;">#</th>
+  <th class="item-name" style="width: 32%;">Item name</th>
+  <th style="width: 10%;">HSN</th>
+  <th style="width: 8%;">Qty</th>
+  <th class="right" style="width: 11%;">Rate<br>(Inc.)</th>
+  <th class="right" style="width: 11%;">Rate<br>(Exc.)</th>
+  <th class="right" style="width: 12%;">Taxable<br>Value</th>
+  <th class="center" style="width: 6%;">GST%</th>
+  <th class="right" style="width: 12%;">Amount</th>
+
+  <!-- RBAC Delete Item Header -->
+  {% if invoice.dispatch_status != 'dispatched' and request.user|can:"proforma.create" %}
+    <th class="center no-print" style="width: 4%;">Action</th>
   {% endif %}
 </tr>
-  <hr>
 </thead>
 
 <tbody>
-<!-- 🔥 CHANGE 1: Use recalculated_items instead of items -->
 {% for row in recalculated_items %}
 <tr>
   <td class="center">{{ forloop.counter }}</td>
-
-  <!-- 🔥 CHANGE 2: Use row.item to access the product name -->
-  <td class="item-name">{{ row.item.product.name }}</td>
-
+  <td class="item-name">
+    <b>{{ row.item.product.name }}</b>
+    {% if row.item.description %}
+      <br><small style="color:#555;">{{ row.item.description }}</small>
+    {% endif %}
+  </td>
   <td class="center">{{ row.item.hsn|default:"-" }}</td>
-  <td class="center">{{ row.item.quantity }}</td>
-
-  <!-- 🔥 CHANGE 3: Use the keys from the recalculated dictionary -->
-  <!-- This ensures that 174 or 150 shows up instead of 180 -->
+  <td class="center bold">{{ row.item.quantity }}</td>
   <td class="right">₹ {{ row.unit_price_incl|floatformat:2 }}</td>
   <td class="right">₹ {{ row.unit_price_excl|floatformat:2 }}</td>
   <td class="right">₹ {{ row.taxable_value|floatformat:2 }}</td>
   <td class="center">{{ row.gst_rate }}%</td>
-  <td class="right">₹ {{ row.amount_incl|floatformat:2 }}</td>
+  <td class="right bold">₹ {{ row.amount_incl|floatformat:2 }}</td>
 
-  <!-- ⬇️ ADD THIS BLOCK HERE ⬇️ -->
-  {% if invoice.dispatch_status != 'dispatched' %}
+  <!-- RBAC Gated Delete Item Action -->
+  {% if invoice.dispatch_status != 'dispatched' and request.user|can:"proforma.create" %}
   <td class="center no-print" style="vertical-align: middle;">
     <form method="POST"
           action="{% url 'delete_document_item' 'proforma' row.item.id %}"
-          onsubmit="return confirm('Are you sure you want to remove {{ row.item.product.name }}?');"
+          onsubmit="return confirm('Are you sure you want to remove {{ row.item.product.name|escapejs }}?');"
           style="margin: 0; padding: 0;">
       {% csrf_token %}
       <button type="submit"
@@ -420,116 +436,93 @@ State : 07-Delhi
     </form>
   </td>
   {% endif %}
-  <!-- ⬆️ END BLOCK ⬆️ -->
-
-
 </tr>
-
+{% empty %}
+<tr>
+  <td colspan="10" class="center" style="padding: 15px; color: #888;">No active items found on this invoice.</td>
+</tr>
 {% endfor %}
 </tbody>
 </table>
 
-
-
+<!-- ================= TOTALS ================= -->
 <div class="totals-wrapper">
 <table>
 <tr>
 <td width="40%">
 <table>
 <tr>
-<td class="right bold" style="font-size:13px;">Sub Total</td>
-<td class="right" style="font-size:13px; border-right:none;">
-₹ {{ recalculated_subtotal|floatformat:2 }}
-</td>
+  <td class="right bold" style="font-size:12px;">Sub Total (Taxable)</td>
+  <td class="right" style="font-size:12px; border-right:none;">
+    ₹ {{ recalculated_subtotal|floatformat:2 }}
+  </td>
 </tr>
 
 <tr>
-<td class="right bold" style="font-size:13px;">Courier Charges</td>
-<td class="right" style="font-size:13px; border-right:none;">
-₹ {{ courier_charge|floatformat:2 }}
-</td>
+  <td class="right bold" style="font-size:12px;">Courier Charges</td>
+  <td class="right" style="font-size:12px; border-right:none;">
+    ₹ {{ courier_charge|floatformat:2 }}
+  </td>
 </tr>
 
-<!--<tr>-->
-<!--<td class="right bold" style="font-size:13px;">IGST</td>-->
-<!--<td class="right" style="font-size:13px; border-right:none;">-->
-<!--₹ {{ recalculated_igst|floatformat:2 }}-->
-<!--</td>-->
-<!--</tr>-->
 {% if invoice.is_intra_state %}
-
 <tr>
-<td class="right bold" style="font-size:13px;">CGST</td>
-<td class="right" style="font-size:13px; border-right:none;">
-₹ {{ cgst|floatformat:2 }}
-</td>
+  <td class="right bold" style="font-size:12px;">CGST</td>
+  <td class="right" style="font-size:12px; border-right:none;">
+    ₹ {{ cgst|floatformat:2 }}
+  </td>
 </tr>
-
 <tr>
-<td class="right bold" style="font-size:13px;">SGST</td>
-<td class="right" style="font-size:13px; border-right:none;">
-₹ {{ utgst|floatformat:2 }}
-</td>
+  <td class="right bold" style="font-size:12px;">SGST</td>
+  <td class="right" style="font-size:12px; border-right:none;">
+    ₹ {{ utgst|floatformat:2 }}
+  </td>
 </tr>
-
 {% else %}
-
 <tr>
-<td class="right bold" style="font-size:13px;">IGST</td>
-<td class="right" style="font-size:13px; border-right:none;">
-₹ {{ igst|floatformat:2 }}
-</td>
+  <td class="right bold" style="font-size:12px;">IGST</td>
+  <td class="right" style="font-size:12px; border-right:none;">
+    ₹ {{ igst|floatformat:2 }}
+  </td>
 </tr>
-
 {% endif %}
 
 <tr class="totals-highlight">
-<td class="right">Total</td>
-<td class="right" style="font-size:13px; border-right:none;">
-₹ {{ recalculated_grand_total|floatformat:2 }}
-</td>
+  <td class="right">Grand Total</td>
+  <td class="right" style="font-size:13px; border-right:none;">
+    ₹ {{ recalculated_grand_total|floatformat:2 }}
+  </td>
 </tr>
-
 </table>
 </td>
 </tr>
 </table>
 </div>
 
-<div style="margin-top:10px;  solid #000; padding:1px;">
-  <b>Amount in Words:</b><br><br>
+<div style="margin-top:12px; padding:2px;">
+  <b>Amount in Words:</b><br>
   INR {{ amount_in_words }}
 </div>
 
-
+<!-- ================= BANK & SIGNATURE ================= -->
 <div class="bank-section">
-
-  <!-- QR LEFT -->
-<!--  <div class="bank-qr">-->
-<!--    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/new_bank_qr_20_03.jpg">-->
-<!--    <div class="bank-qr-title">-->
-<!--      BANK QR-->
-<!--    </div>-->
-<!--  </div>-->
-
-  <!-- BANK DETAILS RIGHT -->
   <div class="bank-details">
-    <b>Company's Bank Details:<br><br>
-    A/c Holder : OBLU HEALTHCARE LLP<br><br>
-    Bank : Axis Bank Limitedcc <br><br>
-    A/c No. : 926030003897014<br><br>
-    Branch & IFSC : Lok Vihar & UTIB0000588</b>
+    <b>Company's Bank Details:</b><br><br>
+    A/c Holder : OBLU HEALTHCARE LLP<br>
+    Bank : Axis Bank Limited<br>
+    A/c No. : 926030003897014<br>
+    Branch & IFSC : Lok Vihar & UTIB0000588
   </div>
-
 </div>
 
-
-
-
-<div style="text-align:right; margin-top:-150px;">
+<div class="signature-block">
   For OBLU HEALTHCARE LLP<br><br>
-  <img src="{{ signature_base64 }}"
-       style="width:140px; height:auto;" alt="Signature"><br>
+  {% if signature_base64 %}
+    <img src="{% if 'data:image' in signature_base64 %}{{ signature_base64 }}{% else %}data:image/png;base64,{{ signature_base64 }}{% endif %}"
+         style="width:130px; height:auto;" alt="Signature"><br>
+  {% else %}
+    <div style="height: 50px;"></div>
+  {% endif %}
   <b>Authorized Signatory</b>
 </div>
 
@@ -537,10 +530,10 @@ State : 07-Delhi
   This is a computer generated invoice
 </div>
 
-<div class="no-print" style="text-align:center;margin-top:14px;">
+<div class="no-print" style="text-align:center; margin-top:20px; padding-bottom:10px;">
   <button onclick="window.print()"
-    style="padding:8px 16px;background:#333;color:#fff;border:none;cursor:pointer;">
-    Print / Save as PDF
+    style="padding:8px 24px; background:#222; color:#fff; border:none; border-radius:20px; font-weight:bold; cursor:pointer;">
+    🖨️ Print / Save as PDF
   </button>
 </div>
 

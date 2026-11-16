@@ -1,9 +1,10 @@
+{% load rbac_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pricing Control Center</title>
+    <title>Pricing Control Center | Courier Pricing</title>
 
     <!-- Google Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,7 +21,7 @@
             --brand-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
             --vibrant-green: #10b981;
             --bg-main: #f1f5f9;
-            --text-dark: #000000; /* Set to pure black */
+            --text-dark: #000000;
             --border-soft: #e2e8f0;
         }
 
@@ -42,7 +43,7 @@
             align-items: center;
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
             z-index: 10;
-            flex-wrap: wrap; /* Responsive wrap */
+            flex-wrap: wrap;
             gap: 15px;
         }
 
@@ -57,6 +58,21 @@
             margin: 0;
             font-size: 1.25rem;
             font-weight: 700;
+        }
+
+        .btn-back {
+            color: rgba(255, 255, 255, 0.85);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-back:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
         }
 
         .btn-save {
@@ -81,7 +97,7 @@
 
         main {
             flex: 1;
-            padding: 1rem 0;
+            padding: 1rem;
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -116,10 +132,8 @@
             outline: none;
         }
 
-        /* --- TABLE STYLE UPDATES --- */
         .table-wrapper {
             background: white;
-            border-radius: 0; /* Optional: remove radius for a cleaner full-screen look */
             border: none;
             border-top: 1px solid var(--border-soft);
             overflow: auto;
@@ -131,15 +145,12 @@
             width: 100% !important;
         }
 
-
-        /* Force all table text to be BLACK */
         .jexcel > tbody > tr > td {
-            color: #000000 !important; /* Pure black text */
+            color: #000000 !important;
             padding: 10px 12px !important;
             font-size: 14px;
         }
 
-        /* Ensure read-only cells don't look greyed out/faded */
         .jexcel > tbody > tr > td.readonly {
             color: #000000 !important;
             background-color: #fafbfc !important;
@@ -150,10 +161,8 @@
             color: #6366f1 !important;
             font-weight: 700 !important;
             text-align: center;
-
         }
 
-        /* --- RESPONSIVE ADJUSTMENTS --- */
         @media (max-width: 768px) {
             header { padding: 1rem; justify-content: center; text-align: center; }
             main { padding: 0.75rem; }
@@ -178,19 +187,24 @@
     <div class="logo-section">
         <i class="fas fa-bolt fa-lg"></i>
         <h1>Update Courier Pricing</h1>
+        <a href="{% url 'home' %}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Back to Home
+        </a>
     </div>
+
+    {% if request.user|can:"product_tier.manage" %}
     <div style="display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 10px;">
         <span id="sync-status"><i class="fas fa-check-circle"></i> Database Synced</span>
         <button class="btn-save" onclick="saveData()" id="saveBtn">
             <i class="fas fa-save"></i> UPDATE CHANGES
         </button>
     </div>
+    {% endif %}
 </header>
 
 <main>
     <div class="tool-bar">
         <div class="filter-group">
-            <!-- ID set to dbSearch to match JS -->
             <input type="text" id="dbSearch" class="search-box" placeholder="Find Brand/Product in DB..." value="{{ request.GET.q }}">
 
             <button class="btn-save" onclick="fetchFromDb()" style="background: #6366f1; color: white; border-radius: 8px;">
@@ -205,14 +219,14 @@
         </div>
     </div>
 
-    <!-- BULK UPDATE BAR -->
+    <!-- BULK UPDATE BAR (Accounts & Admin Only) -->
+    {% if request.user|can:"product_tier.manage" %}
     <div class="tool-bar" style="background: #f8fafc; border: 2px solid #6366f1; margin-bottom: 15px; padding: 1.5rem; border-radius: 12px;">
         <div class="filter-group" style="width: 100%; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
             <div style="background: #6366f1; color: white; padding: 5px 12px; border-radius: 6px; font-weight: bold; font-size: 0.8rem;">
                 BULK UPDATE TOOL
             </div>
 
-            <!-- ID set to dbCategory to match JS -->
             <select id="dbCategory" onchange="fetchFromDb()" style="padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-soft); min-width: 200px;">
                 <option value="">-- All Categories --</option>
                 {% for cat in categories %}
@@ -240,6 +254,7 @@
             </button>
         </div>
     </div>
+    {% endif %}
 
     <div class="table-wrapper">
         <div id="spreadsheet"></div>
@@ -247,18 +262,20 @@
 </main>
 
 <script>
+let isDirty = false;
+let table;
 
-
-// FETCH FROM DB (RELOADS PAGE WITH SEARCH PARAMS)
+// 1. FETCH FROM DB (RELOADS PAGE WITH SEARCH PARAMS)
 function fetchFromDb() {
     const q = document.getElementById('dbSearch').value;
-    const cat = document.getElementById('dbCategory').value;
+    const cat = document.getElementById('dbCategory') ? document.getElementById('dbCategory').value : '';
     window.location.href = `?q=${encodeURIComponent(q)}&category=${cat}`;
 }
 
-// BULK UPDATE ACTION
+// 2. BULK UPDATE ACTION
 async function runBulkUpdate() {
-    const catId = document.getElementById('dbCategory').value; // Use category from dropdown
+    const catEl = document.getElementById('dbCategory');
+    const catId = catEl ? catEl.value : '';
     const mode = document.getElementById('bulkMode').value;
     const minQty = document.getElementById('bulkMin').value;
     const maxQty = document.getElementById('bulkMax').value;
@@ -283,146 +300,100 @@ async function runBulkUpdate() {
     } catch (e) { alert("Error: " + e.message); }
 }
 
-    let isDirty = false;
-    let table;
+// 3. JSPREADSHEET INITIALIZATION
+try {
+    const rawData = {{ courier_json|safe }};
 
-    try {
-        const rawData = {{ courier_json|safe }};
-
-        table = jspreadsheet(document.getElementById('spreadsheet'), {
-            data: rawData,
-<!--            tableOverflow: true,-->
-<!--            tableWidth: '100%',-->
-<!--            columnSorting: true,-->
-
-            columns: [
-                { type: 'hidden', title: 'ID' },
-                { type:     'text', title: 'Product Name', width: 400, readOnly: true },
-                { type: 'text', title: 'Shipping Mode', width: 150, readOnly: true },
-                { type: 'numeric', title: 'Min Qty', width: 100 },
-                { type: 'numeric', title: 'Max Qty', width: 100 },
-                { type: 'numeric', title: 'Charge (₹)', width: 150, mask: '₹ #,##0.00' },
-                    // ADD THIS LINE TO HIDE THE CATEGORY ID (G):
-                { type: 'hidden', title: 'Category ID' },  // index 6
-
-            ],
-            pagination: 50,
-            search: true,
-            // BLOCK EDITING ON PROTECTED FIELDS
-            onbeforechange: function(instance, cell, x, y, value) {
-                // Product Name is column 1, Shipping Mode is column 2
-                if (x == 1 || x == 2) {
-                    jSuites.notification({
-                        name: 'Restricted field',
-                        message: 'This field cannot be edited.',
-                        type: 'error'
-                    });
-                    return false; // This cancels the change
-                }
-            },
-            onchange: function() {
-                handleTableChange();
+    table = jspreadsheet(document.getElementById('spreadsheet'), {
+        data: rawData,
+        columns: [
+            { type: 'hidden', title: 'ID' },
+            { type: 'text', title: 'Product Name', width: 400, readOnly: true },
+            { type: 'text', title: 'Shipping Mode', width: 150, readOnly: true },
+            { type: 'numeric', title: 'Min Qty', width: 100 },
+            { type: 'numeric', title: 'Max Qty', width: 100 },
+            { type: 'numeric', title: 'Charge (₹)', width: 150, mask: '₹ #,##0.00' },
+            { type: 'hidden', title: 'Category ID' },
+        ],
+        pagination: 50,
+        search: true,
+        onbeforechange: function(instance, cell, x, y, value) {
+            if (x == 1 || x == 2) {
+                jSuites.notification({
+                    name: 'Restricted field',
+                    message: 'This field cannot be edited.',
+                    type: 'error'
+                });
+                return false;
             }
-        });
+        },
+        onchange: function() {
+            handleTableChange();
+        }
+    });
 
-        window.myTable = table;
+    window.myTable = table;
 
-    } catch (err) {
-        console.error("Initialization Error:", err);
-    }
-    function fetchFromDb() {
-    const q = document.getElementById('dbSearch').value;
-    const cat = document.getElementById('dbCategory').value;
-
-    // This reloads the page and hits the backend view to fetch fresh data from DB
-    window.location.href = `?q=${encodeURIComponent(q)}&category=${cat}`;
+} catch (err) {
+    console.error("Initialization Error:", err);
 }
 
+function doSearch(val) { if (window.myTable) window.myTable.search(val); }
+function doModeFilter() { if (window.myTable) window.myTable.search(document.getElementById('modeFilter').value); }
 
-    function doSearch(val) { window.myTable.search(val); }
-    function doModeFilter() { window.myTable.search(document.getElementById('modeFilter').value); }
-
-    function handleTableChange() {
-        isDirty = true;
-        const status = document.getElementById('sync-status');
+function handleTableChange() {
+    isDirty = true;
+    const status = document.getElementById('sync-status');
+    if (status) {
         status.innerHTML = `<i class="fas fa-circle-exclamation"></i> Unsaved edits...`;
         status.classList.add('dirty-text');
     }
-
-    async function saveData() {
-        const saveBtn = document.getElementById('saveBtn');
-        const status = document.getElementById('sync-status');
-        const data = window.myTable.getData();
-
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> UPDATING...`;
-
-        try {
-            const response = await fetch("{% url 'save_courier_slabs' %}", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ data: data })
-            });
-
-            const result = await response.json();
-
-            if (result.status === "success") {
-                jSuites.notification({ name: 'Success', message: 'Pricing updated!', type: 'success' });
-                isDirty = false;
-                status.innerHTML = `<i class="fas fa-check-circle"></i> Database Synced`;
-                status.classList.remove('dirty-text');
-            } else {
-                alert("Error: " + result.message);
-            }
-        } catch (e) {
-            alert("Network fail: " + e.message);
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = `<i class="fas fa-save"></i> UPDATE CHANGES`;
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-        const nativeSearch = document.querySelector('.jexcel_search');
-        if (nativeSearch) nativeSearch.style.display = 'none';
-    });
-
-// FETCH FROM DB (RELOADS PAGE WITH SEARCH PARAMS)
-function fetchFromDb() {
-    const q = document.getElementById('dbSearch').value;
-    const cat = document.getElementById('dbCategory').value;
-    window.location.href = `?q=${encodeURIComponent(q)}&category=${cat}`;
 }
 
-// BULK UPDATE ACTION
-async function runBulkUpdate() {
-    const catId = document.getElementById('dbCategory').value; // Use category from dropdown
-    const mode = document.getElementById('bulkMode').value;
-    const minQty = document.getElementById('bulkMin').value;
-    const maxQty = document.getElementById('bulkMax').value;
-    const price = document.getElementById('bulkPrice').value;
+// 4. SAVE CHANGES (ATOMIC UPDATE VIA AJAX)
+async function saveData() {
+    const saveBtn = document.getElementById('saveBtn');
+    const status = document.getElementById('sync-status');
+    const data = window.myTable.getData();
 
-    if (!catId || !minQty || price === "") {
-        alert("Please select a Category and enter Min Qty/Price.");
-        return;
-    }
-
-    if (!confirm("Update ALL products in this category?")) return;
+    if (!saveBtn) return;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> UPDATING...`;
 
     try {
-        const response = await fetch("{% url 'bulk_update_courier' %}", {
+        const response = await fetch("{% url 'save_courier_slabs' %}", {
             method: "POST",
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: JSON.stringify({ category_id: catId, mode: mode, min_qty: minQty, max_qty: maxQty, price: price })
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ data: data })
         });
-        const res = await response.json();
-        alert(res.message);
-        location.reload();
-    } catch (e) { alert("Error: " + e.message); }
+
+        const result = await response.json();
+
+        if (result.status === "success") {
+            jSuites.notification({ name: 'Success', message: 'Pricing updated!', type: 'success' });
+            isDirty = false;
+            if (status) {
+                status.innerHTML = `<i class="fas fa-check-circle"></i> Database Synced`;
+                status.classList.remove('dirty-text');
+            }
+        } else {
+            alert("Error: " + result.message);
+        }
+    } catch (e) {
+        alert("Network fail: " + e.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = `<i class="fas fa-save"></i> UPDATE CHANGES`;
+    }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const nativeSearch = document.querySelector('.jexcel_search');
+    if (nativeSearch) nativeSearch.style.display = 'none';
+});
 </script>
 
 </body>

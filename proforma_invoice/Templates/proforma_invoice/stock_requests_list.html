@@ -1,4 +1,5 @@
 {% load static %}
+{% load rbac_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,12 +50,21 @@
 </head>
 <body>
 
-<div class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-dark">📦 Stock Approval Dashboard</h2>
+{% include 'proforma_invoice/navigation.html' %}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-            <a href="{% url 'proforma_list' %}" class="btn btn-outline-secondary btn-sm me-2">Back to Invoices</a>
-            <button class="btn btn-primary btn-sm" onclick="location.reload();"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+            <h2 class="fw-bold text-dark m-0">📦 Stock Approval Dashboard</h2>
+            <small class="text-muted">Review shortage requests and clear warehouse holds</small>
+        </div>
+        <div>
+            {% if request.user|can:"proforma.view" %}
+                <a href="{% url 'proforma_list' %}" class="btn btn-outline-secondary btn-sm me-2">Back to Invoices</a>
+            {% endif %}
+            <button class="btn btn-primary btn-sm" onclick="location.reload();">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
         </div>
     </div>
 
@@ -74,110 +84,130 @@
                     <tr>
                         <th class="ps-4">Invoice / Customer</th>
                         <th>Requested By</th>
-                        <th>Shortage Details</th>
-                        <th>Created At</th>
-                        <th>Review Status</th>
+                        <th>Shortage Items</th>
+                        <th>Requested At</th>
+                        <th>Details</th>
                         <th>Remarks</th>
-                        <th class="text-center">Action</th>
+                        <th class="text-center pe-4">Actions</th>
                     </tr>
                 </thead>
-<tbody>
-    {% regroup requests by invoice as grouped_requests %}
-    {% for group in grouped_requests %}
-    <!-- 1. Trigger removed from TR tag -->
-    <tr class="bg-light shadow-sm">
+                <tbody>
+                    {% regroup requests by invoice as grouped_requests %}
+                    {% for group in grouped_requests %}
+                    <tr class="bg-light shadow-sm">
+                        <td class="ps-4">
+                            <span class="fw-bold text-primary">#{{ group.grouper.id }}</span><br>
+                            <small class="text-muted">{{ group.list.0.invoice.customer.name }}</small>
+                        </td>
+                        <td>{{ group.list.0.requested_by.username }}</td>
+                        <td><span class="badge bg-dark">{{ group.list|length }} Product(s)</span></td>
+                        <td>{{ group.list.0.created_at|date:"d M, H:i" }}</td>
 
-        <td class="ps-4">
-            <span class="fw-bold text-primary">#{{ group.grouper.id }}</span><br>
-            <small class="text-muted">{{ group.list.0.invoice.customer.name }}</small>
-        </td>
-        <td>{{ group.list.0.requested_by.username }}</td>
-        <td><span class="badge bg-dark">{{ group.list|length }} Products</span></td>
-        <td>{{ group.list.0.created_at|date:"d M, H:i" }}</td>
+                        <!-- Toggle Details Accordion -->
+                        <td>
+                            <button type="button" class="btn btn-sm btn-link text-primary fw-bold text-decoration-none p-0"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#invoice-{{ group.grouper.id }}"
+                                    onclick="saveToggleState('{{ group.grouper.id }}')">
+                                <i class="bi bi-eye-fill"></i> View Items
+                            </button>
+                        </td>
 
-        <!-- 2. Toggle Trigger is now ONLY here -->
-        <td>
-            <button type="button" class="btn btn-sm btn-link text-primary fw-bold text-decoration-none p-0"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#invoice-{{ group.grouper.id }}"
-                    onclick="saveToggleState('{{ group.grouper.id }}')">
-                <i class="bi bi-eye-fill"></i> View Details
-            </button>
-        </td>
+                        <td>
+                            <button type="button" class="btn btn-outline-info btn-remark py-1 px-3"
+                                    onclick="openRemarkModal('{{ group.grouper.id }}')">
+                                💬 Remarks
+                            </button>
+                        </td>
 
-        <td>
-            <button type="button" class="btn btn-outline-info btn-remark py-1 px-3"
-                    onclick="openRemarkModal('{{ group.grouper.id }}')">
-                💬 Remarks
-            </button>
-        </td>
-        <td class="text-center pe-4">
-            <!-- 3. This Link will now open normally -->
-            <a href="{% url 'proforma_detail' group.grouper.id %}"
-               class="btn btn-sm btn-primary px-3 shadow-sm" target="_blank">
-               View PI →
-            </a>
-        </td>
-    </tr>
+                        <td class="text-center pe-4">
+                            {% if request.user|can:"proforma.view" %}
+                                <a href="{% url 'proforma_detail' group.grouper.id %}"
+                                   class="btn btn-sm btn-primary px-3 shadow-sm" target="_blank">
+                                   View PI →
+                                </a>
+                            {% else %}
+                                <span class="badge text-bg-light border">Locked</span>
+                            {% endif %}
+                        </td>
+                    </tr>
 
-    <!-- Collapsible Child Row -->
-    <tr class="collapse" id="invoice-{{ group.grouper.id }}">
-        <td colspan="7" class="p-0 border-0">
-            <div class="p-3 bg-white border-bottom shadow-sm" style="background-color: #fcfcfc !important;">
-                <table class="table table-sm table-bordered align-middle mb-0">
-                    <thead class="table-light small">
-                        <tr class="text-uppercase text-muted" style="font-size: 0.65rem;">
-                            <th>Product Name</th>
-                            <th>Shortage Details</th>
-                            <th>Processing Time</th>
-                            <th>Status</th>
-                            <th class="text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for req in group.list %}
-                        <tr>
-                            <td><strong class="text-dark">{{ req.product.name }}</strong></td>
-                            <td class="text-danger small">
-                                Req: {{ req.requested_quantity }} | Stock: {{ req.available_quantity }}
-                            </td>
-                            <td>
-                                {% if req.status == 'pending' %}
-                                    <span class="text-warning small"><i class="bi bi-clock"></i> {{ req.created_at|timesince }}</span>
-                                {% else %}
-                                    <span class="text-muted small">{{ req.get_duration|default:"N/A" }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if req.status == 'pending' %}<span class="badge bg-warning text-dark">Pending</span>
-                                {% elif req.status == 'approved' %}<span class="badge bg-success">Approved</span>
-                                {% else %}<span class="badge bg-danger">Rejected</span>{% endif %}
-                            </td>
-                            <td class="text-center">
-                                <form method="post" action="{% url 'approve_stock_request' req.pk %}">
-                                    {% csrf_token %}
-                                    <div class="btn-group shadow-sm">
-                                        {% if req.status != 'approved' %}
-                                            <button name="action" value="approve" class="btn btn-success btn-sm px-3">Approve</button>
-                                        {% endif %}
-                                        {% if req.status == 'pending' %}
-                                            <button name="action" value="reject" class="btn btn-danger btn-sm px-3">Reject</button>
-                                        {% endif %}
-                                        {% if req.status == 'approved' %}
-                                            <span class="text-success small fw-bold px-3">✓ COMPLETED</span>
-                                        {% endif %}
-                                    </div>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </td>
-    </tr>
-    {% endfor %}
-</tbody>
+                    <!-- Collapsible Child Table -->
+                    <tr class="collapse" id="invoice-{{ group.grouper.id }}">
+                        <td colspan="7" class="p-0 border-0">
+                            <div class="p-3 bg-white border-bottom shadow-sm" style="background-color: #fcfcfc !important;">
+                                <table class="table table-sm table-bordered align-middle mb-0">
+                                    <thead class="table-light small">
+                                        <tr class="text-uppercase text-muted" style="font-size: 0.65rem;">
+                                            <th>Product Name</th>
+                                            <th>Shortage Details</th>
+                                            <th>Processing Time</th>
+                                            <th>Status</th>
+                                            <th class="text-center" style="width: 220px;">Decision</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for req in group.list %}
+                                        <tr>
+                                            <td><strong class="text-dark">{{ req.product.name }}</strong></td>
+                                            <td class="text-danger small">
+                                                <b>Required:</b> {{ req.requested_quantity }} &nbsp;|&nbsp;
+                                                <b>Available:</b> {{ req.available_quantity }}
+                                            </td>
+                                            <td>
+                                                {% if req.status == 'pending' %}
+                                                    <span class="text-warning small"><i class="bi bi-clock"></i> {{ req.created_at|timesince }}</span>
+                                                {% else %}
+                                                    <span class="text-muted small">{{ req.get_duration|default:"N/A" }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if req.status == 'pending' %}
+                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                {% elif req.status == 'approved' %}
+                                                    <span class="badge bg-success">Approved</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Rejected</span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td class="text-center">
+                                                <!-- RBAC Action Gate: Only Warehouse and Executives can approve/reject stock -->
+                                                {% if is_executive or "warehouse" in user_roles %}
+                                                    <form method="post" action="{% url 'approve_stock_request' req.pk %}">
+                                                        {% csrf_token %}
+                                                        <div class="btn-group shadow-sm">
+                                                            {% if req.status != 'approved' %}
+                                                                <button name="action" value="approve" class="btn btn-success btn-sm px-3">Approve</button>
+                                                            {% endif %}
+                                                            {% if req.status == 'pending' %}
+                                                                <button name="action" value="reject" class="btn btn-danger btn-sm px-3">Reject</button>
+                                                            {% endif %}
+                                                            {% if req.status == 'approved' %}
+                                                                <span class="text-success small fw-bold px-3 py-1">✓ CONFIRMED</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </form>
+                                                {% else %}
+                                                    <span class="text-muted small fst-italic">Read-only</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <h5>No stock shortage requests found.</h5>
+                            <p class="small">Pending product confirmations will appear here.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table>
         </div>
     </div>
@@ -202,7 +232,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Use a unique placeholder 999999 to avoid accidental zero replacement in URLs
 const remarkUrlTemplate = "{% url 'manage_invoice_remark' 999999 %}";
 
 function openRemarkModal(invoiceId) {
@@ -275,7 +304,6 @@ function saveToggleState(id) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. Reopen the last open row
     const openId = localStorage.getItem('openInvoice');
     if (openId) {
         const target = document.getElementById('invoice-' + openId);
@@ -285,7 +313,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // 2. Modal backdrop click to close
     window.onclick = function(e) {
         const modal = document.getElementById('globalRemarkModal');
         if (e.target == modal) closeRemarkModal();

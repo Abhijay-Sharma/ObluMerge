@@ -1,38 +1,63 @@
 {% extends 'proforma_invoice/base.html' %}
+{% load rbac_tags %}
+
 {% block content %}
-   <style>
-    .card {
-      padding: 50px 30px;
-      max-width: 400px;
-      margin-top:5%;
-      margin-bottom: 20px;
-      width: 90%;
-    }
-  </style>
+<style>
+  .card {
+    padding: 50px 30px;
+    max-width: 420px;
+    margin-top: 5%;
+    margin-bottom: 20px;
+    width: 90%;
+  }
+  .btn {
+    display: block;
+    margin-bottom: 10px;
+  }
+</style>
 
+<div class="main-container">
+  <div class="card">
+    <h1>Welcome to Proforma & Quotation Maker</h1>
 
-  <div class="main-container">
-    <div class="card">
-      <h1>Welcome to Proforma & Quotation Maker</h1>
+    <!-- 1. Warehouse Execution Dashboard -->
+    {% if request.user|can:"inventory.view" and not request.user|can:"proforma.create" %}
+      <a href="{% url 'warehouse_dispatch_dashboard' %}" class="btn">Warehouse Dashboard</a>
+    {% endif %}
+
+    <!-- 2. Document Creation & Sales Lists (Admin & Sales Roles Only) -->
+    {% if request.user|can:"proforma.create" %}
       <a href="{% url 'create_proforma' %}" class="btn">Create New Proforma</a>
-      <a href="{% url 'proforma_list' %}" class="btn">View My Proformas</a>
       <a href="{% url 'quotation_create' %}" class="btn">Create Quotation</a>
+      <a href="{% url 'proforma_list' %}" class="btn">View My Proformas</a>
       <a href="{% url 'quotation_list' %}" class="btn">View Quotation</a>
+    {% endif %}
 
+    <!-- 3. Product Catalog (All roles except Warehouse & HR) -->
+    {% if request.user|can:"product_price.view" %}
       <a href="{% url 'proforma_product_list' %}" class="btn">View Products</a>
-      {% if request.user.is_accountant %}
-      <a href="{% url 'proforma_price_change_requests' %}" class="btn">Price Change Requests</a>
-      {% endif %}
-      {% if request.user.is_accountant %}
-      <a href="{% url 'stock_request_dashboard' %}" class="btn">Stock Qty Request</a>
-      {% endif %}
-      {% if request.user.is_accountant %}
-      <a href="{% url 'proforma_invoice_dispatch' %}" class="btn">Dispatch Dashbaord</a>
-      <a href="{% url 'accountant_product_tier_manager' %}" class="btn">Bulk Product & Courier Change Price</a>
-      {% endif %}
+    {% endif %}
 
-    </div>
+    <!-- 4. Price Change Approvals (Admin & Sales Head Only) -->
+    {% if request.user|can:"proforma.price_approval" %}
+      <a href="{% url 'proforma_price_change_requests' %}" class="btn">Price Change Requests</a>
+    {% endif %}
+
+    <!-- 5. Stock Shortage Requests -->
+    {% if request.user|can:"stock.request" %}
+      <a href="{% url 'stock_request_dashboard' %}" class="btn">Stock Qty Request</a>
+    {% endif %}
+
+    <!-- 6. Accounts Dispatch Queue (Admin & Accounts Operations Only) -->
+    {% if request.user|can:"dispatch.queue" %}
+      <a href="{% url 'proforma_invoice_dispatch' %}" class="btn">Dispatch Dashboard</a>
+    {% endif %}
+
+    <!-- 7. Pricing Slabs & Courier Editor (Admin & Accounts Operations Only) -->
+    {% if request.user|can:"product_tier.manage" %}
+      <a href="{% url 'accountant_product_tier_manager' %}" class="btn">Bulk Product & Courier Change Price</a>
+    {% endif %}
 
   </div>
-
+</div>
 {% endblock content %}

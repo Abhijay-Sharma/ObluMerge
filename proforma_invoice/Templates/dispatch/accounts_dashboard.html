@@ -1,3 +1,5 @@
+{% extends "proforma_invoice/base.html" %}
+{% load rbac_tags %}
 {% block content %}
 
 <style>
@@ -231,7 +233,9 @@
     font-size: 12px;
     color: var(--accent);
     font-weight: 500;
+    text-decoration: none;
   }
+  .db-mono:hover { text-decoration: underline; }
   .db-mono--muted {
     color: var(--text-muted);
   }
@@ -267,7 +271,7 @@
   .db-badge--packing::before   { background: var(--info); }
   .db-badge--review       { background: var(--warning-lt); color: var(--warning); }
   .db-badge--review::before    { background: #F59E0B; }
-  .db-badge--approved     { background: var(--accent-lt);  color: var(--accent); }
+  .db-badge--approved     { background: var(--accent-lt);  color: var(--accent);   }
   .db-badge--approved::before  { background: var(--accent); }
   .db-badge--dispatched   { background: var(--success-lt); color: var(--success); }
   .db-badge--dispatched::before { background: var(--success); }
@@ -336,6 +340,9 @@
 <div class="db-page">
 <div class="db-container">
 
+  <!-- ── RBAC GUARD: ACCOUNTS / FINANCE & ADMIN ONLY ───────────────── -->
+  {% if is_accountant or "admin" in user_roles or "accounts_operations" in user_roles or request.user.is_superuser %}
+
   <!-- ── PAGE HEADER ──────────────────────────────── -->
   <div class="db-page-header">
     <div>
@@ -345,15 +352,13 @@
     <div class="db-stats">
       <div class="db-stat">
         <span class="db-stat__num db-stat__num--yellow">
-          {% with dispatches|length as total %}{{ total }}{% endwith %}
+          {{ dispatches|length }}
         </span>
         <span class="db-stat__label">Total</span>
       </div>
       <div class="db-stat">
         <span class="db-stat__num db-stat__num--blue">
-          {% with dispatches|dictsortreversed:"status" as s %}
-            {{ dispatches|length }}
-          {% endwith %}
+          {{ dispatches|length }}
         </span>
         <span class="db-stat__label">Active</span>
       </div>
@@ -394,7 +399,15 @@
         <tbody>
           {% for dispatch in dispatches %}
           <tr>
-            <td><span class="db-mono">{{ dispatch.invoice.id }}</span></td>
+            <td>
+              {% if request.user|can:"proforma.view" %}
+                <a href="{% url 'proforma_detail' dispatch.invoice.id %}" target="_blank" class="db-mono">
+                  #{{ dispatch.invoice.id }}
+                </a>
+              {% else %}
+                <span class="db-mono">#{{ dispatch.invoice.id }}</span>
+              {% endif %}
+            </td>
             <td><span class="db-customer">{{ dispatch.invoice.customer.name }}</span></td>
             <td>
               {% if dispatch.status == "requested" %}
@@ -431,7 +444,7 @@
               <span class="db-time">{{ dispatch.time_in_stage }}</span>
             </td>
             <td>
-              {% if dispatch.status == "requested" %}
+              {% if dispatch.status == "requested" or dispatch.status == "initiated" %}
                 <a href="{% url 'dispatch_detail' dispatch.id %}" class="db-btn db-btn--primary">
                   → Process
                 </a>
@@ -463,6 +476,19 @@
       </table>
     </div>
   </div>
+
+  {% else %}
+  <!-- ACCESS RESTRICTED -->
+  <div style="max-width: 500px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #f87171; text-align: center;">
+    <h3 style="color: #dc2626; margin-bottom: 10px;">🔒 Access Restricted</h3>
+    <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+      This dispatch dashboard is reserved exclusively for <strong>Accounts & Operations</strong> and <strong>Super Admin</strong>.
+    </p>
+    <a href="{% url 'home' %}" style="background: #1e293b; color: white; padding: 8px 20px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
+      Return to Home
+    </a>
+  </div>
+  {% endif %}
 
 </div>
 </div>

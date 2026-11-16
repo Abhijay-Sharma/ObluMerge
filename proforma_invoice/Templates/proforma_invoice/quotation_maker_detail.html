@@ -1,17 +1,50 @@
 {% load static %}
 {% load quotation_extras %}
+{% load rbac_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Quotation - {{ quotation.id }}</title>
+    <title>Quotation #{{ quotation.id }} - {{ quotation.customer.name }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <style>
         @page { size: A4 portrait; margin: 10mm; }
-        body { font-family: 'Arial', sans-serif; font-size: 12px; color: #000; margin: 0; padding: 0; }
-        .wrapper { width: 100%; }
-        .page { padding: 10px 14px; page-break-after: always; position: relative; }
-        .page:last-child { page-break-after: auto; }
+        body { font-family: 'Arial', sans-serif; font-size: 12px; color: #000; margin: 0; padding: 0; background-color: #f4f6f8; }
+        .wrapper { width: 100%; max-width: 900px; margin: 0 auto; }
+        .page { padding: 25px 30px; page-break-after: always; position: relative; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .page:last-child { page-break-after: auto; margin-bottom: 0; }
+
+        /* ================= SCREEN-ONLY ACTION BAR ================= */
+        .no-print-bar {
+            max-width: 900px;
+            margin: 15px auto 20px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 0 10px;
+        }
+        .btn-ui {
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-ui:hover { transform: translateY(-1px); }
+        .btn-ui-back { background: #e0e0e0; color: #333; }
+        .btn-ui-print { background: #222; color: #fff; }
+        .btn-ui-convert { background: #ffc107; color: #000; }
+        .btn-ui-price { background: #0b78a8; color: #fff; }
 
         /* ================= GLOBAL ================= */
         table { width: 100%; border-collapse: collapse; }
@@ -42,7 +75,7 @@
         /* ================= ITEM TABLE ================= */
         .item-table { border: 2px solid #000; margin-top: 10px; }
         .item-table thead th { background: #0b78a8; color: #fff; text-align: center; border: 1px solid #000; font-size: 11px; }
-        .item-table tbody td { border: 1px solid #999; font-size: 11px; border-left: 1px solid #000;}
+        .item-table tbody td { border: 1px solid #999; font-size: 11px; border-left: 1px solid #000; }
         .item-name { text-align: left; padding-left: 8px; }
 
         /* ================= TOTALS ================= */
@@ -65,187 +98,240 @@
         .footer-note { text-align: center; font-size: 10px; color: #666; margin-top: 20px; font-style: italic; }
 
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print-bar { display: none !important; }
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page { page-break-after: always; border: none; }
+            body { background: #fff !important; }
+            .page { page-break-after: always; border: none; box-shadow: none; padding: 0; margin-bottom: 0; }
             .page:last-child { page-break-after: auto; }
         }
     </style>
 </head>
 
 <body>
-    <!-- PAGE 1: Quotation Details -->
-    <div class="page">
-        <div class="header-top">
-            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png" class="logo">
-            <div class="company-info">
-                <b>OBLU HEALTHCARE LLP</b><br>
-                UNIT NO.705-706, P P CITY CENTRE, PITAMPURA, DELHI - 110034<br>
-                Phone: 96504 47099 | Email: sales@obluhc.com<br>
-                GSTIN: 07AAIFO0279M1ZU | PAN: AAIFO0279M
-            </div>
-            <div class="qr-box">
-                <div class="qr-row">
-                    <div class="qr-item"><img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png" class="qr-img"><div class="qr-text"><i class="fa-brands fa-instagram"></i> IG</div></div>
-                    <div class="qr-item"><img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png" class="qr-img"><div class="qr-text"><i class="fa-brands fa-facebook"></i> FB</div></div>
-                    <div class="qr-item"><img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png" class="qr-img"><div class="qr-text"><i class="fa-brands fa-youtube"></i> YT</div></div>
-                </div>
-            </div>
+
+    <!-- SCREEN-ONLY TOP ACTION BAR -->
+    <div class="no-print-bar">
+        <div>
+            {% if request.user|can:"proforma.view" %}
+                <a href="{% url 'quotation_list' %}" class="btn-ui btn-ui-back">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Quotations
+                </a>
+            {% endif %}
         </div>
 
-        <hr class="blue-line">
-        <div class="header-title">Quotation</div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <!-- Convert to PI Action -->
+            {% if request.user|can:"proforma.create" and not quotation.is_converted_to_proforma %}
+                <a href="{% url 'convert_to_pi' quotation.id %}"
+                   class="btn-ui btn-ui-convert"
+                   onclick="return confirm('Convert this Quotation to an official Proforma Invoice?');">
+                    <i class="fa-solid fa-file-invoice"></i> Convert to PI
+                </a>
+            {% elif quotation.is_converted_to_proforma %}
+                <span class="badge text-bg-success px-3 py-2 rounded-pill">
+                    <i class="fa-solid fa-check"></i> Converted to PI
+                </span>
+            {% endif %}
 
-        <div class="info-grid">
-            <div class="info-block">
-                <b>Billing Address</b>
-                <div class="info-content">
-                    {{ quotation.customer.name }}<br>
-                    {{ quotation.customer.address }}<br>
-                    {{ quotation.customer.city }} - {{ quotation.customer.pincode }}<br>
-                    {{ quotation.customer.state }}<br>
-                    Contact: {{ quotation.customer.phone }}
-                </div>
-            </div>
-            <div class="info-block">
-                <b>Ship To</b>
-                <div class="info-content">
-                    {% if quotation.shipping_customer and quotation.shipping_customer.id != quotation.customer.id %}
-                        {{ quotation.shipping_customer.name }}<br>
-                        {{ quotation.shipping_customer.address }}<br>
-                        {{ quotation.shipping_customer.district }} - {{ quotation.shipping_customer.pincode }}<br>
-                        Mob : {{ quotation.shipping_customer.phone }}
-                    {% elif quotation.customer.shipping_address and quotation.customer.shipping_address != "N/A" %}
-                        {{ quotation.customer.name }}<br>
-                        {{ quotation.customer.shipping_address }}<br>
-                        {{ quotation.customer.district }} - {{ quotation.customer.shipping_pincode }}<br>
-                        Mob : {{ quotation.customer.shipping_phone }}
-                    {% else %}
-                        {{ quotation.customer.name }}<br>
-                        {{ quotation.customer.address }}<br>
-                        {{ quotation.customer.district }} - {{ quotation.customer.pincode }}<br>
-                        Mob : {{ quotation.customer.phone }}
-                    {% endif %}
-                </div>
-            </div>
-            <div class="info-block">
-                <b>Quotation Details</b>
-                <div class="info-content">
-                    Ref No: OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}<br>
-                    Date: {{ quotation.date_created|date:"d-m-Y" }}<br>
-                    Validity: {{ quotation.validity|date:"d-m-Y" }}<br>
-                    Place of Supply: Delhi
-                </div>
-            </div>
-        </div>
+            <!-- Request Price Change Action -->
+            {% if not quotation.is_converted_to_proforma and "admin" not in user_roles and not request.user.is_superuser %}
+                <a href="{% url 'quotation_request_price_change' quotation.id %}" class="btn-ui btn-ui-price">
+                    <i class="fa-solid fa-tags"></i> Request Price Change
+                </a>
+            {% endif %}
 
-        <table class="item-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th class="item-name">Item Name</th>
-                    <th>HSN</th>
-                    <th>Qty</th>
-                    <th>Rate (Inc.)</th>
-                    <th>Rate (Exc.)</th>
-                    <th>Taxable</th>
-                    <th>GST%</th>
-                    <th>Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in recalculated_items %}
-                <tr>
-                    <td class="center">{{ forloop.counter }}</td>
-                    <td class="item-name">{{ row.item.product.name }}</td>
-                    <td class="center">{{ row.item.hsn|default:"-" }}</td>
-                    <td class="center">{{ row.item.quantity }}</td>
-                    <td class="right">₹{{ row.unit_price_incl|floatformat:2 }}</td>
-                    <td class="right">₹{{ row.unit_price_excl|floatformat:2 }}</td>
-                    <td class="right">₹{{ row.taxable_value|floatformat:2 }}</td>
-                    <td class="center">{{ row.gst_rate }}%</td>
-                    <td class="right">₹{{ row.amount_incl|floatformat:2 }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <div class="totals-wrapper">
-            <table class="totals-table">
-                <tr><td class="bold">Sub Total</td><td>₹{{ recalculated_subtotal|floatformat:2 }}</td></tr>
-                <tr><td class="bold">Courier Charges</td><td>₹{{ courier_charge|floatformat:2 }}</td></tr>
-                {% if quotation.is_intra_state %}
-                <tr><td>CGST</td><td>₹{{ cgst|floatformat:2 }}</td></tr>
-                <tr><td>SGST</td><td>₹{{ sgst|floatformat:2 }}</td></tr>
-                {% else %}
-                <tr><td>IGST</td><td>₹{{ igst|floatformat:2 }}</td></tr>
-                {% endif %}
-                <tr class="totals-highlight"><td class="bold">Grand Total</td><td>₹{{ grand_total|floatformat:2 }}</td></tr>
-            </table>
-        </div>
-
-        <div style="margin-top:15px; font-size: 11px; font-weight: bold;">
-            Amount in Words:<br><br>
-            INR {{ Amount_in_words }}
-        </div>
-
-        <div class="footer-note" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 10px;">
-            Page 1 of 2 - Terms & Conditions on Next Page
+            <!-- Print Button -->
+            <button onclick="window.print()" class="btn-ui btn-ui-print">
+                <i class="fa fa-print"></i> Print / Save as PDF
+            </button>
         </div>
     </div>
 
-    <!-- PAGE 2: Terms & Conditions -->
-    <div class="page">
-        <div class="header-top">
-            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png" class="logo">
-            <div class="company-info"><b>OBLU HEALTHCARE LLP</b><br>Quotation Ref: OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}</div>
-        </div>
-        <hr class="blue-line">
-
-        <div class="terms-section">
-            <h3>Terms And Conditions</h3>
-            <ol class="terms-list">
-                <li><strong>Prices:</strong> Quoted are on F.O.R Destination and inclusive of GST.</li>
-                <li><strong>Payment:</strong> 100% payment in advance by NEFT / RTGS / Demand Draft / Cheque in our favor.
-                    <div class="bank-details-box">
-                        <strong>Bank Details:</strong><br>
-                        A/c Holder: <b>OBLU HEALTHCARE LLP</b><br>
-                        Bank: Axis Bank Limited | A/c No: 926030003897014<br>
-                        Branch & IFSC: Lok Vihar & UTIB0000588
+    <div class="wrapper">
+        <!-- PAGE 1: Quotation Details -->
+        <div class="page">
+            <div class="header-top">
+                <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png" class="logo" alt="Oblu Logo">
+                <div class="company-info">
+                    <b>OBLU HEALTHCARE LLP</b><br>
+                    UNIT NO.705-706, P P CITY CENTRE, PITAMPURA, DELHI - 110034<br>
+                    Phone: 96504 47099 | Email: sales@obluhc.com<br>
+                    GSTIN: 07AAIFO0279M1ZU | PAN: AAIFO0279M
+                </div>
+                <div class="qr-box">
+                    <div class="qr-row">
+                        <div class="qr-item"><img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png" class="qr-img"><div class="qr-text"><i class="fa-brands fa-instagram"></i> IG</div></div>
+                        <div class="qr-item"><img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png" class="qr-img"><div class="qr-text"><i class="fa-brands fa-facebook"></i> FB</div></div>
+                        <div class="qr-item"><img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png" class="qr-img"><div class="qr-text"><i class="fa-brands fa-youtube"></i> YT</div></div>
                     </div>
-                </li>
-                <li><strong>Delivery:</strong> 2-3 weeks from the date of receipt of confirmed order.</li>
+                </div>
+            </div>
 
-                {% if quotation.product_terms %}
-                <li><strong>Product-specific terms:</strong>
-                    <ul>
-                        {% for line in quotation.product_terms.splitlines %}
-                            <li>{{ line }}</li>
-                        {% endfor %}
-                    </ul>
-                </li>
+            <hr class="blue-line">
+            <div class="header-title">Quotation</div>
+
+            <div class="info-grid">
+                <div class="info-block">
+                    <b>Billing Address</b>
+                    <div class="info-content">
+                        {{ quotation.customer.name }}<br>
+                        {{ quotation.customer.address }}<br>
+                        {{ quotation.customer.city }} - {{ quotation.customer.pincode }}<br>
+                        {{ quotation.customer.state }}<br>
+                        Contact: {{ quotation.customer.phone }}
+                    </div>
+                </div>
+                <div class="info-block">
+                    <b>Ship To</b>
+                    <div class="info-content">
+                        {% if quotation.shipping_customer and quotation.shipping_customer.id != quotation.customer.id %}
+                            {{ quotation.shipping_customer.name }}<br>
+                            {{ quotation.shipping_customer.address }}<br>
+                            {{ quotation.shipping_customer.district }} - {{ quotation.shipping_customer.pincode }}<br>
+                            Mob : {{ quotation.shipping_customer.phone }}
+                        {% elif quotation.customer.shipping_address and quotation.customer.shipping_address != "N/A" %}
+                            {{ quotation.customer.name }}<br>
+                            {{ quotation.customer.shipping_address }}<br>
+                            {{ quotation.customer.district }} - {{ quotation.customer.shipping_pincode }}<br>
+                            Mob : {{ quotation.customer.shipping_phone }}
+                        {% else %}
+                            {{ quotation.customer.name }}<br>
+                            {{ quotation.customer.address }}<br>
+                            {{ quotation.customer.district }} - {{ quotation.customer.pincode }}<br>
+                            Mob : {{ quotation.customer.phone }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-block">
+                    <b>Quotation Details</b>
+                    <div class="info-content">
+                        Ref No: OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}<br>
+                        Date: {{ quotation.date_created|date:"d-m-Y" }}<br>
+                        Validity: {{ quotation.validity|date:"d-m-Y"|default:"30 Days" }}<br>
+                        Place of Supply: Delhi
+                    </div>
+                </div>
+            </div>
+
+            <table class="item-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th class="item-name" style="width: 35%;">Item Name</th>
+                        <th style="width: 10%;">HSN</th>
+                        <th style="width: 8%;">Qty</th>
+                        <th style="width: 10%;">Rate (Inc.)</th>
+                        <th style="width: 10%;">Rate (Exc.)</th>
+                        <th style="width: 10%;">Taxable</th>
+                        <th style="width: 6%;">GST%</th>
+                        <th style="width: 12%;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in recalculated_items %}
+                    <tr>
+                        <td class="center">{{ forloop.counter }}</td>
+                        <td class="item-name">
+                            <b>{{ row.item.product.name }}</b>
+                            {% if row.item.description %}
+                                <br><small style="color: #555;">{{ row.item.description }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="center">{{ row.item.hsn|default:"-" }}</td>
+                        <td class="center bold">{{ row.item.quantity }}</td>
+                        <td class="right">₹{{ row.unit_price_incl|floatformat:2 }}</td>
+                        <td class="right">₹{{ row.unit_price_excl|floatformat:2 }}</td>
+                        <td class="right">₹{{ row.taxable_value|floatformat:2 }}</td>
+                        <td class="center">{{ row.gst_rate }}%</td>
+                        <td class="right bold">₹{{ row.amount_incl|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="center text-muted py-3">No active items on this quotation.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="totals-wrapper">
+                <table class="totals-table">
+                    <tr><td class="bold">Sub Total</td><td>₹{{ recalculated_subtotal|floatformat:2 }}</td></tr>
+                    <tr><td class="bold">Courier Charges</td><td>₹{{ courier_charge|floatformat:2 }}</td></tr>
+                    {% if quotation.is_intra_state %}
+                    <tr><td>CGST</td><td>₹{{ cgst|floatformat:2 }}</td></tr>
+                    <tr><td>SGST</td><td>₹{{ sgst|default:utgst|floatformat:2 }}</td></tr>
+                    {% else %}
+                    <tr><td>IGST</td><td>₹{{ igst|floatformat:2 }}</td></tr>
+                    {% endif %}
+                    <tr class="totals-highlight"><td class="bold">Grand Total</td><td>₹{{ grand_total|floatformat:2 }}</td></tr>
+                </table>
+            </div>
+
+            <div style="margin-top:15px; font-size: 11px; font-weight: bold;">
+                Amount in Words:<br><br>
+                INR {{ amount_in_words|default:Amount_in_words }}
+            </div>
+
+            <div class="footer-note" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 10px;">
+                Page 1 of 2 - Terms & Conditions on Next Page
+            </div>
+        </div>
+
+        <!-- PAGE 2: Terms & Conditions -->
+        <div class="page">
+            <div class="header-top">
+                <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png" class="logo" alt="Oblu Logo">
+                <div class="company-info"><b>OBLU HEALTHCARE LLP</b><br>Quotation Ref: OBLU/2025-26/{{ quotation.id|stringformat:"03d" }}</div>
+            </div>
+            <hr class="blue-line">
+
+            <div class="terms-section">
+                <h3>Terms And Conditions</h3>
+                <ol class="terms-list">
+                    <li><strong>Prices:</strong> Quoted are on F.O.R Destination and inclusive of GST.</li>
+                    <li><strong>Payment:</strong> 100% payment in advance by NEFT / RTGS / Demand Draft / Cheque in our favor.
+                        <div class="bank-details-box">
+                            <strong>Bank Details:</strong><br>
+                            A/c Holder: <b>OBLU HEALTHCARE LLP</b><br>
+                            Bank: Axis Bank Limited | A/c No: 926030003897014<br>
+                            Branch & IFSC: Lok Vihar & UTIB0000588
+                        </div>
+                    </li>
+                    <li><strong>Delivery:</strong> 2-3 weeks from the date of receipt of confirmed order.</li>
+
+                    {% if quotation.product_terms %}
+                    <li><strong>Product-specific terms:</strong>
+                        <ul>
+                            {% for line in quotation.product_terms.splitlines %}
+                                <li>{{ line }}</li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <li><strong>Force Majeure:</strong> Our offer is subject to force majeure. We shall not be responsible for breaches arising out of unforeseen situations.</li>
+                    <li><strong>Cancellation:</strong> Cancellation fee of 25% of the Order Value will be charged if cancelled after confirmation.</li>
+                    <li><strong>Jurisdiction:</strong> All disputes are subject to Delhi Jurisdiction.</li>
+                </ol>
+            </div>
+
+            <div class="signature-block">
+                <p>Authorized Signatory</p>
+                {% if signature_base64 %}
+                    <img src="{% if 'data:image' in signature_base64 %}{{ signature_base64 }}{% else %}data:image/png;base64,{{ signature_base64 }}{% endif %}" alt="Signature">
+                {% else %}
+                    <div style="height: 40px;"></div>
                 {% endif %}
+                <p><strong>For OBLU HEALTHCARE LLP</strong></p>
+            </div>
 
-                <li><strong>Force Majeure:</strong> Our offer is subject to force majeure. We shall not be responsible for breaches arising out of unforeseen situations.</li>
-                <li><strong>Cancellation:</strong> Cancellation fee of 25% of the Order Value will be charged if cancelled after confirmation.</li>
-                <li><strong>Jurisdiction:</strong> All disputes are subject to Delhi Jurisdiction.</li>
-            </ol>
-        </div>
+            <div class="footer-note">This is a computer generated document and does not require a physical signature.</div>
 
-        <div class="signature-block">
-            <p>Authorized Signatory</p>
-            {% if signature_base64 %}
-                <img src="{{ signature_base64 }}" alt="Signature">
-            {% endif %}
-            <p><strong>For OBLU HEALTHCARE LLP</strong></p>
-        </div>
-
-        <div class="footer-note">This is a computer generated document and does not require a physical signature.</div>
-
-        <div class="no-print" style="text-align:center; margin-top:30px;">
-            <button onclick="window.print()" style="padding:10px 20px; background:#0b78a8; color:#fff; border:none; cursor:pointer; border-radius:4px; font-weight:bold;">
-                <i class="fa fa-print"></i> Print / Save as PDF
-            </button>
+            <div class="no-print" style="text-align:center; margin-top:30px;">
+                <button onclick="window.print()" class="btn-ui btn-ui-print" style="margin: 0 auto;">
+                    <i class="fa fa-print"></i> Print / Save as PDF
+                </button>
+            </div>
         </div>
     </div>
 </body>

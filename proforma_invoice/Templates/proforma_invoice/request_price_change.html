@@ -1,4 +1,5 @@
 {% extends "proforma_invoice/base.html" %}
+{% load rbac_tags %}
 {% block content %}
 
 <style>
@@ -9,12 +10,12 @@
     }
     .header-section { text-align: center; margin-bottom: 30px; }
     .header-section h2 { font-weight: 800; text-transform: uppercase; margin-bottom: 5px; color: #00d2ff; }
-    .header-section p { color: #888; font-size: 0.9rem; }
+    .header-section p { color: #aaa; font-size: 0.95rem; margin-top: 5px; }
 
     /* Tables */
     .custom-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
     .custom-table th {
-        text-align: left; font-size: 0.75rem; color: #777;
+        text-align: left; font-size: 0.75rem; color: #888;
         text-transform: uppercase; padding: 12px; border-bottom: 1px solid #444;
     }
     .custom-table td { padding: 15px 12px; border-bottom: 1px solid #383838; vertical-align: middle; }
@@ -26,7 +27,7 @@
     }
     .price-input:focus { border-color: #00d2ff; box-shadow: 0 0 8px rgba(0, 210, 255, 0.3); }
 
-    /* History Journey Card (From Template 2) */
+    /* History Journey Card */
     .history-card {
         margin-top: 10px; padding: 10px; border-radius: 8px;
         background: #1a1a1a; font-size: 0.75rem; border: 1px solid #444; text-align: left;
@@ -65,20 +66,23 @@
 <div class="request-container">
     <div class="header-section">
         <h2>Request Price Change</h2>
-<!--        <p>Invoice #{{ invoice.id }} | {{ invoice.customer.name }}</p>-->
+        <p>
+            <span class="badge text-bg-info me-1">{{ doc_type|upper }} #{{ parent_obj.id }}</span>
+            <strong>{{ parent_obj.customer.name }}</strong>
+        </p>
     </div>
 
-    <form method="post" >
+    <form method="post">
         {% csrf_token %}
 
         <table class="custom-table">
             <thead>
                 <tr>
                     <th style="width: 25%;">Product Details</th>
-                    <th style="text-align: center;">Current PI Price</th>
+                    <th style="text-align: center;">Current Saved Price</th>
                     <th style="text-align: center;">Qty</th>
-                    <th style="text-align: center;">System Rate</th>
-                    <th style="width: 250px;">Request New Price</th>
+                    <th style="text-align: center;">Standard Rate</th>
+                    <th style="width: 260px;">Request New Price</th>
                 </tr>
             </thead>
             <tbody>
@@ -90,10 +94,10 @@
                     </td>
 
                     <td style="text-align: center;">
-                        <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ item.current_price|floatformat:2 }}</div>
-                        <span style="font-size: 0.6rem; color: #00d2ff; text-transform: uppercase;">Currently Saved</span>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #fff;">₹{{ item.current_price|floatformat:2 }}</div>
+                        <span style="font-size: 0.6rem; color: #00d2ff; text-transform: uppercase;">Currently Active</span>
 
-                        <!-- JOURNEY CARD INTEGRATION (From Template 2) -->
+                        <!-- JOURNEY CARD INTEGRATION -->
                         {% if item.last_processed_req or item.last_ever_approved %}
                             <div class="history-card {% if item.last_processed_req.status == 'approved' %}approved{% else %}rejected{% endif %}">
                                 {% if item.last_processed_req %}
@@ -112,13 +116,6 @@
                                     </span>
                                 </div>
                                 {% endif %}
-
-<!--                                {% if item.last_ever_approved %}-->
-<!--                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444;">-->
-<!--                                    <span style="color: #888; font-size: 0.65rem; display: block;">HISTORICAL BEST PRICE:</span>-->
-<!--                                    <div style="color: #4ade80; font-weight: bold; font-size: 0.85rem;">₹{{ item.last_ever_approved|floatformat:2 }}</div>-->
-<!--                                </div>-->
-<!--                                {% endif %}-->
                             </div>
                         {% endif %}
                     </td>
@@ -127,12 +124,12 @@
 
                     <td style="text-align: center;">
                         <div style="color: #ffae00; font-weight: 700; font-size: 1.1rem;">₹{{ item.get_unit_price_incl_tax|floatformat:2 }}</div>
-                        <span style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Standard System Rate</span>
+                        <span style="font-size: 0.6rem; color: #888; text-transform: uppercase;">System Tier Rate</span>
                     </td>
 
                     <td>
-                        <input type="number" step="0.01" name="new_price_{{ item.id }}" class="price-input" placeholder="0.00">
-                        <textarea name="reason_{{ item.id }}" rows="2" class="price-input mt-2" style="font-size: 0.75rem; font-weight: normal;" placeholder="Why change price for {{ item.product.name|truncatechars:20 }}?"></textarea>
+                        <input type="number" step="0.01" name="new_price_{{ item.id }}" class="price-input" placeholder="Enter requested rate (₹)">
+                        <textarea name="reason_{{ item.id }}" rows="2" class="price-input mt-2" style="font-size: 0.75rem; font-weight: normal;" placeholder="Justification for {{ item.product.name|truncatechars:20 }}..."></textarea>
                     </td>
                 </tr>
                 {% endfor %}
@@ -145,10 +142,8 @@
                 <h6>🚚 Courier Charge</h6>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-<!--                        <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ invoice.courier_charge|floatformat:2 }}</div>-->
                         <div style="font-size: 1.3rem; font-weight: 800; color: #fff;">₹{{ parent_obj.courier_charge|floatformat:2 }}</div>
-
-                        <span style="font-size: 0.6rem; color: #00d2ff; text-transform: uppercase;">Current System Calculation</span>
+                        <span style="font-size: 0.6rem; color: #00d2ff; text-transform: uppercase;">Current System Charge</span>
                     </div>
                     {% if courier_status_history %}
                     <div>
@@ -160,36 +155,31 @@
                     </div>
                     {% endif %}
                 </div>
-                <label style="font-size: 0.75rem; color: #888;">Requested New Charge:</label>
-                <input type="number" step="0.01" name="new_courier_charge" class="price-input mt-1" placeholder="Enter amount">
+                <label style="font-size: 0.75rem; color: #aaa;">Requested New Charge:</label>
+                <input type="number" step="0.01" name="new_courier_charge" class="price-input mt-1" placeholder="Leave empty if unchanged">
             </div>
 
             <!-- Justification Section -->
             <div class="info-box">
-                <h6>📄 Final Justification</h6>
-                <textarea name="reason" class="price-input" rows="4" placeholder="General explanation for Admin (Optional if row remarks provided)..."></textarea>
+                <h6>📄 Overall Justification</h6>
+                <textarea name="reason" class="price-input" rows="4" placeholder="General explanation for the reviewer (Optional if row remarks provided)..."></textarea>
             </div>
         </div>
 
-        <button type="submit" class="btn-submit">🚀 Submit Request to Admin</button>
-
-<!--        -->
-<!--        <div style="text-align: center; margin-top: 15px;">-->
-<!--            <a href="{% url 'proforma_detail' invoice.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>-->
-<!--        </div>-->
+        <button type="submit" class="btn-submit">🚀 Submit Request for Approval</button>
 
         <div style="text-align: center; margin-top: 15px;">
             {% if doc_type == "Proforma" %}
-                <a href="{% url 'proforma_detail' pk=parent_obj.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>
+                <a href="{% url 'proforma_detail' pk=parent_obj.id %}" style="color: #888; font-size: 0.85rem; text-decoration: none;">← Cancel and Go Back</a>
             {% else %}
-                <a href="{% url 'quotation_detail' pk=parent_obj.id %}" style="color: #666; font-size: 0.8rem; text-decoration: none;">Cancel and Go Back</a>
+                <a href="{% url 'quotation_detail' pk=parent_obj.id %}" style="color: #888; font-size: 0.85rem; text-decoration: none;">← Cancel and Go Back</a>
             {% endif %}
         </div>
     </form>
 
     <!-- 📜 MASTER TRACK HISTORY SECTION -->
     <div class="history-section">
-        <div class="history-title">📜 All Past Attempts (Log)</div>
+        <div class="history-title">📜 Past Request Logs (This {{ doc_type }})</div>
 
         {% if items %}
             <table class="custom-table" style="font-size: 0.85rem; background: #222; border-radius: 8px;">
@@ -208,8 +198,8 @@
                         <tr>
                             <td><span style="color: #bbb;">{{ item.product.name|truncatechars:40 }}</span></td>
                             <td class="text-white">₹{{ hist.requested_price|floatformat:2 }}</td>
-                            <td><div style="font-style: italic; color: #888; font-size: 0.8rem;">"{{ hist.reason|truncatechars:60 }}"</div></td>
-                            <td><span class="status-badge bg-{{ hist.status }}">{{ hist.status }}</span></td>
+                            <td><div style="font-style: italic; color: #888; font-size: 0.8rem;">"{{ hist.reason|default:"No reason stated."|truncatechars:60 }}"</div></td>
+                            <td><span class="status-badge bg-{{ hist.status }}">{{ hist.status|upper }}</span></td>
                         </tr>
                         {% endfor %}
                     {% endfor %}
@@ -220,15 +210,15 @@
                         <tr>
                             <td><span style="color: #ffc107;">🚚 Courier Charge</span></td>
                             <td class="text-white">₹{{ c_hist.requested_courier_charge|floatformat:2 }}</td>
-                            <td style="color: #888; font-style: italic; font-size: 0.8rem;">"{{ c_hist.reason|truncatechars:60 }}"</td>
-                            <td><span class="status-badge bg-{{ c_hist.status }}">{{ c_hist.status }}</span></td>
+                            <td style="color: #888; font-style: italic; font-size: 0.8rem;">"{{ c_hist.reason|default:"No reason stated."|truncatechars:60 }}"</td>
+                            <td><span class="status-badge bg-{{ c_hist.status }}">{{ c_hist.status|upper }}</span></td>
                         </tr>
                         {% endfor %}
                     {% endif %}
                 </tbody>
             </table>
         {% else %}
-            <div style="text-align: center; color: #555; padding: 20px;">No past history records found for this invoice.</div>
+            <div style="text-align: center; color: #555; padding: 20px;">No past history records found for this {{ doc_type|lower }}.</div>
         {% endif %}
     </div>
 </div>

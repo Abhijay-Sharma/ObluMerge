@@ -236,12 +236,13 @@
             </div>
         </div>
 
+        <!-- In the top navbar div -->
         <div class="d-flex align-items-center gap-2">
             <a href="{% url 'home' %}" class="btn-home d-md-none btn-sm">
                 <i class="bi bi-house-door-fill"></i> Home
             </a>
             <div class="text-light small px-2 py-1" style="background: rgba(255,255,255,0.06); border-radius: 8px;">
-                <i class="bi bi-shield-lock-fill text-warning me-1"></i> Accountant Portal ({{ user.username }})
+                <i class="bi bi-shield-lock-fill text-warning me-1"></i> Management Portal ({{ user.username }})
             </div>
             <form action="{% url 'logout' %}" method="POST" class="d-inline mb-0">
                 {% csrf_token %}

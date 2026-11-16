@@ -1,11 +1,11 @@
+{% load rbac_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dispatch Management | Admin</title>
+    <title>Dispatch Management | Queue</title>
 <style>
-    /* --- CSS VARIABLES & BASE --- */
     :root {
         --dark: #1e293b;
         --light: #f8fafc;
@@ -98,75 +98,38 @@
     .timer-running { color: #d97706; }
     .timer-done { color: #059669; }
 
-    /* --- DISTINCTLY COLORED ACTION BUTTONS --- */
+    /* --- ACTIONS --- */
     .actions-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
     .btn-action {
-        text-decoration: none;
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 5px 11px;
-        border-radius: 6px;
-        color: white;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        transition: all 0.15s ease-in-out;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-        border: none;
-        font-family: inherit;
-        line-height: 1.4;
+        text-decoration: none; font-size: 0.75rem; font-weight: 600;
+        padding: 5px 11px; border-radius: 6px; color: white; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center;
+        gap: 4px; transition: all 0.15s ease-in-out; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        border: none; font-family: inherit; line-height: 1.4;
     }
-    .btn-action:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
-    }
-    .btn-action:active {
-        transform: translateY(0);
-    }
+    .btn-action:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12); }
+    .btn-action:active { transform: translateY(0); }
 
-    /* Specific button color variants */
-    .btn-view { background-color: #64748b; }       /* Slate Gray */
-    .btn-yes { background-color: #10b981; }        /* Emerald Green */
-    .btn-dispatch { background-color: #f59e0b; }   /* Amber / Orange */
-    .btn-no { background-color: #ef4444; }         /* Soft Red */
-    .btn-remarks { background-color: #0ea5e9; }    /* Sky Blue */
+    .btn-view { background-color: #64748b; }
+    .btn-yes { background-color: #10b981; }
+    .btn-dispatch { background-color: #f59e0b; }
+    .btn-no { background-color: #ef4444; }
+    .btn-remarks { background-color: #0ea5e9; }
 
-    /* Subtle label for Initiated */
     .label-initiated {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: #0369a1;
-        background-color: #f0f9ff;
-        border: 1px solid #bae6fd;
-        padding: 4px 9px;
-        border-radius: 6px;
-        letter-spacing: 0.3px;
-        user-select: none;
+        display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem;
+        font-weight: 600; color: #0369a1; background-color: #f0f9ff;
+        border: 1px solid #bae6fd; padding: 4px 9px; border-radius: 6px;
     }
     .label-initiated::before {
-        content: "";
-        display: inline-block;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background-color: #0284c7;
+        content: ""; display: inline-block; width: 6px; height: 6px;
+        border-radius: 50%; background-color: #0284c7;
     }
 
-    .locked-text {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #059669;
-        padding: 4px 6px;
-    }
+    .locked-text { font-size: 0.75rem; font-weight: 600; color: #059669; padding: 4px 6px; }
 
-    /* --- COMMUNICATION MODAL (REMARKS) --- */
+    /* --- REMARKS MODAL --- */
     .custom-overlay {
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);
@@ -188,7 +151,6 @@
     .b-accounts { background: #ecfdf5; border-left: 3px solid #10b981; color: #064e3b; align-self: flex-start; }
     .b-admin { background: #fef2f2; border-left: 3px solid #ef4444; color: #7f1d1d; align-self: flex-start; }
 
-    /* --- RESPONSIVENESS --- */
     @media (max-width: 768px) {
         .header { flex-direction: column; gap: 10px; text-align: center; }
         .filters-form { flex-direction: column; align-items: stretch; }
@@ -200,8 +162,18 @@
 </head>
 <body>
 
+    <!-- ============================================================== -->
+    <!-- RBAC GUARD: ACCOUNTS OPERATIONS & SUPER ADMIN ONLY             -->
+    <!-- ============================================================== -->
+    {% if "admin" in user_roles or "accounts_operations" in user_roles or request.user.is_superuser %}
+
     <header class="header">
-        <h1 style="font-size: 1.35rem; font-weight: 600;">Dispatch Management</h1>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h1 style="font-size: 1.35rem; font-weight: 600;">Dispatch Queue Management</h1>
+            <span style="font-size: 0.75rem; background: #334155; padding: 3px 10px; border-radius: 20px;">
+                {{ role_display_name }}
+            </span>
+        </div>
         <a href="{% url 'home' %}" class="btn-home">Home</a>
     </header>
 
@@ -210,19 +182,19 @@
         <div class="filters-container">
             <form method="get" class="filters-form">
 
-                {% if request.user.is_accountant %}
-                <select name="created_by">
-                    <option value="">Created By</option>
+                <!-- Filter by Creator -->
+                <select name="f_user">
+                    <option value="">Created By (All)</option>
                     {% for u in users %}
-                        <option value="{{ u.username }}" {% if request.GET.created_by == u.username %}selected{% endif %}>
-                            {{ u.username }}
+                        <option value="{{ u }}" {% if request.GET.f_user == u %}selected{% endif %}>
+                            {{ u }}
                         </option>
                     {% endfor %}
                 </select>
-                {% endif %}
 
+                <!-- Filter by Customer -->
                 <select name="customer">
-                    <option value="">Customer</option>
+                    <option value="">Customer (All)</option>
                     {% for c in customers %}
                         <option value="{{ c.customer__id }}" {% if request.GET.customer == c.customer__id|stringformat:"s" %}selected{% endif %}>
                             {{ c.customer__name }}
@@ -230,14 +202,11 @@
                     {% endfor %}
                 </select>
 
-                <input type="date" name="start_date" value="{{ request.GET.start_date }}">
-                <input type="date" name="end_date" value="{{ request.GET.end_date }}">
+                <input type="date" name="f_date" value="{{ request.GET.f_date }}">
 
                 <select name="sort_by">
-                    <option value="">Sort By</option>
-                    <option value="date_desc" {% if request.GET.sort_by == "date_desc" %}selected{% endif %}>Latest</option>
-                    <option value="date_asc" {% if request.GET.sort_by == "date_asc" %}selected{% endif %}>Oldest</option>
-                    <option value="customer" {% if request.GET.sort_by == "customer" %}selected{% endif %}>Customer</option>
+                    <option value="">Sort: Newest First</option>
+                    <option value="date_asc" {% if request.GET.sort_by == "date_asc" %}selected{% endif %}>Sort: Oldest First</option>
                 </select>
 
                 <button type="submit" class="btn-apply">Apply Filters</button>
@@ -305,12 +274,11 @@
                         <!-- Actions -->
                         <td>
                             <div class="actions-group">
-                                <!-- View Button (Slate) -->
-                                <a href="{{ inv.get_absolute_url }}" class="btn-action btn-view" target="_blank">View</a>
+                                <!-- View PI Button -->
+                                <a href="{% url 'proforma_detail' inv.id %}" class="btn-action btn-view" target="_blank">View</a>
 
                                 {% if inv.dispatch_status != 'dispatched' %}
-
-                                    <!-- YES Button (Green) switches to label when initiated -->
+                                    <!-- YES Button: Initiates order for warehouse packing -->
                                     {% if inv.dispatch_status == 'initiated' %}
                                         <span class="label-initiated">Initiated</span>
                                     {% else %}
@@ -318,21 +286,21 @@
                                            onclick="return confirm('Initiate dispatch for Invoice #{{ inv.id }}?')">YES</a>
                                     {% endif %}
 
-                                    <!-- Dispatch Button (Orange) -->
-                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">Dispatch</a>
+                                    <!-- Open Dispatch Detail Execution Workspace -->
+                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">Dispatch Workspace</a>
 
+                                    <!-- NO Button: Puts invoice on pending hold -->
                                     {% if inv.dispatch_status != 'pending' and inv.dispatch_status != 'initiated' %}
-                                        <!-- NO Button (Red) -->
                                         <a href="{% url 'set_dispatch' inv.id 'no' %}" class="btn-action btn-no"
-                                           onclick="return confirm('Put this on PENDING (Hold)?')">NO</a>
+                                           onclick="return confirm('Put Invoice #{{ inv.id }} on PENDING (Hold)?')">NO</a>
                                     {% endif %}
 
                                 {% else %}
-                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">Dispatch</a>
-                                    <span class="locked-text">Done</span>
+                                    <a href="{% url 'open_dispatch_detail' inv.id %}" class="btn-action btn-dispatch">View Workspace</a>
+                                    <span class="locked-text">Completed</span>
                                 {% endif %}
 
-                                <!-- Remarks Button (Blue) -->
+                                <!-- Remarks Button -->
                                 <button type="button" class="btn-action btn-remarks" onclick="openRemarkModal('{{ inv.id }}')">
                                     💬 Remarks
                                 </button>
@@ -341,7 +309,9 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 50px; color: #94a3b8;">No invoices found matching your filters.</td>
+                        <td colspan="8" style="text-align: center; padding: 50px; color: #94a3b8;">
+                            No dispatch requests currently in queue.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -349,9 +319,20 @@
         </div>
     </div>
 
-<!-- ==========================================
-     UNIFIED REMARK MODAL
-     ========================================== -->
+    {% else %}
+    <!-- ACCESS RESTRICTED FOR NON-FINANCE ROLES -->
+    <div style="max-width: 600px; margin: 80px auto; background: white; padding: 40px; border-radius: 12px; border: 1px solid #f87171; text-align: center;">
+        <h2 style="color: #dc2626; margin-bottom: 12px;">🔒 Access Restricted</h2>
+        <p style="color: #64748b; margin-bottom: 24px;">
+            The Dispatch Queue is reserved exclusively for <strong>Accounts & Operations</strong> and <strong>Super Admin</strong>.
+        </p>
+        <a href="{% url 'home' %}" style="display: inline-block; background: #1e293b; color: white; padding: 8px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            Return to Dashboard
+        </a>
+    </div>
+    {% endif %}
+
+<!-- ================= UNIFIED REMARK MODAL ================= -->
 <div id="globalRemarkModal" class="custom-overlay">
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
@@ -359,9 +340,7 @@
             <button onclick="closeRemarkModal()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:20px; line-height: 1;">&times;</button>
         </div>
 
-        <div id="modalChatHistory">
-            <!-- History loads here -->
-        </div>
+        <div id="modalChatHistory"></div>
 
         <input type="hidden" id="modalInvoiceId">
         <textarea id="modalRemarkInput" style="width:100%; background:#fff; color:#334155; border:1px solid var(--border); border-radius:8px; padding:10px; outline:none; resize:none; font-size: 13px; font-family: inherit;" rows="3" placeholder="Write to other departments..."></textarea>
@@ -428,7 +407,7 @@ function submitGlobalRemark() {
         headers: {'X-Requested-With': 'XMLHttpRequest'}
     })
     .then(r => {
-        if (!r.ok) throw new Error('404 or 500 error');
+        if (!r.ok) throw new Error('Network error');
         return r.json();
     })
     .then(data => {
@@ -439,7 +418,7 @@ function submitGlobalRemark() {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert("Check if URL is correct in urls.py");
+        alert("Error sending message.");
     })
     .finally(() => btn.disabled = false);
 }

@@ -1,12 +1,15 @@
 {% load static %}
+{% load rbac_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Credit Overdue Approvals</title>
     <link href="https://bootswatch.com/5/minty/bootstrap.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { background: linear-gradient(135deg, #0e0e0e, #838383); min-height: 100vh; padding: 40px 20px; font-family: 'Segoe UI', sans-serif; }
+        body { background: linear-gradient(135deg, #0e0e0e, #838383); min-height: 100vh; font-family: 'Segoe UI', sans-serif; }
+        .main-container { padding: 40px 20px; }
         .main-card { background: #fff; border-radius: 16px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-width: 1200px; margin: auto; }
         .request-row { border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 25px; transition: all 0.3s; }
         .request-row:hover { border-color: #222; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
@@ -21,79 +24,99 @@
 </head>
 <body>
 
-<div class="main-card">
-    <h2 class="mb-4 text-dark text-center">🏦 Credit Overdue Bypass Requests</h2>
+{% include 'proforma_invoice/navigation.html' %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
+<div class="main-container">
+    <div class="main-card">
+        <h2 class="mb-4 text-dark text-center">🏦 Credit Overdue Bypass Requests</h2>
 
-    {% for req in requests %}
-    <div class="request-row bg-light">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h4 class="mb-1">{{ req.customer.name }}</h4>
-                <p class="mb-0 text-muted">
-                    Requested by <strong>{{ req.requested_by.username }}</strong> for
-                    <a href="{% url 'proforma_detail' req.proforma_invoice.id %}" target="_blank">Proforma #{{ req.proforma_invoice.id }}</a>
-                </p>
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% for req in requests %}
+        <div class="request-row bg-light">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h4 class="mb-1 text-dark">{{ req.customer.name }}</h4>
+                    <p class="mb-0 text-muted">
+                        Requested by <strong>{{ req.requested_by.username }}</strong> for
+                        {% if request.user|can:"proforma.view" %}
+                            <a href="{% url 'proforma_detail' req.proforma_invoice.id %}" target="_blank" class="fw-bold">
+                                Proforma #{{ req.proforma_invoice.id }}
+                            </a>
+                        {% else %}
+                            <strong>Proforma #{{ req.proforma_invoice.id }}</strong>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="text-end">
+                    <span class="badge-status status-{{ req.status }}">{{ req.status }}</span>
+
+                    <!-- RBAC Action Gating: Only Admin & Sales Head with credit.overdue can approve/reject -->
+                    {% if req.status == 'pending' and request.user|can:"credit.overdue" %}
+                    <div class="mt-2">
+                        <form action="{% url 'approve_overdue_bypass' req.pk %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" name="decision" value="yes" class="btn btn-success btn-action me-2">Approve (Yes)</button>
+                            <button type="submit" name="decision" value="no" class="btn btn-outline-danger btn-action">Reject (No)</button>
+                        </form>
+                    </div>
+                    {% elif req.status != 'pending' %}
+                    <div class="mt-2 text-muted small fst-italic">
+                        Processed on {{ req.reviewed_at|default:"recently" }}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="text-end">
-                <span class="badge-status status-{{ req.status }}">{{ req.status }}</span>
-                <div class="mt-2">
-                    <form action="{% url 'approve_overdue_bypass' req.pk %}" method="post" class="d-inline">
-                        {% csrf_token %}
-                        <button type="submit" name="decision" value="yes" class="btn btn-success btn-action me-2">Approve (Yes)</button>
-                        <button type="submit" name="decision" value="no" class="btn btn-outline-danger btn-action">Reject (No)</button>
-                    </form>
+
+            <div class="mt-3">
+                <h6 class="text-secondary fw-bold">Tally Overdue History:</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm overdue-table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Voucher Number</th>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in req.overdue_history %}
+                            <tr class="{% if req.proforma_invoice.id|stringformat:'s' in v.voucher.voucher_number %}highlight-match{% endif %}">
+                                <td>{{ v.voucher.voucher_number }}</td>
+                                <td>{{ v.voucher_date|date:"d M Y" }}</td>
+                                <td>{{ v.voucher_type }}</td>
+                                <td>
+                                    {% if req.proforma_invoice.id|stringformat:'s' in v.voucher.voucher_number %}
+                                        <span class="text-danger fw-bold">Target Invoice</span>
+                                    {% else %}
+                                        <span class="text-warning fw-bold">Overdue</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-
-        <div class="mt-3">
-            <h6>Tally Overdue History:</h6>
-            <table class="table table-sm overdue-table table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Voucher Number</th>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for v in req.overdue_history %}
-                    {# We check if the Voucher Number contains the Proforma ID for highlighting #}
-                    <tr class="{% if req.proforma_invoice.id|stringformat:'s' in v.voucher.voucher_number %}highlight-match{% endif %}">
-
-                        <td>{{ v.voucher.voucher_number }}</td>
-
-                        <td>{{ v.voucher_date|date:"d M Y" }}</td>
-
-                        <td>{{ v.voucher_type }}</td>
-                        <td>
-                            {% if req.proforma_invoice.id|stringformat:'s' in v.voucher.voucher_number %}
-                                <span class="text-danger">Target Invoice</span>
-                            {% else %}
-                                Overdue
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        {% empty %}
+        <div class="text-center py-5 text-muted">
+            <h4>No pending requests.</h4>
         </div>
-    </div>
-    {% empty %}
-    <div class="text-center py-5 text-muted">
-        <h4>No pending requests.</h4>
-    </div>
-    {% endfor %}
+        {% endfor %}
 
-    <div class="text-center mt-4">
-        <a href="{% url 'proforma_list' %}" class="btn btn-link text-secondary text-decoration-none">← Back to Proforma List</a>
+        <div class="text-center mt-4">
+            {% if request.user|can:"proforma.view" %}
+                <a href="{% url 'proforma_list' %}" class="btn btn-link text-secondary text-decoration-none">← Back to Proforma List</a>
+            {% else %}
+                <a href="{% url 'home' %}" class="btn btn-link text-secondary text-decoration-none">← Back to Home</a>
+            {% endif %}
+        </div>
     </div>
 </div>
 
