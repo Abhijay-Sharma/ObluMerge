@@ -353,7 +353,7 @@ class EmployeeBankDetail(TimeStampedModel):
     def __str__(self):
         return f'{self.employee} bank detail'
 
-    class DocumentType(TimeStampedModel):
+class DocumentType(TimeStampedModel):
         name = models.CharField(max_length=100, unique=True, help_text="e.g. Aadhaar Card, Passport, Joining Letter")
         description = models.CharField(max_length=255, blank=True)
         is_active = models.BooleanField(default=True)
