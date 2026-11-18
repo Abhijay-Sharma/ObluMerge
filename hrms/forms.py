@@ -2,6 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from . import models as m
+from django.db.models import Q
 
 
 class BootstrapModelForm(forms.ModelForm):
@@ -713,7 +714,7 @@ class AssetForm(forms.ModelForm):
         # If editing an asset currently held by an employee, keep them in queryset
         if self.instance and self.instance.pk and self.instance.employee:
             emp_qs = m.Employee.objects.filter(
-                models.Q(status=m.Employee.Status.ACTIVE) | models.Q(pk=self.instance.employee.pk)
+                Q(status=m.Employee.Status.ACTIVE) | Q(pk=self.instance.employee.pk)
             )
 
         self.fields['employee'].queryset = emp_qs.order_by('first_name', 'last_name')
