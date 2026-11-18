@@ -58,6 +58,11 @@
       <a href="{% url 'accountant_product_tier_manager' %}" class="btn">Bulk Product & Courier Change Price</a>
     {% endif %}
 
+    <!-- 8. Credit Bypass Requests (Super Admin Only) -->
+    {% if request.user.is_superuser or 'admin' in user_roles %}
+      <a href="{% url 'overdue_bypass_list' %}" class="btn">Credit Bypass Requests</a>
+    {% endif %}
+
   </div>
 </div>
 {% endblock content %}

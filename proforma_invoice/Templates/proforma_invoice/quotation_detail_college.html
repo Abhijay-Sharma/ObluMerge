@@ -1,0 +1,834 @@
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quotation #{{ quotation.id }} - {{ quotation.customer.name }} (College / Institutional)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ================= PAGE SETUP & PRINT RULES ================= */
+        @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 11.5px;
+            color: #000;
+            background: #e2e8f0;
+            line-height: 1.4;
+            padding-bottom: 40px;
+        }
+
+        /* Screen Wrapper */
+        .document-wrapper {
+            max-width: 900px;
+            margin: 25px auto;
+        }
+
+        /* Individual Printable Pages */
+        .printable-page {
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            border-radius: 4px;
+            padding: 24px 32px 30px;
+            margin-bottom: 25px;
+            position: relative;
+            min-height: 1080px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Screen Action Toolbar */
+        .screen-toolbar {
+            position: sticky;
+            top: 15px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            color: #fff;
+        }
+
+        .toolbar-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .theme-pill {
+            background: #0b78a8;
+            color: #fff;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-tool {
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-print {
+            background: #10b981;
+            color: #fff;
+        }
+        .btn-print:hover { background: #059669; color: #fff; }
+
+        .btn-switch {
+            background: #334155;
+            color: #f1f5f9;
+        }
+        .btn-switch:hover { background: #475569; color: #fff; }
+
+        .btn-back {
+            background: transparent;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+        }
+        .btn-back:hover { background: #1e293b; color: #fff; }
+
+        /* ================= 1. HEADER SECTION (STANDARD MATCH) ================= */
+        .header-top {
+            display: grid;
+            grid-template-columns: 115px 1fr auto;
+            column-gap: 16px;
+            align-items: center;
+        }
+
+        .logo-box {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .logo {
+            width: 105px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .logo-tagline {
+            font-size: 9px;
+            font-weight: 700;
+            color: #0b78a8;
+            margin-top: 2px;
+            letter-spacing: 0.4px;
+        }
+
+        .company-info {
+            line-height: 1.45;
+            font-size: 11px;
+            color: #000;
+        }
+
+        .company-info b {
+            font-size: 12px;
+            color: #000;
+        }
+
+        /* QR Codes matching Standard Template */
+        .qr-box {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .qr-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .qr-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            width: 75px;
+        }
+
+        .qr-img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+
+        .qr-text {
+            font-size: 8px;
+            font-weight: bold;
+            color: #0b78a8;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        /* Blue Separator Line */
+        hr.blue-line {
+            border: none;
+            border-top: 2px solid #0b78a8;
+            margin: 10px 0 12px;
+        }
+
+        /* Dark Contact Strip */
+        .contact-strip {
+            background: #0f172a;
+            color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 14px;
+            font-size: 9.5px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            border-radius: 3px;
+            margin-bottom: 14px;
+        }
+
+        .contact-strip a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        /* ================= 2. REF & RECIPIENT INFO ================= */
+        .meta-strip {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            font-size: 11.5px;
+        }
+
+        .ref-info {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #000;
+            line-height: 1.5;
+        }
+
+        .ref-info span.ref-num {
+            color: #0b78a8;
+        }
+
+        .recipient-box {
+            margin-top: 4px;
+            margin-bottom: 12px;
+            line-height: 1.45;
+            font-size: 11.5px;
+            color: #000;
+            max-width: 520px;
+        }
+
+        .recipient-label {
+            font-weight: 800;
+            font-size: 12px;
+            margin-bottom: 2px;
+            color: #0b78a8;
+        }
+
+        .recipient-dept {
+            font-weight: 700;
+            color: #000;
+        }
+
+        .recipient-college {
+            font-weight: 800;
+            color: #000;
+            font-size: 12px;
+        }
+
+        /* Banner Box: Quotation For (Blue Theme Accent) */
+        .quotation-for-card {
+            border: 1.5px solid #0b78a8;
+            background: #f0f9ff;
+            border-radius: 4px;
+            text-align: center;
+            padding: 6px 12px;
+            margin: 10px 0 14px;
+        }
+
+        .quotation-for-label {
+            font-size: 10.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #0b78a8;
+        }
+
+        .quotation-for-subject {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0c4a6e;
+            margin-top: 1px;
+        }
+
+        /* ================= 3. COLLEGE ITEMS TABLE (BLUE THEME) ================= */
+        .college-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 12px;
+        }
+
+        .college-table th,
+        .college-table td {
+            padding: 6px 6px;
+            font-size: 10.5px;
+            vertical-align: top;
+        }
+
+        .college-table thead th {
+            background: #0b78a8;
+            color: #ffffff;
+            font-weight: 800;
+            text-align: center;
+            border: 1px solid #000;
+            font-size: 11px;
+            line-height: 1.25;
+            letter-spacing: 0.2px;
+        }
+
+        .college-table tbody td {
+            border: 1px solid #999;
+            border-left: 1px solid #000;
+            border-right: 1px solid #000;
+            color: #000;
+        }
+
+        .col-sn { width: 36px; text-align: center; }
+        .col-desc { text-align: left; }
+        .col-qty { width: 48px; text-align: center; }
+        .col-net { width: 85px; text-align: right; }
+        .col-gst-rate { width: 48px; text-align: center; }
+        .col-gst-amt { width: 80px; text-align: right; }
+        .col-unit { width: 85px; text-align: right; }
+        .col-total { width: 90px; text-align: right; }
+
+        .item-heading {
+            font-size: 11px;
+            font-weight: 800;
+            color: #000;
+            margin-bottom: 3px;
+        }
+
+        .product-bullets-list {
+            margin: 3px 0 0 16px;
+            padding: 0;
+            list-style-type: disc;
+            color: #334155;
+            font-size: 9.5px;
+            line-height: 1.35;
+        }
+
+        .product-bullets-list li {
+            margin-bottom: 1px;
+        }
+
+        .modules-header {
+            font-size: 10px;
+            font-weight: 700;
+            color: #0b78a8;
+            margin-top: 3px;
+            margin-bottom: 2px;
+        }
+
+        /* Table Totals Row */
+        .total-row td {
+            font-weight: 800;
+            background: #f8fafc;
+            border-top: 2px solid #000;
+            border-bottom: 1px solid #000;
+        }
+
+        .total-price-banner-row td {
+            background: #0b78a8;
+            color: #ffffff;
+            font-size: 11.5px;
+            font-weight: 900;
+            padding: 7px 8px;
+            border: 1px solid #000;
+        }
+
+        /* ================= 4. SIGNATURE BLOCK ================= */
+        .signatory-container {
+            display: flex;
+            justify-content: flex-start;
+            margin-top: 20px;
+            padding-left: 6px;
+        }
+
+        .signatory-box {
+            text-align: left;
+            display: inline-block;
+        }
+
+        .signatory-header {
+            font-size: 11px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 4px;
+        }
+
+        .signatory-stamp-wrapper {
+            position: relative;
+            min-height: 65px;
+            display: flex;
+            align-items: center;
+        }
+
+        .signature-img {
+            max-width: 135px;
+            max-height: 60px;
+            object-fit: contain;
+        }
+
+        .signatory-footer {
+            font-size: 11px;
+            font-weight: 700;
+            color: #000;
+            margin-top: 4px;
+            border-top: 1px solid #000;
+            padding-top: 2px;
+        }
+
+        /* ================= 5. PAGE 2: TERMS & CONDITIONS ================= */
+        .terms-title-heading {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0b78a8;
+            border-bottom: 2px solid #0b78a8;
+            display: inline-block;
+            margin-top: 6px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-bottom: 2px;
+        }
+
+        .terms-list-ordered {
+            margin-left: 20px;
+            font-size: 11px;
+            line-height: 1.55;
+            color: #000;
+        }
+
+        .terms-list-ordered > li {
+            margin-bottom: 12px;
+            padding-left: 4px;
+        }
+
+        .terms-list-ordered strong {
+            color: #0b78a8;
+        }
+
+        /* Bank Details Box with Blue dashed border */
+        .bank-details-card {
+            border: 1.5px dashed #0b78a8;
+            background: #f9f9f9;
+            padding: 10px 16px;
+            margin: 8px 0 6px 10px;
+            border-radius: 5px;
+            width: fit-content;
+            min-width: 360px;
+            font-size: 10.5px;
+            line-height: 1.45;
+        }
+
+        .bank-details-card strong {
+            color: #000;
+            font-size: 11px;
+        }
+
+        .bank-card-title {
+            color: #0b78a8;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .product-terms-sublist {
+            margin-left: 18px;
+            margin-top: 6px;
+            list-style-type: disc;
+            color: #334155;
+            font-size: 10.5px;
+        }
+
+        .product-terms-sublist li {
+            margin-bottom: 4px;
+        }
+
+        /* ================= PRINT MEDIA ================= */
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .no-print,
+            .screen-toolbar {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .document-wrapper {
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .printable-page {
+                box-shadow: none;
+                border-radius: 0;
+                padding: 0;
+                margin: 0;
+                page-break-after: always;
+                min-height: auto;
+            }
+
+            .printable-page:last-child {
+                page-break-after: auto;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="document-wrapper">
+
+    <!-- ================= SCREEN ACTION TOOLBAR ================= -->
+    <div class="screen-toolbar no-print">
+        <div class="toolbar-title">
+            <i class="fa-solid fa-graduation-cap" style="color: #38bdf8;"></i>
+            <span>Quotation #{{ quotation.id }}</span>
+            <span class="theme-pill">College / Institutional Format</span>
+        </div>
+        <div class="toolbar-actions">
+            <button type="button" class="btn-tool btn-print" onclick="window.print()">
+                <i class="fa-solid fa-print"></i> Print / Save PDF
+            </button>
+            <a href="{% url 'quotation_detail' quotation.id %}?theme=standard" class="btn-tool btn-switch" title="View standard commercial format">
+                <i class="fa-solid fa-file-invoice"></i> Switch to Standard View
+            </a>
+            <a href="{% url 'quotation_list' %}" class="btn-tool btn-back">
+                <i class="fa-solid fa-arrow-left"></i> Quotations List
+            </a>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- 📄 PAGE 1: RECIPIENT & ITEMS TABLE                        -->
+    <!-- ========================================================= -->
+    <div class="printable-page">
+        <div>
+            <!-- Header Top (3-Column Layout with Small Logo & QR Codes) -->
+            <div class="header-top">
+                <div class="logo-box">
+                    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png" alt="Oblu Healthcare" class="logo">
+                    <div class="logo-tagline">Future Is Innovation</div>
+                </div>
+                <div class="company-info">
+                    <b>OBLU HEALTHCARE LLP</b><br>
+                    3RD FLOOR, PLOT NO 6, BLK G-1, LAWRANCE ROAD INDUSTRIAL AREA,<br>
+                    New Delhi, West Delhi, Delhi, 110035 <br>
+                    Phone : 96504 47099<br>
+                    MD42:- RMD/DCD/26/ZO-6552/5797
+                    Email : sales@obluhc.com<br>
+                    GSTIN/UIN: 07AAIFO0279M1ZU<br>
+                    PAN : AAIFO0279M<br>
+                    State : 07-Delhi
+                </div>
+                <div class="qr-box">
+                    <div class="qr-row">
+                        <div class="qr-item">
+                            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png" class="qr-img" alt="Instagram">
+                            <div class="qr-text"><i class="fa-brands fa-instagram"></i> IG</div>
+                        </div>
+                        <div class="qr-item">
+                            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png" class="qr-img" alt="Facebook">
+                            <div class="qr-text"><i class="fa-brands fa-facebook"></i> FB</div>
+                        </div>
+                        <div class="qr-item">
+                            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png" class="qr-img" alt="YouTube">
+                            <div class="qr-text"><i class="fa-brands fa-youtube"></i> YT</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <hr class="blue-line">
+
+            <div class="contact-strip">
+                <div><strong>M:</strong> +91 96504 47099</div>
+                <div><strong>E:</strong> sales@obluhc.com</div>
+                <div><strong>W:</strong> www.obluhc.com</div>
+            </div>
+
+            <!-- Reference & Date Strip -->
+            <div class="meta-strip">
+                <div class="ref-info">
+                    Quotation Ref. No.: <span class="ref-num">OBLU/{{ quotation.date_created|date:"Y" }}-{{ quotation.date_created|date:"y"|add:"1" }}/{{ quotation.date_created|date:"m" }}-{{ quotation.id|stringformat:"03d" }}</span><br>
+                    Date: {{ quotation.date_created|date:"d.m.Y" }}
+                </div>
+            </div>
+
+            <!-- Recipient Block -->
+            <div class="recipient-box">
+                <div class="recipient-label">To</div>
+                <div class="recipient-dept">Head of Department</div>
+                <div class="recipient-college">{{ quotation.customer.name }}</div>
+                {% if quotation.customer.address %}
+                <div>{{ quotation.customer.address }}</div>
+                {% endif %}
+                <div>
+                    {% if quotation.customer.city %}{{ quotation.customer.city }}, {% endif %}
+                    {% if quotation.customer.state %}{{ quotation.customer.state }}{% endif %}
+                    {% if quotation.customer.pincode %} - {{ quotation.customer.pincode }}{% endif %}
+                </div>
+                {% if quotation.customer.phone %}
+                <div>Phone: {{ quotation.customer.phone }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Quotation For Banner  -->
+            <div class="quotation-for-card">
+                <div class="quotation-for-label">Quotation For</div>
+                <div class="quotation-for-subject">Misc. Dental Equipment’s</div>
+            </div>
+
+            <!-- College Items Table -->
+            <table class="college-table">
+                <thead>
+                    <tr>
+                        <th class="col-sn">S.N.</th>
+                        <th class="col-desc">Item Description</th>
+                        <th class="col-qty">Qty</th>
+                        <th class="col-net">Net Price</th>
+                        <th class="col-gst-rate">GST<br>(%)</th>
+                        <th class="col-gst-amt">GST<br>Amount</th>
+                        <th class="col-unit">Unit Price<br>(Inc. GST)</th>
+                        <th class="col-total">Total Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in recalculated_items %}
+                    <tr>
+                        <td class="col-sn">{{ forloop.counter }}.</td>
+                        <td class="col-desc">
+                            <div class="item-heading">{{ row.item.product.name }}</div>
+                            {% if row.product_info %}
+                            <div class="modules-header">Modules included:</div>
+                            <ul class="product-bullets-list">
+                                {% for bullet in row.product_info %}
+                                <li>{{ bullet }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </td>
+                        <td class="col-qty">{{ row.item.quantity }}.{{ row.item.product.unit|default:"No" }}</td>
+                        <td class="col-net">₹{{ row.taxable_value|floatformat:2 }}</td>
+                        <td class="col-gst-rate">{{ row.gst_rate|floatformat:0 }}%</td>
+                        <td class="col-gst-amt">₹{{ row.gst_amount|floatformat:2 }}</td>
+                        <td class="col-unit">₹{{ row.unit_price_incl|floatformat:2 }}</td>
+                        <td class="col-total">₹{{ row.amount_incl|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <!-- Subtotal Row -->
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: center;">Total</td>
+                        <td class="col-net">₹{{ total_items_net_price|floatformat:2 }}</td>
+                        <td class="col-gst-rate"></td>
+                        <td class="col-gst-amt">₹{{ total_items_gst_amount|floatformat:2 }}</td>
+                        <td class="col-unit">₹{{ total_unit_price_incl|floatformat:2 }}</td>
+                        <td class="col-total">₹{{ grand_total|floatformat:2 }}</td>
+                    </tr>
+                    <!-- Grand Total Banner Row (Blue Header) -->
+                    <tr class="total-price-banner-row">
+                        <td colspan="7" style="text-align: right; letter-spacing: 0.3px;">Total Price (Inc GST)</td>
+                        <td class="col-total" style="font-size: 12px; font-weight: 900;">₹{{ grand_total|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Authorized Signatory (Page 1) -->
+        <div class="signatory-container">
+            <div class="signatory-box">
+                <div class="signatory-header">For Oblu Healthcare</div>
+                <div class="signatory-stamp-wrapper">
+                    {% if signature_base64 %}
+                    <img src="data:image/png;base64,{{ signature_base64 }}" alt="Signature & Stamp" class="signature-img">
+                    {% else %}
+                    <div style="height: 45px;"></div>
+                    {% endif %}
+                </div>
+                <div class="signatory-footer">Authorized Signatory</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- 📄 PAGE 2: TERMS AND CONDITIONS                           -->
+    <!-- ========================================================= -->
+    <div class="printable-page">
+        <div>
+            <!-- Header Top (3-Column Layout with Small Logo & QR Codes) -->
+            <div class="header-top">
+                <div class="logo-box">
+                    <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png" alt="Oblu Healthcare" class="logo">
+                    <div class="logo-tagline">Future Is Innovation</div>
+                </div>
+                <div class="company-info">
+                    <b>OBLU HEALTHCARE LLP</b><br>
+                    UNIT NO.705-706, P P CITY CENTRE, PITAMPURA, DELHI - 110034<br>
+                    Phone: 96504 47099 | Email: sales@obluhc.com<br>
+                    GSTIN: 07AAIFO0279M1ZU | PAN: AAIFO0279M
+                </div>
+                <div class="qr-box">
+                    <div class="qr-row">
+                        <div class="qr-item">
+                            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/insta_qr.png" class="qr-img" alt="Instagram">
+                            <div class="qr-text"><i class="fa-brands fa-instagram"></i> IG</div>
+                        </div>
+                        <div class="qr-item">
+                            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/fb_profile_qr.png" class="qr-img" alt="Facebook">
+                            <div class="qr-text"><i class="fa-brands fa-facebook"></i> FB</div>
+                        </div>
+                        <div class="qr-item">
+                            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/youtube_profile_qr.png" class="qr-img" alt="YouTube">
+                            <div class="qr-text"><i class="fa-brands fa-youtube"></i> YT</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blue Separator Line -->
+            <hr class="blue-line">
+
+            <!-- Dark Contact Strip -->
+            <div class="contact-strip">
+                <div><strong>M:</strong> +91 96504 47099</div>
+                <div><strong>E:</strong> sales@obluhc.com</div>
+                <div><strong>W:</strong> www.obluhc.com</div>
+            </div>
+
+            <!-- Reference & Date Strip -->
+            <div class="meta-strip">
+                <div class="ref-info">
+                    Quotation Ref. No.: <span class="ref-num">OBLU/{{ quotation.date_created|date:"Y" }}-{{ quotation.date_created|date:"y"|add:"1" }}/{{ quotation.date_created|date:"m" }}-{{ quotation.id|stringformat:"03d" }}</span><br>
+                    Date: {{ quotation.date_created|date:"d.m.Y" }}
+                </div>
+            </div>
+
+            <!-- Terms & Conditions Title (Blue Heading Line) -->
+            <div class="terms-title-heading">Terms And Conditions</div>
+
+            <!-- Numbered Terms List -->
+            <ol class="terms-list-ordered">
+                <li>
+                    <strong>Prices:</strong> Quoted are on F.O.R Destination and inclusive of GST.
+                </li>
+
+                <li>
+                    <strong>Payment:</strong> 100% payment shall be made within 20 days from the date of installation through NEFT / RTGS / Demand Draft / Cheque, in favour of the company, payable at New Delhi.
+                    
+                    <div class="bank-details-card">
+                        <div class="bank-card-title">Our bank details are as follows:</div>
+                        <strong>OBLU HEALTHCARE LLP</strong><br>
+                        AC NO- 926030003897014<br>
+                        IFSC CODE- UTIB0000588<br>
+                        Axis Bank Limited cc<br>
+                        ADDRESS - LOK VIHAR, PITAMPURA, NEW DELHI -110034
+                    </div>
+                </li>
+
+                <li>
+                    <strong>Delivery:</strong> 3-4 weeks from the date of receipt of confirmed order along with advance.
+                </li>
+
+                <li>
+                    <strong>Installation:</strong> Online support will be provided by our team of engineers for installation of the unit.
+                </li>
+
+                <li>
+                    <strong>Product-specific terms:</strong>
+                    <ul class="product-terms-sublist">
+                        {% for r in recalculated_items %}
+                            {% if r.item.product.proforma_price.terms_and_conditions %}
+                            <li>{{ r.item.product.proforma_price.terms_and_conditions }}</li>
+                            {% endif %}
+                        {% endfor %}
+                        <li>
+                            Please note that after two consecutive years without renewing your Expert license, access to remote computing resources (i.e., remote servers) will be suspended. Since the Maestro 3d Dental Studio (Ortho Studio Basic software) relies partly on cloud-based functionalities, without this connection it will no longer be possible to operate the software.
+                        </li>
+                    </ul>
+                </li>
+
+                <li>
+                    <strong>Force Majure Clause:</strong> Our offer is subject to force de majure and we shall not be responsible for any breach of contract arising out of unforeseen situation viz. acts of God, Govt., fires, floods, strike, war, freight embargo, severe weather.<br><br>
+                    Order Cancellation fee of 25% of the Order Value will be charged, if Customer / End User cancels the order after confirmation.
+                </li>
+
+                <li>
+                    <strong>Jurisdiction:</strong> All disputes are subject to Delhi Jurisdiction.
+                </li>
+            </ol>
+        </div>
+
+        <!-- Authorized Signatory (Page 2) -->
+        <div class="signatory-container" style="margin-top: 25px;">
+            <div class="signatory-box">
+                <div class="signatory-header">For Oblu Healthcare</div>
+                <div class="signatory-stamp-wrapper">
+                    {% if signature_base64 %}
+                    <img src="data:image/png;base64,{{ signature_base64 }}" alt="Signature & Stamp" class="signature-img">
+                    {% else %}
+                    <div style="height: 45px;"></div>
+                    {% endif %}
+                </div>
+                <div class="signatory-footer">Authorized Signatory</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
