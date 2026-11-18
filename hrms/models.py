@@ -375,7 +375,7 @@ class EmployeeDocument(TimeStampedModel):
 
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='documents')
     document_type = models.ForeignKey(
-        DocumentType,
+        'DocumentType',
         on_delete=models.PROTECT,
         null=True,
         blank=True,
