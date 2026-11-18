@@ -32,12 +32,6 @@ class EmployeeAdmin(admin.ModelAdmin):
 admin.site.register(m.EmployeeBankDetail)
 admin.site.register(m.EmployeeDocument)
 admin.site.register(m.EmployeeNotice)
-@admin.register(m.DocumentType)
-class DocumentTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_active', 'created_at')
-    search_fields = ('name',)
-    list_filter = ('is_active',)
-
 
 # -------hiring----------
 admin.site.register(m.RecruitmentStage)

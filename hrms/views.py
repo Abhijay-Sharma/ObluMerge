@@ -1354,14 +1354,6 @@ class EmployeeDocumentBulkUploadView(LoginRequiredMixin, SidebarContextMixin, Vi
             'active_group': self.active_group,
             'active_item': self.active_item,
         })
-    def get(self, request, pk=None):
-        employee = self.get_employee(pk)
-        return render(request, self.template_name, {
-            'employee': employee,
-            'doc_types': [(dt.id, dt.name) for dt in m.DocumentType.objects.filter(is_active=True)],
-            'active_group': self.active_group,
-            'active_item': self.active_item,
-        })
 
     def post(self, request, pk=None):
         employee = self.get_employee(pk)
