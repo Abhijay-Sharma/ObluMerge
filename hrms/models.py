@@ -353,34 +353,28 @@ class EmployeeBankDetail(TimeStampedModel):
     def __str__(self):
         return f'{self.employee} bank detail'
 
-class DocumentType(TimeStampedModel):
-        name = models.CharField(max_length=100, unique=True, help_text="e.g. Aadhaar Card, Passport, Joining Letter")
-        description = models.CharField(max_length=255, blank=True)
-        is_active = models.BooleanField(default=True)
-
-        class Meta:
-            ordering = ['name']
-            verbose_name = "Document Type"
-            verbose_name_plural = "Document Types"
-
-        def __str__(self):
-            return self.name
-
 
 class EmployeeDocument(TimeStampedModel):
+    class DocumentType(models.TextChoices):
+        AADHAAR = 'aadhaar', 'Aadhaar Card'
+        PAN = 'pan', 'PAN Card'
+        OFFER_LETTER = 'offer_letter', 'Offer Letter'
+        RESUME = 'resume', 'Resume'
+        EXPERIENCE = 'experience_letter', 'Experience Letter'
+        MARKSHEET = 'marksheet', '10th/12th Marksheet'
+        BANK_PROOF = 'bank_proof', 'Bank Proof'
+        ID_PROOF = 'id_proof', 'ID Proof'
+        ADDRESS_PROOF = 'address_proof', 'Address Proof'
+        EDUCATION = 'education', 'Education Certificate'
+        OTHER = 'other', 'Other'
+
     class VerificationStatus(models.TextChoices):
         PENDING = 'pending', 'Pending Verification'
         VERIFIED = 'verified', 'Verified'
         REJECTED = 'rejected', 'Rejected'
 
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='documents')
-    document_type = models.ForeignKey(
-        'DocumentType',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='employee_documents'
-    )
+    document_type = models.CharField(max_length=30, choices=DocumentType.choices)
     file = models.FileField(upload_to='employees/documents/')
     description = models.CharField(max_length=255, blank=True)
     issued_on = models.DateField(null=True, blank=True)
@@ -400,12 +394,9 @@ class EmployeeDocument(TimeStampedModel):
     verified_on = models.DateTimeField(null=True, blank=True)
     rejection_remarks = models.TextField(blank=True)
 
-    # def __str__(self):
-    #     return f'{self.employee} - {self.get_document_type_display()}'
-
     def __str__(self):
-        doc_name = self.document_type.name if self.document_type else "Document"
-        return f'{self.employee} - {doc_name}'
+        return f'{self.employee} - {self.get_document_type_display()}'
+
 
 class EmployeeNotice(TimeStampedModel):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='notices')
