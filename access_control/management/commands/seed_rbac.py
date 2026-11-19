@@ -87,6 +87,10 @@ ROLE_MATRIX = {
             "product_tier.manage": "all",
             "analytics.view": "all",
             "customer.unassigned": "all",
+            # Incentive Calculator
+            "incentive.view_all": "all",
+            "incentive.manage_payout": "all",
+            "incentive.manage_config": "all",
             # HRMS Global
             **HR_ADMIN_PERMS,
             **PAYROLL_ACCOUNTS_PERMS,
@@ -115,6 +119,9 @@ ROLE_MATRIX = {
             "stock.request": "all",
             "product_price.view": "all",
             "customer.unassigned": "all",
+            "incentive.view_all": "all",
+            "incentive.view_team": "all",
+            "incentive.view_self": "all",
             **MANAGER_TEAM_PERMS,
             **BASE_EMPLOYEE_PERMS,
         }
@@ -137,6 +144,7 @@ ROLE_MATRIX = {
             "stock.request": "all",
             "inventory.view": "all",
             "product_price.view": "all",
+            "incentive.view_all": "all",
             **MANAGER_TEAM_PERMS,
             **BASE_EMPLOYEE_PERMS,
         }
@@ -154,6 +162,9 @@ ROLE_MATRIX = {
             "stock.request": "all",
             "inventory.view": "all",
             "product_tier.manage": "all",
+            "incentive.view_all": "all",
+            "incentive.manage_payout": "all",
+            "incentive.manage_config": "all",
             **PAYROLL_ACCOUNTS_PERMS,
             **BASE_EMPLOYEE_PERMS,
         }
@@ -167,6 +178,9 @@ ROLE_MATRIX = {
             "stock.request": "all",
             "inventory.view": "all",
             "product_tier.manage": "all",
+            "incentive.view_all": "all",
+            "incentive.manage_payout": "all",
+            "incentive.manage_config": "all",
             **PAYROLL_ACCOUNTS_PERMS,
             **BASE_EMPLOYEE_PERMS,
         }
@@ -197,6 +211,8 @@ ROLE_MATRIX = {
             "proforma.create": "team",
             "proforma.view": "team",
             "product_price.view": "all",
+            "incentive.view_team": "team",
+            "incentive.view_self": "self",
             **MANAGER_TEAM_PERMS,
             **BASE_EMPLOYEE_PERMS,
         }
@@ -214,6 +230,7 @@ ROLE_MATRIX = {
             "proforma.create": "team",
             "proforma.view": "team",
             "product_price.view": "all",
+            "incentive.view_self": "self",
             **MANAGER_TEAM_PERMS,
             **BASE_EMPLOYEE_PERMS,
         }
@@ -231,6 +248,7 @@ ROLE_MATRIX = {
             "proforma.view": "self",
             "stock.request": "self",
             "product_price.view": "all",
+            "incentive.view_self": "self",
             **BASE_EMPLOYEE_PERMS,
         }
     },
