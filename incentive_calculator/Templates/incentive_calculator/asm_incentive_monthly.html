@@ -173,16 +173,18 @@
 
             <!-- CARD 3: TOTAL SALES -->
             <div class="card summary-card" style="justify-content: center;">
-                <span style="color: var(--text-muted); font-size: 0.85em; text-transform: uppercase;">Total Sales (Tax Inc.)</span>
+                <span style="color: var(--text-muted); font-size: 0.85em; text-transform: uppercase;">Total Sales of this Month (Tax Inc.)</span>
                 <h2>₹{{ total_sales|floatformat:2 }}</h2>
             </div>
 
-            <!-- CARD 4: NET PAYABLE (CURRENT + ARREARS) -->
+            <!-- CARD 4: CURRENT MONTH INCENTIVE & TOTAL CALCULATION -->
             <div class="card summary-card" style="border-bottom: 4px solid var(--accent-green);">
-                <span style="color: var(--text-muted); font-size: 0.85em; font-weight: bold; text-transform: uppercase;">Net Payable Incentive</span>
-                <h2 style="color: var(--accent-green); font-size: 32px;">₹{{ grand_total_incentive|floatformat:2 }}</h2>
+                <div>
+                    <span style="color: var(--text-muted); font-size: 0.85em; font-weight: bold; text-transform: uppercase;">Current Month Incentive</span>
+                    <h2 style="color: var(--accent-green); font-size: 32px;">₹{{ current_month_potential|floatformat:2 }}</h2>
+                </div>
 
-                <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+                <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 8px;">
                     <div style="display: flex; justify-content: space-between; font-size: 11px;">
                         <span>Current Month Potential:</span>
                         <b>₹{{ current_month_potential|floatformat:2 }}</b>
@@ -191,8 +193,12 @@
                         <span>Arrears Added:</span>
                         <b style="color: var(--accent-red);">+ ₹{{ total_arrears_amount|floatformat:2 }}</b>
                     </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; border-top: 1px solid var(--border-color); padding-top: 4px;">
+                        <span style="font-weight: bold; color: var(--text-main);">Total Payable (Inc. Arrears):</span>
+                        <b style="color: var(--accent-green); font-size: 12px;">₹{{ grand_total_incentive|floatformat:2 }}</b>
+                    </div>
                     <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; border-top: 1px dashed var(--border-color); padding-top: 4px;">
-                        <span style="color: var(--accent-green); font-weight: bold;">Ready to Receive:</span>
+                        <span style="color: var(--accent-green); font-weight: bold;">Ready to Receive of this Month:</span>
                         <b class="product-green">₹{{ payable_incentive|floatformat:2 }}</b>
                     </div>
                 </div>
@@ -223,7 +229,7 @@
                             <td>
                                 {% if row.customer_id %}
                                     <a href="{% url 'customers:customerpaymentstatus' row.customer_id %}">{{ row.customer }}</a>
-                                    {% if user.is_superuser %}
+                                    {% if user.is_superuser or can_manage_triggers %}
                                     <div style="margin-top: 5px;">
                                         <button onclick="toggleIncentiveTrigger('{{ row.customer_id }}', {{ row.is_trigger_on|yesno:'true,false' }})"
                                                 class="btn-trigger {% if row.is_trigger_on %}trigger-on{% else %}trigger-off{% endif %}">
@@ -238,33 +244,18 @@
                             <td class="{% if row.has_incentive %}product-green{% else %}product-red{% endif %}">{{ row.product }}</td>
                             <td>{{ row.quantity|floatformat:2 }}</td>
                             <td>₹{{ row.amount|floatformat:2 }}</td>
-                             <td>
+                            <td>
                                 {% if not row.is_trigger_on %}
                                     <span style="color: var(--accent-red); font-size: 11px; font-weight: bold;">✕ Trigger Off</span>
-
-                                {% elif not row.has_incentive %}
-                                    <span style="color: var(--text-muted); font-size: 11px;">Non-Incentive</span>
-
                                 {% elif row.payout_done %}
                                     <span style="color: var(--accent-green); font-size: 11px; font-weight: bold;">✓ Paid by Admin</span>
-
                                 {% elif not row.is_fully_paid %}
-                                    <!-- 1. Invoice is UNPAID: Keep 'Waiting Payment' active -->
-                                    <span style="color: var(--text-muted); font-size: 11px; font-weight: bold;">Waiting Payment</span>
-
-                                    <!-- Sub-tag: Check if it's ALSO below MSRP -->
-                                    {% if not row.is_above_msp %}
-                                        <div style="color: var(--accent-yellow); font-size: 10px; font-weight: bold; margin-top: 2px;">
-                                            ✕ Below MSRP
-                                        </div>
-                                    {% endif %}
-
+                                    <span style="color: var(--text-muted); font-size: 11px;">Waiting Payment</span>
+                                {% elif not row.has_incentive %}
+                                    <span style="color: var(--text-muted); font-size: 11px;">Non-Incentive</span>
                                 {% elif not row.is_above_msp %}
-                                    <!-- 2. Invoice is PAID, but item was sold below MSRP -->
                                     <span style="color: var(--accent-yellow); font-size: 11px; font-weight: bold;">✕ Below MSRP</span>
-
                                 {% else %}
-                                    <!-- 3. Invoice is PAID and above MSRP -->
                                     <span class="product-green" style="font-size: 11px;">✓ Calculated</span>
                                 {% endif %}
                             </td>

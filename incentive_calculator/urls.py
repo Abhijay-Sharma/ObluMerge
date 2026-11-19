@@ -6,11 +6,7 @@ app_name = "incentive_calculator"
 
 urlpatterns = [
     path("", views.IncentiveCalculatorWelcomeView.as_view(), name="incentive_calculator_welcome"),
-    path(
-        "asm/",
-        views.ASMIncentiveCalculatorView.as_view(),
-        name="asm_incentive_calculator",
-    ),
+
     path(
         "asm/paid-only/",
         views.ASMIncentiveCalculatorPaidOnlyView.as_view(),

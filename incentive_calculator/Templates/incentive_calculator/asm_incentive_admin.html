@@ -101,6 +101,17 @@
 <div class="container">
     <h2>Incentive Control (Admin Dashboard)</h2>
 
+    {% if messages %}
+    <div style="margin-bottom: 15px;">
+        {% for message in messages %}
+        <div style="padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; {% if message.tags == 'error' %}background: rgba(255, 77, 77, 0.15); border: 1px solid var(--accent-red); color: var(--accent-red);{% elif message.tags == 'info' %}background: rgba(255, 184, 77, 0.15); border: 1px solid var(--accent-orange); color: var(--accent-orange);{% else %}background: rgba(0, 255, 153, 0.15); border: 1px solid var(--accent-green); color: var(--accent-green);{% endif %}">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:inherit;font-size:18px;font-weight:bold;">×</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="card">
         <form class="filter-form" method="get">
             <select name="salesperson" required>
@@ -120,7 +131,7 @@
         <div><h3 style="margin:0;">Accounting Actions</h3><p class="text-muted" style="margin:0;">Manage payouts for <b>{{ selected_salesperson.name }}</b>.</p></div>
         <div style="display:flex; gap: 10px;">
             <form method="POST">{% csrf_token %}<input type="hidden" name="action" value="bulk_unpay"><input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}"><input type="hidden" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}"><button type="submit" class="badge red" style="padding: 10px 15px; border-radius: 8px;" onclick="return confirm('Bulk Unpay month?')">🔄 Bulk UNPAY</button></form>
-            <form method="POST">{% csrf_token %}<input type="hidden" name="action" value="bulk_pay"><input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}"><input type="hidden" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}"><button type="submit" class="filter-form button" onclick="return confirm('Bulk Pay month?')">💰 Bulk Mark PAID</button></form>
+            <form method="POST">{% csrf_token %}<input type="hidden" name="action" value="bulk_pay"><input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}"><input type="hidden" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}"><button type="submit" class="badge green" style="padding: 10px 15px; border-radius: 8px;" onclick="return confirm('Bulk Pay month?')">💰 Bulk Mark PAID</button></form>
         </div>
     </div>
 
@@ -168,6 +179,7 @@
                         <td>{{ r.quantity|floatformat:2 }}</td>
                         <td>
                             {% if r.payout_done %}<span class="badge green">PAID</span>
+                            {% elif not r.is_trigger_on %}<span class="badge red">TRIGGER OFF</span>
                             {% elif not r.is_fully_paid %}<span class="text-muted small">Wait Pay</span>
                             {% else %}<span class="badge orange">PENDING</span>{% endif %}
                         </td>
@@ -175,6 +187,7 @@
                             <form method="POST">{% csrf_token %}
                                 <input type="hidden" name="voucher_id" value="{{ r.voucher_id }}"><input type="hidden" name="salesperson" value="{{ selected_salesperson.id }}"><input type="hidden" name="month_picker" value="{{ year }}-{{ month|stringformat:'02d' }}">
                                 {% if r.payout_done %}<input type="hidden" name="action" value="unpay"><button type="submit" class="badge red">✕ Unpay</button>
+                                {% elif not r.is_trigger_on %}<span class="text-muted small">Blocked</span>
                                 {% elif r.is_fully_paid %}<input type="hidden" name="action" value="pay_single"><button type="submit" class="badge green">✓ Pay</button>{% endif %}
                             </form>
                         </td>

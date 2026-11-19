@@ -5819,16 +5819,23 @@ class NotifyWarehouseView(RBACViewMixin, View):
 
         try:
             warehouse_emails = ["warehouse@obluhc.com"]
-            subject = f"📦 Packing Required (PI #{dispatch.invoice.id})"
-            html = render_to_string("dispatch/warehouse_notification.html", {"dispatch": dispatch})
-            msg = EmailMultiAlternatives(subject=subject, body="Packing Required", from_email="proforma@obluhc.com", to=warehouse_emails)
-            msg.attach_alternative(html, "text/html")
-            msg.send()
-        except Exception as e:
-            print(f"Warehouse email error: {e}")
+            cc_emails = ["abhijay.obluhc@gmail.com", "operations@obluhc.com", "accounts@obluhc.com"]
+            if request.user.email and request.user.email not in cc_emails:
+                cc_emails.append(request.user.email)
 
-        messages.success(request, "Warehouse notified successfully.")
-        return redirect("dispatch_detail", pk=dispatch.id)
+            subject = f"📦 Packing Required (PI #{dispatch.invoice.id}) - {dispatch.invoice.customer.name}"
+            html = render_to_string("dispatch/warehouse_notification.html", {"dispatch": dispatch})
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body="Packing Required",
+                from_email="proforma@oblutools.com",  # Fixed domain
+                to=warehouse_emails,
+                cc=cc_emails  # Added CC
+            )
+            msg.attach_alternative(html, "text/html")
+            msg.send(fail_silently=True)
+        except Exception as e:
+            logger.error(f"Warehouse notification email error: {e}")
 
 
 class WarehousePackingSubmitView(RBACViewMixin, View):
@@ -5876,16 +5883,26 @@ class WarehousePackingSubmitView(RBACViewMixin, View):
             changed_by=request.user
         )
 
+        # Send Notification to Accounts + CC
         try:
-            subject = f"📦 Packing Submitted (PI #{dispatch.invoice.id})"
-            msg = EmailMultiAlternatives(subject=subject, body="Packing submitted.", from_email="proforma@oblutools.com", to=["accounts@obluhc.com"])
-            msg.send()
+            to_emails = ["accounts@obluhc.com"]
+            cc_emails = ["abhijay.obluhc@gmail.com", "operations@obluhc.com"]
+            if request.user.email and request.user.email not in cc_emails:
+                cc_emails.append(request.user.email)
+
+            subject = f"📦 Packing Submitted for Review (PI #{dispatch.invoice.id}) - {dispatch.invoice.customer.name}"
+            body_text = f"Packing photos have been submitted by the warehouse for PI #{dispatch.invoice.id}.\n\nPlease review and approve: https://oblutools.com/proforma/dispatch/{dispatch.id}/"
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=body_text,
+                from_email="proforma@oblutools.com",
+                to=to_emails,
+                cc=cc_emails
+            )
+            msg.send(fail_silently=True)
         except Exception as e:
-            print(f"Accounts notification error: {e}")
-
-        messages.success(request, "Packing submitted successfully.")
-        return redirect("dispatch_detail", pk=dispatch.id)
-
+            logger.error(f"Packing submission email error: {e}")
 
 class ApprovePackingView(RBACViewMixin, View):
     rbac_permission = "proforma.dispatch"
@@ -5911,12 +5928,25 @@ class ApprovePackingView(RBACViewMixin, View):
             changed_by=request.user
         )
 
+        # Send Approval Notification to Warehouse + CC
         try:
-            subject = f"✅ Packing Approved (PI #{dispatch.invoice.id})"
-            msg = EmailMultiAlternatives(subject=subject, body="Packing Approved", from_email="proforma@oblutools.com", to=["warehouse@obluhc.com"])
-            msg.send()
+            to_emails = ["warehouse@obluhc.com"]
+            cc_emails = ["abhijay.obluhc@gmail.com", "operations@obluhc.com",
+                         "accounts@obluhc.com"]
+
+            subject = f"✅ Packing Approved (PI #{dispatch.invoice.id}) - Ready for Carrier Dispatch"
+            body_text = f"Packing has been approved for PI #{dispatch.invoice.id}.\nWarehouse may now hand over to carrier and enter docket number: https://oblutools.com/proforma/dispatch/{dispatch.id}/"
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=body_text,
+                from_email="proforma@oblutools.com",
+                to=to_emails,
+                cc=cc_emails
+            )
+            msg.send(fail_silently=True)
         except Exception as e:
-            print(f"Warehouse packing approved email error: {e}")
+            logger.error(f"Packing approved email error: {e}")
 
         messages.success(request, "Packing approved.")
         return redirect("dispatch_detail", pk=dispatch.id)
@@ -5955,12 +5985,25 @@ class RejectPackingView(RBACViewMixin, View):
             changed_by=request.user
         )
 
+        # Send Rejection Notification to Warehouse + CC
         try:
-            subject = f"❌ Packing Rejected (PI #{dispatch.invoice.id})"
-            msg = EmailMultiAlternatives(subject=subject, body=rejection_remark, from_email="proforma@oblutools.com", to=["warehouse@obluhc.com"])
-            msg.send()
+            to_emails = ["warehouse@obluhc.com"]
+            cc_emails = ["abhijay.obluhc@gmail.com", "accounts@obluhc.com",
+                         "operations@obluhc.com"]
+
+            subject = f"❌ Packing Rejected (PI #{dispatch.invoice.id}) - Re-packing Required"
+            body_text = f"Packing for PI #{dispatch.invoice.id} was rejected by Accounts.\n\nReason:\n{rejection_remark}\n\nPlease check: https://oblutools.com/proforma/dispatch/{dispatch.id}/"
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=body_text,
+                from_email="proforma@oblutools.com",
+                to=to_emails,
+                cc=cc_emails
+            )
+            msg.send(fail_silently=True)
         except Exception as e:
-            print(f"Warehouse packing rejection email error: {e}")
+            logger.error(f"Packing rejection email error: {e}")
 
         messages.warning(request, "Packing rejected.")
         return redirect("dispatch_detail", pk=dispatch.id)
@@ -6026,12 +6069,24 @@ class WarehouseDispatchView(RBACViewMixin, View):
             changed_by=request.user
         )
 
+        # Send Carrier Handover Notification to Accounts + CC
         try:
-            subject = f"🚚 Dispatched (PI #{dispatch.invoice.id})"
-            msg = EmailMultiAlternatives(subject=subject, body=f"Docket Number: {docket_number}", from_email="proforma@oblutools.com", to=["accounts@obluhc.com"])
-            msg.send()
+            to_emails = ["accounts@obluhc.com"]
+            cc_emails = ["abhijay.obluhc@gmail.com", "operations@obluhc.com"]
+
+            subject = f"🚚 Order Dispatched by Warehouse (PI #{dispatch.invoice.id}) - Docket: {docket_number}"
+            body_text = f"PI #{dispatch.invoice.id} has been handed over to carrier.\nDocket Number: {docket_number}\n\nView details: https://oblutools.com/proforma/dispatch/{dispatch.id}/"
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=body_text,
+                from_email="proforma@oblutools.com",
+                to=to_emails,
+                cc=cc_emails
+            )
+            msg.send(fail_silently=True)
         except Exception as e:
-            print(f"Dispatch email error: {e}")
+            logger.error(f"Dispatch marked email error: {e}")
 
         messages.success(request, "Dispatch marked successfully.")
         return redirect("dispatch_detail", pk=dispatch.id)
@@ -6106,21 +6161,39 @@ class CompleteDispatchView(RBACViewMixin, View):
         invoice.dispatched_at = timezone.now()
         invoice.save()
 
+        # Send Completion Notification to Salesperson + CC
         try:
             recipients = []
             if dispatch.requested_by and dispatch.requested_by.email:
                 recipients.append(dispatch.requested_by.email)
+            if not recipients:
+                recipients = ["accounts@obluhc.com"]
 
-            if recipients:
-                subject = f"✅ Order Dispatched (PI #{invoice.id})"
-                body = f"Your dispatch request for PI #{invoice.id} has been completed."
-                msg = EmailMultiAlternatives(subject=subject, body=body, from_email="proforma@oblutools.com", to=recipients)
-                msg.send()
+            cc_emails = ["abhijay.obluhc@gmail.com","operations@obluhc.com",]
+
+            subject = f"🎉 Order Fully Dispatched (PI #{invoice.id}) - {invoice.customer.name}"
+            body_text = f"Your dispatch request for PI #{invoice.id} ({invoice.customer.name}) has been completed.\nDocket Number: {getattr(dispatch, 'warehouse_dispatch', None) and dispatch.warehousedispatch.docket_number or 'N/A'}"
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=body_text,
+                from_email="proforma@oblutools.com",
+                to=recipients,
+                cc=cc_emails
+            )
+            msg.send(fail_silently=True)
         except Exception as e:
-            print(f"Final complete dispatch email error: {e}")
+            logger.error(f"Complete dispatch email error: {e}")
 
         messages.success(request, "Dispatch completed successfully.")
         return redirect("dispatch_detail", pk=dispatch.id)
+
+#price and courier tier management page
+#price and courier tier management page
+
+# ============================================================================
+# MASTER PRODUCT PRICING & TIER MANAGEMENT (ACCOUNTS & SUPERUSER ONLY)
+# ============================================================================
 
 #price and courier tier management page
 #price and courier tier management page
