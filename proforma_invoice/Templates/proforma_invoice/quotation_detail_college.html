@@ -694,7 +694,7 @@
                 <div class="signatory-header">For Oblu Healthcare</div>
                 <div class="signatory-stamp-wrapper">
                     {% if signature_base64 %}
-                    <img src="data:image/png;base64,{{ signature_base64 }}" alt="Signature & Stamp" class="signature-img">
+                    <img src="{{ signature_base64 }}" alt="Signature & Stamp" class="signature-img">
                     {% else %}
                     <div style="height: 45px;"></div>
                     {% endif %}
