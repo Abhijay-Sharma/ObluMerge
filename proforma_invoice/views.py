@@ -5836,6 +5836,8 @@ class NotifyWarehouseView(RBACViewMixin, View):
             msg.send(fail_silently=True)
         except Exception as e:
             logger.error(f"Warehouse notification email error: {e}")
+        messages.success(request, "Warehouse notified successfully.")
+        return redirect("dispatch_detail", pk=dispatch.id)
 
 
 class WarehousePackingSubmitView(RBACViewMixin, View):
@@ -5903,6 +5905,8 @@ class WarehousePackingSubmitView(RBACViewMixin, View):
             msg.send(fail_silently=True)
         except Exception as e:
             logger.error(f"Packing submission email error: {e}")
+        messages.success(request, "Packing submitted successfully.")
+        return redirect("dispatch_detail", pk=dispatch.id)
 
 class ApprovePackingView(RBACViewMixin, View):
     rbac_permission = "proforma.dispatch"
