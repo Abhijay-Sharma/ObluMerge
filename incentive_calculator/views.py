@@ -64,6 +64,40 @@ def get_effective_product_tax_and_msp(item_name, voucher_date, base_tax_rate, ba
     return resolved_tax, base_msp
 
 
+def get_effective_product_tax_and_msp(item_name, voucher_date, base_tax_rate, base_msp):
+    """
+    Centralized resolver for effective tax rate and MSP based on transaction date.
+
+    Business Rules:
+    - All Molekur sheets (including Pro S, One S, Pro Neo, Nova, Template, etc.):
+        * Prior to Oct 28, 2026: 18% GST
+        * From Oct 28, 2026 onwards: 5% GST
+        * MSP always remains base_msp from ProductIncentive.
+    - Non-Molekur products:
+        * Tax rate defaults to base_tax_rate from ProductPrice, falling back to 18% if missing or 0.
+        * MSP remains base_msp from ProductIncentive.
+    """
+    resolved_tax = base_tax_rate if (base_tax_rate and base_tax_rate > 0) else Decimal("18.00")
+    if not item_name:
+        return resolved_tax, base_msp
+
+    name_clean = item_name.strip().lower()
+
+    # All Molekur aligner / thermoforming sheets
+    if "molekur" in name_clean:
+        v_date = voucher_date
+        if isinstance(v_date, datetime):
+            v_date = v_date.date()
+
+        # Date boundary for GST revision: October 28, 2026
+        is_post_oct28 = bool(v_date and v_date >= date(2026, 10, 28))
+        tax_rate = Decimal("5.00") if is_post_oct28 else Decimal("18.00")
+
+        return tax_rate, base_msp
+
+    return resolved_tax, base_msp
+
+
 EXCLUDED_SALESPERSON_NAMES = [
     'abhijay', 'aryan', 'charan', 'danish', 'jackson', 'mukesh',
     'nimit', 'online', 'raman', 'vibhuti', 'online order', 'test1'
