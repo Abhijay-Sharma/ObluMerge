@@ -774,25 +774,25 @@
                             <i class="bi bi-collection text-xs"></i>
                             <span>All Products</span>
                         </a>
-                        <a href="{% url 'categories' %}" class="sidebar-sublink" data-nav-href="{% url 'categories' %}">
-                            <i class="bi bi-grid text-xs"></i>
-                            <span>Categories</span>
-                        </a>
+<!--                        <a href="{% url 'categories' %}" class="sidebar-sublink" data-nav-href="{% url 'categories' %}">-->
+<!--                            <i class="bi bi-grid text-xs"></i>-->
+<!--                            <span>Categories</span>-->
+<!--                        </a>-->
                         {% if request.user|can:"inventory.manage" or user.is_superuser %}
                         <a href="{% url 'add-item' %}" class="sidebar-sublink" data-nav-href="{% url 'add-item' %}">
                             <i class="bi bi-plus-circle text-xs"></i>
                             <span>Add New Item</span>
                         </a>
                         {% endif %}
-                        <a href="{% url 'low_stock_report' %}" class="sidebar-sublink"
-                            data-nav-href="{% url 'low_stock_report' %}">
-                            <i class="bi bi-exclamation-triangle text-amber-600 text-xs"></i>
-                            <span class="text-amber-800 font-semibold">Low Stock Alerts</span>
-                        </a>
-                        <a href="{% url 'dead_stock' %}" class="sidebar-sublink" data-nav-href="{% url 'dead_stock' %}">
-                            <i class="bi bi-hourglass-bottom text-rose-600 text-xs"></i>
-                            <span class="text-rose-800 font-semibold">Dead Stock</span>
-                        </a>
+<!--                        <a href="{% url 'low_stock_report' %}" class="sidebar-sublink"-->
+<!--                            data-nav-href="{% url 'low_stock_report' %}">-->
+<!--                            <i class="bi bi-exclamation-triangle text-amber-600 text-xs"></i>-->
+<!--                            <span class="text-amber-800 font-semibold">Low Stock Alerts</span>-->
+<!--                        </a>-->
+<!--                        <a href="{% url 'dead_stock' %}" class="sidebar-sublink" data-nav-href="{% url 'dead_stock' %}">-->
+<!--                            <i class="bi bi-hourglass-bottom text-rose-600 text-xs"></i>-->
+<!--                            <span class="text-rose-800 font-semibold">Dead Stock</span>-->
+<!--                        </a>-->
                     </div>
                 </div>
                 {% endif %}
