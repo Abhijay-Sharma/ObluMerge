@@ -774,10 +774,10 @@
                             <i class="bi bi-collection text-xs"></i>
                             <span>All Products</span>
                         </a>
-<!--                        <a href="{% url 'categories' %}" class="sidebar-sublink" data-nav-href="{% url 'categories' %}">-->
-<!--                            <i class="bi bi-grid text-xs"></i>-->
-<!--                            <span>Categories</span>-->
-<!--                        </a>-->
+                        <a href="{% url 'categories' %}" class="sidebar-sublink" data-nav-href="{% url 'categories' %}">
+                            <i class="bi bi-grid text-xs"></i>
+                            <span>Categories</span>
+                        </a>
                         {% if request.user|can:"inventory.manage" or user.is_superuser %}
                         <a href="{% url 'add-item' %}" class="sidebar-sublink" data-nav-href="{% url 'add-item' %}">
                             <i class="bi bi-plus-circle text-xs"></i>
