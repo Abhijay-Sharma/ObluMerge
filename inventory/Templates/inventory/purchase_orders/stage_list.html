@@ -1,3 +1,4 @@
+{% load rbac_tags %}
 {% block extra_head %}
 <!-- Google Fonts & Icons -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -146,11 +147,14 @@
 {% endblock %}
 
 <div class="container">
+    {% include "inventory/purchase_orders/_po_navbar.html" %}
     <div class="page-header">
         <h2>Purchase Order Stages</h2>
+        {% if request.user|can:"inventory.po_manage" %}
         <a href="{% url 'po_stage_create' %}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Add Stage
         </a>
+        {% endif %}
     </div>
 
     <div class="table-card">
@@ -195,9 +199,13 @@
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
+                        {% if request.user|can:"inventory.po_manage" %}
                         <a href="{% url 'po_stage_update' stage.pk %}" class="btn-edit">
                             <i class="fas fa-edit"></i> Edit
                         </a>
+                        {% else %}
+                        <span style="color: #94a3b8; font-size: 0.8rem;">View only</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

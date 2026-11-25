@@ -1,4 +1,5 @@
 {% load static %}
+{% load rbac_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
   /* ── Base & Soft Light Palette ────────────────────────────────────── */
   :root {
@@ -744,6 +746,9 @@
 <body>
 
 <div class="po-wrapper">
+  <div class="no-print">
+    {% include "inventory/purchase_orders/_po_navbar.html" %}
+  </div>
 
 {% if products is None %}
 {# ── Category selector ──────────────────────────────────────────────── #}
@@ -753,10 +758,31 @@
   <p>Select a product category to load the purchase order analysis.</p>
   <form method="get">
     <select name="category" required>
-      <option value="" disabled selected>— Select a category —</option>
-      {% for cat in categories %}
-        <option value="{{ cat.id }}">{{ cat.name }}</option>
-      {% endfor %}
+      <option value="" disabled selected>— Select a category or brand —</option>
+      {% if parent_categories %}
+        {% for parent in parent_categories %}
+          <optgroup label="Brand: {{ parent.name }}">
+            <option value="parent:{{ parent.id }}">★ All {{ parent.name }} (Whole Brand)</option>
+            {% for sub in parent.subcategories.all %}
+              <option value="{{ sub.id }}">{{ sub.name }}</option>
+            {% endfor %}
+          </optgroup>
+        {% endfor %}
+      {% endif %}
+
+      {% if standalone_categories %}
+        <optgroup label="Other Categories">
+          {% for cat in standalone_categories %}
+            <option value="{{ cat.id }}">{{ cat.name }}</option>
+          {% endfor %}
+        </optgroup>
+      {% endif %}
+
+      {% if not parent_categories and not standalone_categories %}
+        {% for cat in categories %}
+          <option value="{{ cat.id }}">{{ cat.name }}</option>
+        {% endfor %}
+      {% endif %}
     </select>
     <button type="submit" class="btn-primary">Load Products →</button>
   </form>
@@ -767,14 +793,35 @@
 <div class="po-header">
   <div class="po-title-group">
     <h1>📦 Purchase Order Planner</h1>
-    <span class="badge-cat">{% for cat in categories %}{% if cat.id == selected_category_id %}{{ cat.name }}{% endif %}{% endfor %}</span>
+    <span class="badge-cat">{{ selected_category_label|default:"Products" }}</span>
   </div>
   <div class="right-actions no-print">
     <form method="get" style="display:inline-flex;gap:8px;align-items:center" id="filterForm">
       <select name="category" onchange="this.form.submit()">
-        {% for cat in categories %}
-          <option value="{{ cat.id }}" {% if cat.id == selected_category_id %}selected{% endif %}>{{ cat.name }}</option>
-        {% endfor %}
+        {% if parent_categories %}
+          {% for parent in parent_categories %}
+            <optgroup label="Brand: {{ parent.name }}">
+              <option value="parent:{{ parent.id }}" {% if selected_parent_id == parent.id %}selected{% endif %}>★ All {{ parent.name }} (Whole Brand)</option>
+              {% for sub in parent.subcategories.all %}
+                <option value="{{ sub.id }}" {% if selected_sub_id == sub.id %}selected{% endif %}>{{ sub.name }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        {% endif %}
+
+        {% if standalone_categories %}
+          <optgroup label="Other Categories">
+            {% for cat in standalone_categories %}
+              <option value="{{ cat.id }}" {% if selected_sub_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </optgroup>
+        {% endif %}
+
+        {% if not parent_categories and not standalone_categories %}
+          {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if selected_sub_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        {% endif %}
       </select>
       <input type="hidden" name="hide_dead" id="hideDeadInput" value="{{ hide_dead|yesno:'1,0' }}">
     </form>
@@ -833,6 +880,7 @@
     <td>
       <div class="product-name">{{ p.name }}</div>
       <div class="product-meta-row">
+        {% if can_po_manage %}
         <button
             type="button"
             class="new-product-toggle {% if p.is_new_product %}on{% else %}off{% endif %}"
@@ -846,6 +894,11 @@
                 ○ New Product: OFF
             {% endif %}
         </button>
+        {% else %}
+        <span class="new-product-toggle {% if p.is_new_product %}on{% else %}off{% endif %}" style="cursor: default; opacity: 0.85;">
+            {% if p.is_new_product %}✓ New Product: ON{% else %}○ New Product: OFF{% endif %}
+        </span>
+        {% endif %}
         <span class="unit-badge">{{ p.unit|default:"—" }}</span>
       </div>
     </td>
@@ -2068,4 +2121,4 @@ function openDailySalesModal(month) {
 }
 </script>
 </body>
-</html>
+</html>

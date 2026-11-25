@@ -1,3 +1,4 @@
+{% load rbac_tags %}
 {% block extra_head %}
 <!-- Google Fonts & Icons -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -169,6 +170,7 @@
 {% endblock %}
 
 <div class="container">
+    {% include "inventory/purchase_orders/_po_navbar.html" %}
     <div class="page-header">
         <h2>
             <i class="fas fa-route" style="color:var(--primary)"></i>

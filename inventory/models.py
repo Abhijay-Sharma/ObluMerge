@@ -12,6 +12,31 @@ class User(AbstractUser):
     is_viewer = models.BooleanField(default=True)
     pass
 
+class ParentCategory(models.Model):
+    """
+    Parent category model representing master groups or brands (e.g., Ackuretta, Anycubic, Bambulab, Phrozen).
+    Organizes existing Category records into clean top-level parent groups.
+    """
+    name = models.CharField(max_length=200, unique=True)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Parent Category"
+        verbose_name_plural = "Parent Categories"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def total_products_count(self):
+        """Calculates total products count across all subcategories belonging to this parent."""
+        return sum(sub.inventoryitem_set.count() for sub in self.subcategories.all())
+
+
 class InventoryItem(models.Model):
     name=models.CharField(max_length=200)
     quantity=models.IntegerField(null=True)
@@ -46,6 +71,14 @@ class InventoryItem(models.Model):
         default=False
     )
 
+    @property
+    def display_category_name(self):
+        """Returns readable category name with parent brand if assigned."""
+        if self.category:
+            return str(self.category)
+        return "Uncategorized"
+
+
     def __str__(self):
         return self.name
 
@@ -75,11 +108,23 @@ class InventoryItem(models.Model):
 
 class Category(models.Model):
     name=models.CharField(max_length=200)
+    parent = models.ForeignKey(
+        'ParentCategory',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='subcategories',
+        help_text="Parent master group or brand (e.g. Ackuretta, Anycubic, Bambulab)"
+    )
 
     class Meta:
         verbose_name_plural="Categories"
+        ordering = ['name']
+
 
     def __str__(self):
+        if self.parent:
+            return f"{self.parent.name} → {self.name}"
         return self.name
 
 class MonthlyStockData(models.Model):

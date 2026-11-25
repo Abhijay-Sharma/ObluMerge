@@ -1,4 +1,4 @@
-{% load static %}
+{% load static rbac_tags %}
 
 <html lang="en">
 
@@ -6,40 +6,26 @@
 
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>
         {% block title %}
-            Oblu Inventory
+        Oblu Inventory
         {% endblock %}
     </title>
 
-    <!-- Panda Favicon -->
-    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
-    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}">
-    <link rel="apple-touch-icon" href="{% static 'images/oblu_panda_icon.png' %}">
+    <link rel="icon" type="image/png"
+        href="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vector_panda_logo.png">
 
     <!-- =========================================================
          FONTS & ICONS
          ========================================================= -->
 
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-    >
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
-    >
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- =========================================================
          TAILWIND CSS CDN (with preflight disabled to preserve existing layouts)
@@ -80,17 +66,16 @@
     {% endblock %}
 
     <script>
-        (function() {
-            try {
-                if (localStorage.getItem('oblu_sidebar_collapsed') === 'true' && window.innerWidth > 992) {
-                    document.documentElement.classList.add('sidebar-collapsed');
-                }
-            } catch (e) {}
-        })();
+            (function () {
+                try {
+                    if (localStorage.getItem('oblu_sidebar_collapsed') === 'true' && window.innerWidth > 992) {
+                        document.documentElement.classList.add('sidebar-collapsed');
+                    }
+                } catch (e) { }
+            })();
     </script>
 
     <style>
-
         /* =========================================================
            ROOT
            ========================================================= */
@@ -217,14 +202,20 @@
             left: 0;
             width: var(--sidebar-width);
             height: 100vh;
-            background-color: #f1f5f9 !important; /* Premium clean subtle grey canvas */
+            height: 100dvh;
+            background-color: #f1f5f9 !important;
+            /* Premium clean subtle grey canvas */
             border-right: 1px solid #e2e8f0 !important;
             z-index: 1100;
             display: flex;
             flex-direction: column;
-            transition: transform .28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow .28s ease;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            transition: transform 0.16s cubic-bezier(0, 0, 0.2, 1);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         /* Strict Reset: Remove all native browser button borders, shadows, and backgrounds */
@@ -267,7 +258,8 @@
             border-radius: 10px;
             font-size: 13.5px !important;
             font-weight: 600 !important;
-            color: #1e293b !important; /* Deep slate-800 for maximum readability */
+            color: #1e293b !important;
+            /* Deep slate-800 for maximum readability */
             transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none !important;
             line-height: 1.35;
@@ -341,7 +333,8 @@
             border-radius: 8px;
             font-size: 12.5px !important;
             font-weight: 500 !important;
-            color: #334155 !important; /* Crisp slate-700 */
+            color: #334155 !important;
+            /* Crisp slate-700 */
             text-decoration: none !important;
             transition: all 0.15s ease;
             line-height: 1.3;
@@ -380,16 +373,15 @@
            ========================================================= */
 
         #page-content-wrapper {
-
-            width: calc(100% - var(--sidebar-width));
-
+            flex: 1 1 0%;
+            width: 0;
+            max-width: 100%;
             min-width: 0;
-
             min-height: 100vh;
-
             margin-left: var(--sidebar-width);
-
-            transition: margin-left .28s cubic-bezier(0.4, 0, 0.2, 1), width .28s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+            /* Reflow the dashboard once; animate only the compositor-friendly drawer transform. */
+            transition: none;
         }
 
 
@@ -511,29 +503,28 @@
            PROFESSIONAL COLLAPSIBLE SIDEBAR & TOGGLE BUTTON
            ========================================================= */
 
-        #sidebar-wrapper {
-            transition: transform .28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow .28s ease;
-        }
-
-        #page-content-wrapper {
-            transition: margin-left .28s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Desktop Collapsed Full View State */
+        /* Desktop Collapsed Full View State - GPU Accelerated & Smooth Continuous Flow */
         html.sidebar-collapsed #sidebar-wrapper,
         body.sidebar-collapsed #sidebar-wrapper {
-            transform: translateX(-100%);
+            transform: translate3d(-100%, 0, 0);
             box-shadow: none;
+            pointer-events: none;
         }
 
         html.sidebar-collapsed #page-content-wrapper,
         body.sidebar-collapsed #page-content-wrapper {
             margin-left: 0 !important;
-            width: 100% !important;
+        }
+
+        /* Suppress all internal child transitions during sidebar toggle to prevent lag & slow crawling */
+        html.sidebar-animating #page-content-wrapper *,
+        body.sidebar-animating #page-content-wrapper * {
+            transition: none !important;
         }
 
         /* Sidebar Toggle Button in Navbar */
         .sidebar-toggle-btn {
+            touch-action: manipulation;
             width: 36px;
             height: 36px;
             display: inline-flex;
@@ -608,12 +599,11 @@
             position: fixed;
             inset: 0;
             background: rgba(15, 23, 42, 0.45);
-            backdrop-filter: blur(3px);
-            -webkit-backdrop-filter: blur(3px);
+            /* Backdrop blur repaints the full page while the drawer moves. */
             z-index: 1040;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.25s ease;
+            transition: opacity .16s ease;
         }
 
         .sidebar-backdrop.active {
@@ -630,14 +620,16 @@
             #sidebar-wrapper {
                 width: 280px;
                 max-width: 85vw;
-                transform: translateX(-100%);
+                transform: translate3d(-100%, 0, 0);
                 box-shadow: none;
                 z-index: 1200;
+                transition: transform 0.16s cubic-bezier(0, 0, 0.2, 1);
             }
 
             #sidebar-wrapper.mobile-open {
-                transform: translateX(0);
+                transform: translate3d(0, 0, 0);
                 box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+                pointer-events: auto;
             }
 
             #page-content-wrapper {
@@ -684,7 +676,6 @@
                 overflow-x: hidden;
             }
         }
-
     </style>
 
 </head>
@@ -693,979 +684,995 @@
 <body>
 
 
-<div id="wrapper">
+    <div id="wrapper">
 
 
-    <!-- =========================================================
+        <!-- =========================================================
          STATE-OF-THE-ART SIDEBAR (TAILWIND HTML UI WITH DROPDOWNS)
          ========================================================= -->
-    <aside id="sidebar-wrapper" data-turbo-permanent class="w-[285px] bg-[#f1f5f9] border-r border-slate-200 flex flex-col h-screen fixed top-0 left-0 z-[1100] transition-transform duration-300 ease-in-out select-none shadow-xs">
+        <aside id="sidebar-wrapper" data-turbo-permanent
+            class="w-[285px] bg-[#f1f5f9] border-r border-slate-200 flex flex-col h-screen fixed top-0 left-0 z-[1100] select-none shadow-xs">
 
-        <!-- 1. BRAND HEADER -->
-        <div class="h-[70px] px-4 flex items-center justify-between border-b border-slate-200/80 shrink-0 bg-[#f1f5f9]">
-            <a href="{% url 'dashboard' %}" class="flex items-center gap-3 no-underline group">
-                <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-md shadow-slate-900/15 group-hover:scale-105 transition-transform duration-200 border border-slate-800 shrink-0">
-                        <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vactor_panda_logo_aa.png" alt="OBLU" class="w-full h-full object-cover">
+            <!-- 1. BRAND HEADER -->
+            <div
+                class="h-[70px] px-4 flex items-center justify-between border-b border-slate-200/80 shrink-0 bg-[#f1f5f9]">
+                {% if request.user|can:"inventory.view" or user.is_superuser %}
+                <a href="{% url 'dashboard' %}" class="flex items-center gap-3 no-underline group" title="Oblu Inventory Home">
+                {% else %}
+                <a href="{% url 'po_tracking_list' %}" class="flex items-center gap-3 no-underline group" title="Oblu Inventory Procurement">
+                {% endif %}
+                    <div
+                        class="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-md shadow-slate-900/15 group-hover:scale-105 transition-transform duration-200 border border-slate-800 shrink-0">
+                        <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vactor_panda_logo_aa.png"
+                            alt="OBLU" class="w-full h-full object-cover">
 
-                </div>
-                <div class="flex flex-col min-w-0">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-teal-700 transition-colors">OBLU</span>
-                        <span class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-                    </div>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50/90 px-1.5 py-0.5 rounded border border-teal-200/60 w-fit">Inventory</span>
-                </div>
-            </a>
-
-            <button
-                type="button"
-                class="sidebar-collapse-btn w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 hover:border-slate-300 flex items-center justify-center transition-all cursor-pointer"
-                id="sidebarCollapseInside"
-                title="Collapse Sidebar (Ctrl + B)"
-                aria-label="Collapse Sidebar"
-            >
-                <i class="bi bi-chevron-left text-xs"></i>
-            </button>
-        </div>
-
-        <!-- 2. QUICK SEARCH SHORTCUT -->
-        <div class="p-3 pb-1 shrink-0">
-            <a href="{% url 'products' %}" class="flex items-center justify-between w-full px-3.5 py-2 text-xs font-medium text-slate-500 bg-white hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-all border border-slate-200 no-underline group shadow-2xs">
-                <span class="flex items-center gap-2">
-                    <i class="bi bi-search text-slate-400 group-hover:text-teal-600 transition-colors text-xs"></i>
-                    <span class="text-[12.5px] font-semibold text-slate-600">Search catalog...</span>
-                </span>
-                <span class="px-1.5 py-0.5 text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200 rounded">Ctrl K</span>
-            </a>
-        </div>
-
-        <!-- 3. SCROLLABLE NAVIGATION TREE -->
-        <div class="sidebar-nav flex-1 overflow-y-auto px-3 py-2 space-y-1" style="scrollbar-width: thin;">
-
-            <!-- SECTION: MAIN -->
-            <div class="sidebar-section-label">
-                Core Operations
-            </div>
-
-            <!-- DASHBOARD -->
-            <a
-                href="{% url 'dashboard' %}"
-                class="sidebar-nav-link flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl no-underline group cursor-pointer"
-                data-nav-href="{% url 'dashboard' %}"
-                style="border: 0 !important; outline: none !important;"
-            >
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="nav-icon-box">
-                        <i class="bi bi-speedometer2"></i>
-                    </div>
-                    <span class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Executive Dashboard</span>
-                </div>
-                <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-            </a>
-
-            <!-- DROPDOWN 1: PRODUCTS & CATALOG -->
-            <div class="sidebar-dropdown-group" data-dropdown="products">
-                <button
-                    type="button"
-                    class="sidebar-dropdown-btn flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-left group cursor-pointer"
-                    aria-expanded="false"
-                    style="border: 0 !important; outline: none !important; background: transparent;"
-                >
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="nav-icon-box">
-                            <i class="bi bi-boxes"></i>
-                        </div>
-                        <span class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Catalog & Stock</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <span class="sidebar-badge">740+</span>
-                        <i class="bi bi-chevron-down dropdown-arrow"></i>
-                    </div>
-                </button>
-
-                <div class="sidebar-dropdown-menu hidden pl-7 pr-1 py-1 space-y-1 relative before:content-[''] before:absolute before:left-5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-300">
-                    <a href="{% url 'products' %}" class="sidebar-sublink" data-nav-href="{% url 'products' %}">
-                        <i class="bi bi-collection text-xs"></i>
-                        <span>All Products</span>
-                    </a>
-                    <a href="{% url 'categories' %}" class="sidebar-sublink" data-nav-href="{% url 'categories' %}">
-                        <i class="bi bi-grid text-xs"></i>
-                        <span>Categories</span>
-                    </a>
-                    <a href="{% url 'add-item' %}" class="sidebar-sublink" data-nav-href="{% url 'add-item' %}">
-                        <i class="bi bi-plus-circle text-xs"></i>
-                        <span>Add New Item</span>
-                    </a>
-                    <a href="{% url 'low_stock_report' %}" class="sidebar-sublink" data-nav-href="{% url 'low_stock_report' %}">
-                        <i class="bi bi-exclamation-triangle text-amber-600 text-xs"></i>
-                        <span class="text-amber-800 font-semibold">Low Stock Alerts</span>
-                    </a>
-                    <a href="{% url 'dead_stock' %}" class="sidebar-sublink" data-nav-href="{% url 'dead_stock' %}">
-                        <i class="bi bi-hourglass-bottom text-rose-600 text-xs"></i>
-                        <span class="text-rose-800 font-semibold">Dead Stock</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- SECTION: PROCUREMENT -->
-            <div class="sidebar-section-label">
-                Procurement & Supply
-            </div>
-
-            <!-- DROPDOWN 2: PURCHASE ORDERS -->
-            <div class="sidebar-dropdown-group" data-dropdown="purchase_orders">
-                <button
-                    type="button"
-                    class="sidebar-dropdown-btn flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-left group cursor-pointer"
-                    aria-expanded="false"
-                    style="border: 0 !important; outline: none !important; background: transparent;"
-                >
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="nav-icon-box">
-                            <i class="bi bi-cart-check"></i>
-                        </div>
-                        <span class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Purchase Orders</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <span class="sidebar-badge text-sky-700 bg-sky-50 border-sky-200">PO</span>
-                        <i class="bi bi-chevron-down dropdown-arrow"></i>
-                    </div>
-                </button>
-
-                <div class="sidebar-dropdown-menu hidden pl-7 pr-1 py-1 space-y-1 relative before:content-[''] before:absolute before:left-5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-300">
-                    <a href="{% url 'purchase_order' %}" class="sidebar-sublink" data-nav-href="{% url 'purchase_order' %}">
-                        <i class="bi bi-clipboard-data text-xs"></i>
-                        <span>PO Planner</span>
-                    </a>
-                    <a href="{% url 'tally_po_list' %}" class="sidebar-sublink" data-nav-href="{% url 'tally_po_list' %}">
-                        <i class="bi bi-journal-text text-xs"></i>
-                        <span>Tally Purchase Orders</span>
-                    </a>
-                    <a href="{% url 'po_tracking_list' %}" class="sidebar-sublink" data-nav-href="{% url 'po_tracking_list' %}">
-                        <i class="bi bi-truck text-xs"></i>
-                        <span>Tracked Shipments</span>
-                    </a>
-                    <a href="{% url 'po_stage_list' %}" class="sidebar-sublink" data-nav-href="{% url 'po_stage_list' %}">
-                        <i class="bi bi-diagram-3 text-xs"></i>
-                        <span>Pipeline Stages</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- SECTION: ANALYTICS -->
-            <div class="sidebar-section-label">
-                Intelligence & Reports
-            </div>
-
-            <!-- DROPDOWN 3: ANALYTICS & BI -->
-            <div class="sidebar-dropdown-group" data-dropdown="analytics">
-                <button
-                    type="button"
-                    class="sidebar-dropdown-btn flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-left group cursor-pointer"
-                    aria-expanded="false"
-                    style="border: 0 !important; outline: none !important; background: transparent;"
-                >
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="nav-icon-box">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
-                        <span class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Analytics & BI</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <span class="sidebar-badge text-purple-700 bg-purple-50 border-purple-200">BI</span>
-                        <i class="bi bi-chevron-down dropdown-arrow"></i>
-                    </div>
-                </button>
-
-                <div class="sidebar-dropdown-menu hidden pl-7 pr-1 py-1 space-y-1 relative before:content-[''] before:absolute before:left-5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-300">
-                    <a href="{% url 'product_contribution_summary' %}" class="sidebar-sublink" data-nav-href="{% url 'product_contribution_summary' %}">
-                        <i class="bi bi-pie-chart text-xs"></i>
-                        <span>Sales Contribution</span>
-                    </a>
-                    <a href="{% url 'product_analytics_category' %}" class="sidebar-sublink" data-nav-href="{% url 'product_analytics_category' %}">
-                        <i class="bi bi-bar-chart-steps text-xs"></i>
-                        <span>Category Analytics</span>
-                    </a>
-                    <a href="{% url 'sales_comparison' %}" class="sidebar-sublink" data-nav-href="{% url 'sales_comparison' %}">
-                        <i class="bi bi-arrow-left-right text-xs"></i>
-                        <span>Sales Comparison</span>
-                    </a>
-                    <a href="{% url 'inventory_report' %}" class="sidebar-sublink" data-nav-href="{% url 'inventory_report' %}">
-                        <i class="bi bi-file-earmark-bar-graph text-xs"></i>
-                        <span>Inventory Report</span>
-                    </a>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- 4. SIDEBAR USER PROFILE FOOTER -->
-        <div class="sidebar-bottom p-3 border-t border-slate-200 shrink-0 bg-[#e9eef5]">
-            <div class="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-white/70 hover:bg-white transition-all border border-slate-200/80 shadow-2xs">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="w-8 h-8 rounded-xl bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0">
-                        {{ user.username|default:"A"|slice:":2"|upper }}
                     </div>
                     <div class="flex flex-col min-w-0">
-                        <span class="text-xs font-bold text-slate-800 truncate">{{ user.username|default:"Admin" }}</span>
-                        <span class="text-[10px] font-medium text-slate-500">
-                            {% if user.is_accountant %}Accountant{% elif user.is_superuser %}Superadmin{% else %}Manager{% endif %}
-                        </span>
+                        <div class="flex items-center gap-1.5">
+                            <span
+                                class="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-teal-700 transition-colors">OBLU</span>
+                            <span class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                        </div>
+                        <span
+                            class="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50/90 px-1.5 py-0.5 rounded border border-teal-200/60 w-fit">Inventory</span>
                     </div>
+                </a>
+
+                <button type="button"
+                    class="sidebar-collapse-btn w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 hover:border-slate-300 flex items-center justify-center transition-all cursor-pointer"
+                    id="sidebarCollapseInside" title="Collapse Sidebar (Ctrl + B)" aria-label="Collapse Sidebar">
+                    <i class="bi bi-chevron-left text-xs"></i>
+                </button>
+            </div>
+
+            <!-- 2. SCROLLABLE NAVIGATION TREE -->
+            <div class="sidebar-nav flex-1 overflow-y-auto px-3 py-2 space-y-1" style="scrollbar-width: thin;">
+
+                {% if request.user|can:"inventory.view" or user.is_superuser %}
+                <!-- SECTION: MAIN -->
+                <div class="sidebar-section-label">
+                    Core Operations
                 </div>
 
-                <form action="{% url 'logout' %}" method="POST" class="m-0">
-                    {% csrf_token %}
-                    <button
-                        type="submit"
-                        class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 flex items-center justify-center transition-all cursor-pointer"
-                        title="Sign Out"
-                        aria-label="Logout"
-                        style="border: 1px solid #e2e8f0 !important;"
-                    >
-                        <i class="bi bi-box-arrow-right text-xs"></i>
+                <!-- DASHBOARD -->
+                <a href="{% url 'dashboard' %}"
+                    class="sidebar-nav-link flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl no-underline group cursor-pointer"
+                    data-nav-href="{% url 'dashboard' %}" style="border: 0 !important; outline: none !important;">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="nav-icon-box">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
+                        <span
+                            class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Dashboard</span>
+                    </div>
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                </a>
+
+                <!-- DROPDOWN 1: PRODUCTS & CATALOG -->
+                <div class="sidebar-dropdown-group" data-dropdown="products">
+                    <button type="button"
+                        class="sidebar-dropdown-btn flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-left group cursor-pointer"
+                        aria-expanded="false"
+                        style="border: 0 !important; outline: none !important; background: transparent;">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="nav-icon-box">
+                                <i class="bi bi-boxes"></i>
+                            </div>
+                            <span
+                                class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Catalog
+                                & Stock</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="sidebar-badge">740+</span>
+                            <i class="bi bi-chevron-down dropdown-arrow"></i>
+                        </div>
                     </button>
-                </form>
+
+                    <div
+                        class="sidebar-dropdown-menu hidden pl-7 pr-1 py-1 space-y-1 relative before:content-[''] before:absolute before:left-5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-300">
+                        <a href="{% url 'products' %}" class="sidebar-sublink" data-nav-href="{% url 'products' %}">
+                            <i class="bi bi-collection text-xs"></i>
+                            <span>All Products</span>
+                        </a>
+                        <a href="{% url 'categories' %}" class="sidebar-sublink" data-nav-href="{% url 'categories' %}">
+                            <i class="bi bi-grid text-xs"></i>
+                            <span>Categories</span>
+                        </a>
+                        {% if request.user|can:"inventory.manage" or user.is_superuser %}
+                        <a href="{% url 'add-item' %}" class="sidebar-sublink" data-nav-href="{% url 'add-item' %}">
+                            <i class="bi bi-plus-circle text-xs"></i>
+                            <span>Add New Item</span>
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'low_stock_report' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'low_stock_report' %}">
+                            <i class="bi bi-exclamation-triangle text-amber-600 text-xs"></i>
+                            <span class="text-amber-800 font-semibold">Low Stock Alerts</span>
+                        </a>
+                        <a href="{% url 'dead_stock' %}" class="sidebar-sublink" data-nav-href="{% url 'dead_stock' %}">
+                            <i class="bi bi-hourglass-bottom text-rose-600 text-xs"></i>
+                            <span class="text-rose-800 font-semibold">Dead Stock</span>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if request.user|can:"inventory.po_view" or user.is_superuser %}
+                <!-- SECTION: PROCUREMENT -->
+                <div class="sidebar-section-label">
+                    Procurement & Supply
+                </div>
+
+                <!-- DROPDOWN 2: PURCHASE ORDERS -->
+                <div class="sidebar-dropdown-group" data-dropdown="purchase_orders">
+                    <button type="button"
+                        class="sidebar-dropdown-btn flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-left group cursor-pointer"
+                        aria-expanded="false"
+                        style="border: 0 !important; outline: none !important; background: transparent;">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="nav-icon-box">
+                                <i class="bi bi-cart-check"></i>
+                            </div>
+                            <span
+                                class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Purchase
+                                Orders</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="sidebar-badge text-sky-700 bg-sky-50 border-sky-200">PO</span>
+                            <i class="bi bi-chevron-down dropdown-arrow"></i>
+                        </div>
+                    </button>
+
+                    <div
+                        class="sidebar-dropdown-menu hidden pl-7 pr-1 py-1 space-y-1 relative before:content-[''] before:absolute before:left-5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-300">
+                        <a href="{% url 'purchase_order' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'purchase_order' %}">
+                            <i class="bi bi-clipboard-data text-xs"></i>
+                            <span>PO Planner</span>
+                        </a>
+                        <a href="{% url 'tally_po_list' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'tally_po_list' %}">
+                            <i class="bi bi-journal-text text-xs"></i>
+                            <span>Tally Purchase Orders</span>
+                        </a>
+                        <a href="{% url 'po_tracking_list' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'po_tracking_list' %}">
+                            <i class="bi bi-truck text-xs"></i>
+                            <span>Tracked Shipments</span>
+                        </a>
+                        <a href="{% url 'po_stage_list' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'po_stage_list' %}">
+                            <i class="bi bi-diagram-3 text-xs"></i>
+                            <span>Pipeline Stages</span>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if request.user|can:"inventory.analytics" or user.is_superuser %}
+                <!-- SECTION: ANALYTICS -->
+                <div class="sidebar-section-label">
+                    Intelligence & Reports
+                </div>
+
+                <!-- DROPDOWN 3: ANALYTICS & BI -->
+                <div class="sidebar-dropdown-group" data-dropdown="analytics">
+                    <button type="button"
+                        class="sidebar-dropdown-btn flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-left group cursor-pointer"
+                        aria-expanded="false"
+                        style="border: 0 !important; outline: none !important; background: transparent;">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="nav-icon-box">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </div>
+                            <span
+                                class="truncate font-semibold text-[13px] text-slate-800 group-hover:text-slate-950">Analytics
+                                & BI</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="sidebar-badge text-purple-700 bg-purple-50 border-purple-200">BI</span>
+                            <i class="bi bi-chevron-down dropdown-arrow"></i>
+                        </div>
+                    </button>
+
+                    <div
+                        class="sidebar-dropdown-menu hidden pl-7 pr-1 py-1 space-y-1 relative before:content-[''] before:absolute before:left-5 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-300">
+                        <a href="{% url 'product_contribution_summary' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'product_contribution_summary' %}">
+                            <i class="bi bi-pie-chart text-xs"></i>
+                            <span>Sales Contribution</span>
+                        </a>
+                        <a href="{% url 'product_analytics_category' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'product_analytics_category' %}">
+                            <i class="bi bi-bar-chart-steps text-xs"></i>
+                            <span>Category Analytics</span>
+                        </a>
+                        <a href="{% url 'sales_comparison' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'sales_comparison' %}">
+                            <i class="bi bi-arrow-left-right text-xs"></i>
+                            <span>Sales Comparison</span>
+                        </a>
+                        <a href="{% url 'inventory_report' %}" class="sidebar-sublink"
+                            data-nav-href="{% url 'inventory_report' %}">
+                            <i class="bi bi-file-earmark-bar-graph text-xs"></i>
+                            <span>Inventory Report</span>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
-        </div>
 
-    </aside>
+            <!-- 4. SIDEBAR USER PROFILE FOOTER -->
+            <div class="sidebar-bottom p-3 border-t border-slate-200 shrink-0 bg-[#e9eef5]">
+                <div
+                    class="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-white/70 hover:bg-white transition-all border border-slate-200/80 shadow-2xs">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div
+                            class="w-8 h-8 rounded-xl bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0">
+                            {{ user.username|default:"A"|slice:":2"|upper }}
+                        </div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-xs font-bold text-slate-800 truncate">{{ user.username|default:"Admin" }}</span>
+                            <span class="text-[10px] font-medium text-slate-500">
+                                {% if user.is_superuser %}Superadmin{% elif "admin" in user_roles %}Admin{% elif role_display_name and role_display_name != "User" %}{{ role_display_name }}{% elif user.is_accountant %}Accountant{% else %}Manager{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <form action="{% url 'logout' %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 flex items-center justify-center transition-all cursor-pointer"
+                            title="Sign Out" aria-label="Logout" style="border: 1px solid #e2e8f0 !important;">
+                            <i class="bi bi-box-arrow-right text-xs"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </aside>
 
 
-    <!-- =========================================================
+        <!-- =========================================================
          PAGE CONTENT
          ========================================================= -->
 
-    <main id="page-content-wrapper">
+        <main id="page-content-wrapper">
 
 
-        <!-- TOP NAVBAR -->
+            <!-- TOP NAVBAR -->
 
-        <nav class="top-navbar">
-
-
-            <div class="d-flex align-items-center flex-grow-1 min-w-0 me-2">
-
-                <button
-                    type="button"
-                    class="sidebar-toggle-btn"
-                    id="sidebarToggle"
-                    title="Toggle Navigation (Ctrl + B)"
-                    aria-label="Toggle Navigation"
-                >
-                    <i class="bi bi-layout-sidebar-inset"></i>
-                </button>
-
-                <!-- Mobile Brand Emblem (Visible on small screens) -->
-                <a href="{% url 'dashboard' %}" class="d-inline-flex d-md-none align-items-center gap-1.5 me-2.5 text-decoration-none shrink-0" title="Oblu Inventory">
-                    <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center shadow-xs border border-slate-800">
-                        <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vactor_panda_logo_aa.png" alt="OBLU" class="w-full h-full object-cover">                    </div>
-                    <span class="text-xs font-black tracking-tight text-slate-800">OBLU</span>
-                </a>
-
-                <nav aria-label="breadcrumb" class="min-w-0 overflow-hidden text-nowrap">
-
-                    <ol class="breadcrumb mb-0 flex-nowrap text-truncate">
-
-                        <li class="breadcrumb-item shrink-0">
-
-                            <a href="/">
-                                Home
-                            </a>
-
-                        </li>
+            <nav class="top-navbar">
 
 
-                        <li class="breadcrumb-item active text-truncate">
+                <div class="d-flex align-items-center flex-grow-1 min-w-0 me-2">
 
-                            {% block breadcrumb %}
+                    <button type="button" class="sidebar-toggle-btn" id="sidebarToggle"
+                        title="Toggle Navigation (Ctrl + B)" aria-label="Toggle Navigation">
+                        <i class="bi bi-layout-sidebar-inset"></i>
+                    </button>
+
+                    <!-- Mobile Brand Emblem (Visible on small screens) -->
+                    <a href="{% url 'dashboard' %}"
+                        class="d-inline-flex d-md-none align-items-center gap-1.5 me-2.5 text-decoration-none shrink-0"
+                        title="Oblu Inventory">
+                        <div
+                            class="w-7 h-7 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center shadow-xs border border-slate-800">
+                            <img src="https://oblu-static-media.s3.ap-south-1.amazonaws.com/vactor_panda_logo_aa.png"
+                                alt="OBLU" class="w-full h-full object-cover">
+                        </div>
+                        <span class="text-xs font-black tracking-tight text-slate-800">OBLU</span>
+                    </a>
+
+                    <nav aria-label="breadcrumb" class="min-w-0 overflow-hidden text-nowrap">
+
+                        <ol class="breadcrumb mb-0 flex-nowrap text-truncate">
+
+                            <li class="breadcrumb-item shrink-0">
+
+                                <a href="/">
+                                    Home
+                                </a>
+
+                            </li>
+
+
+                            <li class="breadcrumb-item active text-truncate">
+
+                                {% block breadcrumb %}
                                 Inventory
-                            {% endblock %}
+                                {% endblock %}
 
-                        </li>
+                            </li>
 
-                    </ol>
+                        </ol>
 
-                </nav>
-
-            </div>
-
-
-            <!-- USER -->
-
-            <div class="top-user ms-auto shrink-0">
-
-                <span class="top-user-name">
-
-                    Welcome,
-
-                    <strong>
-                        {{ user.username }}
-                    </strong>
-
-                </span>
-
-
-                <div class="user-avatar" title="{{ user.username }}">
-
-                    {{ user.username|first|upper }}
+                    </nav>
 
                 </div>
 
+
+                <!-- USER -->
+
+                <div class="top-user ms-auto shrink-0">
+
+                    <span class="top-user-name">
+
+                        Welcome,
+
+                        <strong>
+                            {{ user.username }}
+                        </strong>
+
+                    </span>
+
+
+                    <div class="user-avatar" title="{{ user.username }}">
+
+                        {{ user.username|first|upper }}
+
+                    </div>
+
+                </div>
+
+
+            </nav>
+
+
+            <!-- MAIN CONTENT -->
+
+            <div class="inventory-content">
+
+                {% block content %}
+                {% endblock content %}
+
             </div>
 
 
-        </nav>
+        </main>
 
 
-        <!-- MAIN CONTENT -->
-
-        <div class="inventory-content">
-
-            {% block content %}
-            {% endblock content %}
-
-        </div>
+    </div>
 
 
-    </main>
-
-
-</div>
-
-
-<!-- ============================================================
+    <!-- ============================================================
      BOOTSTRAP
      ============================================================ -->
 
-<script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    </script>
 
 
-<script>
+    <script>
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-
-        /* =====================================================
-           ELEMENTS
-           ===================================================== */
-
-        const poToggle =
-            document.getElementById(
-                "poNavToggle"
-            );
+        document.addEventListener(
+            "DOMContentLoaded",
+            function () {
 
 
-        const poSubmenu =
-            document.getElementById(
-                "poSubmenu"
-            );
+                /* =====================================================
+                   ELEMENTS
+                   ===================================================== */
 
-
-        const poLinks =
-            document.querySelectorAll(
-                ".po-sub-link"
-            );
-
-
-        const mainLinks =
-            document.querySelectorAll(
-                ".sidebar-link"
-            );
-
-
-        const currentPath =
-            window.location.pathname;
-
-
-        /* =====================================================
-           PURCHASE ORDER URL DETECTION
-           ===================================================== */
-
-        const isPurchaseOrderPage =
-            currentPath.includes(
-                "/purchase-order/"
-            ) ||
-            currentPath.includes(
-                "/purchase-orders/"
-            );
-
-
-        /* =====================================================
-           OPEN/CLOSE PO DROPDOWN
-           ===================================================== */
-
-        function openPONav() {
-
-            if (!poToggle || !poSubmenu) {
-                return;
-            }
-
-            poToggle.classList.add("open");
-
-            poSubmenu.classList.add("open");
-        }
-
-
-        function closePONav() {
-
-            if (!poToggle || !poSubmenu) {
-                return;
-            }
-
-            poToggle.classList.remove("open");
-
-            poSubmenu.classList.remove("open");
-        }
-
-
-        /* =====================================================
-           AUTOMATICALLY OPEN ON PO PAGES
-           ===================================================== */
-
-        if (isPurchaseOrderPage) {
-
-            openPONav();
-
-        }
-
-
-        /* =====================================================
-           PO TOGGLE CLICK
-           ===================================================== */
-
-        if (poToggle) {
-
-            poToggle.addEventListener(
-                "click",
-                function () {
-
-                    poToggle.classList.toggle(
-                        "open"
+                const poToggle =
+                    document.getElementById(
+                        "poNavToggle"
                     );
 
-                    poSubmenu.classList.toggle(
-                        "open"
+
+                const poSubmenu =
+                    document.getElementById(
+                        "poSubmenu"
+                    );
+
+
+                const poLinks =
+                    document.querySelectorAll(
+                        ".po-sub-link"
+                    );
+
+
+                const mainLinks =
+                    document.querySelectorAll(
+                        ".sidebar-link"
+                    );
+
+
+                const currentPath =
+                    window.location.pathname;
+
+
+                /* =====================================================
+                   PURCHASE ORDER URL DETECTION
+                   ===================================================== */
+
+                const isPurchaseOrderPage =
+                    currentPath.includes(
+                        "/purchase-order/"
+                    ) ||
+                    currentPath.includes(
+                        "/purchase-orders/"
+                    );
+
+
+                /* =====================================================
+                   OPEN/CLOSE PO DROPDOWN
+                   ===================================================== */
+
+                function openPONav() {
+
+                    if (!poToggle || !poSubmenu) {
+                        return;
+                    }
+
+                    poToggle.classList.add("open");
+
+                    poSubmenu.classList.add("open");
+                }
+
+
+                function closePONav() {
+
+                    if (!poToggle || !poSubmenu) {
+                        return;
+                    }
+
+                    poToggle.classList.remove("open");
+
+                    poSubmenu.classList.remove("open");
+                }
+
+
+                /* =====================================================
+                   AUTOMATICALLY OPEN ON PO PAGES
+                   ===================================================== */
+
+                if (isPurchaseOrderPage) {
+
+                    openPONav();
+
+                }
+
+
+                /* =====================================================
+                   PO TOGGLE CLICK
+                   ===================================================== */
+
+                if (poToggle) {
+
+                    poToggle.addEventListener(
+                        "click",
+                        function () {
+
+                            poToggle.classList.toggle(
+                                "open"
+                            );
+
+                            poSubmenu.classList.toggle(
+                                "open"
+                            );
+
+                        }
                     );
 
                 }
-            );
-
-        }
 
 
-        /* =====================================================
-           DETERMINE ACTIVE PO PAGE
-           ===================================================== */
+                /* =====================================================
+                   DETERMINE ACTIVE PO PAGE
+                   ===================================================== */
 
-        if (isPurchaseOrderPage) {
-
-
-            poLinks.forEach(
-                function (link) {
-
-                    const page =
-                        link.getAttribute(
-                            "data-po-page"
-                        );
+                if (isPurchaseOrderPage) {
 
 
-                    /*
-                     * Main PO planner
-                     */
+                    poLinks.forEach(
+                        function (link) {
 
-                    if (
-                        page ===
-                        "purchase_order" &&
-                        currentPath.includes(
-                            "/purchase-order/"
-                        )
-                    ) {
-
-                        link.classList.add(
-                            "active"
-                        );
-
-                    }
+                            const page =
+                                link.getAttribute(
+                                    "data-po-page"
+                                );
 
 
-                    /*
-                     * Tally PO pages
-                     */
+                            /*
+                             * Main PO planner
+                             */
 
-                    if (
-                        page ===
-                        "tally_po_list" &&
-                        (
-                            currentPath.includes(
-                                "/purchase-orders/tally/"
-                            ) ||
-                            currentPath.includes(
-                                "/purchase-orders/tally"
-                            )
-                        )
-                    ) {
+                            if (
+                                page ===
+                                "purchase_order" &&
+                                currentPath.includes(
+                                    "/purchase-order/"
+                                )
+                            ) {
 
-                        link.classList.add(
-                            "active"
-                        );
+                                link.classList.add(
+                                    "active"
+                                );
 
-                    }
+                            }
 
 
-                    /*
-                     * Tracked PO pages
-                     */
+                            /*
+                             * Tally PO pages
+                             */
 
-                    if (
-                        page ===
-                        "po_tracking_list" &&
-                        (
-                            currentPath.includes(
-                                "/purchase-orders/tracked/"
-                            ) ||
-                            currentPath.includes(
-                                "/purchase-orders/tracked"
-                            )
-                        )
-                    ) {
+                            if (
+                                page ===
+                                "tally_po_list" &&
+                                (
+                                    currentPath.includes(
+                                        "/purchase-orders/tally/"
+                                    ) ||
+                                    currentPath.includes(
+                                        "/purchase-orders/tally"
+                                    )
+                                )
+                            ) {
 
-                        link.classList.add(
-                            "active"
-                        );
+                                link.classList.add(
+                                    "active"
+                                );
 
-                    }
+                            }
 
 
-                    /*
-                     * Stage pages
-                     */
+                            /*
+                             * Tracked PO pages
+                             */
 
-                    if (
-                        page ===
-                        "po_stage_list" &&
-                        currentPath.includes(
-                            "/purchase-orders/stages"
-                        )
-                    ) {
+                            if (
+                                page ===
+                                "po_tracking_list" &&
+                                (
+                                    currentPath.includes(
+                                        "/purchase-orders/tracked/"
+                                    ) ||
+                                    currentPath.includes(
+                                        "/purchase-orders/tracked"
+                                    )
+                                )
+                            ) {
 
-                        link.classList.add(
-                            "active"
-                        );
+                                link.classList.add(
+                                    "active"
+                                );
 
-                    }
+                            }
+
+
+                            /*
+                             * Stage pages
+                             */
+
+                            if (
+                                page ===
+                                "po_stage_list" &&
+                                currentPath.includes(
+                                    "/purchase-orders/stages"
+                                )
+                            ) {
+
+                                link.classList.add(
+                                    "active"
+                                );
+
+                            }
+
+                        }
+                    );
 
                 }
-            );
-
-        }
 
 
-        /* =====================================================
-           MAIN NAVIGATION ACTIVE STATE
-           ===================================================== */
+                /* =====================================================
+                   MAIN NAVIGATION ACTIVE STATE
+                   ===================================================== */
 
-        if (!isPurchaseOrderPage) {
+                if (!isPurchaseOrderPage) {
 
-            mainLinks.forEach(
-                function (link) {
+                    mainLinks.forEach(
+                        function (link) {
 
-                    const target =
-                        link.getAttribute(
-                            "data-main-url"
-                        );
-
-
-                    /*
-                     * Dashboard
-                     */
-
-                    if (
-                        target ===
-                        "dashboard" &&
-                        (
-                            currentPath.includes(
-                                "/inventory/dashboard/"
-                            ) ||
-                            currentPath ===
-                                "/inventory/"
-                        )
-                    ) {
-
-                        link.classList.add(
-                            "active"
-                        );
-
-                    }
+                            const target =
+                                link.getAttribute(
+                                    "data-main-url"
+                                );
 
 
-                    /*
-                     * Products
-                     */
+                            /*
+                             * Dashboard
+                             */
 
-                    if (
-                        target ===
-                        "products" &&
-                        currentPath.includes(
-                            "/inventory/product"
-                        )
-                    ) {
+                            if (
+                                target ===
+                                "dashboard" &&
+                                (
+                                    currentPath.includes(
+                                        "/inventory/dashboard/"
+                                    ) ||
+                                    currentPath ===
+                                    "/inventory/"
+                                )
+                            ) {
 
-                        link.classList.add(
-                            "active"
-                        );
+                                link.classList.add(
+                                    "active"
+                                );
 
-                    }
-
-
-                    /*
-                     * Categories
-                     */
-
-                    if (
-                        target ===
-                        "categories" &&
-                        currentPath.includes(
-                            "/inventory/categories"
-                        )
-                    ) {
-
-                        link.classList.add(
-                            "active"
-                        );
-
-                    }
+                            }
 
 
-                    /*
-                     * Reports
-                     */
+                            /*
+                             * Products
+                             */
 
-                    if (
-                        target ===
-                        "inventory_report" &&
-                        currentPath.includes(
-                            "/inventory/report"
-                        )
-                    ) {
+                            if (
+                                target ===
+                                "products" &&
+                                currentPath.includes(
+                                    "/inventory/product"
+                                )
+                            ) {
 
-                        link.classList.add(
-                            "active"
-                        );
+                                link.classList.add(
+                                    "active"
+                                );
 
-                    }
-
-
-                    /*
-                     * Sales Analytics
-                     */
-
-                    if (
-                        target ===
-                        "product_contribution_summary" &&
-                        currentPath.includes(
-                            "/inventory/analytics"
-                        )
-                    ) {
-
-                        link.classList.add(
-                            "active"
-                        );
-
-                    }
+                            }
 
 
-                    /*
-                     * Dead Stock
-                     */
+                            /*
+                             * Categories
+                             */
 
-                    if (
-                        target ===
-                        "dead_stock" &&
-                        currentPath.includes(
-                            "/inventory/dead-stock"
-                        )
-                    ) {
+                            if (
+                                target ===
+                                "categories" &&
+                                currentPath.includes(
+                                    "/inventory/categories"
+                                )
+                            ) {
 
-                        link.classList.add(
-                            "active"
-                        );
+                                link.classList.add(
+                                    "active"
+                                );
 
-                    }
+                            }
+
+
+                            /*
+                             * Reports
+                             */
+
+                            if (
+                                target ===
+                                "inventory_report" &&
+                                currentPath.includes(
+                                    "/inventory/report"
+                                )
+                            ) {
+
+                                link.classList.add(
+                                    "active"
+                                );
+
+                            }
+
+
+                            /*
+                             * Sales Analytics
+                             */
+
+                            if (
+                                target ===
+                                "product_contribution_summary" &&
+                                currentPath.includes(
+                                    "/inventory/analytics"
+                                )
+                            ) {
+
+                                link.classList.add(
+                                    "active"
+                                );
+
+                            }
+
+
+                            /*
+                             * Dead Stock
+                             */
+
+                            if (
+                                target ===
+                                "dead_stock" &&
+                                currentPath.includes(
+                                    "/inventory/dead-stock"
+                                )
+                            ) {
+
+                                link.classList.add(
+                                    "active"
+                                );
+
+                            }
+
+                        }
+                    );
 
                 }
-            );
-
-        }
 
 
-        /* =====================================================
-           PROFESSIONAL SIDEBAR CONTROLLER (DESKTOP & MOBILE)
-           ===================================================== */
+                /* =====================================================
+                   PROFESSIONAL SIDEBAR CONTROLLER (DESKTOP & MOBILE)
+                   ===================================================== */
 
-        const sidebarToggle = document.getElementById("sidebarToggle");
-        const sidebarCollapseInside = document.getElementById("sidebarCollapseInside");
-        const sidebar = document.getElementById("sidebar-wrapper");
-        const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+                const BREAKPOINT = 992;
 
-        const BREAKPOINT = 992;
+                function getSidebar() {
+                    return document.getElementById("sidebar-wrapper");
+                }
 
-        function isMobile() {
-            return window.innerWidth <= BREAKPOINT;
-        }
+                function getSidebarBackdrop() {
+                    return document.getElementById("sidebarBackdrop");
+                }
 
-        function isCollapsed() {
-            return document.body.classList.contains("sidebar-collapsed") ||
-                   document.documentElement.classList.contains("sidebar-collapsed");
-        }
+                function isMobile() {
+                    return window.innerWidth <= BREAKPOINT;
+                }
 
-        function updateToggleIcon() {
-            const mobile = isMobile();
-            if (sidebarToggle) {
-                const icon = sidebarToggle.querySelector("i");
-                if (icon) {
-                    if (mobile) {
-                        const isOpen = sidebar && sidebar.classList.contains("mobile-open");
-                        icon.className = isOpen ? "bi bi-x-lg" : "bi bi-list";
-                        sidebarToggle.setAttribute("title", isOpen ? "Close Navigation" : "Open Navigation");
-                        sidebarToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+                function isCollapsed() {
+                    return document.body.classList.contains("sidebar-collapsed") ||
+                        document.documentElement.classList.contains("sidebar-collapsed");
+                }
+
+                function updateToggleIcon() {
+                    const mobile = isMobile();
+                    const sidebarToggle = document.getElementById("sidebarToggle");
+                    const sidebarCollapseInside = document.getElementById("sidebarCollapseInside");
+                    const sidebar = getSidebar();
+                    if (sidebarToggle) {
+                        const icon = sidebarToggle.querySelector("i");
+                        if (icon) {
+                            if (mobile) {
+                                const isOpen = sidebar && sidebar.classList.contains("mobile-open");
+                                icon.className = isOpen ? "bi bi-x-lg" : "bi bi-list";
+                                sidebarToggle.setAttribute("title", isOpen ? "Close Navigation" : "Open Navigation");
+                                sidebarToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+                            } else {
+                                const collapsed = isCollapsed();
+                                icon.className = collapsed ? "bi bi-layout-sidebar" : "bi bi-layout-sidebar-inset";
+                                sidebarToggle.setAttribute("title", collapsed ? "Expand Sidebar (Ctrl + B)" : "Collapse Sidebar (Ctrl + B)");
+                                sidebarToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+                            }
+                        }
+                    }
+
+                    if (sidebarCollapseInside) {
+                        const insideIcon = sidebarCollapseInside.querySelector("i");
+                        if (insideIcon) {
+                            if (mobile) {
+                                insideIcon.className = "bi bi-x-lg";
+                                sidebarCollapseInside.setAttribute("title", "Close Menu");
+                                sidebarCollapseInside.setAttribute("aria-label", "Close Menu");
+                            } else {
+                                insideIcon.className = "bi bi-chevron-left";
+                                sidebarCollapseInside.setAttribute("title", "Collapse Sidebar (Ctrl + B)");
+                                sidebarCollapseInside.setAttribute("aria-label", "Collapse Sidebar");
+                            }
+                        }
+                    }
+                }
+
+                function openMobileDrawer() {
+                    const sidebar = getSidebar();
+                    const sidebarBackdrop = getSidebarBackdrop();
+                    if (!sidebar) return;
+                    sidebar.classList.add("mobile-open");
+                    if (sidebarBackdrop) sidebarBackdrop.classList.add("active");
+                    document.body.style.overflow = "hidden";
+                    updateToggleIcon();
+                }
+
+                function closeMobileDrawer() {
+                    const sidebar = getSidebar();
+                    const sidebarBackdrop = getSidebarBackdrop();
+                    if (!sidebar) return;
+                    sidebar.classList.remove("mobile-open");
+                    if (sidebarBackdrop) sidebarBackdrop.classList.remove("active");
+                    document.body.style.overflow = "";
+                    updateToggleIcon();
+                }
+
+                function toggleSidebar() {
+                    const sidebar = getSidebar();
+                    if (isMobile()) {
+                        if (sidebar && sidebar.classList.contains("mobile-open")) {
+                            closeMobileDrawer();
+                        } else {
+                            openMobileDrawer();
+                        }
                     } else {
-                        const collapsed = isCollapsed();
-                        icon.className = collapsed ? "bi bi-layout-sidebar" : "bi bi-layout-sidebar-inset";
-                        sidebarToggle.setAttribute("title", collapsed ? "Expand Sidebar (Ctrl + B)" : "Collapse Sidebar (Ctrl + B)");
-                        sidebarToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+                        document.documentElement.classList.add("sidebar-animating");
+                        document.body.classList.add("sidebar-animating");
+
+                        const willCollapse = !isCollapsed();
+                        document.documentElement.classList.toggle("sidebar-collapsed", willCollapse);
+                        document.body.classList.toggle("sidebar-collapsed", willCollapse);
+                        try { localStorage.setItem("oblu_sidebar_collapsed", String(willCollapse)); } catch (e) { }
+                        updateToggleIcon();
+
+                        setTimeout(function () {
+                            document.documentElement.classList.remove("sidebar-animating");
+                            document.body.classList.remove("sidebar-animating");
+                            if (window.velocityChart && typeof window.velocityChart.resize === "function") {
+                                window.velocityChart.resize();
+                            }
+                        }, 170);
                     }
                 }
-            }
 
-            if (sidebarCollapseInside) {
-                const insideIcon = sidebarCollapseInside.querySelector("i");
-                if (insideIcon) {
-                    if (mobile) {
-                        insideIcon.className = "bi bi-x-lg";
-                        sidebarCollapseInside.setAttribute("title", "Close Menu");
-                        sidebarCollapseInside.setAttribute("aria-label", "Close Menu");
-                    } else {
-                        insideIcon.className = "bi bi-chevron-left";
-                        sidebarCollapseInside.setAttribute("title", "Collapse Sidebar (Ctrl + B)");
-                        sidebarCollapseInside.setAttribute("aria-label", "Collapse Sidebar");
+                function updateActiveSidebarLink() {
+                    const currentPath = window.location.pathname;
+
+                    // 1. Top-level links
+                    document.querySelectorAll(".sidebar-nav-link").forEach(link => {
+                        const href = link.getAttribute("data-nav-href") || link.getAttribute("href");
+                        if (href) {
+                            if (href === currentPath || (href === "/inventory/dashboard/" && (currentPath === "/" || currentPath === "/inventory/dashboard/"))) {
+                                link.classList.add("active-nav-link");
+                            } else {
+                                link.classList.remove("active-nav-link");
+                            }
+                        }
+                    });
+
+                    // 2. Submenu links
+                    let activeFoundInGroup = null;
+                    document.querySelectorAll(".sidebar-sublink").forEach(link => {
+                        const href = link.getAttribute("data-nav-href") || link.getAttribute("href");
+                        if (href && (href === currentPath || (href !== "/" && href !== "/inventory/" && currentPath.startsWith(href)))) {
+                            link.classList.add("active-sublink");
+                            activeFoundInGroup = link.closest(".sidebar-dropdown-group");
+                        } else {
+                            link.classList.remove("active-sublink");
+                        }
+                    });
+
+                    // If a child sublink is active, expand its parent dropdown
+                    if (activeFoundInGroup) {
+                        const menu = activeFoundInGroup.querySelector(".sidebar-dropdown-menu");
+                        const arrow = activeFoundInGroup.querySelector(".dropdown-arrow");
+                        const btn = activeFoundInGroup.querySelector(".sidebar-dropdown-btn");
+                        if (menu) menu.classList.remove("hidden");
+                        if (arrow) arrow.classList.add("rotate-180");
+                        if (btn) btn.setAttribute("aria-expanded", "true");
                     }
                 }
-            }
-        }
 
-        function openMobileDrawer() {
-            if (!sidebar) return;
-            sidebar.classList.add("mobile-open");
-            if (sidebarBackdrop) sidebarBackdrop.classList.add("active");
-            document.body.style.overflow = "hidden";
-            updateToggleIcon();
-        }
+                // Initialize Dropdown Toggles
+                function initSidebarDropdowns() {
+                    document.querySelectorAll(".sidebar-dropdown-btn").forEach(btn => {
+                        btn.onclick = function (e) {
+                            e.preventDefault();
+                            const group = this.closest(".sidebar-dropdown-group");
+                            if (!group) return;
+                            const menu = group.querySelector(".sidebar-dropdown-menu");
+                            const arrow = this.querySelector(".dropdown-arrow");
+                            const isExpanded = this.getAttribute("aria-expanded") === "true";
 
-        function closeMobileDrawer() {
-            if (!sidebar) return;
-            sidebar.classList.remove("mobile-open");
-            if (sidebarBackdrop) sidebarBackdrop.classList.remove("active");
-            document.body.style.overflow = "";
-            updateToggleIcon();
-        }
-
-        function toggleSidebar() {
-            if (isMobile()) {
-                if (sidebar && sidebar.classList.contains("mobile-open")) {
-                    closeMobileDrawer();
-                } else {
-                    openMobileDrawer();
+                            if (isExpanded) {
+                                menu.classList.add("hidden");
+                                if (arrow) arrow.classList.remove("rotate-180");
+                                this.setAttribute("aria-expanded", "false");
+                            } else {
+                                menu.classList.remove("hidden");
+                                if (arrow) arrow.classList.add("rotate-180");
+                                this.setAttribute("aria-expanded", "true");
+                            }
+                        };
+                    });
                 }
-            } else {
-                const willCollapse = !isCollapsed();
-                if (willCollapse) {
+
+                // Initialize state
+                if (!isMobile() && localStorage.getItem("oblu_sidebar_collapsed") === "true") {
                     document.body.classList.add("sidebar-collapsed");
                     document.documentElement.classList.add("sidebar-collapsed");
-                    localStorage.setItem("oblu_sidebar_collapsed", "true");
-                } else {
-                    document.body.classList.remove("sidebar-collapsed");
-                    document.documentElement.classList.remove("sidebar-collapsed");
-                    localStorage.setItem("oblu_sidebar_collapsed", "false");
                 }
                 updateToggleIcon();
-            }
-        }
+                initSidebarDropdowns();
+                updateActiveSidebarLink();
 
-        function updateActiveSidebarLink() {
-            const currentPath = window.location.pathname;
-
-            // 1. Top-level links
-            document.querySelectorAll(".sidebar-nav-link").forEach(link => {
-                const href = link.getAttribute("data-nav-href") || link.getAttribute("href");
-                if (href) {
-                    if (href === currentPath || (href === "/inventory/dashboard/" && (currentPath === "/" || currentPath === "/inventory/dashboard/"))) {
-                        link.classList.add("active-nav-link");
-                    } else {
-                        link.classList.remove("active-nav-link");
+                // Robust Delegated Click Listener (Survives Turbo page transitions & DOM replacements)
+                document.addEventListener("click", function (e) {
+                    const toggleBtn = e.target.closest("#sidebarToggle, .sidebar-toggle-btn");
+                    if (toggleBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleSidebar();
+                        return;
                     }
-                }
-            });
 
-            // 2. Submenu links
-            let activeFoundInGroup = null;
-            document.querySelectorAll(".sidebar-sublink").forEach(link => {
-                const href = link.getAttribute("data-nav-href") || link.getAttribute("href");
-                if (href && (href === currentPath || (href !== "/" && href !== "/inventory/" && currentPath.startsWith(href)))) {
-                    link.classList.add("active-sublink");
-                    activeFoundInGroup = link.closest(".sidebar-dropdown-group");
-                } else {
-                    link.classList.remove("active-sublink");
-                }
-            });
-
-            // If a child sublink is active, expand its parent dropdown
-            if (activeFoundInGroup) {
-                const menu = activeFoundInGroup.querySelector(".sidebar-dropdown-menu");
-                const arrow = activeFoundInGroup.querySelector(".dropdown-arrow");
-                const btn = activeFoundInGroup.querySelector(".sidebar-dropdown-btn");
-                if (menu) menu.classList.remove("hidden");
-                if (arrow) arrow.classList.add("rotate-180");
-                if (btn) btn.setAttribute("aria-expanded", "true");
-            }
-        }
-
-        // Initialize Dropdown Toggles
-        function initSidebarDropdowns() {
-            document.querySelectorAll(".sidebar-dropdown-btn").forEach(btn => {
-                btn.onclick = function(e) {
-                    e.preventDefault();
-                    const group = this.closest(".sidebar-dropdown-group");
-                    if (!group) return;
-                    const menu = group.querySelector(".sidebar-dropdown-menu");
-                    const arrow = this.querySelector(".dropdown-arrow");
-                    const isExpanded = this.getAttribute("aria-expanded") === "true";
-
-                    if (isExpanded) {
-                        menu.classList.add("hidden");
-                        if (arrow) arrow.classList.remove("rotate-180");
-                        this.setAttribute("aria-expanded", "false");
-                    } else {
-                        menu.classList.remove("hidden");
-                        if (arrow) arrow.classList.add("rotate-180");
-                        this.setAttribute("aria-expanded", "true");
+                    const collapseBtn = e.target.closest("#sidebarCollapseInside, .sidebar-collapse-btn");
+                    if (collapseBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (isMobile()) {
+                            closeMobileDrawer();
+                        } else {
+                            toggleSidebar();
+                        }
+                        return;
                     }
-                };
-            });
-        }
 
-        // Auto-close mobile drawer when any link or action inside sidebar is tapped
-        function attachSidebarLinkListeners() {
-            if (!sidebar) return;
-            sidebar.querySelectorAll("a, button[type='submit']").forEach(link => {
-                // Avoid overriding dropdown buttons
-                if (link.classList.contains("sidebar-dropdown-btn")) return;
-                link.addEventListener("click", function() {
+                    if (e.target.closest("#sidebarBackdrop")) {
+                        closeMobileDrawer();
+                        return;
+                    }
+
+                    const sidebarAction = e.target.closest("#sidebar-wrapper a, #sidebar-wrapper button[type='submit']");
+                    if (isMobile() && sidebarAction && !sidebarAction.classList.contains("sidebar-dropdown-btn")) {
+                        closeMobileDrawer();
+                        return;
+                    }
+
+                    // Close mobile drawer if clicked outside
+                    if (isMobile()) {
+                        const sb = getSidebar();
+                        if (sb && sb.classList.contains("mobile-open")) {
+                            if (!sb.contains(e.target) && !e.target.closest("#sidebarToggle, .sidebar-toggle-btn")) {
+                                closeMobileDrawer();
+                            }
+                        }
+                    }
+                });
+
+                // Keyboard shortcut: Ctrl + B or Cmd + B (toggle), Escape (close mobile drawer)
+                document.addEventListener("keydown", function (e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+                        e.preventDefault();
+                        toggleSidebar();
+                    } else if (e.key === "Escape" && isMobile()) {
+                        const sb = getSidebar();
+                        if (sb && sb.classList.contains("mobile-open")) {
+                            closeMobileDrawer();
+                        }
+                    }
+                });
+
+                // Close mobile drawer on resize to desktop
+                window.addEventListener("resize", function () {
+                    if (!isMobile()) {
+                        const sb = getSidebar();
+                        const bd = getSidebarBackdrop();
+                        if (sb) sb.classList.remove("mobile-open");
+                        if (bd) bd.classList.remove("active");
+                        document.body.style.overflow = "";
+                    }
+                    updateToggleIcon();
+                });
+
+                // Re-run state & dropdown wiring on Turbo page navigations
+                document.addEventListener("turbo:load", function () {
+                    updateToggleIcon();
+                    initSidebarDropdowns();
+                    updateActiveSidebarLink();
                     if (isMobile()) {
                         closeMobileDrawer();
                     }
                 });
-            });
-        }
 
-        // Initialize state
-        if (!isMobile() && localStorage.getItem("oblu_sidebar_collapsed") === "true") {
-            document.body.classList.add("sidebar-collapsed");
-            document.documentElement.classList.add("sidebar-collapsed");
-        }
-        updateToggleIcon();
-        initSidebarDropdowns();
-        updateActiveSidebarLink();
-        attachSidebarLinkListeners();
 
-        // Robust Delegated Click Listener (Survives Turbo page transitions & DOM replacements)
-        document.addEventListener("click", function(e) {
-            const toggleBtn = e.target.closest("#sidebarToggle, .sidebar-toggle-btn");
-            if (toggleBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleSidebar();
-                return;
             }
+        );
 
-            const collapseBtn = e.target.closest("#sidebarCollapseInside, .sidebar-collapse-btn");
-            if (collapseBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (isMobile()) {
-                    closeMobileDrawer();
-                } else {
-                    toggleSidebar();
-                }
-                return;
-            }
+    </script>
 
-            if (e.target.closest("#sidebarBackdrop")) {
-                closeMobileDrawer();
-                return;
-            }
+    {% block extra_js %}
+    {% endblock %}
 
-            // Close mobile drawer if clicked outside
-            if (isMobile()) {
-                const sb = document.getElementById("sidebar-wrapper");
-                if (sb && sb.classList.contains("mobile-open")) {
-                    if (!sb.contains(e.target) && !e.target.closest("#sidebarToggle, .sidebar-toggle-btn")) {
-                        closeMobileDrawer();
-                    }
-                }
-            }
-        });
-
-        // Keyboard shortcut: Ctrl + B or Cmd + B (toggle), Escape (close mobile drawer)
-        document.addEventListener("keydown", function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
-                e.preventDefault();
-                toggleSidebar();
-            } else if (e.key === "Escape" && isMobile()) {
-                const sb = document.getElementById("sidebar-wrapper");
-                if (sb && sb.classList.contains("mobile-open")) {
-                    closeMobileDrawer();
-                }
-            }
-        });
-
-        // Close mobile drawer on resize to desktop
-        window.addEventListener("resize", function() {
-            if (!isMobile()) {
-                const sb = document.getElementById("sidebar-wrapper");
-                const bd = document.getElementById("sidebarBackdrop");
-                if (sb) sb.classList.remove("mobile-open");
-                if (bd) bd.classList.remove("active");
-                document.body.style.overflow = "";
-            }
-            updateToggleIcon();
-        });
-
-        // Re-run state & dropdown wiring on Turbo page navigations
-        document.addEventListener("turbo:load", function() {
-            updateToggleIcon();
-            initSidebarDropdowns();
-            updateActiveSidebarLink();
-            attachSidebarLinkListeners();
-            if (isMobile()) {
-                closeMobileDrawer();
-            }
-        });
-
-
-    }
-);
-
-</script>
-
-{% block extra_js %}
-{% endblock %}
-
-<div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
 </body>
 

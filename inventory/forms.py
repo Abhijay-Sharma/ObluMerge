@@ -15,10 +15,16 @@ class CustomUserCreationForm(UserCreationForm):
         field_classes = {'username': UsernameField}
 
 class InventoryItemForm(forms.ModelForm):
-    category=forms.ModelChoiceField(queryset=Category.objects.all(),initial=0)
+    category = forms.ModelChoiceField(
+        queryset=Category.objects.select_related('parent').all(),
+        required=False,
+        empty_label="-- Select Category --",
+        help_text="Select product category"
+    )
+
     class Meta:
-        model=InventoryItem
-        fields=['name','quantity','category','min_quantity','is_new_product','landing_date',]
+        model = InventoryItem
+        fields = ['name', 'quantity', 'category', 'min_quantity', 'is_new_product', 'landing_date']
 
 
 

@@ -70,7 +70,11 @@
         background: rgba(100, 116, 139, 0.6);
     }
 
-    body, .dashboard-container, button, input, select {
+    body,
+    .dashboard-container,
+    button,
+    input,
+    select {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
@@ -675,9 +679,17 @@
         border-radius: 50%;
     }
 
-    .health-dot.healthy { background: #10b981; }
-    .health-dot.low { background: #f59e0b; }
-    .health-dot.out { background: #f43f5e; }
+    .health-dot.healthy {
+        background: #10b981;
+    }
+
+    .health-dot.low {
+        background: #f59e0b;
+    }
+
+    .health-dot.out {
+        background: #f43f5e;
+    }
 
     .health-label-group {
         display: flex;
@@ -787,9 +799,20 @@
         color: var(--oblu-slate-700);
     }
 
-    .rank-disc.gold { background: rgba(245, 158, 11, 0.16); color: #b45309; }
-    .rank-disc.silver { background: rgba(148, 163, 184, 0.2); color: var(--oblu-slate-700); }
-    .rank-disc.bronze { background: rgba(217, 119, 6, 0.15); color: #92400e; }
+    .rank-disc.gold {
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+    }
+
+    .rank-disc.silver {
+        background: rgba(148, 163, 184, 0.2);
+        color: var(--oblu-slate-700);
+    }
+
+    .rank-disc.bronze {
+        background: rgba(217, 119, 6, 0.15);
+        color: #92400e;
+    }
 
     .cat-name-text {
         font-size: 0.88rem;
@@ -1604,7 +1627,8 @@
             width: 100%;
         }
 
-        .date-apply-btn, .date-reset-link {
+        .date-apply-btn,
+        .date-reset-link {
             flex: 1 1 100%;
             justify-content: center;
             padding: 7px 12px;
@@ -1624,7 +1648,7 @@
             flex-shrink: 0;
         }
 
-        .date-anchor-info > div {
+        .date-anchor-info>div {
             min-width: 0;
             flex: 1;
         }
@@ -1868,7 +1892,6 @@
             font-size: 1.3rem;
         }
     }
-
 </style>
 
 <div class="dashboard-container">
@@ -1890,21 +1913,17 @@
             <!-- Controls: Period Selector & Quick Actions -->
             <div class="controls-cluster">
                 <div class="filter-pills-bar">
-                    <a href="?period=1m"
-                       class="filter-pill {% if period == '1m' and not is_custom %}active{% endif %}"
-                       title="Full Calendar Month (1 to {{ last_day_of_month }})">
+                    <a href="?period=1m" class="filter-pill {% if period == '1m' and not is_custom %}active{% endif %}"
+                        title="Full Calendar Month (1 to {{ last_day_of_month }})">
                         Full Month (1–{{ last_day_of_month }})
                     </a>
-                    <a href="?period=3m"
-                       class="filter-pill {% if period == '3m' and not is_custom %}active{% endif %}">
+                    <a href="?period=3m" class="filter-pill {% if period == '3m' and not is_custom %}active{% endif %}">
                         3 Months
                     </a>
-                    <a href="?period=3w"
-                       class="filter-pill {% if period == '3w' and not is_custom %}active{% endif %}">
+                    <a href="?period=3w" class="filter-pill {% if period == '3w' and not is_custom %}active{% endif %}">
                         3 Weeks
                     </a>
-                    <a href="?period=3d"
-                       class="filter-pill {% if period == '3d' and not is_custom %}active{% endif %}">
+                    <a href="?period=3d" class="filter-pill {% if period == '3d' and not is_custom %}active{% endif %}">
                         3 Days
                     </a>
                     {% if is_custom %}
@@ -1926,7 +1945,7 @@
                         <span class="range-badge">{% if is_custom %}Custom Period{% else %}{{ period_label }}{% endif %}</span>
                     </div>
                     <div style="font-size: 0.76rem; color: var(--oblu-slate-500); margin-top: 2px;">
-                        Showing inventory telemetry, velocity charts & sales metrics across <strong>{{ duration_days }} days</strong>.
+                        Showing inventory velocity charts & sales metrics across <strong>{{ duration_days }} days</strong>.
                     </div>
                 </div>
             </div>
@@ -1936,14 +1955,17 @@
                 <div class="date-picker-wrap">
                     <div class="date-input-field">
                         <span class="date-label">From:</span>
-                        <input type="date" name="start_date" value="{{ start_date_iso }}" class="date-native-input" required>
+                        <input type="date" name="start_date" value="{{ start_date_iso }}" class="date-native-input"
+                            required>
                     </div>
                     <span class="date-sep"><i class="bi bi-arrow-right"></i></span>
                     <div class="date-input-field">
                         <span class="date-label">To:</span>
-                        <input type="date" name="end_date" value="{{ end_date_iso }}" class="date-native-input" required>
+                        <input type="date" name="end_date" value="{{ end_date_iso }}" class="date-native-input"
+                            required>
                     </div>
-                    <button type="submit" class="date-apply-btn" title="Apply Custom Date Range to all graphs and values">
+                    <button type="submit" class="date-apply-btn"
+                        title="Apply Custom Date Range to all graphs and values">
                         <i class="bi bi-funnel"></i> Apply
                     </button>
                     {% if is_custom %}
@@ -1972,7 +1994,8 @@
                     <div class="kpi-primary-val">{{ kpis.total_sales_display }}</div>
                 </div>
                 <div class="kpi-subrow">
-                    <span class="trend-indicator {% if kpis.is_sales_growth_positive %}positive{% else %}negative{% endif %}">
+                    <span
+                        class="trend-indicator {% if kpis.is_sales_growth_positive %}positive{% else %}negative{% endif %}">
                         <i class="bi bi-arrow-{% if kpis.is_sales_growth_positive %}up{% else %}down{% endif %}"></i>
                         {{ kpis.sales_growth_pct }}%
                     </span>
@@ -1992,7 +2015,8 @@
                     <div class="kpi-primary-val">{{ kpis.orders_dispatched }} Orders</div>
                 </div>
                 <div class="kpi-subrow">
-                    <span class="trend-indicator {% if kpis.is_orders_growth_positive %}positive{% else %}negative{% endif %}">
+                    <span
+                        class="trend-indicator {% if kpis.is_orders_growth_positive %}positive{% else %}negative{% endif %}">
                         <i class="bi bi-arrow-{% if kpis.is_orders_growth_positive %}up{% else %}down{% endif %}"></i>
                         {{ kpis.orders_growth_pct }}%
                     </span>
@@ -2062,10 +2086,12 @@
                         <p>Daily outwards billing and volume trajectory during {{ period_label }}</p>
                     </div>
                     <div class="chart-metric-switch">
-                        <button type="button" class="metric-btn active" id="btnMetricValue" onclick="setChartMetric('value')">
+                        <button type="button" class="metric-btn active" id="btnMetricValue"
+                            onclick="setChartMetric('value')">
                             ₹ Revenue
                         </button>
-                        <button type="button" class="metric-btn" id="btnMetricOrders" onclick="setChartMetric('orders')">
+                        <button type="button" class="metric-btn" id="btnMetricOrders"
+                            onclick="setChartMetric('orders')">
                             Orders Dispatched
                         </button>
                     </div>
@@ -2090,7 +2116,8 @@
                     {% if trend_has_data %}
                     <canvas id="salesVelocityChart"></canvas>
                     {% else %}
-                    <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--oblu-slate-400); font-size: 0.88rem;">
+                    <div
+                        style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--oblu-slate-400); font-size: 0.88rem;">
                         <i class="bi bi-bar-chart fs-2 mb-2"></i>
                         No daily sales transactions recorded in this selected range.
                     </div>
@@ -2110,7 +2137,8 @@
                 </div>
 
                 <!-- Tri-color segmented progress bar -->
-                <div class="health-segment-bar" title="Healthy: {{ health.healthy_pct }}% | Low: {{ health.low_stock_pct }}% | Out of Stock: {{ health.out_of_stock_pct }}%">
+                <div class="health-segment-bar"
+                    title="Healthy: {{ health.healthy_pct }}% | Low: {{ health.low_stock_pct }}% | Out of Stock: {{ health.out_of_stock_pct }}%">
                     <div class="health-segment healthy" style="width: {{ health.healthy_pct }}%;"></div>
                     <div class="health-segment low" style="width: {{ health.low_stock_pct }}%;"></div>
                     <div class="health-segment out" style="width: {{ health.out_of_stock_pct }}%;"></div>
@@ -2191,7 +2219,8 @@
                     <div class="cat-item-row">
                         <div class="cat-meta-row">
                             <div class="cat-name-block">
-                                <span class="rank-disc {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">
+                                <span
+                                    class="rank-disc {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">
                                     #{{ cat.rank }}
                                 </span>
                                 <span class="cat-name-text">{{ cat.name }}</span>
@@ -2199,13 +2228,15 @@
                             <div class="cat-metrics-block">
                                 <span class="cat-units">{{ cat.units_sold }} units</span>
                                 <span class="cat-revenue">{{ cat.sales_value_display }}</span>
-                                <span class="cat-share-pill" style="background: {{ cat.bg_color }}; color: {{ cat.text_color }};">
+                                <span class="cat-share-pill"
+                                    style="background: {{ cat.bg_color }}; color: {{ cat.text_color }};">
                                     {{ cat.percent }}%
                                 </span>
                             </div>
                         </div>
                         <div class="progress-track-sleek">
-                            <div class="progress-fill-sleek" style="width: {{ cat.percent }}%; background: {{ cat.bar_color }};"></div>
+                            <div class="progress-fill-sleek"
+                                style="width: {{ cat.percent }}%; background: {{ cat.bar_color }};"></div>
                         </div>
                     </div>
                     {% empty %}
@@ -2301,7 +2332,8 @@
                     {% for cust in top_customers %}
                     <div class="cust-item-card">
                         <div class="cust-left-block">
-                            <div class="cust-avatar-circle" style="background: {{ cust.avatar_bg }}; color: {{ cust.avatar_color }};">
+                            <div class="cust-avatar-circle"
+                                style="background: {{ cust.avatar_bg }}; color: {{ cust.avatar_color }};">
                                 {{ cust.initials }}
                             </div>
                             <div class="cust-info-block">
@@ -2359,12 +2391,15 @@
                             <tr>
                                 <td>
                                     <span class="po-ref-text">#{{ po.voucher_number }}</span>
-                                    <div style="font-size: 0.72rem; color: var(--oblu-slate-400);">{{ po.order_date }}</div>
+                                    <div style="font-size: 0.72rem; color: var(--oblu-slate-400);">{{ po.order_date }}
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="po-supplier-cell">
                                         <div class="supp-avatar">{{ po.initials }}</div>
-                                        <span style="font-weight: 600; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="{{ po.party_name }}">
+                                        <span
+                                            style="font-weight: 600; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;"
+                                            title="{{ po.party_name }}">
                                             {{ po.party_name }}
                                         </span>
                                     </div>
@@ -2386,7 +2421,8 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" style="text-align: center; color: var(--oblu-slate-400); padding: 24px;">
+                                <td colspan="5"
+                                    style="text-align: center; color: var(--oblu-slate-400); padding: 24px;">
                                     No active purchase orders currently in transit.
                                 </td>
                             </tr>
@@ -2414,7 +2450,8 @@
                     </div>
                 </div>
 
-                <a href="{% url 'purchase_order' %}" class="anchor-toggle-btn" style="background: #dc2626; color: #ffffff; border: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+                <a href="{% url 'purchase_order' %}" class="anchor-toggle-btn"
+                    style="background: #dc2626; color: #ffffff; border: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
                     <i class="bi bi-cart-plus"></i> Initiate Purchase Orders
                 </a>
             </div>
@@ -2436,7 +2473,8 @@
                         <div class="alarm-stats-grid mt-3">
                             <div class="alarm-stat-cell">
                                 <span class="stat-lbl">Available Stock</span>
-                                <span class="stat-val {% if alert.severity == 'critical' %}text-danger{% else %}text-warning{% endif %}">
+                                <span
+                                    class="stat-val {% if alert.severity == 'critical' %}text-danger{% else %}text-warning{% endif %}">
                                     {{ alert.current_stock }} units
                                 </span>
                             </div>
@@ -2459,7 +2497,8 @@
                         <a href="{% url 'showdata' alert.product_id %}" class="alarm-cta-btn">
                             <i class="bi bi-graph-up"></i> Forecast
                         </a>
-                        <a href="{% url 'purchase_order' %}" class="alarm-cta-btn" style="background: var(--oblu-slate-900); color: #ffffff; border-color: var(--oblu-slate-900);">
+                        <a href="{% url 'purchase_order' %}" class="alarm-cta-btn"
+                            style="background: var(--oblu-slate-900); color: #ffffff; border-color: var(--oblu-slate-900);">
                             <i class="bi bi-cart-plus"></i> Restock
                         </a>
                     </div>
@@ -2534,12 +2573,12 @@
      ========================================================= -->
 {% if trend_has_data %}
 <script>
-(function() {
-    window.currentVelocityMetric = 'value';
-    const labelsData = {{ trend_labels_json|safe }};
-    const valuesData = {{ trend_values_json|safe }};
-    const quantitiesData = {{ trend_quantities_json|safe }};
-    const ordersData = {{ trend_orders_json|safe }};
+    (function () {
+        window.currentVelocityMetric = 'value';
+        const labelsData = {{ trend_labels_json|safe }};
+        const valuesData = {{ trend_values_json|safe }};
+        const quantitiesData = {{ trend_quantities_json|safe }};
+        const ordersData = {{ trend_orders_json|safe }};
 
     function formatIndianNumber(num) {
         if (num >= 10000000) return '₹' + (num / 10000000).toFixed(2) + ' Cr';
@@ -2569,23 +2608,31 @@
         gradient.addColorStop(0.7, 'rgba(120, 194, 173, 0.08)');
         gradient.addColorStop(1, 'rgba(120, 194, 173, 0.00)');
 
+        const isOrders = window.currentVelocityMetric === 'orders';
+        const initialData = isOrders ? ordersData : valuesData;
+        const initialLabel = isOrders ? 'Orders Dispatched' : 'Sales Revenue (₹)';
+        const initialColor = isOrders ? '#0284c7' : '#469680';
+
         window.velocityChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labelsData,
                 datasets: [{
-                    label: 'Sales Revenue (₹)',
-                    data: valuesData,
-                    borderColor: '#469680',
+                    label: initialLabel,
+                    data: initialData,
+                    borderColor: initialColor,
                     borderWidth: 2.5,
                     backgroundColor: gradient,
                     fill: true,
                     tension: 0.38,
-                    pointRadius: labelsData.length > 25 ? 0 : 3.5,
-                    pointHoverRadius: 6,
+                    pointRadius: labelsData.length > 50 ? 3 : 4,
+                    pointHoverRadius: 6.5,
                     pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#469680',
+                    pointBorderColor: initialColor,
                     pointBorderWidth: 2.5,
+                    pointHoverBackgroundColor: '#ffffff',
+                    pointHoverBorderColor: initialColor,
+                    pointHoverBorderWidth: 3,
                 }]
             },
             options: {
@@ -2649,8 +2696,7 @@
         });
     }
 
-    window.setChartMetric = function(metric) {
-        if (!window.velocityChart) return;
+    window.setChartMetric = function (metric) {
         window.currentVelocityMetric = metric;
 
         const btnVal = document.getElementById('btnMetricValue');
@@ -2660,24 +2706,51 @@
             if (btnVal) btnVal.classList.add('active');
             if (btnOrders) btnOrders.classList.remove('active');
 
-            window.velocityChart.data.datasets[0].label = 'Sales Revenue (₹)';
-            window.velocityChart.data.datasets[0].data = valuesData;
-            window.velocityChart.data.datasets[0].borderColor = '#469680';
-            window.velocityChart.options.scales.y.ticks.callback = function (val) {
-                return formatIndianNumber(val);
-            };
+            if (window.velocityChart) {
+                const ctx = document.getElementById('salesVelocityChart');
+                if (ctx) {
+                    const chartContext = ctx.getContext('2d');
+                    const gradient = chartContext.createLinearGradient(0, 0, 0, 240);
+                    gradient.addColorStop(0, 'rgba(120, 194, 173, 0.38)');
+                    gradient.addColorStop(0.7, 'rgba(120, 194, 173, 0.08)');
+                    gradient.addColorStop(1, 'rgba(120, 194, 173, 0.00)');
+                    window.velocityChart.data.datasets[0].backgroundColor = gradient;
+                }
+                window.velocityChart.data.datasets[0].label = 'Sales Revenue (₹)';
+                window.velocityChart.data.datasets[0].data = valuesData;
+                window.velocityChart.data.datasets[0].borderColor = '#469680';
+                window.velocityChart.data.datasets[0].pointBorderColor = '#469680';
+                window.velocityChart.data.datasets[0].pointHoverBorderColor = '#469680';
+                window.velocityChart.options.scales.y.ticks.callback = function (val) {
+                    return formatIndianNumber(val);
+                };
+                window.velocityChart.update();
+            }
         } else {
             if (btnOrders) btnOrders.classList.add('active');
             if (btnVal) btnVal.classList.remove('active');
 
-            window.velocityChart.data.datasets[0].label = 'Orders Dispatched';
-            window.velocityChart.data.datasets[0].data = ordersData;
-            window.velocityChart.data.datasets[0].borderColor = '#0284c7';
-            window.velocityChart.options.scales.y.ticks.callback = function (val) {
-                return val.toLocaleString() + ' orders';
-            };
+            if (window.velocityChart) {
+                const ctx = document.getElementById('salesVelocityChart');
+                if (ctx) {
+                    const chartContext = ctx.getContext('2d');
+                    const gradientOrders = chartContext.createLinearGradient(0, 0, 0, 240);
+                    gradientOrders.addColorStop(0, 'rgba(2, 132, 199, 0.32)');
+                    gradientOrders.addColorStop(0.7, 'rgba(2, 132, 199, 0.08)');
+                    gradientOrders.addColorStop(1, 'rgba(2, 132, 199, 0.00)');
+                    window.velocityChart.data.datasets[0].backgroundColor = gradientOrders;
+                }
+                window.velocityChart.data.datasets[0].label = 'Orders Dispatched';
+                window.velocityChart.data.datasets[0].data = ordersData;
+                window.velocityChart.data.datasets[0].borderColor = '#0284c7';
+                window.velocityChart.data.datasets[0].pointBorderColor = '#0284c7';
+                window.velocityChart.data.datasets[0].pointHoverBorderColor = '#0284c7';
+                window.velocityChart.options.scales.y.ticks.callback = function (val) {
+                    return val.toLocaleString() + ' orders';
+                };
+                window.velocityChart.update();
+            }
         }
-        window.velocityChart.update();
     };
 
     initDashboardCharts();
@@ -2693,14 +2766,14 @@
     if (window.__obluInventoryChartBeforeCache) {
         document.removeEventListener("turbo:before-cache", window.__obluInventoryChartBeforeCache);
     }
-    window.__obluInventoryChartBeforeCache = function() {
+    window.__obluInventoryChartBeforeCache = function () {
         if (window.velocityChart && typeof window.velocityChart.destroy === "function") {
             window.velocityChart.destroy();
             window.velocityChart = null;
         }
     };
     document.addEventListener("turbo:before-cache", window.__obluInventoryChartBeforeCache);
-})();
+}) ();
 </script>
 {% endif %}
 

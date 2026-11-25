@@ -1,0 +1,34 @@
+{% load rbac_tags %}
+<nav style="background: white; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
+        <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: #0f172a; font-weight: 700; font-size: 15px;">
+            <i class="fas fa-boxes" style="color: #4f46e5;"></i> Oblu Procurement
+        </a>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <a href="{% url 'po_tracking_list' %}" style="text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: {% if request.resolver_match.url_name == 'po_tracking_list' or request.resolver_match.url_name == 'po_tracking_detail' %}#4f46e5; background: #eef2ff; border: 1px solid #c7d2fe;{% else %}#475569; border: 1px solid transparent;{% endif %}">
+                <i class="fas fa-truck"></i> Tracked Shipments
+            </a>
+            <a href="{% url 'tally_po_list' %}" style="text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: {% if request.resolver_match.url_name == 'tally_po_list' %}#4f46e5; background: #eef2ff; border: 1px solid #c7d2fe;{% else %}#475569; border: 1px solid transparent;{% endif %}">
+                <i class="fas fa-file-invoice"></i> Tally POs
+            </a>
+            <a href="{% url 'purchase_order' %}" style="text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: {% if request.resolver_match.url_name == 'purchase_order' %}#4f46e5; background: #eef2ff; border: 1px solid #c7d2fe;{% else %}#475569; border: 1px solid transparent;{% endif %}">
+                <i class="fas fa-calculator"></i> PO Planner
+            </a>
+            <a href="{% url 'po_stage_list' %}" style="text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: {% if request.resolver_match.url_name == 'po_stage_list' or request.resolver_match.url_name == 'po_stage_create' or request.resolver_match.url_name == 'po_stage_update' %}#4f46e5; background: #eef2ff; border: 1px solid #c7d2fe;{% else %}#475569; border: 1px solid transparent;{% endif %}">
+                <i class="fas fa-stream"></i> Pipeline Stages
+            </a>
+            {% if request.user|can:"inventory.view" %}
+            <a href="{% url 'dashboard' %}" style="text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: #0d9488; border: 1px solid #ccfbf1; background: #f0fdfa;">
+                <i class="fas fa-chart-line"></i> Inventory Dashboard
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 12.5px; font-weight: 600; color: #64748b;">{{ request.user.username }}</span>
+        <a href="/" style="text-decoration: none; font-size: 12.5px; font-weight: 600; color: #475569; padding: 5px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;">
+            <i class="fas fa-home"></i> Main Portal
+        </a>
+    </div>
+</nav>
+

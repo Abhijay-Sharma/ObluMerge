@@ -423,7 +423,7 @@
         box-shadow: 0 0 0 4px var(--oblu-teal-soft), 0 2px 8px rgba(15, 23, 42, 0.04);
     }
 
-    .search-input-box input:focus + i.search-icon {
+    .search-input-box input:focus+i.search-icon {
         color: var(--oblu-teal-dark);
     }
 
@@ -554,9 +554,17 @@
         display: inline-block;
     }
 
-    .status-dot.emerald { background: #10b981; }
-    .status-dot.amber { background: #f59e0b; }
-    .status-dot.rose { background: #f43f5e; }
+    .status-dot.emerald {
+        background: #10b981;
+    }
+
+    .status-dot.amber {
+        background: #f59e0b;
+    }
+
+    .status-dot.rose {
+        background: #f43f5e;
+    }
 
     .view-toggle-group {
         display: inline-flex;
@@ -622,6 +630,169 @@
         width: 100%;
         max-width: 100%;
         overflow-x: auto;
+        scroll-behavior: smooth;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(120, 194, 173, 0.4) transparent;
+    }
+
+    .catalog-table-responsive::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .catalog-table-responsive::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .catalog-table-responsive::-webkit-scrollbar-thumb {
+        background: rgba(120, 194, 173, 0.4);
+        border-radius: 9999px;
+    }
+
+    .catalog-table-responsive::-webkit-scrollbar-thumb:hover {
+        background: var(--oblu-teal);
+    }
+
+    /* Floating Horizontal Scroller Capsule (Fixed Bottom Center) */
+    .floating-table-scroller {
+        position: fixed;
+        bottom: 22px;
+        left: calc(var(--sidebar-width, 285px) + (100vw - var(--sidebar-width, 285px)) / 2);
+        transform: translateX(-50%);
+        z-index: 1040;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(120, 194, 173, 0.4);
+        border-radius: 9999px;
+        box-shadow: 0 14px 34px -4px rgba(15, 23, 42, 0.18), 0 4px 14px rgba(21, 154, 124, 0.16);
+        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.25s, left 0.3s ease;
+        user-select: none;
+    }
+
+    body.sidebar-collapsed .floating-table-scroller,
+    html.sidebar-collapsed .floating-table-scroller {
+        left: 50% !important;
+    }
+
+    @media (max-width: 992px) {
+        .floating-table-scroller {
+            left: 50% !important;
+            bottom: 16px;
+            max-width: 92vw;
+            gap: 8px;
+            padding: 6px 12px;
+        }
+    }
+
+    .floating-table-scroller.scroller-hidden {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        transform: translate(-50%, 16px) !important;
+    }
+
+    .scroller-nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        color: var(--oblu-slate-600);
+        background: rgba(241, 245, 249, 0.9);
+        border: 1px solid var(--oblu-slate-200);
+        border-radius: 9999px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        white-space: nowrap;
+        outline: none;
+    }
+
+    .scroller-nav-btn:hover {
+        background: var(--oblu-teal-soft);
+        color: var(--oblu-teal-deep);
+        border-color: rgba(120, 194, 173, 0.5);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(120, 194, 173, 0.2);
+    }
+
+    .scroller-nav-btn:active {
+        transform: translateY(0);
+    }
+
+    .scroller-track-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        width: 220px;
+    }
+
+    @media (max-width: 576px) {
+        .scroller-track-container {
+            width: 130px;
+        }
+    }
+
+    .scroller-range-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 9999px;
+        background: linear-gradient(to right, var(--oblu-teal) 0%, var(--oblu-teal) 0%, #e2e8f0 0%, #e2e8f0 100%);
+        outline: none;
+        cursor: grab;
+        border: none;
+        margin: 0;
+    }
+
+    .scroller-range-slider:active {
+        cursor: grabbing;
+    }
+
+    .scroller-range-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--oblu-teal) 0%, var(--oblu-teal-dark) 100%);
+        cursor: grab;
+        box-shadow: 0 2px 6px rgba(21, 154, 124, 0.45);
+        border: 2px solid #ffffff;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .scroller-range-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 3px 8px rgba(21, 154, 124, 0.6);
+    }
+
+    .scroller-range-slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--oblu-teal);
+        cursor: grab;
+        box-shadow: 0 2px 6px rgba(21, 154, 124, 0.45);
+        border: 2px solid #ffffff;
+    }
+
+    .scroller-track-labels {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        font-size: 0.63rem;
+        font-weight: 600;
+        color: var(--oblu-slate-400);
+        padding: 0 2px;
+        letter-spacing: 0.2px;
     }
 
     .catalog-table {
@@ -791,9 +962,17 @@
         transition: width 0.6s ease;
     }
 
-    .stock-meter-fill.emerald { background: #10b981; }
-    .stock-meter-fill.amber { background: #f59e0b; }
-    .stock-meter-fill.rose { background: #f43f5e; }
+    .stock-meter-fill.emerald {
+        background: #10b981;
+    }
+
+    .stock-meter-fill.amber {
+        background: #f59e0b;
+    }
+
+    .stock-meter-fill.rose {
+        background: #f43f5e;
+    }
 
     /* Health status badge */
     .health-pill {
@@ -833,13 +1012,30 @@
         animation: pulse-dot 2s infinite ease-in-out;
     }
 
-    .health-pill.in-stock .pulse-beacon { background: #10b981; }
-    .health-pill.low-stock .pulse-beacon { background: #f59e0b; }
-    .health-pill.out-stock .pulse-beacon { background: #f43f5e; }
+    .health-pill.in-stock .pulse-beacon {
+        background: #10b981;
+    }
+
+    .health-pill.low-stock .pulse-beacon {
+        background: #f59e0b;
+    }
+
+    .health-pill.out-stock .pulse-beacon {
+        background: #f43f5e;
+    }
 
     @keyframes pulse-dot {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(1.3); }
+
+        0%,
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 0.4;
+            transform: scale(1.3);
+        }
     }
 
     /* Action buttons cluster */
@@ -1211,13 +1407,14 @@
                 </div>
                 <h1 class="hero-title">
                     {% if category %}
-                        Products in <span class="gradient-text">{{ category.name }}</span>
+                    Products in <span class="gradient-text">{{ category.name }}</span>
                     {% else %}
-                        Product <span class="gradient-text">Catalog</span>
+                    Product <span class="gradient-text">Catalog</span>
                     {% endif %}
                 </h1>
                 <p class="hero-desc">
-                    Comprehensive stock levels, predictive demand forecasting, reorder thresholds, and historical analytics.
+                    Comprehensive stock levels, predictive demand forecasting, reorder thresholds, and historical
+                    analytics.
                 </p>
             </div>
 
@@ -1231,15 +1428,20 @@
                 </a>
                 {% else %}
                 <div class="dropdown">
-                    <button class="btn-oblu-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn-oblu-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
                         <i class="bi bi-funnel"></i> Jump to Category
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="max-height: 280px; overflow-y: auto; border-radius: 14px; border: 1px solid var(--oblu-slate-200);">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm"
+                        style="max-height: 280px; overflow-y: auto; border-radius: 14px; border: 1px solid var(--oblu-slate-200);">
                         <li><a class="dropdown-item fw-semibold" href="{% url 'products' %}">All Categories ({{ total_items }})</a></li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         {% for cat in all_categories %}
                         <li>
-                            <a class="dropdown-item d-flex justify-content-between align-items-center" href="{% url 'category_products' cat.id %}">
+                            <a class="dropdown-item d-flex justify-content-between align-items-center"
+                                href="{% url 'category_products' cat.id %}">
                                 <span>{{ cat.name }}</span>
                                 <span class="badge bg-light text-muted border rounded-pill">{{ cat.item_count }}</span>
                             </a>
@@ -1316,7 +1518,8 @@
                 <div>
                     <div class="kpi-val">{{ low_stock_count|add:out_of_stock_count }}</div>
                     <p class="kpi-sub">
-                        <span class="text-warning fw-bold">{{ low_stock_count }}</span> low · <span class="text-danger fw-bold">{{ out_of_stock_count }}</span> out
+                        <span class="text-warning fw-bold">{{ low_stock_count }}</span> low · <span
+                            class="text-danger fw-bold">{{ out_of_stock_count }}</span> out
                     </p>
                 </div>
             </div>
@@ -1331,7 +1534,8 @@
                 <span class="chip-count">{{ total_items }}</span>
             </a>
             {% for cat in all_categories|slice:":12" %}
-            <a href="{% url 'category_products' cat.id %}" class="cat-filter-chip {% if category and category.id == cat.id %}active{% endif %}">
+            <a href="{% url 'category_products' cat.id %}"
+                class="cat-filter-chip {% if category and category.id == cat.id %}active{% endif %}">
                 {{ cat.name }}
                 <span class="chip-count">{{ cat.item_count }}</span>
             </a>
@@ -1348,23 +1552,21 @@
         <div class="command-bar-card">
             <!-- Row 1: Full-Width Search Input with Autocomplete and Shortcut Badge -->
             <div class="command-search-row">
-                <form method="GET" action="" style="width: 100%; margin: 0;">
+                <form method="GET" action="{% url 'products' %}" style="width: 100%; margin: 0;">
                     {% if category %}<input type="hidden" name="category" value="{{ category.id }}">{% endif %}
-                    {% if status_filter and status_filter != 'all' %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+                    {% if status_filter and status_filter != 'all' %}<input type="hidden" name="status"
+                        value="{{ status_filter }}">{% endif %}
                     <div id="autocomplete" class="search-input-box">
-                        <i class="bi bi-search search-icon"></i>
-                        <input
-                            id="catalogSearchInput"
-                            class="autocomplete-input"
-                            type="text"
-                            name="q"
+                        <i class="bi bi-search search-icon" style="cursor: pointer;" title="Search"></i>
+                        <input id="catalogSearchInput" class="autocomplete-input" type="text" name="q"
                             value="{{ search_query }}"
                             placeholder="Search products by name, SKU ID, or category... (Press / or Ctrl+K)"
-                            autocomplete="off"
-                        />
+                            autocomplete="off" />
                         <div class="search-right-tools">
                             {% if search_query %}
-                            <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if status_filter and status_filter != 'all' %}status={{ status_filter }}{% endif %}" id="searchClearBtn" class="search-clear-btn" style="display: flex; text-decoration: none;" title="Clear search">
+                            <a href="{% url 'products' %}?{% if category %}category={{ category.id }}&{% endif %}{% if status_filter and status_filter != 'all' %}status={{ status_filter }}{% endif %}"
+                                id="searchClearBtn" class="search-clear-btn"
+                                style="display: flex; text-decoration: none;" title="Clear search">
                                 <i class="bi bi-x-circle-fill"></i>
                             </a>
                             {% endif %}
@@ -1379,16 +1581,24 @@
             <div class="command-controls-row">
                 <!-- Stock Health Status Pills -->
                 <div class="filter-pills-bar">
-                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=all" class="filter-pill-btn {% if status_filter == 'all' %}active{% endif %}" style="text-decoration: none;">
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=all"
+                        class="filter-pill-btn {% if status_filter == 'all' %}active{% endif %}"
+                        style="text-decoration: none;">
                         All Items ({{ total_items }})
                     </a>
-                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=in-stock" class="filter-pill-btn {% if status_filter == 'in-stock' %}active{% endif %}" style="text-decoration: none;">
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=in-stock"
+                        class="filter-pill-btn {% if status_filter == 'in-stock' %}active{% endif %}"
+                        style="text-decoration: none;">
                         <span class="status-dot emerald"></span> In Stock
                     </a>
-                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=low-stock" class="filter-pill-btn {% if status_filter == 'low-stock' %}active{% endif %}" style="text-decoration: none;">
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=low-stock"
+                        class="filter-pill-btn {% if status_filter == 'low-stock' %}active{% endif %}"
+                        style="text-decoration: none;">
                         <span class="status-dot amber"></span> Low Stock ({{ low_stock_count }})
                     </a>
-                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=out-stock" class="filter-pill-btn {% if status_filter == 'out-stock' %}active{% endif %}" style="text-decoration: none;">
+                    <a href="?{% if category %}category={{ category.id }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}status=out-stock"
+                        class="filter-pill-btn {% if status_filter == 'out-stock' %}active{% endif %}"
+                        style="text-decoration: none;">
                         <span class="status-dot rose"></span> Out of Stock ({{ out_of_stock_count }})
                     </a>
                 </div>
@@ -1428,13 +1638,9 @@
                     <tbody id="catalogTableBody">
                         {% for item in page_obj %}
                         {% with qty=item.quantity|default:0 min_qty=item.min_quantity|default:-1 %}
-                        <tr
-                            class="product-row"
-                            data-name="{{ item.name|lower }}"
-                            data-id="{{ item.id }}"
+                        <tr class="product-row" data-name="{{ item.name|lower }}" data-id="{{ item.id }}"
                             data-category="{{ item.category.name|default:'Uncategorized'|lower }}"
-                            data-status="{% if qty <= 0 %}out-stock{% elif min_qty > 0 and qty <= min_qty %}low-stock{% else %}in-stock{% endif %}"
-                        >
+                            data-status="{% if qty <= 0 %}out-stock{% elif min_qty > 0 and qty <= min_qty %}low-stock{% else %}in-stock{% endif %}">
                             <!-- ID -->
                             <td>
                                 <span class="item-id-pill">#{{ item.id }}</span>
@@ -1459,7 +1665,8 @@
                             <td>
                                 {% if item.category %}
                                 <a href="{% url 'category_products' item.category.id %}" class="cat-badge-pill">
-                                    <i class="bi bi-tag-fill" style="font-size: 0.65rem; color: var(--oblu-teal-dark);"></i>
+                                    <i class="bi bi-tag-fill"
+                                        style="font-size: 0.65rem; color: var(--oblu-teal-dark);"></i>
                                     {{ item.category.name }}
                                 </a>
                                 {% else %}
@@ -1474,10 +1681,9 @@
                                         {{ qty }}
                                     </span>
                                     <div class="stock-meter-track">
-                                        <div
-                                            class="stock-meter-fill {% if qty <= 0 %}rose{% elif min_qty > 0 and qty <= min_qty %}amber{% else %}emerald{% endif %}"
-                                            style="width: {% if qty <= 0 %}8%{% elif min_qty > 0 %}{% widthratio qty min_qty 50 %}%{% else %}80%{% endif %}; max-width: 100%; min-width: 8px;"
-                                        ></div>
+                                        <div class="stock-meter-fill {% if qty <= 0 %}rose{% elif min_qty > 0 and qty <= min_qty %}amber{% else %}emerald{% endif %}"
+                                            style="width: {% if qty <= 0 %}8%{% elif min_qty > 0 %}{% widthratio qty min_qty 50 %}%{% else %}80%{% endif %}; max-width: 100%; min-width: 8px;">
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -1493,34 +1699,35 @@
 
                             <!-- Health Status -->
                             <td>
-                                {% if qty <= 0 %}
-                                <span class="health-pill out-stock">
+                                {% if qty <= 0 %} <span class="health-pill out-stock">
                                     <span class="pulse-beacon"></span>
                                     Out of Stock
-                                </span>
-                                {% elif min_qty > 0 and qty <= min_qty %}
-                                <span class="health-pill low-stock">
-                                    <span class="pulse-beacon"></span>
-                                    Low Stock Alert
-                                </span>
-                                {% else %}
-                                <span class="health-pill in-stock">
-                                    <span class="pulse-beacon"></span>
-                                    Healthy Stock
-                                </span>
-                                {% endif %}
+                                    </span>
+                                    {% elif min_qty > 0 and qty <= min_qty %} <span class="health-pill low-stock">
+                                        <span class="pulse-beacon"></span>
+                                        Low Stock Alert
+                                        </span>
+                                        {% else %}
+                                        <span class="health-pill in-stock">
+                                            <span class="pulse-beacon"></span>
+                                            Healthy Stock
+                                        </span>
+                                        {% endif %}
                             </td>
 
                             <!-- Quick Action Buttons -->
                             <td>
                                 <div class="actions-cluster">
-                                    <a href="{% url 'predict_min_stock' item.id %}" class="btn-action-pill forecast" title="Predictive Demand & Reorder Forecast">
+                                    <a href="{% url 'predict_min_stock' item.id %}" class="btn-action-pill forecast"
+                                        title="Predictive Demand & Reorder Forecast">
                                         <i class="bi bi-magic"></i> Forecast
                                     </a>
-                                    <a href="{% url 'stock_chart_2' item.id %}" class="btn-action-pill graphs" title="Historical Velocity & Chart Analytics">
+                                    <a href="{% url 'stock_chart_2' item.id %}" class="btn-action-pill graphs"
+                                        title="Historical Velocity & Chart Analytics">
                                         <i class="bi bi-graph-up-arrow"></i> Trends
                                     </a>
-                                    <a href="{% url 'history' item.id %}" class="btn-action-pill data" title="Stock Transactions Ledger">
+                                    <a href="{% url 'history' item.id %}" class="btn-action-pill data"
+                                        title="Stock Transactions Ledger">
                                         <i class="bi bi-clock-history"></i> Ledger
                                     </a>
                                 </div>
@@ -1533,17 +1740,34 @@
             </div>
         </div>
 
+        <!-- FLOATING HORIZONTAL SCROLLER BAR (FIXED BOTTOM CENTER) -->
+        <div id="floatingTableScroller" class="floating-table-scroller scroller-hidden" role="region"
+            aria-label="Horizontal Table Scroller">
+            <button type="button" class="scroller-nav-btn" id="scrollerLeftBtn"
+                title="Scroll to Product Details (Left)">
+                <i class="bi bi-arrow-left"></i> Left
+            </button>
+            <div class="scroller-track-container">
+                <input type="range" id="scrollerRangeInput" class="scroller-range-slider" min="0" max="100" value="0"
+                    step="1" aria-label="Table horizontal scroll position" />
+                <div class="scroller-track-labels">
+                    <span class="track-label left"><i class="bi bi-box-seam"></i> Products</span>
+                    <span class="track-label right">Actions <i class="bi bi-lightning-charge"></i></span>
+                </div>
+            </div>
+            <button type="button" class="scroller-nav-btn" id="scrollerRightBtn"
+                title="Scroll to Quick Actions & Ledger (Right)">
+                Actions <i class="bi bi-arrow-right"></i>
+            </button>
+        </div>
+
         <!-- 6. GRID CARDS VIEW (TOGGLEABLE) -->
         <div id="gridViewWrapper" class="catalog-grid-view">
             {% for item in page_obj %}
             {% with qty=item.quantity|default:0 min_qty=item.min_quantity|default:-1 %}
-            <div
-                class="prod-grid-card product-grid-item"
-                data-name="{{ item.name|lower }}"
-                data-id="{{ item.id }}"
+            <div class="prod-grid-card product-grid-item" data-name="{{ item.name|lower }}" data-id="{{ item.id }}"
                 data-category="{{ item.category.name|default:'Uncategorized'|lower }}"
-                data-status="{% if qty <= 0 %}out-stock{% elif min_qty > 0 and qty <= min_qty %}low-stock{% else %}in-stock{% endif %}"
-            >
+                data-status="{% if qty <= 0 %}out-stock{% elif min_qty > 0 and qty <= min_qty %}low-stock{% else %}in-stock{% endif %}">
                 <div class="card-head-row">
                     <div class="prod-cell">
                         <div class="prod-avatar">
@@ -1554,19 +1778,17 @@
                             <span class="prod-unit">#{{ item.id }}{% if item.unit %} · {{ item.unit }}{% endif %}</span>
                         </div>
                     </div>
-                    {% if qty <= 0 %}
-                    <span class="health-pill out-stock">
+                    {% if qty <= 0 %} <span class="health-pill out-stock">
                         <span class="pulse-beacon"></span> Out
-                    </span>
-                    {% elif min_qty > 0 and qty <= min_qty %}
-                    <span class="health-pill low-stock">
-                        <span class="pulse-beacon"></span> Low
-                    </span>
-                    {% else %}
-                    <span class="health-pill in-stock">
-                        <span class="pulse-beacon"></span> Optimal
-                    </span>
-                    {% endif %}
+                        </span>
+                        {% elif min_qty > 0 and qty <= min_qty %} <span class="health-pill low-stock">
+                            <span class="pulse-beacon"></span> Low
+                            </span>
+                            {% else %}
+                            <span class="health-pill in-stock">
+                                <span class="pulse-beacon"></span> Optimal
+                            </span>
+                            {% endif %}
                 </div>
 
                 <div class="card-body-meta">
@@ -1591,10 +1813,9 @@
                     </div>
 
                     <div class="stock-meter-track">
-                        <div
-                            class="stock-meter-fill {% if qty <= 0 %}rose{% elif min_qty > 0 and qty <= min_qty %}amber{% else %}emerald{% endif %}"
-                            style="width: {% if qty <= 0 %}8%{% elif min_qty > 0 %}{% widthratio qty min_qty 50 %}%{% else %}80%{% endif %}; max-width: 100%; min-width: 8px;"
-                        ></div>
+                        <div class="stock-meter-fill {% if qty <= 0 %}rose{% elif min_qty > 0 and qty <= min_qty %}amber{% else %}emerald{% endif %}"
+                            style="width: {% if qty <= 0 %}8%{% elif min_qty > 0 %}{% widthratio qty min_qty 50 %}%{% else %}80%{% endif %}; max-width: 100%; min-width: 8px;">
+                        </div>
                     </div>
                 </div>
 
@@ -1628,7 +1849,9 @@
                 No products found under this category or active filter.
                 {% endif %}
             </p>
-            <a href="{% if category %}{% url 'category_products' category.id %}{% else %}{% url 'products' %}{% endif %}" class="btn-oblu-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+            <a href="{% if category %}{% url 'category_products' category.id %}{% else %}{% url 'products' %}{% endif %}"
+                class="btn-oblu-secondary"
+                style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="bi bi-arrow-counterclockwise"></i> Reset Search & Filters
             </a>
         </div>
@@ -1643,10 +1866,12 @@
             </div>
             <div class="d-flex align-items-center gap-1 flex-wrap">
                 {% if page_obj.has_previous %}
-                <a href="?page=1{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" title="First Page" style="text-decoration: none;">
+                <a href="?page=1{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav"
+                    title="First Page" style="text-decoration: none;">
                     <i class="bi bi-chevron-double-left"></i> First
                 </a>
-                <a href="?page={{ page_obj.previous_page_number }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" style="text-decoration: none;">
+                <a href="?page={{ page_obj.previous_page_number }}{% if preserved_query %}&{{ preserved_query }}{% endif %}"
+                    class="btn-page-nav" style="text-decoration: none;">
                     <i class="bi bi-chevron-left"></i> Prev
                 </a>
                 {% else %}
@@ -1654,25 +1879,30 @@
                 {% endif %}
 
                 {% for num in paginator.page_range %}
-                    {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
-                        {% if page_obj.number == num %}
-                        <span class="btn-page-nav active" style="background: var(--oblu-teal); color: #fff; border-color: var(--oblu-teal); font-weight: 700;">{{ num }}</span>
-                        {% else %}
-                        <a href="?page={{ num }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" style="text-decoration: none;">{{ num }}</a>
-                        {% endif %}
+                {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                    {% if page_obj.number == num %}
+                    <span class="btn-page-nav active"
+                    style="background: var(--oblu-teal); color: #fff; border-color: var(--oblu-teal); font-weight: 700;">
+                    {{ num }}</span>
+                    {% else %}
+                    <a href="?page={{ num }}{% if preserved_query %}&{{ preserved_query }}{% endif %}"
+                        class="btn-page-nav" style="text-decoration: none;">{{ num }}</a>
                     {% endif %}
-                {% endfor %}
+                    {% endif %}
+                    {% endfor %}
 
-                {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" style="text-decoration: none;">
-                    Next <i class="bi bi-chevron-right"></i>
-                </a>
-                <a href="?page={{ paginator.num_pages }}{% if preserved_query %}&{{ preserved_query }}{% endif %}" class="btn-page-nav" title="Last Page" style="text-decoration: none;">
-                    Last <i class="bi bi-chevron-double-right"></i>
-                </a>
-                {% else %}
-                <button class="btn-page-nav" disabled>Next <i class="bi bi-chevron-right"></i></button>
-                {% endif %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if preserved_query %}&{{ preserved_query }}{% endif %}"
+                        class="btn-page-nav" style="text-decoration: none;">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                    <a href="?page={{ paginator.num_pages }}{% if preserved_query %}&{{ preserved_query }}{% endif %}"
+                        class="btn-page-nav" title="Last Page" style="text-decoration: none;">
+                        Last <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                    {% else %}
+                    <button class="btn-page-nav" disabled>Next <i class="bi bi-chevron-right"></i></button>
+                    {% endif %}
             </div>
         </div>
         {% endif %}
@@ -1691,87 +1921,239 @@
      JAVASCRIPT: VIEW TOGGLE, SHORTCUTS & AUTOCOMPLETE
      ========================================================= -->
 <script>
-function initCatalogApp() {
-    const searchInput = document.getElementById('catalogSearchInput');
-    const btnTableView = document.getElementById('btnTableView');
-    const btnGridView = document.getElementById('btnGridView');
-    const tableViewWrapper = document.getElementById('tableViewWrapper');
-    const gridViewWrapper = document.getElementById('gridViewWrapper');
+    function initCatalogApp() {
+        const searchInput = document.getElementById('catalogSearchInput');
+        const btnTableView = document.getElementById('btnTableView');
+        const btnGridView = document.getElementById('btnGridView');
+        const tableViewWrapper = document.getElementById('tableViewWrapper');
+        const gridViewWrapper = document.getElementById('gridViewWrapper');
 
-    // View toggle handler with localStorage persistence
-    const savedView = localStorage.getItem('oblu_catalog_view') || 'table';
-    if (savedView === 'grid' && btnGridView && gridViewWrapper) {
-        btnGridView.classList.add('active');
-        btnTableView.classList.remove('active');
-        tableViewWrapper.style.display = 'none';
-        gridViewWrapper.style.display = 'grid';
-    }
-
-    if (btnTableView && btnGridView) {
-        btnTableView.addEventListener('click', () => {
-            btnTableView.classList.add('active');
-            btnGridView.classList.remove('active');
-            tableViewWrapper.style.display = 'block';
-            gridViewWrapper.style.display = 'none';
-            localStorage.setItem('oblu_catalog_view', 'table');
-        });
-
-        btnGridView.addEventListener('click', () => {
+        // View toggle handler with localStorage persistence
+        const savedView = localStorage.getItem('oblu_catalog_view') || 'table';
+        if (savedView === 'grid' && btnGridView && gridViewWrapper) {
             btnGridView.classList.add('active');
             btnTableView.classList.remove('active');
             tableViewWrapper.style.display = 'none';
             gridViewWrapper.style.display = 'grid';
-            localStorage.setItem('oblu_catalog_view', 'grid');
-        });
-    }
+        }
 
-    // Keyboard shortcut Ctrl+K or / to focus search
-    if (searchInput) {
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-                e.preventDefault();
-                searchInput.focus();
-                searchInput.select();
-            } else if (e.key === '/' && document.activeElement !== searchInput) {
-                e.preventDefault();
-                searchInput.focus();
-                searchInput.select();
-            }
-        });
-    }
+        if (btnTableView && btnGridView) {
+            btnTableView.addEventListener('click', () => {
+                btnTableView.classList.add('active');
+                btnGridView.classList.remove('active');
+                tableViewWrapper.style.display = 'block';
+                gridViewWrapper.style.display = 'none';
+                localStorage.setItem('oblu_catalog_view', 'table');
+            });
 
-    // Server-side Trevor Eyre Autocomplete
-    let itemMap = {};
-    if (window.Autocomplete && document.getElementById('autocomplete')) {
-        new Autocomplete('#autocomplete', {
-            search: input => {
-                if (input.length < 2) return [];
-                const url = `/inventory/search/?item=${encodeURIComponent(input)}`;
-                return fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        itemMap = {};
-                        if (data && data.data) {
-                            data.data.forEach(item => {
-                                itemMap[item[0]] = item[1];
-                            });
-                            return data.data.map(item => item[0]);
-                        }
-                        return [];
-                    })
-                    .catch(() => []);
-            },
-            onSubmit: result => {
-                const id = itemMap[result];
-                if (id) {
-                    window.location.href = `/inventory/predict/${id}/`;
+            btnGridView.addEventListener('click', () => {
+                btnGridView.classList.add('active');
+                btnTableView.classList.remove('active');
+                tableViewWrapper.style.display = 'none';
+                gridViewWrapper.style.display = 'grid';
+                localStorage.setItem('oblu_catalog_view', 'grid');
+            });
+        }
+
+        // Keyboard shortcut Ctrl+K or / to focus search
+        if (searchInput) {
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
+                } else if (e.key === '/' && document.activeElement !== searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
                 }
-            }
-        });
-    }
-}
+            });
+        }
 
-document.addEventListener('DOMContentLoaded', initCatalogApp);
-document.addEventListener('turbo:load', initCatalogApp);
+        // Search icon click handler
+        const searchIcon = document.querySelector('.search-icon');
+        if (searchIcon) {
+            searchIcon.addEventListener('click', () => {
+                const form = searchInput ? searchInput.closest('form') : document.querySelector('.command-search-row form');
+                if (form) form.submit();
+            });
+        }
+
+        // Server-side Trevor Eyre Autocomplete
+        let itemMap = {};
+        if (window.Autocomplete && document.getElementById('autocomplete')) {
+            new Autocomplete('#autocomplete', {
+                search: input => {
+                    if (input.length < 2) return [];
+                    const url = `/inventory/search/?item=${encodeURIComponent(input)}`;
+                    return fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            itemMap = {};
+                            if (data && data.data) {
+                                data.data.forEach(item => {
+                                    itemMap[item[0]] = item[1];
+                                });
+                                return data.data.map(item => item[0]);
+                            }
+                            return [];
+                        })
+                        .catch(() => []);
+                },
+                onSubmit: result => {
+                    const searchInput = document.getElementById('catalogSearchInput');
+                    const query = (result !== undefined && result !== null && result !== '')
+                        ? result
+                        : (searchInput ? searchInput.value.trim() : '');
+                    if (!query) return;
+                    if (searchInput) {
+                        searchInput.value = query;
+                    }
+                    const form = searchInput ? searchInput.closest('form') : document.querySelector('.command-search-row form');
+                    if (form) {
+                        if (result) {
+                            const catInput = form.querySelector('input[name="category"]');
+                            if (catInput) catInput.remove();
+                            const statusInput = form.querySelector('input[name="status"]');
+                            if (statusInput) statusInput.remove();
+                        }
+                        form.submit();
+                    } else {
+                        window.location.href = `{% url 'products' %}?q=${encodeURIComponent(query)}`;
+                    }
+                }
+            });
+        }
+
+        // =========================================================
+        // FLOATING HORIZONTAL SCROLLER BAR (FIXED BOTTOM CENTER)
+        // =========================================================
+        const floatingScroller = document.getElementById('floatingTableScroller');
+        const scrollerRange = document.getElementById('scrollerRangeInput');
+        const scrollerLeftBtn = document.getElementById('scrollerLeftBtn');
+        const scrollerRightBtn = document.getElementById('scrollerRightBtn');
+        const tableResponsive = document.querySelector('.catalog-table-responsive');
+
+        function isSidebarOpen() {
+            const isCollapsed = document.body.classList.contains('sidebar-collapsed') ||
+                document.documentElement.classList.contains('sidebar-collapsed');
+            return !isCollapsed;
+        }
+
+        function isTableViewActive() {
+            if (!tableViewWrapper) return false;
+            return tableViewWrapper.style.display !== 'none';
+        }
+
+        function updateSliderFill(pct) {
+            if (!scrollerRange) return;
+            scrollerRange.value = pct;
+            scrollerRange.style.background = `linear-gradient(to right, var(--oblu-teal) 0%, var(--oblu-teal) ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%)`;
+        }
+
+        function checkScrollerState() {
+            if (!floatingScroller || !tableResponsive) return;
+
+            // Condition 1: Must be in Table View
+            if (!isTableViewActive()) {
+                floatingScroller.classList.add('scroller-hidden');
+                return;
+            }
+
+            // Condition 2: Only show when sidebar is OPEN (as requested by user)
+            if (!isSidebarOpen()) {
+                floatingScroller.classList.add('scroller-hidden');
+                return;
+            }
+
+            // Condition 3: Table must have horizontal overflow
+            const maxScroll = tableResponsive.scrollWidth - tableResponsive.clientWidth;
+            if (maxScroll <= 6) {
+                floatingScroller.classList.add('scroller-hidden');
+                return;
+            }
+
+            // Condition 4: Table should be currently in view
+            const rect = tableResponsive.getBoundingClientRect();
+            const isInViewport = (rect.bottom > 80 && rect.top < window.innerHeight - 40);
+            if (!isInViewport) {
+                floatingScroller.classList.add('scroller-hidden');
+                return;
+            }
+
+            // All conditions met: show floating horizontal scroller
+            floatingScroller.classList.remove('scroller-hidden');
+
+            // Sync slider position
+            const currentScroll = tableResponsive.scrollLeft;
+            const pct = Math.min(100, Math.max(0, Math.round((currentScroll / maxScroll) * 100)));
+            updateSliderFill(pct);
+        }
+
+        if (tableResponsive && floatingScroller && scrollerRange) {
+            // 1. Table scroll event -> update slider
+            tableResponsive.addEventListener('scroll', () => {
+                const maxScroll = tableResponsive.scrollWidth - tableResponsive.clientWidth;
+                if (maxScroll > 0) {
+                    const pct = Math.min(100, Math.max(0, Math.round((tableResponsive.scrollLeft / maxScroll) * 100)));
+                    updateSliderFill(pct);
+                }
+            }, { passive: true });
+
+            // 2. Slider input event -> scroll table in real time
+            scrollerRange.addEventListener('input', (e) => {
+                const pct = parseInt(e.target.value, 10);
+                const maxScroll = tableResponsive.scrollWidth - tableResponsive.clientWidth;
+                if (maxScroll > 0) {
+                    tableResponsive.scrollLeft = (pct / 100) * maxScroll;
+                }
+                scrollerRange.style.background = `linear-gradient(to right, var(--oblu-teal) 0%, var(--oblu-teal) ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%)`;
+            });
+
+            // 3. Left button click -> smooth scroll left
+            if (scrollerLeftBtn) {
+                scrollerLeftBtn.addEventListener('click', () => {
+                    tableResponsive.scrollTo({ left: 0, behavior: 'smooth' });
+                });
+            }
+
+            // 4. Right button click -> smooth scroll right
+            if (scrollerRightBtn) {
+                scrollerRightBtn.addEventListener('click', () => {
+                    const maxScroll = tableResponsive.scrollWidth - tableResponsive.clientWidth;
+                    tableResponsive.scrollTo({ left: maxScroll, behavior: 'smooth' });
+                });
+            }
+
+            // 5. Mouse wheel over the floating scroller -> scroll table horizontally
+            floatingScroller.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                tableResponsive.scrollLeft += (e.deltaY || e.deltaX);
+            }, { passive: false });
+
+            // 6. Listen to window & document events
+            window.addEventListener('resize', checkScrollerState, { passive: true });
+            window.addEventListener('scroll', checkScrollerState, { passive: true });
+
+            // 7. Observe sidebar class mutations on body and html
+            const sidebarObserver = new MutationObserver(() => {
+                setTimeout(checkScrollerState, 40);
+                setTimeout(checkScrollerState, 260); // After sidebar CSS animation completes
+            });
+            sidebarObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            sidebarObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+            // 8. Re-check on view toggles
+            if (btnTableView) btnTableView.addEventListener('click', () => setTimeout(checkScrollerState, 100));
+            if (btnGridView) btnGridView.addEventListener('click', () => setTimeout(checkScrollerState, 100));
+
+            // Initial check
+            setTimeout(checkScrollerState, 100);
+            setTimeout(checkScrollerState, 500);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initCatalogApp);
+    document.addEventListener('turbo:load', initCatalogApp);
 </script>
 {% endblock content %}
