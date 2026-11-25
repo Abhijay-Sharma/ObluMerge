@@ -701,7 +701,7 @@ class CategoryListView(RBACViewMixin, ListView):
         context['parent_categories'] = (
             ParentCategory.objects.filter(is_active=True)
             .prefetch_related('subcategories__inventoryitem_set')
-            .annotate(total_products_count=Count('subcategories__inventoryitem'))
+            .annotate(annotated_products_count=Count('subcategories__inventoryitem'))
             .order_by('name')
         )
         context['standalone_categories'] = (
